@@ -43,6 +43,10 @@ SEMANTIC_WEIGHT = 0.6
 #: 单次检索最多编码多少个切片。切片很多时按关键词分预筛，避免超配额。
 MAX_EMBED_CHUNKS = 200
 
+#: DashScope text-embedding-v3 单次请求最多接收 10 条文本。检索一次会同时
+#: 编码 query 与候选切片，因此必须在 HTTP 层分批，而不能只限制候选数量。
+EMBED_BATCH_SIZE = 10
+
 #: embedding 模型与维度上限（DashScope text-embedding-v3 支持 1024）
 DEFAULT_EMBED_MODEL = "text-embedding-v3"
 
@@ -73,24 +77,31 @@ def encode(texts: list[str]) -> list[list[float]] | None:
     if not cleaned or not semantic_available():
         return None
 
-    payload = {"model": _embed_model(), "input": cleaned, "encoding_format": "float"}
-    request = Request(
-        f"{_base_url()}/embeddings",
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={"Authorization": f"Bearer {os.environ['DASHSCOPE_API_KEY'].strip()}",
-                 "Content-Type": "application/json"},
-        method="POST",
-    )
     try:
-        with urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
-            body = json.loads(response.read().decode("utf-8"))
-        rows = body["data"]
-        # 兼容两种返回顺序：带 index 的（按 index 排序）与顺序即序的
-        if rows and isinstance(rows[0], dict) and "index" in rows[0]:
-            rows = sorted(rows, key=lambda item: item["index"])
-        vectors = [row["embedding"] for row in rows]
-        if len(vectors) != len(cleaned):
-            return None
+        vectors: list[list[float]] = []
+        for offset in range(0, len(cleaned), EMBED_BATCH_SIZE):
+            batch = cleaned[offset:offset + EMBED_BATCH_SIZE]
+            payload = {"model": _embed_model(), "input": batch,
+                       "encoding_format": "float"}
+            request = Request(
+                f"{_base_url()}/embeddings",
+                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                headers={
+                    "Authorization": f"Bearer {os.environ['DASHSCOPE_API_KEY'].strip()}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
+                body = json.loads(response.read().decode("utf-8"))
+            rows = body["data"]
+            # index 对每个批次从 0 重新编号，所以必须逐批排序后再拼接。
+            if rows and isinstance(rows[0], dict) and "index" in rows[0]:
+                rows = sorted(rows, key=lambda item: item["index"])
+            batch_vectors = [row["embedding"] for row in rows]
+            if len(batch_vectors) != len(batch):
+                return None
+            vectors.extend(batch_vectors)
         return vectors
     except (HTTPError, KeyError, IndexError, TypeError, ValueError, OSError):
         return None

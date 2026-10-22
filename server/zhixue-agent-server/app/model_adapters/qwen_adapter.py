@@ -23,9 +23,10 @@ class QwenAdapter(ModelAdapter):
 		self.base_url = (base_url or os.getenv(
 			"LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")).rstrip("/")
 		self.model = (
-			model
-			or os.getenv("LLM_DECISION_MODEL")
-			or os.getenv("LLM_MODEL", "qwen-plus")
+			(model or "").strip()
+			or os.getenv("LLM_DECISION_MODEL", "").strip()
+			or os.getenv("LLM_MODEL", "").strip()
+			or "qwen3.8-flash"
 		)
 
 	@classmethod

@@ -205,11 +205,13 @@ def llm_ready() -> bool:
 
 
 def llm_model() -> str:
-    return os.getenv("LLM_MODEL", "qwen3.8-flash")
+    return os.getenv("LLM_MODEL", "").strip() or "qwen3.8-flash"
 
 
 def llm_vl_model() -> str:
-    return os.getenv("LLM_VL_MODEL", "").strip() or llm_model()
+    # 视觉模型必须有独立且真正支持图片的默认值。不能回退到 LLM_MODEL：
+    # 文本模型可被配置成不支持 image_url 的供应商模型，届时拍题会直接失败。
+    return os.getenv("LLM_VL_MODEL", "").strip() or "qwen3-vl-plus"
 
 
 def llm_base_url() -> str:

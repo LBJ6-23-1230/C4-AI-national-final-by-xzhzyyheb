@@ -409,6 +409,19 @@ def test_client_turns_off_sdk_auto_retries(monkeypatch):
     assert captured["timeout"] == chat_llm.llm_timeout_seconds()
 
 
+def test_default_text_and_vision_models_are_independent(monkeypatch):
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    monkeypatch.delenv("LLM_VL_MODEL", raising=False)
+    assert chat_llm.llm_model() == "qwen3.8-flash"
+    assert chat_llm.llm_vl_model() == "qwen3-vl-plus"
+
+    # 空字符串与缺失配置等价；视觉链路不能误用文本模型。
+    monkeypatch.setenv("LLM_MODEL", "deepseek-chat")
+    monkeypatch.setenv("LLM_VL_MODEL", "   ")
+    assert chat_llm.llm_model() == "deepseek-chat"
+    assert chat_llm.llm_vl_model() == "qwen3-vl-plus"
+
+
 def test_thinking_is_disabled_only_on_dashscope(monkeypatch):
     monkeypatch.delenv("LLM_ENABLE_THINKING", raising=False)
     monkeypatch.setenv("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")

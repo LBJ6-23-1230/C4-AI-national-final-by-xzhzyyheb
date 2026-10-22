@@ -368,6 +368,17 @@ def test_qwen_adapter_reads_explicit_configuration_without_exposing_secret(monke
     assert decision_adapter.model == "qwen-plus"
 
 
+def test_qwen_adapter_uses_current_default_model(monkeypatch):
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "configured-key")
+    monkeypatch.setenv("LLM_MODEL", "")
+    monkeypatch.setenv("LLM_DECISION_MODEL", "")
+
+    adapter = QwenAdapter.from_environment()
+
+    assert adapter is not None
+    assert adapter.model == "qwen3.8-flash"
+
+
 def test_runtime_falls_back_when_model_adapter_fails_without_state_corruption():
     session = WorkflowSession("session-fallback", "完成复习", max_steps=1)
     state = {}
