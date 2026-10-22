@@ -2420,6 +2420,23 @@
                     },
                     "contractVersion": {
                       "type": "string"
+                    },
+                    "configured": {
+                      "type": "boolean",
+                      "description": "Whether credentials are configured; no provider request is made."
+                    },
+                    "verified": {
+                      "type": "boolean",
+                      "nullable": true,
+                      "description": "Cached active text-model verification; null when absent, expired or configuration changed."
+                    },
+                    "checkedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time"
+                    },
+                    "verificationReason": {
+                      "type": "string"
                     }
                   }
                 }
@@ -2445,6 +2462,52 @@
                 }
               }
             }
+          }
+        }
+      },
+      "post": {
+        "summary": "Explicitly verify the configured text model",
+        "description": "Requires login. Makes a minimal model call only on explicit request; rate limited to once per process per 60 seconds, with a 300 second cache. Does not verify every model or embedding capability.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification result; verified may be false",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "configured": {
+                      "type": "boolean",
+                      "description": "Whether credentials are configured; no provider request is made."
+                    },
+                    "verified": {
+                      "type": "boolean",
+                      "nullable": true,
+                      "description": "Cached active text-model verification; null when absent, expired or configuration changed."
+                    },
+                    "checkedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time"
+                    },
+                    "verificationReason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required"
+          },
+          "429": {
+            "description": "Probe rate limit or probe already running"
           }
         }
       }

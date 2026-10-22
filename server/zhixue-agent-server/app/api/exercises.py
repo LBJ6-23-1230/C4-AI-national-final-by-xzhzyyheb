@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
-import os
 import uuid
 import json
+import hashlib
 import threading
-from concurrent.futures import Future, TimeoutError as FutureTimeoutError
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
@@ -21,6 +20,8 @@ from app.tools.assessment_tools import grade_exercise, persist_mastery, mastery_
 from app.agent import exercise_gen
 from app.tools.exercise_tools import _CLIENT_FIELDS, select_exercises
 from app.services.assessment_replan import replan_request, execute_assessment_replan
+from app.services import review_jobs
+from app.services import exercise_cache
 
 
 exercises_api = Blueprint("exercises", __name__)
@@ -138,15 +139,19 @@ def _merged_grading_tables(user_id: str | None = None) -> tuple[dict, dict]:
 	return answer_keys, knowledge_points
 
 
-def _generate_and_store(knowledge_point_name: str, count: int) -> list[dict]:
+def _generate_and_store(knowledge_point_name: str, count: int, excluded_ids=()) -> list[dict]:
 	"""让模型针对该知识点出题；**含答案**的版本存仓库，返回可下发的题面（不含答案）。"""
-	items = exercise_gen.generate_exercises(knowledge_point_name, count)
-	if not items:
-		return []
-	if _repository:
-		owner = resolve_user_id(None)
-		for item in items:
-			_repository.save("exercises", item["exerciseId"], dict(item, userId=owner))
+	owner = resolve_user_id(None)
+	cache_key = exercise_cache.key(_repository, owner, knowledge_point_name, count)
+	with exercise_cache.guard(cache_key):
+		items = exercise_cache.get(cache_key, _repository, excluded_ids)
+		if items is None:
+			items = exercise_gen.generate_exercises(knowledge_point_name, count)
+			if not items:
+				return []
+			if _repository:
+				_repository.apply_batch([], [("exercises", item["exerciseId"], dict(item, userId=owner)) for item in items])
+				exercise_cache.put(cache_key, items)
 	# 只下发题面字段：`answerKey` / `explanation` **绝不出后端**
 	return [{key: item[key] for key in _CLIENT_FIELDS if key in item} for item in items]
 
@@ -236,7 +241,7 @@ def get_exercise_set(set_id: str):
 		# 而不是"select 返回空" —— 后者在无过滤时会返回题库前 N 题，永远不为空。
 		generation_attempted = bool(raw_point and knowledge_point_id is None and generate_requested)
 		if generation_attempted:
-			exercises = _generate_and_store(raw_point, count)
+			exercises = _generate_and_store(raw_point, count, excluded_ids)
 		if not exercises:
 			if generation_attempted:
 				# ⚠️ 已经为这个知识点尝试过现场出题、但一道都没拿到时，**绝不能回落**到
@@ -284,7 +289,11 @@ def _material_set(set_id, point, count):
 	if not sources:
 		return jsonify(dict(response, generationFailed=True, failureReason="INSUFFICIENT_MATERIALS",
 			message="所选资料未检索到足够的相关原文，请补充资料或主动切换通用知识练习。"))
-	items = grounding.generate(point, count, sources)
+	cache_key = exercise_cache.key(_repository, owner, point, count, grounding.public_sources(sources))
+	with exercise_cache.guard(cache_key):
+		items = exercise_cache.get(cache_key, _repository, request.args.getlist("excludeExerciseId"))
+		if items is None:
+			items = grounding.generate(point, count, sources)
 	if not items:
 		return jsonify(dict(response, generationFailed=True, failureReason="GENERATION_FAILED",
 			message="资料题生成失败或来源校验未通过，请重试；也可以主动切换通用知识练习。"))
@@ -302,6 +311,7 @@ def _material_set(set_id, point, count):
 			"status": "completed", "stepId": "step-1", "inputStateVersion": 1, "outputStateVersion": 1}]}
 		_repository.apply_batch([], [("exercises", item["exerciseId"], dict(item, userId=owner))
 			for item in items] + [("traces", trace_id, trace)])
+		exercise_cache.put(cache_key, items)
 	response.update(exercises=[{k: item[k] for k in _CLIENT_FIELDS if k in item} for item in items], traceId=trace_id)
 	return jsonify(response)
 
@@ -319,40 +329,6 @@ def get_exercise_sources(exercise_id):
 			return jsonify({"errorCode": "SOURCE_UNAVAILABLE", "message": "原始资料已删除或变更，无法展示本题原文依据", "details": None}), 410
 		return jsonify({"exerciseId": exercise_id, "sources": [dict(s,
 			text=_repository.get("chunks", s["chunkId"])["text"]) for s in sources]})
-
-
-def _review_wait_seconds() -> float:
-	"""交卷时等待逐题解析的预算（秒）。
-
-	解析是**增强项**，不是判分的前置条件：判分是纯算式（微秒级），
-	整条提交链里只有解析会等模型。实测（关闭思考模式后）3 题约 8 秒、
-	4 题约 10 秒，12 秒可覆盖常规题量；超出预算就用确定性兜底解析先交卷，
-	不再把"可控的慢"变成前端的读超时。
-	"""
-	try:
-		return max(1.0, float(os.getenv("LLM_REVIEW_WAIT_SECONDS", "12")))
-	except ValueError:
-		return 12.0
-
-
-def _start_review(questions, submitted, answer_keys) -> Future:
-	"""在后台线程生成逐题解析，返回 Future。
-
-	原实现同步调用：模型一慢（Qwen3 思考模式开着时尤其明显）就把交卷卡到
-	30–90 秒，而前端 40 秒读超时先断开 —— 用户以为失败、反复重交。
-	挪进线程后，主线程最多只等 `_review_wait_seconds()`。
-	"""
-	future: Future = Future()
-
-	def work():
-		try:
-			future.set_result(exercise_gen.generate_review_explanations(
-				questions, submitted, answer_keys))
-		except BaseException as exc:  # noqa: BLE001 —— 线程异常必须交回主线程
-			future.set_exception(exc)
-
-	threading.Thread(target=work, daemon=True, name="review-explanations").start()
-	return future
 
 
 @exercises_api.post("/api/v1/exercises/<set_id>/submit")
@@ -387,13 +363,19 @@ def submit_exercises(set_id: str):
 			return jsonify({"errorCode": "BAD_REQUEST", "message": "目标交卷需要有效goalStateVersion", "details": None}), 400
 
 	result_id = f"{user_id}:{set_id}:{idempotency_key}"
+	request_fingerprint = hashlib.sha256(json.dumps({"answers":
+		sorted((str(a["exerciseId"]), str(a.get("answer") or "").strip().upper()) for a in answers),
+		"goalId": goal_id}, sort_keys=True).encode()).hexdigest()
+	def replay(previous):
+		if (previous.get("response", {}).get("goalId") != goal_id or
+			previous.get("requestFingerprint", request_fingerprint) != request_fingerprint):
+			return jsonify({"errorCode": "CONFLICT", "message": "该交卷标识已用于其他答案或目标", "details": None}), 409
+		return jsonify(previous["response"])
 	# 逐题解析必须真正经过 LLM。先做一次无锁幂等快查，避免用户重复点击时重复耗费模型调用；
 	# 真正写入前仍会在 `_SUBMIT_LOCK` 内再次检查，幂等与掌握度更新语义不变。
 	previous = _repository.get("submissions", result_id) if _repository else None
 	if previous is not None:
-		if previous.get("response", {}).get("goalId") != goal_id:
-			return jsonify({"errorCode": "CONFLICT", "message": "该交卷标识已用于其他目标", "details": None}), 409
-		return jsonify(previous["response"])
+		return replay(previous)
 	def goal_conflict(repository):
 		if not goal_id:
 			return False
@@ -425,24 +407,23 @@ def submit_exercises(set_id: str):
 		allowed = {target, _resolve_knowledge_point_id(target)}
 		if not target or any(questions_by_id[key].get("knowledgePointId") not in allowed for key in submitted_answers):
 			return jsonify({"errorCode": "CONFLICT", "message": "题目与当前目标知识点不一致，请从目标入口重新进入练习", "details": None}), 409
-	# 逐题解析放到后台线程：它只是增强项，不能把交卷卡在模型上。
-	# 判分、掌握度回写与落盘仍是同步的确定性代码，语义未变。
-	review_future = _start_review(
-		[questions_by_id[key] for key in submitted_answers
-			if questions_by_id[key].get("source") != "materials"],
+	review_explanations, llm_review_ids, pending_review = review_jobs.prepare(
+		[questions_by_id[key] for key in submitted_answers if questions_by_id[key].get("source") != "materials"],
 		submitted_answers, answer_keys)
+	for key in submitted_answers:
+		if questions_by_id[key].get("source") == "materials":
+			review_explanations[key] = questions_by_id[key]["explanation"]
 	# ⚠️ 整段"幂等检查 → 判分 → 掌握度回写 → 落盘"必须持锁串行执行。
 	# 详见 `_SUBMIT_LOCK` 的注释：不加锁时并发重复提交会让掌握度增量叠加多次。
 	# 把原逻辑收进内部函数再持锁调用（而不是整段缩进一层），
 	# 是为了让这次改动的 diff 只落在两行上，便于复核。
+	post_commit = []
 	def _do_submit():
 		repository = StagedRepository(_repository) if _repository else None
 		if repository:
 			previous = repository.get("submissions", result_id)
 			if previous is not None:
-				if previous.get("response", {}).get("goalId") != goal_id:
-					return jsonify({"errorCode": "CONFLICT", "message": "该交卷标识已用于其他目标", "details": None}), 409
-				return jsonify(previous["response"])
+				return replay(previous)
 			if goal_conflict(repository):
 				return jsonify({"errorCode": "CONFLICT", "message": "目标已变化或已交卷，请刷新目标", "details": None}), 409
 
@@ -556,28 +537,26 @@ def submit_exercises(set_id: str):
 			if goal_id:
 				from app.services.learning_context import bind_submission
 				bind_submission(repository, repository.get("workflows", goal_id), response, events)
-			repository.save("submissions", result_id, {"response": response})
+			submission_record = {"response": response, "reviewToken": uuid.uuid4().hex,
+				"requestFingerprint": request_fingerprint, "createdAt": timestamp.isoformat()}
+			repository.save("submissions", result_id, submission_record)
+			for exercise_id in submitted_answers:
+				repository.save("exercise_usage", f"{user_id}:{exercise_id}", {
+					"userId": user_id, "exerciseId": exercise_id, "submissionId": result_id,
+					"createdAt": timestamp.isoformat()})
 		http_response = jsonify(response)
 		if repository is not None:
 			repository.commit()
+			if pending_review is not None:
+				wrong_snapshots = {key: repository.get("wrong_book", f"{user_id}:{key}")
+					for key in submitted_answers}
+				post_commit.append((pending_review, repository.repository, result_id,
+					submission_record, wrong_snapshots))
 		return http_response
 
-	# 只等固定预算：拿到解析就用，拿不到（模型慢/失败）立刻用兜底解析交卷。
-	# 超时后后台线程仍会跑完，但结果直接丢弃 —— 宁可少一段 AI 解析，
-	# 也不能让用户反复提交、重复累加掌握度。
-	review_explanations: dict[str, str] = {}
-	llm_review_ids: set[str] = set()
-	try:
-		review_explanations, llm_review_ids = review_future.result(
-			timeout=_review_wait_seconds())
-	except FutureTimeoutError:
-		pass
-	except Exception:  # noqa: BLE001 —— 模型异常同样不能阻断交卷
-		pass
-	# 资料题不走模型：解析直接用切片里已核对过的原文解释（本来就在题面里）。
-	for key in submitted_answers:
-		if questions_by_id[key].get("source") == "materials":
-			review_explanations[key] = questions_by_id[key]["explanation"]
-
 	with _SUBMIT_LOCK:
-		return _do_submit()
+		with _repository.transaction():
+			response = _do_submit()
+		for job in post_commit:
+			review_jobs.attach(*job)
+		return response

@@ -1,24 +1,25 @@
 """Provider-neutral Qwen-compatible adapter wrapper."""
 
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections.abc import Callable, Mapping
 import json
 import os
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError
 from typing import Any
 
 from app.model_adapters.llm import ModelAdapter, ModelAdapterError
+from app.services import llm_runtime
+import logging
+logger = logging.getLogger("zhixue.decision")
 
 
 class QwenAdapter(ModelAdapter):
 	def __init__(self, completion: Callable[[Mapping[str, Any]], str] | None = None,
-				 timeout_seconds: float = 8, api_key: str | None = None,
+				 timeout_seconds: float | None = None, api_key: str | None = None,
 				 base_url: str | None = None, model: str | None = None,
 				 system_prompt: str | None = None) -> None:
 		self.system_prompt = system_prompt
 		self.completion = completion
-		self.timeout_seconds = timeout_seconds
+		self.timeout_seconds = timeout_seconds if timeout_seconds is not None else min(
+			llm_runtime.seconds("LLM_DECISION_TIMEOUT_SECONDS", 8), llm_runtime.seconds("LLM_TIMEOUT_SECONDS", 30))
 		self.api_key = api_key if api_key is not None else os.getenv("DASHSCOPE_API_KEY", "")
 		self.base_url = (base_url or os.getenv(
 			"LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")).rstrip("/")
@@ -68,44 +69,36 @@ class QwenAdapter(ModelAdapter):
 			"response_format": {"type": "json_object"},
 		}
 		if self._thinking_disabled():
-			payload["enable_thinking"] = False
-		request = Request(
-			f"{self.base_url}/chat/completions",
-			data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-			headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-			method="POST",
-		)
+			payload["extra_body"] = {"enable_thinking": False}
 		try:
-			with urlopen(request, timeout=self.timeout_seconds) as response:
-				body = json.loads(response.read().decode("utf-8"))
-		except HTTPError as error:
-			raise ModelAdapterError(f"model request failed with HTTP {error.code}") from error
+			response = llm_runtime.request("decision", payload, budget=self.timeout_seconds,
+				api_key=self.api_key, base_url=self.base_url)
+			content = response.choices[0].message.content
 		except Exception as error:
 			raise ModelAdapterError("model request failed") from error
-		try:
-			content = body["choices"][0]["message"]["content"]
-		except (KeyError, IndexError, TypeError) as error:
-			raise ModelAdapterError("model response shape is invalid") from error
 		if not isinstance(content, str) or not content.strip():
 			raise ModelAdapterError("model response is empty")
 		return content
 
 	def complete(self, state: Mapping[str, Any]) -> str:
-		executor = ThreadPoolExecutor(max_workers=1)
-		future = executor.submit(self.completion or self._http_completion, state)
 		try:
-			response = future.result(timeout=self.timeout_seconds)
-		except FutureTimeoutError as error:
-			future.cancel()
-			executor.shutdown(wait=False, cancel_futures=True)
+			response = (llm_runtime.bounded(lambda: self.completion(state), self.timeout_seconds)
+				if self.completion else self._http_completion(state))
+		except TimeoutError as error:
 			raise ModelAdapterError("model request timed out") from error
 		except ModelAdapterError:
-			executor.shutdown(wait=False, cancel_futures=True)
 			raise
 		except Exception as error:
-			executor.shutdown(wait=False, cancel_futures=True)
 			raise ModelAdapterError("model request failed") from error
-		executor.shutdown(wait=True, cancel_futures=True)
 		if not isinstance(response, str) or not response.strip():
 			raise ModelAdapterError("model response is empty")
 		return response
+
+	def safe_decide(self, state):
+		try:
+			decision = self.decide(state)
+			logger.info('{"event":"decision","source":"model"}')
+			return decision
+		except ModelAdapterError:
+			logger.info('{"event":"decision","source":"fallback","reason":"model_unavailable_or_invalid"}')
+			return None

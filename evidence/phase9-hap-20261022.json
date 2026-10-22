@@ -1,0 +1,12 @@
+{
+  "build": "clean assembleHap",
+  "status": "passed",
+  "profile": "debug",
+  "artifact": "deliverables\\知学Mate-phase9-20261022-signed.hap",
+  "bytes": 3290567,
+  "sha256": "3dd7d938fadd28347ebea7fa6d9c37cc2579edb0639c82f22020b9e9fe6fc4a8",
+  "signatureVerification": "passed",
+  "hdcTargets": [],
+  "deviceInstall": "not_run_no_connected_device",
+  "arktsWarningLines": 139
+}

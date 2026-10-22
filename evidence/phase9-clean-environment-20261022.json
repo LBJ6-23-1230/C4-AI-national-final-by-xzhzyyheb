@@ -1,0 +1,17 @@
+{
+  "python": "3.12.10",
+  "executable": "D:\\project\\zhixue_final\\server\\zhixue-agent-server\\.venv-clean-phase9\\Scripts\\python.exe",
+  "includeSystemSitePackages": false,
+  "lockedDistributions": 42,
+  "versionsMatchLock": true,
+  "tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "582",
+    "time": "33.390",
+    "timestamp": "2026-10-22T18:46:22.134814+08:00",
+    "hostname": "lucky"
+  }
+}

@@ -56,7 +56,9 @@ def _iter_files(base: Path):
     for path in base.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in EXCLUDE_DIRS for part in path.parts):
+        if any(part in EXCLUDE_DIRS or part.startswith(".venv") or part == ".local-work" for part in path.parts):
+            continue
+        if path.name.endswith(".process.lock"):
             continue
         if path.suffix.lower() in EXCLUDE_SUFFIXES:
             continue

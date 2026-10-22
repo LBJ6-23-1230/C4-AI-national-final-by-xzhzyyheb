@@ -1,0 +1,26 @@
+{
+  "branch": "codex/phase9-sync-20261022",
+  "base": "07f2e063628683ff0c4f72454df6ded959617025",
+  "previousBase": "f22ce66b1738cbd98db8f973be7d0caf478c7db2",
+  "stash": "9628d693650809cc681b2a676199a0b7f3e5a714",
+  "backup": "D:\\project\\zhixue_final\\.local-work\\before-sync-20261022-213231",
+  "backedUpFiles": 66,
+  "privateAndSigningFilesPreserved": 13,
+  "upstreamFrontendPreserved": true,
+  "conflictsRemaining": 0,
+  "stagedChanges": false,
+  "python": "3.12.10",
+  "lockedDistributions": 32,
+  "pymupdf": "1.28.2",
+  "tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "593",
+    "time": "38.378",
+    "timestamp": "2026-10-22T21:39:52.922015+08:00",
+    "hostname": "lucky"
+  },
+  "modelAuthentication": "recorded_401_no_reprobe_requested"
+}

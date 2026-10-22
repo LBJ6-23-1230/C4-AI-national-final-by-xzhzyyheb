@@ -1,0 +1,12 @@
+{
+  "baseline": "07f2e063628683ff0c4f72454df6ded959617025",
+  "artifact": "deliverables\\知学Mate-phase9-sync-20261022-signed.hap",
+  "bytes": 3357913,
+  "sha256": "c2e7bdd56edde6c486e3d6f373c64066bbd2c38a5690575950b9ca33f45fa648",
+  "cleanBuild": true,
+  "signed": true,
+  "signatureVerified": true,
+  "profile": "debug",
+  "arktsWarningLines": 157,
+  "installOrDeviceTest": "not_run"
+}

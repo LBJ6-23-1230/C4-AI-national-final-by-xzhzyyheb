@@ -237,7 +237,8 @@ def test_multimodal_uses_configured_model_and_detects_png(monkeypatch):
 
     client = SimpleNamespace(
         chat=SimpleNamespace(completions=_Completions()))
-    monkeypatch.setattr(chat_llm, "_client", lambda: client)
+    from app.services import llm_runtime
+    monkeypatch.setattr(llm_runtime, "request", lambda kind, payload, **kw: client.chat.completions.create(**payload))
 
     result = chat_llm._call_llm_with_image("system", "user", _PNG_16X16)
 
@@ -400,10 +401,14 @@ def test_client_turns_off_sdk_auto_retries(monkeypatch):
 
     def fake_openai(**kwargs):
         captured.update(kwargs)
-        return SimpleNamespace()
+        return SimpleNamespace(close=lambda: None)
 
+    from app.services import llm_runtime
+    llm_runtime.clear_clients()
     monkeypatch.setattr(openai, "OpenAI", fake_openai)
-    chat_llm._client()
+    with llm_runtime.client(timeout=chat_llm.llm_timeout_seconds()):
+        pass
+    llm_runtime.clear_clients()
 
     assert captured["max_retries"] == 0
     assert captured["timeout"] == chat_llm.llm_timeout_seconds()
@@ -446,8 +451,9 @@ def test_text_call_carries_thinking_flag(monkeypatch):
             return SimpleNamespace(choices=[SimpleNamespace(
                 message=SimpleNamespace(content="ok"))])
 
-    monkeypatch.setattr(chat_llm, "_client", lambda: SimpleNamespace(
-        chat=SimpleNamespace(completions=_Completions())))
+    from app.services import llm_runtime
+    monkeypatch.setattr(llm_runtime, "request", lambda kind, payload, **kw:
+        _Completions().create(**payload))
     monkeypatch.setenv("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
     monkeypatch.delenv("LLM_ENABLE_THINKING", raising=False)
 

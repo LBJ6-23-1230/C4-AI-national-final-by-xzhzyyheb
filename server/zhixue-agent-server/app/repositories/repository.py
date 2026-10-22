@@ -11,6 +11,19 @@ from typing import Any
 
 
 class Repository(ABC):
+	def transaction(self):
+		"""Persistent backends serialize read/decide/write operations here."""
+		raise NotImplementedError
+
+	def compare_and_save(self, collection: str, item_id: str,
+					 expected: dict[str, Any], replacement: dict[str, Any]) -> bool:
+		"""Atomically replace an unchanged record; false if edited or removed.
+
+		Concrete persistent backends must serialize the comparison and write.
+		Staging overlays must not be used for background conditional updates.
+		"""
+		raise NotImplementedError
+
 	@abstractmethod
 	def get(self, collection: str, item_id: str) -> dict[str, Any] | None:
 		...

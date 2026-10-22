@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -58,6 +59,7 @@ class SQLiteRepository(Repository):
 		if str(parent):
 			parent.mkdir(parents=True, exist_ok=True)
 		self._lock = threading.RLock()
+		self._transaction_depth = 0
 		self._connection = sqlite3.connect(self.path, timeout=15.0,
 										  check_same_thread=False)
 		# 只在这里设置一次。`journal_mode` 是**持久化**属性（写进库文件头），
@@ -83,6 +85,39 @@ class SQLiteRepository(Repository):
 		with self._lock:
 			self._connection.close()
 
+	@contextmanager
+	def transaction(self):
+		"""Serialize read/decide/write operations across processes, with rollback."""
+		with self._lock:
+			outer = self._transaction_depth == 0
+			if outer:
+				self._connection.execute("BEGIN IMMEDIATE")
+			self._transaction_depth += 1
+			try:
+				yield self
+				if outer:
+					self._connection.commit()
+			except BaseException:
+				if outer:
+					self._connection.rollback()
+				raise
+			finally:
+				self._transaction_depth -= 1
+
+	def _commit(self):
+		if not self._transaction_depth:
+			self._connection.commit()
+
+	def compare_and_save(self, collection, item_id, expected, replacement):
+		"""Compare and update under a database write transaction across workers."""
+		with self.transaction():
+			if self.get(collection, item_id) != expected:
+				return False
+			self._connection.execute(
+				"UPDATE records SET value = ? WHERE collection = ? AND item_id = ?",
+				(json.dumps(replacement, ensure_ascii=False), collection, item_id))
+			return True
+
 	def get(self, collection: str, item_id: str) -> dict[str, Any] | None:
 		with self._lock:
 			row = self._connection.execute(
@@ -97,7 +132,7 @@ class SQLiteRepository(Repository):
 				INSERT INTO records(collection, item_id, value) VALUES (?, ?, ?)
 				ON CONFLICT(collection, item_id) DO UPDATE SET value = excluded.value
 			""", (collection, item_id, payload))
-			self._connection.commit()
+			self._commit()
 
 	def list(self, collection: str) -> list[dict[str, Any]]:
 		with self._lock:
@@ -123,24 +158,19 @@ class SQLiteRepository(Repository):
 			self._connection.execute(
 				"DELETE FROM records WHERE collection = ? AND item_id = ?",
 				(collection, item_id))
-			self._connection.commit()
+			self._commit()
 
 	def apply_batch(self, deletes: list[tuple[str, str]],
 					saves: list[tuple[str, str, dict[str, Any]]]) -> None:
 		"""在同一个 SQLite 事务中完成批量删除与保存。"""
-		with self._lock:
-			try:
-				self._connection.executemany(
-					"DELETE FROM records WHERE collection = ? AND item_id = ?", deletes)
-				self._connection.executemany("""
-					INSERT INTO records(collection, item_id, value) VALUES (?, ?, ?)
-					ON CONFLICT(collection, item_id) DO UPDATE SET value = excluded.value
-				""", [(collection, item_id, json.dumps(value, ensure_ascii=False))
-					   for collection, item_id, value in saves])
-				self._connection.commit()
-			except BaseException:
-				self._connection.rollback()
-				raise
+		with self.transaction():
+			self._connection.executemany(
+				"DELETE FROM records WHERE collection = ? AND item_id = ?", deletes)
+			self._connection.executemany("""
+				INSERT INTO records(collection, item_id, value) VALUES (?, ?, ?)
+				ON CONFLICT(collection, item_id) DO UPDATE SET value = excluded.value
+			""", [(collection, item_id, json.dumps(value, ensure_ascii=False))
+				   for collection, item_id, value in saves])
 
 	def clear(self, collection: str) -> None:
 		"""清空整个集合。
@@ -151,4 +181,4 @@ class SQLiteRepository(Repository):
 		with self._lock:
 			self._connection.execute("DELETE FROM records WHERE collection = ?",
 									 (collection,))
-			self._connection.commit()
+			self._commit()

@@ -1,0 +1,15 @@
+{
+  "configured": true,
+  "textModel": "qwen-plus",
+  "syntheticChunks": 200,
+  "textVerification": {
+    "configured": true,
+    "verified": false,
+    "checkedAt": "2026-10-22T10:35:30.486736+00:00",
+    "verificationReason": "probe_failed"
+  },
+  "textProbeStatus": 200,
+  "retrievalMode": "keyword+tag",
+  "hitCount": 3,
+  "retrievalSeconds": 0.344
+}

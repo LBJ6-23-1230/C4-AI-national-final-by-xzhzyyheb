@@ -16,7 +16,7 @@
 
     DASHSCOPE_API_KEY   DashScope Key；不配置则聊天层降级为确定性规则（不会伪装成 LLM 输出）
     LLM_BASE_URL        默认 https://dashscope.aliyuncs.com/compatible-mode/v1
-    LLM_MODEL           默认 qwen-vl-plus
+    LLM_MODEL           默认 qwen3.8-flash（识图默认 qwen3-vl-plus）
 	LLM_TIMEOUT_SECONDS LLM 请求超时秒数，默认 30
     PORT                默认 5000
 """

@@ -269,6 +269,7 @@ def agent_health():
 
     注意：`/api/agent/health` 不做契约版本校验，否则前端在版本不匹配时会误判为"后端不可用"。
     """
+    from app.services import llm_health
     return jsonify({
         "status": "ok",
         "llm_ready": chat_llm.llm_ready(),
@@ -276,7 +277,18 @@ def agent_health():
         "model": chat_llm.llm_model(),
         "baseUrl": chat_llm.llm_base_url(),
         "contractVersion": CONTRACT_VERSION,
+        **llm_health.status(),
     })
+
+
+@chat_api.post("/api/agent/health")
+def verify_agent_health():
+    from flask import g
+    from app.services import llm_health
+    if not g.current_user:
+        return jsonify({"errorCode": "UNAUTHORIZED", "message": "请登录后主动验证模型连接", "details": None}), 401
+    result, code = llm_health.verify()
+    return jsonify(result), code
 
 
 @chat_api.post("/api/agent/chat")

@@ -192,6 +192,7 @@ def generate_review_explanations(questions: list[dict[str, Any]],
 				temperature=0.2,
 				max_tokens=min(4000, 900 + len(requested) * 650),
 				response_json=True,
+				request_type="review",
 			)
 			parsed = chat_llm.extract_json(content)
 			rows = parsed.get("reviews") if isinstance(parsed, dict) else None
@@ -235,6 +236,7 @@ def generate_exercises(knowledge_point_name: str, count: int) -> list[dict[str, 
 			# 4 道题 × (题干+4 选项+解析) 的中文量，800 会截断
 			max_tokens=1600,
 			response_json=True,
+			request_type="exercise",
 		)
 	except Exception:  # noqa: BLE001  —— 网络/额度/超时都不该把页面打挂
 		return None
