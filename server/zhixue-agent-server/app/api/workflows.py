@@ -1,0 +1,492 @@
+import threading
+import uuid
+from datetime import datetime, timezone
+
+from flask import Blueprint, jsonify, request
+
+from app.agents.assessment import AssessmentAgent
+from app.agents.diagnosis import DiagnosisAgent
+from app.agents.exercise import ExerciseAgent
+from app.agents.planner import PlannerAgent
+from app.agents.secretary import SecretaryAgent
+from app.api.exercises import _ANSWER_KEYS, _EXERCISE_BANK
+from app.api.identity import resolve_user_id
+from app.api.validation import (MAX_ANSWERS, MAX_ANSWER_CHARS, MAX_ID_CHARS, MAX_TEXT_CHARS,
+	bounded_str, json_object, validate_answers)
+from app.domain.assessment import AssessmentResult
+from app.domain.profile import KnowledgeMastery, LearnerProfile
+from app.repositories.json_repository import JsonRepository
+from app.model_adapters.qwen_adapter import QwenAdapter
+from app.runtime.loop import run_workflow
+from app.runtime.session import WorkflowSession
+from app.tools.assessment_tools import persist_mastery, mastery_scores
+from app.services.assessment_replan import replan_request, execute_assessment_replan
+from app.tools.trace_tools import append_trace_event
+from app.services import learning_context
+
+workflows_api = Blueprint("workflows", __name__)
+_repository: JsonRepository | None = None
+
+# 工作流推进必须**串行**：`_run_saved_workflow` 是"读会话 → 跑 Agent 循环
+# → 按 `state.assessmentPersisted` 判断是否已记账 → 写 profile/history/plan
+# → 写回会话"的一长串读—改—写，中间没有任何临界区。
+# 并发推进同一会话时，多个请求会同时通过 `assessmentPersisted` 检查，
+# 于是评估被重复记账。实测：6 次并发 run 同一 session →
+# `profileVersion` 从 1 跳到 7、history 6 条且共用同一个 `evidence-<sessionId>`。
+#
+# 用可重入锁：`_run_saved_workflow` 也可能被其它已持锁的路径调用。
+from app.tools.profile_merge import PROFILE_LOCK
+_WORKFLOW_RUN_LOCK = PROFILE_LOCK
+
+
+class SubmissionNotFound(KeyError):
+	"""`submissionId` 不存在或不属于该工作流。
+
+	单独定义类型的原因：原实现把它与"会话不存在"共用 `except KeyError` 分支，
+	于是对**存在的** session 传错/过期 submissionId 时会返回
+	404 `{"message": "workflow not found"}` —— 语义与事实不符（workflow 确实存在），
+	客户端会误判为会话失效并重建会话，掩盖真实错误。
+	"""
+
+
+class WorkflowConflict(ValueError):
+	pass
+
+
+def configure_workflows_repository(repository: JsonRepository) -> None:
+	global _repository
+	_repository = repository
+
+
+def _error(code: str, message: str, details: dict | None = None, status: int = 400):
+	return jsonify({"errorCode": code, "message": message, "details": details}), status
+
+
+def _next_step(user_id: str) -> tuple[str, str]:
+	if _repository is None or _repository.get("profiles", user_id) is None:
+		return "diagnosis", "开始学情诊断"
+	# ⚠️ 判断"有没有计划"必须**只看这个用户自己的**。
+	#
+	# 原实现遍历全局 `plans`：只要**任何**别的用户存在计划，就会认定
+	# "该用户已有计划"，直接跳到 exercise —— 他自己的计划永远不会被生成，
+	# 后续 assessment 也就没有可重规划的对象。这正是"账号登录功能不对"的一类。
+	# 归属口径与 `plans.py::get_current_plan` 保持一致（缺 `userId` 的老数据
+	# 按 demo-user 归属，避免既有演示计划被误判为"没有"）。
+	own_plans = [item for item in (_repository.list("plans") if _repository else [])
+		if isinstance(item, dict) and item.get("userId", "demo-user") == user_id]
+	if not own_plans:
+		return "planner", "生成学习计划"
+	return "exercise", "获取练习题并开始学习"
+
+
+@workflows_api.post("/api/v1/workflows")
+def create_workflow():
+    # 归属检查与创建必须原子执行，避免并发同 ID 请求覆盖他人会话。
+    with _WORKFLOW_RUN_LOCK:
+        return _create_workflow()
+
+
+def _create_workflow():
+	# 非对象 JSON 原先会让 data.get 抛 AttributeError → 500
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+	goal, guard = bounded_str(data.get("goal"), "goal", MAX_TEXT_CHARS)
+	if guard is not None:
+		return guard
+	max_steps = data.get("maxSteps", 6)
+	if isinstance(max_steps, bool) or not isinstance(max_steps, int) or not 1 <= max_steps <= 20:
+		return _error("BAD_REQUEST", "maxSteps must be an integer between 1 and 20", {"field": "maxSteps"})
+
+	# sessionId / userId 会成为 repository 的键。不加上限的话，一个 20 万字符的
+	# sessionId 就能把 repository.json 从几十 KB 撑到数 MB（每次 save 全量重写）。
+	raw_session = data.get("sessionId")
+	session_id = f"session-{uuid.uuid4().hex[:12]}"
+	if raw_session is not None:
+		session_id, guard = bounded_str(raw_session, "sessionId", MAX_ID_CHARS)
+		if guard is not None:
+			return guard
+	# 身份解析：已登录用登录身份（忽略请求体里的 userId，防冒用）
+	user_id = resolve_user_id(data.get("userId"))
+	if _repository and data.get("sessionId"):
+		existing = _repository.get("workflows", session_id)
+		if existing is not None:
+			if not _owns_record(existing, user_id):
+				return _error("NOT_FOUND", "workflow not found", None, 404)
+			return jsonify({key: existing.get(key) for key in
+				("sessionId", "traceId", "status", "currentStep", "nextAction")})
+	current_step, next_action = _next_step(user_id)
+	trace_id = f"trace-{session_id}"
+	workflow = {"sessionId": session_id, "traceId": trace_id, "status": "running",
+		"currentStep": current_step, "currentAgent": current_step, "nextAction": next_action,
+		"stateVersion": 1, "finalAction": None, "goal": goal, "userId": user_id,
+		"maxSteps": max_steps}
+	if _repository:
+		_repository.save("workflows", session_id, workflow)
+		# 带上归属：`GET /traces/<id>` 要据此拒绝跨用户读取（否则 trace 里
+		# 的 inputSummary/outputSummary 谁都能读）。
+		_repository.save("traces", trace_id, {"traceId": trace_id, "events": [], "userId": user_id})
+	if data.get("autoRun") is True:
+		# 注意：这条分支会**直接**把 answers 交给 `_run_saved_workflow`，
+		# 绕过 `/run` 端点上的那套护栏。已修的教训：护栏只加在一处时会漏掉旁路。
+		# 所以这里必须做同样的校验。
+		#
+		# 同样要**持锁**：这条分支同样会推进工作流并写 profile/history，
+		# 不加锁就绕过了 `/run` 端点上的串行化保护（同一个旁路陷阱）。
+		# `_WORKFLOW_RUN_LOCK` 是可重入的，所以下面再调 `run_workflow_api` 不会自锁。
+		with _WORKFLOW_RUN_LOCK:
+			if data.get("answers") is not None:
+				checked, guard = validate_answers(data.get("answers"))
+				if guard is not None:
+					return guard
+				return jsonify(_run_saved_workflow(session_id, checked))
+			return run_workflow_api(session_id)
+	return jsonify({key: workflow[key] for key in
+		("sessionId", "traceId", "status", "currentStep", "nextAction")})
+
+
+def _owns_record(record: dict | None, user_id: str) -> bool:
+	"""记录是否属于该用户。
+
+	⚠️ 缺失 `userId` 的老数据按 demo-user 归属 —— 与 `plans.py::get_current_plan`、
+	`demo.py` 的清理逻辑同一口径，避免把既有演示数据误判成"别人的"而 404。
+
+	返回 404 而不是 403：不向调用方泄漏"这个 sessionId 存在但不属于你"。
+	"""
+	if not isinstance(record, dict):
+		return False
+	return record.get("userId", "demo-user") == user_id
+
+
+@workflows_api.get("/api/v1/workflows/<session_id>")
+def get_workflow(session_id: str):
+	workflow = _repository.get("workflows", session_id) if _repository else None
+	# ⚠️ 归属校验（修复的越权）。
+	# 原来只要知道 sessionId 就能读到**任何人的**工作流状态。
+	# 匿名请求会被 `resolve_user_id` 解析成 demo-user，所以演示路径不受影响。
+	if not _owns_record(workflow, resolve_user_id(request.args.get("userId"))):
+		return _error("NOT_FOUND", "workflow not found", {"sessionId": session_id}, 404)
+	response = {key: workflow.get(key) for key in ("status", "currentAgent", "stateVersion", "finalAction")}
+	context = learning_context.snapshot(_repository, workflow)
+	if context:
+		response["learningContext"] = context
+	return jsonify(response)
+
+
+@workflows_api.get("/api/v1/workflows/chat/<chat_session_id>")
+def get_chat_workflow(chat_session_id):
+	owner = resolve_user_id(None)
+	workflow = _repository.get("workflows", learning_context.chat_workflow_id(owner, chat_session_id)) if _repository else None
+	if not _owns_record(workflow, owner):
+		return _error("NOT_FOUND", "learning goal not found", None, 404)
+	context = learning_context.snapshot(_repository, workflow)
+	# 会话存在但**没有目标协调状态**（例如由旧版 /api/v1/workflows 建的会话，
+	# 或 state.coordination 缺失的历史记录）时，`snapshot()` 返回 None。
+	# 原实现直接 jsonify(None) —— HTTP 200 + 正文 `null`，而契约声明 200 必须是
+	# LearningContext 对象；前端按契约校验后只能报"结构与契约不一致"，用户既看不到
+	# 原因也看不到"还没有目标"这个事实。这里按事实回 404，与"该聊天没有目标"一致，
+	# 前端已有的 404 分支会清掉目标卡，而不是留下上一次的旧卡片。
+	if not context:
+		return _error("NOT_FOUND", "learning goal not found", None, 404)
+	return jsonify(context)
+
+
+def _workflow_state(workflow: dict) -> dict:
+	profile = _repository.get("profiles", workflow["userId"]) if _repository else None
+	plan_id = workflow.get("state", {}).get("planId")
+	plan = (_repository.get("plans", plan_id) if plan_id and _repository else None)
+	if plan is not None and plan.get("userId", "demo-user") != workflow["userId"]:
+		plan = None
+	if plan is None and _repository:
+		plan = next((item for item in _repository.list("plans")
+			if item.get("userId", "demo-user") == workflow["userId"]), None)
+	state = dict(workflow.get("state", {}))
+	state["sessionId"] = workflow["sessionId"]
+	state["userId"] = workflow["userId"]
+	state["goal"] = workflow["goal"]
+	if profile is not None:
+		state["profile"] = profile
+		state["oldMasteryByPoint"] = mastery_scores(profile)
+	if plan is not None:
+		state["plan"] = plan
+	# 规划输入必须来自这个用户的真实画像。此前即使新账号 mastery=[]，这里仍会
+	# 塞入 binary-tree-postorder，导致用户只是打开首页就被生成一条“二叉树后序遍历”
+	# 计划。那不是诊断结果，而是演示数据泄漏到了真实账号。
+	if "knowledgePoints" not in state:
+		rows = profile.get("mastery", []) if isinstance(profile, dict) else []
+		state["knowledgePoints"] = [{
+			"knowledgePointId": str(item.get("knowledgePointId") or ""),
+			"knowledgePointName": str(item.get("knowledgePointName") or
+				item.get("knowledgePointId") or ""),
+			"masteryScore": item.get("masteryScore", 0),
+			"errorIntensity": max(0, 100 - int(item.get("masteryScore", 0))),
+			"importance": 50,
+		} for item in rows if isinstance(item, dict) and item.get("knowledgePointId")]
+	state.setdefault("exercises", _EXERCISE_BANK)
+	state.setdefault("answerKeys", _ANSWER_KEYS)
+	state.setdefault("knowledgePointsByExercise", {
+		item["exerciseId"]: item["knowledgePointId"] for item in _EXERCISE_BANK})
+	if state.get("coordination"):
+		learning_context.prepare(_repository, workflow, state)
+	else:
+		state.pop("coordinationBlock", None)
+		if workflow["userId"] != "demo-user" and profile is not None and not profile.get("mastery") and not state.get("assessment"):
+			state["coordinationBlock"] = "knowledge_points"
+	return state
+
+
+def _agent_action(step: str, state: dict):
+	agents = {"secretary": SecretaryAgent(), "diagnosis": DiagnosisAgent(),
+		"planner": PlannerAgent(), "exercise": ExerciseAgent(), "assessment": AssessmentAgent()}
+	if step == "clarify" and state.get("coordinationBlock"):
+		agents["secretary"].run(state)
+		return learning_context.blocked_result(state)
+	if step == "diagnosis":
+		result = agents[step].run(state)
+		if _repository and state.get("profile") is None:
+			profile = LearnerProfile(
+				state["userId"], state["goal"], None, [], 1,
+				([KnowledgeMastery("binary-tree-postorder", 42, 0.7,
+					datetime.now(timezone.utc), "二叉树后序遍历")] if state["userId"] == "demo-user" else []),
+			).to_dict()
+			_repository.save("profiles", state["userId"], profile)
+			state["profile"] = profile
+			if state["userId"] != "demo-user":
+				return {**result.output, "profile": profile, "status": "waiting", "waitingFor": "knowledge_points",
+					"toolCalls": list(result.tool_calls), "nextAction": "请先补充真实课程与知识点，尚未进行测评。"}
+		return {**result.output, "profile": state.get("profile", {}), "toolCalls": list(result.tool_calls)}
+	if step == "planner":
+		if state.get("assessment") and state.get("needReplan"):
+			handoff = state["replanRequest"]
+			result = execute_assessment_replan(_repository, state["userId"],
+				state.get("plan", {}).get("planId", ""), handoff,
+				state.get("evidenceIds", []), state.get("submissionId"))
+			return {**result, "needReplan": False, "replanHandled": True,
+				"nextAction": result["reason"]}
+		result = agents[step].run(state)
+		plan = dict(result.output["plan"], planId=f"plan-{state.get('sessionId', 'workflow')}" )
+		if _repository:
+			plan["generatedFromProfileVersion"] = state.get("profile", {}).get("profileVersion", 1)
+			plan["userId"] = state["userId"]
+			_repository.save("plans", plan["planId"], plan)
+		return {**result.output, "plan": plan, "planId": plan["planId"],
+			"toolCalls": list(result.tool_calls)}
+	if step == "exercise":
+		if state.get("coordination"):
+			from app.api.exercises import _resolve_knowledge_point_id
+			point = _resolve_knowledge_point_id(state.get("knowledgePointId"))
+			state = dict(state, knowledgePointId=point or state.get("knowledgePointId"))
+		result = agents[step].run(state)
+		if state.get("coordination") and not result.output["exercises"]:
+			return {"status": "waiting", "waitingFor": "exercise_generation", "toolCalls": list(result.tool_calls),
+				"nextAction": "该知识点需要现场出题，请进入本目标练习；生成失败时会明确提示。"}
+		return {"status": "waiting", "exercises": result.output["exercises"],
+			"toolCalls": list(result.tool_calls), "nextAction": "提交答案后继续评估"}
+	if step == "assessment":
+		result = agents[step].run(state)
+		persistence = _persist_workflow_assessment(state, result.output)
+		return {**result.output, "assessment": result.output, "pendingSubmission": False,
+			**persistence, "toolCalls": list(result.tool_calls)}
+	return {"status": "error", "message": f"unsupported workflow step: {step}"}
+
+
+def _persist_workflow_assessment(state: dict, assessment_data: dict) -> dict:
+	"""Persist workflow grading through the same deterministic rules as submit."""
+	if _repository is None or state.get("assessmentPersisted"):
+		return {"assessmentPersisted": bool(state.get("assessmentPersisted"))}
+	assessment = AssessmentResult.from_dict(assessment_data)
+	evidence_id = f"evidence-{state['sessionId']}"
+	result_id = assessment.exercise_result_id or f"workflow:{state['sessionId']}"
+	previous = _repository.get("submissions", result_id)
+	if previous and previous.get("response", {}).get("userId") == state["userId"]:
+		saved = previous["response"]
+		assessment = AssessmentResult.from_dict(saved["assessment"])
+		handoff = replan_request(assessment)
+		return {**saved["assessment"], "assessment": saved["assessment"],
+			"assessmentPersisted": True, "submissionId": result_id,
+			"evidenceIds": saved.get("evidenceIds", []),
+			"needReplan": saved.get("needReplan", False) and not previous.get("replanHandled", False),
+			"replanRequest": handoff, "replanState": handoff["replanState"],
+			**{key: saved[key] for key in ("plan", "planDiff") if key in saved}}
+	handoff = replan_request(assessment)
+	decision = handoff["decision"]
+	submission_response = {
+		"userId": state.get("userId", "demo-user"),
+		"submissionId": result_id,
+		"assessment": assessment.to_dict(),
+		"masteryUpdate": {
+			"knowledgePointId": assessment.dominant_knowledge_point(),
+			"oldScore": assessment.old_mastery,
+			"newScore": assessment.suggested_new_mastery,
+		},
+		"needReplan": bool(decision["needReplan"]),
+		"replanDecision": decision,
+		"traceId": state.get("traceId", f"trace-{state['sessionId']}"),
+		"evidenceIds": [evidence_id],
+	}
+	profile = persist_mastery(_repository, state["userId"], assessment, evidence_id, result_id,
+		additional_saves=[("submissions", result_id, {"response": submission_response})])
+	# The loop, not the assessment API, now dispatches the planner step.
+	updates = {"assessmentPersisted": profile is not None, "evidenceIds": [evidence_id],
+		"submissionId": result_id, "needReplan": profile is not None and bool(decision["needReplan"]),
+		"replanRequest": handoff, "replanState": handoff["replanState"], "replanDecision": decision}
+	if profile is not None:
+		updates["profile"] = profile
+	return updates
+
+
+def _run_saved_workflow(session_id: str, answers: list[dict] | None = None,
+					submission_id: str | None = None) -> dict:
+	workflow = _repository.get("workflows", session_id) if _repository else None
+	if workflow is None:
+		raise KeyError(session_id)
+	coordinated = bool(workflow.get("state", {}).get("coordination"))
+	if coordinated and answers is None and submission_id is None:
+		submission_id = workflow.get("state", {}).get("boundSubmissionId")
+	if coordinated and workflow.get("status") == "completed":
+		if answers is not None or (submission_id and submission_id != workflow.get("state", {}).get("submissionId")):
+			raise WorkflowConflict("目标已完成，请开启新对话建立下一轮目标")
+		return _workflow_response(workflow)
+	has_new_input = isinstance(answers, list) or submission_id is not None
+	state = _workflow_state(workflow)
+	if coordinated and workflow.get("status") == "error":
+		workflow = dict(workflow, status="running")
+	if workflow.get("state", {}).get("awaitingAnswers") and not has_new_input:
+		if not coordinated or workflow["state"].get("inputRefs") == state.get("inputRefs"):
+			return _workflow_response(workflow)
+		state.update({"awaitingAnswers": False, "waitingFor": ""})
+	if coordinated and not has_new_input and workflow.get("state", {}).get("waitingFor") and (
+		workflow["state"].get("inputRefs") == state.get("inputRefs")):
+		return _workflow_response(workflow)
+	trace_id = workflow.get("traceId", f"trace-{session_id}")
+	if submission_id:
+		submission = _repository.get("submissions", submission_id) if _repository else None
+		if submission is None or submission.get("response", {}).get("userId") != workflow.get("userId"):
+			# 用专门的异常类型，让路由层能给出**与事实相符**的报错
+			# （会话是存在的，错的是 submissionId）。
+			raise SubmissionNotFound(submission_id)
+		result = submission["response"]
+		if coordinated and result.get("goalId") != session_id:
+			raise SubmissionNotFound(submission_id)
+		state.update({"assessment": result["assessment"], "needReplan": False,
+			"pendingSubmission": False, "assessmentPersisted": True,
+			"submissionId": submission_id, "evidenceIds": result.get("evidenceIds", []),
+			"awaitingAnswers": False, "waitingFor": ""})
+		answers = None
+	if isinstance(answers, list):
+		if coordinated:
+			raise WorkflowConflict("请通过本目标练习页交卷，再用submissionId继续，避免重复评估入口")
+		state.update({"answers": answers, "pendingSubmission": True,
+			"exerciseResultId": f"workflow:{session_id}", "awaitingAnswers": False})
+	session = WorkflowSession.from_dict({**workflow, "state": state})
+	model_adapter = None if coordinated else QwenAdapter.from_environment()
+	def act(step, observed):
+		try:
+			output = _agent_action(step, observed)
+		except Exception:
+			if not coordinated:
+				raise
+			output = {"status": "error", "message": "本次工具执行失败，已保留目标；可点击继续重试。", "toolCalls": []}
+		if coordinated:
+			output["handoffs"] = learning_context.handoff(observed, output, step, session.state_version)
+		return output
+	def model_decider(observed):
+		# The dispatch model must not receive grading keys or submitted answers.
+		return model_adapter.safe_decide({key: value for key, value in observed.items()
+			if key not in ("answerKeys", "answers", "exercises", "knowledgePointsByExercise")})
+	result = run_workflow(session, lambda: session.state, act,
+		model_decider=model_decider if model_adapter else None,
+		trace_recorder=lambda **event: append_trace_event(_repository, trace_id, **event))
+	updated = result.to_dict()
+	updated["traceId"] = trace_id
+	updated["nextAction"] = updated.get("finalAction")
+	if coordinated:
+		updated["state"]["inputRefs"] = _workflow_state(updated)["inputRefs"]
+	# 这几项都是"本次请求的输入或大块只读数据"，评估完就没有再用，
+	# 不能留在会话状态里——否则每次 save 都会把它们全量重写进 repository.json，
+	# 让文件体积与后续每次 save 的耗时一起线性膨胀
+	# （实测 4000 条 answers 会让 repository.json 一次增长 ~1.5MB）。
+	#   profile / exercises —— 大块只读缓存，下一轮由 _workflow_state 重新注入
+	#   answers             —— 已消费的请求输入；客户端本来就知道自己提交了什么，
+	#                          不需要服务端回显（回显还会把响应体撑到 MB 级）
+	#   answerKeys          —— ⚠️ **标准答案，绝不能回传或落盘**。
+	#     原实现只 pop 了前三个，`state.answerKeys` 一直留在响应里
+	#     （实测 30 条 `{"exercise-bst-001": "A", …}`），并且随 save 写进
+	#     repository.json。后果：客户端发一次 `POST /workflows/<id>/run`（不传答案）
+	#     就能拿到全部正确选项，**确定性判分层被完全绕过**。
+	#     而 `GET /api/v1/exercises/<set>` 特意用 `_CLIENT_FIELDS` 剥掉答案
+	#     （见 app/tools/exercise_tools.py），说明隐藏答案本就是设计意图。
+	# 注意：`awaitingAnswers` 是流程标志，**必须保留**（见 orchestrator._is_actionable）。
+	for transient in ("profile", "exercises", "answers", "answerKeys"):
+		updated["state"].pop(transient, None)
+	if _repository:
+		_repository.save("workflows", session_id, updated)
+	return _workflow_response(updated)
+
+
+def _workflow_response(workflow):
+	response = {key: workflow.get(key) for key in ("sessionId", "traceId", "status", "currentStep", "currentAgent", "stateVersion",
+		"finalAction", "nextAction", "state")}
+	context = learning_context.snapshot(_repository, workflow)
+	if context:
+		response["learningContext"] = context
+	return response
+
+
+@workflows_api.post("/api/v1/workflows/<session_id>/run")
+def run_workflow_api(session_id: str):
+	# 非对象 JSON 原先会让 data.get 抛 AttributeError → 500
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+
+	# ⚠️ 归属校验必须放在**任何写入之前**。
+	#
+	# 这是最严重的一处越权：`_run_saved_workflow` → `_persist_workflow_assessment`
+	# 会把判分与掌握度写进 `workflow["userId"]` 的画像、并可能重规划他的计划。
+	# 原来不校验归属，于是**知道 sessionId 的匿名请求就能把成绩写进别人的账号**。
+	# 演示路径不受影响：匿名按 demo-user 解析，与演示工作流的归属一致。
+	existing_workflow = _repository.get("workflows", session_id) if _repository else None
+	if existing_workflow is not None and not _owns_record(
+			existing_workflow, resolve_user_id(data.get("userId"))):
+		return _error("NOT_FOUND", "workflow not found", {"sessionId": session_id}, 404)
+
+	# ---------------------------------------------------------------- 输入护栏
+	#
+	# 为什么必须校验：`_run_saved_workflow` 会把 answers **原样存进会话 state**
+	# 并随 `repository.save("workflows", ...)` 落盘，同时还会回显在响应里。
+	# 实测一次 4000 条的提交就能让 repository.json 增长 ~1.5MB、响应体 1.3MB。
+	# 而 JsonRepository 每次 save 都全量序列化整个仓库，所以这会线性拖慢所有接口。
+	#
+	# 注意：`validate_answers` 也校验"元素必须是对象"——缺了这条时传 `["a"]`
+	# 会一路深入到判分逻辑才炸成 500。
+	answers = None
+	if data.get("answers") is not None:
+		answers, guard = validate_answers(data.get("answers"))
+		if guard is not None:
+			return guard
+	submission_id = None
+	if data.get("submissionId") is not None:
+		submission_id, guard = bounded_str(data["submissionId"], "submissionId", 3 * MAX_ID_CHARS)
+		if guard is not None:
+			return guard
+
+	try:
+		# 持锁跑完整段推进：见 `_WORKFLOW_RUN_LOCK` 的注释
+		# （不加锁时并发 run 会让评估被重复记账）。
+		with _WORKFLOW_RUN_LOCK:
+			current = _repository.get("workflows", session_id) if _repository else None
+			if data.get("expectedStateVersion") is not None:
+				expected = data["expectedStateVersion"]
+				if isinstance(expected, bool) or not isinstance(expected, int) or expected < 1:
+					return _error("BAD_REQUEST", "expectedStateVersion must be a positive integer")
+				if current and current.get("stateVersion", 1) != expected:
+					return _error("CONFLICT", "目标状态已变化，请刷新后继续", None, 409)
+			return jsonify(_run_saved_workflow(session_id, answers, submission_id))
+	except WorkflowConflict as error:
+		return _error("CONFLICT", str(error), None, 409)
+	except SubmissionNotFound:
+		return _error("NOT_FOUND", "submission not found",
+					  {"sessionId": session_id, "submissionId": data.get("submissionId")}, 404)
+	except KeyError:
+		return _error("NOT_FOUND", "workflow not found", {"sessionId": session_id}, 404)

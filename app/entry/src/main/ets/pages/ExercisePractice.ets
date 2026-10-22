@@ -1,0 +1,783 @@
+import router from '@ohos.router';
+import { AIFloatButton } from '../components/AIFloatButton';
+import { Exercise, ExerciseAnswer, ExerciseReview, ExerciseSetResponse, ExerciseSubmissionResult, KnowledgeMastery, PointMasteryUpdate } from '../api/ApiModels';
+import { AgentApiClient } from '../api/AgentApiClient';
+import { DemoSnapshot } from '../cache/DemoSnapshot';
+import { PlanDiffCard } from '../components/PlanDiffCard';
+import { FollowUpCard } from '../components/FollowUpCard';
+import { ExerciseViewModel } from '../viewmodels/ExerciseViewModel';
+import { ProfileViewModel, ProfileViewState } from '../viewmodels/ProfileViewModel';
+import { appState } from '../data/AppState';
+import { ExerciseSource } from '../api/ApiModels';
+import { ApiFailure } from '../api/ApiResult';
+
+@Entry
+@Component
+struct ExercisePractice {
+  @State isLoading: boolean = true;
+  @State isSubmitting: boolean = false;
+  @State errorMessage: string = '';
+  @State warningMessage: string = '';
+  @State setId: string = DemoSnapshot.EXERCISE_SET_ID;
+  /** 本次练哪个知识点（可由路由参数覆盖；默认是演示知识点）。 */
+  @State practiceKnowledgePoint: string = DemoSnapshot.EXERCISE_KNOWLEDGE_POINT_ID;
+  /** 知识点是否由**调用方显式指定**（路由参数，或用户在选择器里点选）。决定是否允许服务端现场出题。 */
+  @State practiceFromRoute: boolean = false;
+  @State sourceMode: string = 'general';
+  @State learningGoalId: string = '';
+  @State learningGoalVersion: number = 0;
+  @State sourceKbId: string = '';
+  @State sourceDocumentId: string = '';
+  @State sourceVisible: boolean = false;
+  @State sourceLoading: boolean = false;
+  @State sourceError: string = '';
+  @State sourceFragments: ExerciseSource[] = [];
+  private sourceRequestVersion: number = 0;
+  @State exercises: Exercise[] = [];
+  @State answers: string[] = [];
+  @State result: ExerciseSubmissionResult | null = null;
+  @State showReview: boolean = false;
+  @State wrongBookFlags: boolean[] = [];
+  @State wrongBookMessage: string = '';
+  /**
+   * 知识点选择器。
+   *
+   * 为什么要有：本页此前只有"路由带参数"与"回落到写死的演示知识点"两种情况，
+   * 而三个入口（知识画像的「按薄弱点开始专项练习」、我的智能体的「练习智能体」、
+   * 知识画像的「启动 Agent 诊断会话」）**都不带参数** —— 于是不管画像上最薄弱的是
+   * 哪个知识点，用户拿到的永远是二叉树那三道题。现在没带参数就先让用户自己选。
+   */
+  @State showPicker: boolean = false;
+  @State pickerLoading: boolean = false;
+  @State pickerErrorMessage: string = '';
+  @State pickerOptions: KnowledgeMastery[] = [];
+  private profileViewModel: ProfileViewModel = new ProfileViewModel();
+  private viewModel: ExerciseViewModel = new ExerciseViewModel();
+  private pageScroller: Scroller = new Scroller();
+  private submissionKey: string = '';
+  private requestVersion: number = 0;
+  private isPageActive: boolean = false;
+  private observedResetVersion: number = DemoSnapshot.getResetVersion();
+  /** 首帧的 `onPageShow` 与 `aboutToAppear` 是同一次进入，不重复请求。 */
+  private hasShownOnce: boolean = false;
+
+  aboutToAppear(): void {
+    this.isPageActive = true;
+    this.readRouteParams();
+    if (this.consumeDemoReset()) {
+      return;
+    }
+    this.startFlow();
+  }
+
+  /**
+   * 进页分流：调用方带了知识点就直接练；没带就先让用户自己选。
+   *
+   * 修的是什么：三个入口（知识画像的「按薄弱点开始专项练习」、我的智能体的
+   * 「练习智能体」、知识画像的「启动 Agent 诊断会话」）**都不带参数**，
+   * 本页因此回落到写死的 `binary-tree-postorder` —— 于是画像上最薄弱的
+   * 明明是别的知识点，用户拿到的却永远是二叉树那三道题。
+   */
+  private startFlow(): void {
+    if (this.practiceFromRoute) {
+      this.loadExercises();
+      return;
+    }
+    this.loadPickerOptions();
+  }
+
+  /**
+   * 读当前身份的知识点，按掌握度**升序**排列 —— 最薄弱的排最前。
+   *
+   * 分数与排序依据全部来自 `/api/v1/profile`，前端只做展示与排序，
+   * 不重新计算掌握度（与项目纪律一致）。
+   */
+  private async loadPickerOptions(): Promise<void> {
+    this.pickerLoading = true;
+    this.pickerErrorMessage = '';
+    const id: string = appState.currentUser.userId;
+    const state: ProfileViewState =
+      await this.profileViewModel.load(id.length > 0 ? id : DemoSnapshot.USER_ID, true);
+    if (!this.isPageActive) {
+      return;
+    }
+    this.pickerLoading = false;
+    this.pickerErrorMessage = state.errorMessage;
+    const sorted: KnowledgeMastery[] = state.mastery.slice();
+    sorted.sort((left: KnowledgeMastery, right: KnowledgeMastery): number =>
+      left.masteryScore - right.masteryScore);
+    this.pickerOptions = sorted;
+    this.showPicker = true;
+  }
+
+  /** 选定知识点后开练。知识点由用户显式指定 → 允许题库覆盖不到时由服务端现场出题。 */
+  private chooseKnowledgePoint(point: KnowledgeMastery): void {
+    this.practiceKnowledgePoint = point.knowledgePointId;
+    this.practiceFromRoute = true;
+    this.showPicker = false;
+    this.result = null;
+    this.loadExercises(true);
+  }
+
+  /**
+   * 画像里还没有任何知识点时的兜底：用演示知识点练一轮。
+   * 如实标注是演示题目，不假装成"针对你的薄弱点出的题"。
+   */
+  private practiceDemoPoint(): void {
+    this.practiceKnowledgePoint = DemoSnapshot.EXERCISE_KNOWLEDGE_POINT_ID;
+    this.practiceFromRoute = false;
+    this.showPicker = false;
+    this.result = null;
+    this.loadExercises(true);
+  }
+
+  /** 演示题只属于游客演示身份，真实账号的空画像不再被演示结果污染。 */
+  private isDemoIdentity(): boolean {
+    return appState.currentUser.userId === DemoSnapshot.USER_ID;
+  }
+
+  /** 从练习界面回到选择器，换一个知识点练。 */
+  private backToPicker(): void {
+    this.learningGoalId = '';
+    this.learningGoalVersion = 0;
+    this.sourceMode = 'general';
+    this.sourceKbId = '';
+    this.sourceDocumentId = '';
+    this.result = null;
+    this.loadPickerOptions();
+  }
+
+  /**
+   * 允许从别的页面带一个知识点进来 —— 错题诊断完的「做同类专项题」就走这里。
+   *
+   * 为什么必须支持：题库有 **30 题 / 6 个知识点**，后端 `select_exercises`
+   * 本来就按 `knowledgePointId` 选题。但本页原先**写死**了
+   * `DemoSnapshot.EXERCISE_KNOWLEDGE_POINT_ID`，于是不管诊断出什么知识点，
+   * 都只拿得到演示那 3 道题 —— 用户反馈的"一直是那三个题目"就是这个。
+   *
+   * ⚠️ 不带参数时仍用演示默认知识点，**演示基线（√√× → 66.67 → 42→58）不受影响**。
+   */
+  private readRouteParams(): void {
+    try {
+      const params: Record<string, Object> = router.getParams() as Record<string, Object>;
+      if (params === undefined || params === null) {
+        return;
+      }
+      const raw: Object | undefined = params['knowledgePointId'];
+      if (typeof params['goalId'] === 'string' && typeof params['goalStateVersion'] === 'number') {
+        this.learningGoalId = params['goalId'] as string;
+        this.learningGoalVersion = params['goalStateVersion'] as number;
+      }
+      if (params['sourceMode'] === 'materials' && typeof params['kbId'] === 'string') {
+        this.sourceMode = 'materials';
+        this.sourceKbId = params['kbId'] as string;
+        this.sourceDocumentId = typeof params['documentId'] === 'string' ? params['documentId'] as string : '';
+      }
+      if (typeof raw === 'string' && (raw as string).trim().length > 0) {
+        this.practiceKnowledgePoint = (raw as string).trim();
+        this.practiceFromRoute = true;
+      }
+    } catch (error) {
+      // 直接进入本页（无路由参数）是常态，静默回落默认知识点即可。
+    }
+  }
+
+  onPageShow(): void {
+    this.isPageActive = true;
+    this.consumeDemoReset();
+    if (!this.hasShownOnce) {
+      this.hasShownOnce = true;
+      return;
+    }
+    // 空选择器上只有一条路：去导入课程／资料。导入完返回本页时如果不再读一次画像，
+    // 页面还是"还没有可练的知识点" —— 用户会以为导入没生效，只能反复上传。
+    if (this.showPicker && !this.practiceFromRoute && this.result === null && this.pickerOptions.length === 0) {
+      void this.loadPickerOptions();
+    }
+  }
+
+  onPageHide(): void {
+    this.isPageActive = false;
+    this.requestVersion++;
+  }
+
+  private consumeDemoReset(): boolean {
+    const resetVersion: number = DemoSnapshot.getResetVersion();
+    if (resetVersion !== this.observedResetVersion) {
+      this.observedResetVersion = resetVersion;
+      this.result = null;
+      this.loadExercises(true);
+      return true;
+    }
+    return false;
+  }
+
+  aboutToDisappear(): void {
+    this.isPageActive = false;
+    this.requestVersion++;
+  }
+
+  /**
+   * 页面内重开一轮练习。
+   *
+   * 为什么不用 `router.pushUrl` 跳回自身：那会把 ExercisePractice 反复压进页面栈，
+   * 用户按返回要退好几层。这里就地清空结果并强制重新取题，等价于"再来一组"。
+   * `loadExercises(true)` 内部会重置 answers 并换一个新的 idempotencyKey，
+   * 因此不会与上一轮的提交记录冲突。
+   */
+  private restartPractice(): void {
+    this.result = null;
+    this.showReview = false;
+    this.warningMessage = '';
+    this.loadExercises(true);
+  }
+
+  private async loadExercises(forceRefresh: boolean = false): Promise<void> {
+    const currentRequestVersion: number = ++this.requestVersion;
+    const owner: string = appState.currentUser.userId;
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.warningMessage = '';
+    const data: ExerciseSetResponse | null =
+      await this.viewModel.load(DemoSnapshot.EXERCISE_SET_ID, forceRefresh, {
+        knowledgePointId: this.practiceKnowledgePoint,
+        count: DemoSnapshot.EXERCISE_COUNT,
+        sourceMode: this.sourceMode,
+        kbId: this.sourceKbId,
+        documentId: this.sourceDocumentId,
+        // “再练一组”必须排除当前屏幕上的题。此前 forceRefresh 只绕过前端缓存，
+        // 后端仍从题库第 1 题开始取，因此每次都会拿回完全相同的三题。
+        excludeExerciseIds: forceRefresh
+          ? this.exercises.map((item: Exercise): string => item.exerciseId) : [],
+        // 知识点是从别的页面带进来的（错题诊断那条路径）→ 允许题库覆盖不到时
+        // 由服务端现场出题；用演示默认知识点时**不带这个参数**，演示基线不受影响。
+        generate: this.practiceFromRoute
+      });
+    if (!this.isPageActive || currentRequestVersion !== this.requestVersion || owner !== appState.currentUser.userId) {
+      return;
+    }
+    // ⚠️ 用户**主动要一组新题**（forceRefresh）却没拿到新题时，必须清空上一轮的题与作答。
+    // 两条路径都会落到这里：
+    //   1. `data === null` —— 请求彻底失败；
+    //   2. 请求失败、但 `ExerciseViewModel` 用缓存兜了底（它会把 errorMessage 写上）。
+    // 不清的话屏幕上仍是上一轮的题目、选项还带着上次的选择 —— 用户会以为
+    // 这就是新出的题（实测反馈："第三次加载十几秒后依旧是第二次的题目和做题结果"）。
+    const loadError: string = this.viewModel.getErrorMessage();
+    if (data === null || (forceRefresh && loadError.length > 0)) {
+      this.exercises = [];
+      this.answers = [];
+      this.errorMessage = loadError || '练习题暂时加载失败，请点击重试。';
+      this.isLoading = false;
+      return;
+    }
+    if (data.exercises.length === 0) {
+      // 后端在"点名了题库覆盖不到的知识点、且现场出题失败"时会如实返回空列表
+      // （见 app/api/exercises.py 的 generationFailed 分支）——这里明确告诉用户，
+      // 而不是把上一轮的题留在屏幕上假装成功。
+      this.exercises = [];
+      this.answers = [];
+      this.errorMessage = data.message ?? '这次没能为所选知识点拿到题目（现场出题失败或题库已练完），请点「重新加载」再试一次。';
+      this.isLoading = false;
+      return;
+    }
+    this.setId = data.setId;
+    this.exercises = data.exercises;
+    this.answers = [];
+    for (let index: number = 0; index < data.exercises.length; index++) {
+      this.answers.push('');
+    }
+    this.submissionKey = `practice-${data.setId}-${Date.now()}`;
+    this.isLoading = false;
+    this.scrollToTop();
+  }
+
+  private selectAnswer(questionIndex: number, option: string): void {
+    if (this.isSubmitting || this.result !== null) {
+      return;
+    }
+    const nextAnswers: string[] = this.answers.slice();
+    nextAnswers[questionIndex] = option.substring(0, 1);
+    this.answers = nextAnswers;
+  }
+
+  private useGeneralQuestions(): void {
+    this.sourceMode = 'general';
+    this.result = null;
+    this.showReview = false;
+    this.loadExercises(true);
+  }
+
+  private async openSources(exerciseId: string): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const version: number = ++this.sourceRequestVersion;
+    this.sourceVisible = true;
+    this.sourceLoading = true;
+    this.sourceError = '';
+    this.sourceFragments = [];
+    const response = await AgentApiClient.getExerciseSources(exerciseId);
+    if (!this.isPageActive || version !== this.sourceRequestVersion || owner !== appState.currentUser.userId) return;
+    this.sourceLoading = false;
+    if (response.ok) this.sourceFragments = response.data.sources;
+    else this.sourceError = (response as ApiFailure).error.message;
+  }
+
+  @Builder
+  SourcePanel() {
+    Column({ space: 14 }) {
+      Text('题目资料依据').fontSize(22).fontWeight(FontWeight.Bold).width('100%')
+      Text('下列原文用于核对题目。来源链接与引用已检查，模型生成的题目及答案仍可能有误。')
+        .fontSize(13).fontColor('#64748B').lineHeight(21)
+      if (this.sourceLoading) {
+        LoadingProgress().width(32).height(32)
+      } else if (this.sourceError.length > 0) {
+        Text(this.sourceError).fontSize(14).fontColor('#B42318')
+      } else {
+        ForEach(this.sourceFragments, (source: ExerciseSource) => {
+          Column({ space: 8 }) {
+            Text(source.fileName).fontSize(16).fontWeight(FontWeight.Bold).width('100%')
+            Text(`${source.headingPath || '无章节标题'} · ${source.chunkIndex > 0 ? '第 ' + source.chunkIndex + ' 段' : '原文片段'}`)
+              .fontSize(12).fontColor('#2563EB').width('100%')
+            Text(source.text ?? '').fontSize(14).fontColor('#344054').lineHeight(23).width('100%').copyOption(CopyOptions.InApp)
+          }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
+        }, (source: ExerciseSource) => source.chunkId)
+      }
+      Button('返回练习').onClick(() => { this.sourceRequestVersion++; this.sourceVisible = false; })
+    }.width('100%')
+  }
+
+  private answeredCount(): number {
+    let count: number = 0;
+    for (let index: number = 0; index < this.answers.length; index++) {
+      if (this.answers[index].length > 0) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private isSelected(questionIndex: number, option: string): boolean {
+    return this.answers[questionIndex] === option.substring(0, 1);
+  }
+
+  private assessedPointName(pointId: string): string {
+    for (let index: number = 0; index < this.exercises.length; index++) {
+      if (this.exercises[index].knowledgePointId === pointId) {
+        return this.exercises[index].knowledgePointName;
+      }
+    }
+    return pointId;
+  }
+
+  private practiceTitle(): string {
+    if (this.exercises.length > 0 && this.exercises[0].knowledgePointName.trim().length > 0) {
+      return this.exercises[0].knowledgePointName;
+    }
+    return '智能诊断练习';
+  }
+
+  private async submit(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const version: number = this.requestVersion;
+    if (this.isSubmitting) {
+      return;
+    }
+    if (this.exercises.length === 0) {
+      this.errorMessage = '当前暂无可用练习题，请重试。';
+      return;
+    }
+    if (this.answeredCount() !== this.exercises.length) {
+      this.errorMessage = `请先完成全部 ${this.exercises.length} 道题，再提交。`;
+      return;
+    }
+    const exerciseAnswers: ExerciseAnswer[] = [];
+    for (let index: number = 0; index < this.exercises.length; index++) {
+      exerciseAnswers.push({ exerciseId: this.exercises[index].exerciseId, answer: this.answers[index] });
+    }
+    this.isSubmitting = true;
+    this.errorMessage = '';
+    const submissionResult: ExerciseSubmissionResult | null = await this.viewModel.submit(this.setId, {
+      goalId: this.learningGoalId.length > 0 ? this.learningGoalId : undefined,
+      goalStateVersion: this.learningGoalId.length > 0 ? this.learningGoalVersion : undefined,
+      idempotencyKey: this.submissionKey,
+      answers: exerciseAnswers
+    });
+    if (!this.isPageActive || owner !== appState.currentUser.userId || version !== this.requestVersion) {
+      return;
+    }
+    this.isSubmitting = false;
+    if (submissionResult === null) {
+      this.errorMessage = this.viewModel.getErrorMessage() || '提交失败，请稍后重试。';
+      return;
+    }
+    this.warningMessage = this.viewModel.getWarningMessage();
+    this.result = submissionResult;
+    this.wrongBookFlags = submissionResult.review.map((item: ExerciseReview): boolean => item.inWrongBook);
+    this.showReview = false;
+    this.scrollToTop();
+  }
+
+  private scrollToTop(): void {
+    setTimeout(() => {
+      this.pageScroller.scrollEdge(Edge.Top);
+    }, 100);
+  }
+
+  @Builder
+  OptionButton(questionIndex: number, option: string) {
+    Button(option)
+      .fontSize(14).fontColor(this.isSelected(questionIndex, option) ? '#FFFFFF' : '#344054')
+      .backgroundColor(this.isSelected(questionIndex, option) ? '#2563EB' : '#F8FAFC')
+      .border({ width: 1, color: this.isSelected(questionIndex, option) ? '#2563EB' : '#D0D5DD' })
+      .borderRadius(10).width('100%').height(42)
+      .enabled(!this.isSubmitting)
+      .onClick(() => this.selectAnswer(questionIndex, option))
+  }
+
+  @Builder
+  QuestionCard(item: Exercise, index: number) {
+    Column({ space: 12 }) {
+      Text(`第 ${index + 1} 题 · ${item.knowledgePointName} · ${item.difficulty ?? '练习'}`)
+        .fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Bold)
+      Text(item.stem).fontSize(16).fontColor('#1F2937').fontWeight(FontWeight.Medium).lineHeight(23)
+      if (item.source === 'materials') {
+        Button('资料生成题 · 查看原文依据').fontSize(12).height(34)
+          .onClick(() => this.openSources(item.exerciseId))
+      } else {
+        Text(item.source === 'llm' ? '通用知识生成题，未引用上传资料' : '预置题库题，未引用上传资料')
+          .fontSize(11).fontColor('#64748B')
+      }
+      ForEach(item.options, (option: string) => {
+        this.OptionButton(index, option)
+      }, (option: string) => option)
+    }
+    .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
+    .border({ width: 1, color: '#E2E8F0' })
+  }
+
+  private weakPointText(value: ExerciseSubmissionResult): string {
+    const names: string[] = [];
+    this.exercises.forEach((item: Exercise) => {
+      if (value.assessment.perKnowledgeAccuracy[item.knowledgePointId] < 1 &&
+        /[\u4e00-\u9fff]/.test(item.knowledgePointName) && names.indexOf(item.knowledgePointName) < 0) {
+        names.push(item.knowledgePointName);
+      }
+    });
+    return names.length > 0 ? names.join('、') : '暂无明确薄弱知识点';
+  }
+
+  private errorTypeText(value: ExerciseSubmissionResult): string {
+    const names: string[] = value.assessment.errorTypes.filter((name: string) => /[\u4e00-\u9fff]/.test(name));
+    return names.length > 0 ? names.join('、') : '暂无明确错误类型';
+  }
+
+  private async toggleReviewWrongBook(index: number): Promise<void> {
+    if (this.result === null || index < 0 || index >= this.result.review.length) return;
+    const next: boolean = !this.wrongBookFlags[index];
+    const review: ExerciseReview = this.result.review[index];
+    const response = await AgentApiClient.toggleWrongBook(review.exerciseId, next);
+    if (!response.ok) {
+      this.wrongBookMessage = '错题本更新失败，请稍后重试。';
+      return;
+    }
+    const flags: boolean[] = this.wrongBookFlags.slice();
+    flags[index] = response.data.added;
+    this.wrongBookFlags = flags;
+    this.wrongBookMessage = response.data.added ? '已加入错题本。' : '已从错题本移除。';
+  }
+
+  @Builder
+  ReviewPanel(value: ExerciseSubmissionResult) {
+    Column({ space: 16 }) {
+      Row() {
+        Text('逐题解析').fontSize(23).fontWeight(FontWeight.Bold).fontColor('#111827')
+        Blank()
+        Text('返回结果').fontSize(13).fontColor('#2563EB').onClick(() => this.showReview = false)
+      }.width('100%')
+      Text('答错题已自动加入错题本。每道做过的题也可以由你自行加入或移除。')
+        .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
+      if (this.wrongBookMessage.length > 0) {
+        Text(this.wrongBookMessage).fontSize(13).fontColor('#0F766E').width('100%')
+          .padding(10).backgroundColor('#ECFDF5').borderRadius(10)
+      }
+      ForEach(this.exercises, (item: Exercise, index: number) => {
+        Column({ space: 10 }) {
+          Row() {
+            Text(`第 ${index + 1} 题 · ${item.knowledgePointName}`).fontSize(13)
+              .fontWeight(FontWeight.Bold).fontColor('#2563EB').layoutWeight(1)
+            Text(value.review[index].correct ? '回答正确' : '回答错误')
+              .fontSize(12).fontColor(value.review[index].correct ? '#0F766E' : '#DC2626')
+          }.width('100%')
+          Text(item.stem).fontSize(16).fontWeight(FontWeight.Medium).fontColor('#1F2937').lineHeight(23)
+          Column({ space: 8 }) {
+            ForEach(item.options, (option: string) => {
+              Row({ space: 8 }) {
+                Text(option).fontSize(14).fontColor('#344054').layoutWeight(1).lineHeight(20)
+                if (option.substring(0, 1) === value.review[index].correctAnswer) {
+                  Text('正确答案').fontSize(11).fontColor('#0F766E')
+                    .padding({ left: 7, right: 7, top: 3, bottom: 3 })
+                    .backgroundColor('#ECFDF5').borderRadius(6)
+                } else if (option.substring(0, 1) === value.review[index].selectedAnswer) {
+                  Text('你的选择').fontSize(11).fontColor('#B42318')
+                    .padding({ left: 7, right: 7, top: 3, bottom: 3 })
+                    .backgroundColor('#FEF3F2').borderRadius(6)
+                }
+              }.width('100%').padding(10).backgroundColor('#F8FAFC').borderRadius(8)
+            }, (option: string) => option)
+          }.width('100%')
+          Text(`你的答案：${value.review[index].selectedAnswer}　正确答案：${value.review[index].correctAnswer}`)
+            .fontSize(13).fontColor('#475467').width('100%')
+          Column({ space: 6 }) {
+            Text(value.review[index].explanationSource === 'materials' ? '资料题解析（模型生成，可查看原文核对）' :
+              (value.review[index].explanationSource === 'llm' ? 'AI 详细解析' : '详细解析（离线兜底）'))
+              .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB').width('100%')
+            Text(value.review[index].explanation).fontSize(14).fontColor('#344054').lineHeight(22).width('100%')
+          }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(10)
+          if (item.source === 'materials') {
+            Button('查看本题资料依据').height(36).fontSize(13).onClick(() => this.openSources(item.exerciseId))
+          }
+          Button(this.wrongBookFlags[index] ? '移出错题本' : '加入错题本')
+            .width('100%').height(40).fontSize(13)
+            .fontColor(this.wrongBookFlags[index] ? '#B42318' : '#2563EB')
+            .backgroundColor(this.wrongBookFlags[index] ? '#FEF3F2' : '#EFF6FF')
+            .borderRadius(10).onClick(() => this.toggleReviewWrongBook(index))
+        }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
+          .border({ width: 1, color: value.review[index].correct ? '#A7F3D0' : '#FECACA' })
+      }, (item: Exercise) => item.exerciseId)
+      Button('进入错题本刷题').width('100%').height(46).fontSize(15).fontColor('#FFFFFF')
+        .backgroundColor('#2563EB').borderRadius(12)
+        .onClick(() => router.pushUrl({ url: 'pages/WrongBook' }))
+    }.width('100%')
+  }
+
+  @Builder
+  ResultPanel(value: ExerciseSubmissionResult) {
+    Column({ space: 16 }) {
+      Text('诊断结果已生成').fontSize(23).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+      Text('根据本次答题更新掌握度估计；题量有限，结果供后续学习安排参考。')
+        .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
+
+      if (this.warningMessage.length > 0) {
+        Text(this.warningMessage)
+          .fontSize(13).fontColor('#B45309').lineHeight(19).width('100%')
+          .padding(12).backgroundColor('#FFFBEB').borderRadius(10)
+      }
+
+      if (value.traceId !== undefined) {
+        Text(`本次评估已生成可追溯记录：${value.traceId}`)
+          .fontSize(12).fontColor('#0F766E').lineHeight(18).width('100%').padding(12).backgroundColor('#ECFDF5').borderRadius(10)
+      }
+
+      Row({ space: 12 }) {
+        Column({ space: 4 }) {
+          Text(`${value.assessment.score}%`).fontSize(30).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+          Text('本次正确率').fontSize(12).fontColor('#667085')
+        }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor('#EFF6FF').borderRadius(14)
+        Column({ space: 4 }) {
+          Text(`${value.assessment.oldMastery} → ${value.assessment.suggestedNewMastery}`)
+            .fontSize(22).fontWeight(FontWeight.Bold).fontColor('#0F766E')
+          Text('主要练习知识点的掌握度估计').fontSize(12).fontColor('#667085').textAlign(TextAlign.Center)
+        }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor('#ECFDF5').borderRadius(14)
+      }.width('100%')
+
+      if (value.assessment.masteryUpdates !== undefined) {
+        Column({ space: 8 }) {
+          Text('各知识点评估').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+          ForEach(value.assessment.masteryUpdates, (item: PointMasteryUpdate) => {
+            Row({ space: 12 }) {
+              Column({ space: 4 }) {
+                Text(this.assessedPointName(item.knowledgePointId)).fontSize(14).fontColor('#344054')
+                Text(`答对 ${item.correctCount}/${item.questionCount} 题`)
+                  .fontSize(12).fontColor('#667085')
+              }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+              Text(`${item.oldScore} → ${item.newScore}`).fontSize(17).fontColor('#0F766E')
+            }.width('100%')
+          }, (item: PointMasteryUpdate) => item.knowledgePointId)
+        }.width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(12)
+      }
+
+      Column({ space: 6 }) {
+        Text('错误类型').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#B45309')
+        Text(this.errorTypeText(value))
+          .fontSize(14).fontColor('#475467')
+      }.width('100%').padding(13).backgroundColor('#FFFBEB').borderRadius(12)
+
+      Text(`薄弱知识点：${this.weakPointText(value)}`).fontSize(14).fontColor('#475467')
+
+      Button('查看题目与逐题解析')
+        .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold)
+        .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+        .onClick(() => { this.showReview = true; this.scrollToTop(); })
+
+      if (value.needReplan && value.planDiff !== undefined) {
+        PlanDiffCard({ value: value.planDiff })
+      }
+
+      // ★ 核心闭环收口。
+      // 重构前这里只有「查看画像 / 看决策过程 / 返回首页」三个平级跳转，
+      // 而**恰恰没有「再练一次」** —— 于是「练习 → 判分 → 掌握度更新 → 重规划」
+      // 这条 Agent 主链在最后一格断掉了：用户看到分数变了，却不知道该干嘛。
+      // 现在把「继续练这个知识点」立为唯一主行动，其余降级为次要。
+      FollowUpCard({
+        title: '接下来',
+        reason: value.needReplan && value.planDiff !== undefined
+          ? '已根据本次知识点评估调整计划。建议先查看变化，再选择下一项学习任务。'
+          : value.needReplan
+            ? '建议根据各知识点评估生成或调整学习计划。'
+            : '本次评估已记录，可以查看知识画像或继续练习。',
+        primaryText: this.learningGoalId.length > 0 ? '返回对话查看本目标结果' : '再练一组同类题',
+        secondaryText: '看更新后的知识画像',
+        secondaryTarget: 'pages/StudyTags',
+        showAgentTraceLink: true,
+        onPrimary: (): void => { if (this.learningGoalId.length > 0) router.back(); else this.restartPractice(); }
+      })
+
+      // 反馈之后的三条路：继续练同一个知识点 / 去画像看新的掌握度 / 换一个知识点。
+      // 这正是用户要的"根据反馈结果决定继续练还是刷新画像"——两个都给，由用户点。
+      Button('换一个知识点练')
+        .width('100%').height(44).fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
+        .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
+        .onClick(() => this.backToPicker())
+
+      Button('返回首页')
+        .width('100%').height(44).fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
+        .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
+        .onClick(() => router.pushUrl({ url: 'pages/Index' }))
+    }.width('100%')
+  }
+
+  /**
+   * 知识点选择器 —— 进入本页的默认第一步。
+   *
+   * 用户在三个入口点「开始练习」时都还没有指定练什么，此前页面直接替他决定了
+   * （写死的演示知识点）。这里把选择权交回用户：按掌握度升序排，最薄弱的排最前，
+   * 但**不强制** —— 想练哪个由用户点。
+   */
+  @Builder
+  KnowledgePointPicker() {
+    Column({ space: 14 }) {
+      Text('选择要练的知识点').fontSize(22).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+      Text('按掌握度从低到高排列，最薄弱的排在最前。分数来自你的知识画像，不由前端计算。')
+        .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
+
+      if (this.pickerErrorMessage.length > 0) {
+        Text(this.pickerErrorMessage)
+          .fontSize(13).fontColor('#B45309').lineHeight(19).width('100%')
+          .padding(12).backgroundColor('#FFFBEB').borderRadius(10)
+      }
+
+      if (this.pickerOptions.length === 0) {
+        Column({ space: 12 }) {
+          Text('还没有可练的知识点').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+          if (this.isDemoIdentity()) {
+            Text('当前是游客演示身份，可以先用演示知识点体验完整练习流程。')
+              .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
+            Button('先用演示知识点练一轮')
+              .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
+              .backgroundColor('#2563EB').borderRadius(12)
+              .onClick(() => this.practiceDemoPoint())
+          } else {
+            Text('先上传课程或资料，或拍一道错题完成诊断。系统会根据你的真实内容生成知识点和练习。')
+              .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
+            Button('去上传课程 / 资料')
+              .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
+              .backgroundColor('#2563EB').borderRadius(12)
+              .onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'import' } }))
+            Button('去做错题诊断')
+              .width('100%').height(44).fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
+              .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
+              .onClick(() => router.pushUrl({ url: 'pages/WrongQuestion' }))
+          }
+        }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
+      } else {
+        ForEach(this.pickerOptions, (item: KnowledgeMastery, index: number) => {
+          Column({ space: 8 }) {
+            Row({ space: 8 }) {
+              Text(item.knowledgePointName)
+                .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937').layoutWeight(1)
+              if (index === 0) {
+                Text('最薄弱').fontSize(11).fontColor('#B45309').backgroundColor('#FEF3C7')
+                  .borderRadius(8).padding({ left: 8, right: 8, top: 3, bottom: 3 })
+              }
+              Text(`${item.masteryScore}`).fontSize(20).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+              Text(' / 100').fontSize(11).fontColor('#64748B').margin({ top: 6 })
+            }.width('100%').alignItems(VerticalAlign.Top)
+            Progress({ value: item.masteryScore, total: 100, type: ProgressType.Linear })
+              .color('#2563EB').backgroundColor('#DBEAFE').height(8).borderRadius(8)
+            Text('开始专项练习 →').fontSize(13).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+          }
+          .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
+          .border({ width: 1, color: index === 0 ? '#BFDBFE' : '#E2E8F0' })
+          .onClick(() => this.chooseKnowledgePoint(item))
+        }, (item: KnowledgeMastery) => item.knowledgePointId)
+      }
+    }.width('100%')
+  }
+
+  build() {
+    Stack() {
+      Column() {
+        Row({ space: 12 }) {
+          Text('← 返回').fontSize(14).fontColor('#64748B').onClick(() => router.back())
+          Blank()
+          if (!this.showPicker && !this.pickerLoading) {
+            Text('换知识点').fontSize(13).fontColor('#2563EB')
+              .onClick(() => this.backToPicker())
+          }
+          Text(this.showPicker || this.pickerLoading ? '选择知识点' : this.practiceTitle())
+            .fontSize(14).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+        }.width('100%').padding({ left: 16, right: 16, top: 14, bottom: 14 }).backgroundColor('#FFFFFF')
+
+        Scroll(this.pageScroller) {
+          Column({ space: 16 }) {
+            if (this.sourceVisible) {
+              this.SourcePanel()
+            } else if (this.pickerLoading) {
+              Column({ space: 10 }) {
+                LoadingProgress().width(32).height(32)
+                Text('正在读取你的知识点…').fontSize(14).fontColor('#64748B')
+              }
+              .width('100%').padding(32).alignItems(HorizontalAlign.Center)
+            } else if (this.showPicker) {
+              this.KnowledgePointPicker()
+            } else if (this.isLoading) {
+              LoadingProgress().width(36).height(36).margin({ top: 40 })
+            } else if (this.result !== null && this.showReview) {
+              this.ReviewPanel(this.result)
+            } else if (this.result !== null) {
+              this.ResultPanel(this.result)
+            } else if (this.exercises.length === 0) {
+              Column({ space: 14 }) {
+                Text('暂无可用练习题').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#111827')
+                Text(this.errorMessage || '题库可能正在更新，请稍后重试。')
+                  .fontSize(14).fontColor('#667085').lineHeight(21).textAlign(TextAlign.Center)
+                Button('重新加载')
+                  .height(44).fontSize(15).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+                  .onClick(() => this.loadExercises(true))
+                if (this.sourceMode === 'materials') {
+                  Button('切换为通用知识练习').fontSize(14).height(40).onClick(() => this.useGeneralQuestions())
+                }
+              }.width('100%').margin({ top: 56 }).alignItems(HorizontalAlign.Center)
+            } else {
+              Text(`${this.practiceTitle()} · ${this.exercises.length} 题快速诊断`).fontSize(22).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+              Text(this.sourceMode === 'materials' ? '本轮依据所选上传资料出题，原文支持核对。' : '本轮使用通用知识或预置题库；资料题请从资料库选择文档进入。')
+                .fontSize(12).fontColor('#64748B').lineHeight(20).width('100%')
+              Text(`已完成 ${this.answeredCount()} / ${this.exercises.length} 题`).fontSize(13).fontColor('#667085').width('100%')
+              ForEach(this.exercises, (item: Exercise, index: number) => {
+                this.QuestionCard(item, index)
+              }, (item: Exercise) => item.exerciseId)
+              if (this.errorMessage.length > 0) {
+                Text(this.errorMessage).fontSize(13).fontColor('#B45309').width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(10)
+              }
+              Button(this.isSubmitting ? '正在提交…' : '提交诊断')
+                .width('100%').height(48).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
+                .backgroundColor('#2563EB').borderRadius(14)
+                .enabled(!this.isSubmitting && this.answeredCount() === this.exercises.length)
+                .onClick(() => this.submit())
+            }
+          }.width('100%').padding({ left: 16, right: 16, top: 16, bottom: 96 })
+        }.layoutWeight(1).backgroundColor('#F3F6FA')
+      }.width('100%').height('100%')
+      AIFloatButton()
+    }.width('100%').height('100%')
+  }
+}

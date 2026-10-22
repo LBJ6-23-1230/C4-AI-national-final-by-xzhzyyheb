@@ -1,0 +1,1357 @@
+import {
+  CourseInfo,
+  HomeworkDDL,
+  LearningReview,
+  PartnerMatch,
+  StudySuggestion,
+  UserProfile,
+  WrongAnalysisResult,
+  WrongQuestionImage,
+  WorkflowContext,
+  WorkflowStage,
+  NavigationIntent,
+  TaskPriority,
+  WeaknessJudgment,
+  MatchFeasibility,
+  FocusTask,
+  FocusSession,
+  FocusRuntime,
+  FocusSummary,
+  LearningPlanTask,
+  WeeklyLearningPlan,
+  PlanTaskStatus
+} from '../models/AgentModels';
+import { ChatCourseUpdate, ChatHandoff, ChatProfileUpdates, ChatTaskUpdate } from '../models/ChatModels';
+import { AgentApiClient } from '../api/AgentApiClient';
+import { ApiDefaults } from '../api/ApiDefaults';
+import { AuthSource, AuthUser } from '../api/AuthModels';
+// 契约形状的「用户看得见的那份计划」。用别名避免与 AgentModels 里的本地模型撞名 ——
+// 两者的 `PlanTaskStatus` 取值集**不同**：契约是 pending/in_progress/completed，
+// 本地还多 partial/deferred。
+import {
+  LearningPlan as VisiblePlan,
+  PlanTask as VisiblePlanTask,
+  PlanTaskStatus as VisiblePlanTaskStatus
+} from '../api/ApiModels';
+import {
+  mockCurrentUser,
+  mockCoursesList,
+  mockHomeworkDDLs,
+  mockCandidates
+} from './MockData';
+import { DateHelper } from '../utils/DateHelper';
+import { FocusClock } from '../utils/FocusClock';
+import { ClientCache } from '../cache/ClientCache';
+import { LearningDataStore, StoredLearningData, StoredTaskStatus } from '../cache/LearningDataStore';
+
+/**
+ * AppState — 全局单例状态管理
+ * 管理5层Agent工作流的所有状态数据
+ *
+ * 支持数据导入：用户可通过文件导入真实课程表和DDL，
+ * 导入后 Agent 将基于真实数据分析而非模拟数据。
+ */
+export class AppState {
+  private static instance: AppState;
+  private knowledgeSyncVersion: number = 0;
+
+  public notifyLearningDataChanged(): void {
+    AppStorage.setOrCreate('learningDataRevision', (AppStorage.get<number>('learningDataRevision') ?? 0) + 1);
+  }
+
+  private notifyFocusDataChanged(): void {
+    AppStorage.setOrCreate('focusDataRevision', (AppStorage.get<number>('focusDataRevision') ?? 0) + 1);
+  }
+
+  /**
+   * 身份是否已判定完成。**冷启动期间为 false**，由 `EntryAbility.restoreIdentity()`
+   * 结束时置 true。
+   *
+   * 为什么需要它
+   * ------------
+   * `EntryAbility.onWindowStageCreate()` 的顺序是：
+   *   ① `applyLogout()`（AppState 先变成**游客**）
+   *   ② `loadContent('pages/ChatMain')`（**先渲染对话页**）
+   *   ③ 异步恢复登录态 → 未登录再跳登录页
+   *
+   * 实测时序：`onWindowStageCreate` 之后 **139 ms** 对话页就加载完成，之后才异步跳走。
+   * 于是**未登录冷启动时，用户会看到「游客身份下的会话」闪一下**，观感像是
+   * "怎么用游客进去了"，而不是"正在启动"。
+   *
+   * 「先加载对话页、再异步判断」本身是**刻意的取舍**（原注释：
+   * "这样即使校验慢也不会白屏"）—— 取舍合理，不必推翻；
+   * 但**那一帧不该显示游客内容**。所以改成：就绪前置 false，对话页据此显示加载态。
+   */
+  public markIdentityPending(): void {
+    AppStorage.setOrCreate('identityReady', false);
+  }
+
+  /** 身份判定完成。含"未登录→去登录页"与"校验异常"两条分支（见调用点的 finally）。 */
+  public markIdentityReady(): void {
+    AppStorage.setOrCreate('identityReady', true);
+  }
+
+  /** 把当前课程/DDL 快照保存到当前 userId 的独立命名空间。 */
+  private persistLearningData(): boolean {
+    const statuses: StoredTaskStatus[] = [];
+    this.taskStatusOverrides.forEach((status: PlanTaskStatus, taskId: string) => {
+      statuses.push({ taskId: taskId, status: status });
+    });
+    const snapshot: StoredLearningData = {
+      courses: this.courses,
+      homeworkDDLs: this.homeworkDDLs,
+      isDataImported: this.isDataImported,
+      focusSessions: this.focusSessions,
+      pendingFocusSessions: this.pendingFocusSessions,
+      taskStatuses: statuses,
+      focusRuntime: this.focusRuntime ?? undefined,
+      focusResultDraft: this.focusResultDraft ?? undefined
+    };
+    if (!LearningDataStore.save(this.currentUser.userId, snapshot)) {
+      console.warn('学习记录本地持久化失败');
+      return false;
+    }
+    return true;
+  }
+
+  /** 身份切换完成后只恢复该账号自己的课程与 DDL。 */
+  private restoreLearningData(userId: string): void {
+    const saved: StoredLearningData = LearningDataStore.load(userId);
+    this.courses = saved.courses;
+    this.homeworkDDLs = saved.homeworkDDLs;
+    this.isDataImported = saved.isDataImported;
+    this.importedCourseCount = saved.courses.length;
+    this.importedDDLCount = saved.homeworkDDLs.length;
+    this.focusSessions = saved.focusSessions ?? [];
+    this.pendingFocusSessions = saved.pendingFocusSessions ?? [];
+    this.focusRuntime = FocusClock.valid(saved.focusRuntime, userId) ? (saved.focusRuntime ?? null) : null;
+    this.focusResultDraft = saved.focusResultDraft ?? null;
+    if (this.focusResultDraft !== null && this.focusSessions.some(
+      (item: FocusSession) => item.taskId === this.focusResultDraft?.taskId)) this.focusResultDraft = null;
+    if (this.focusResultDraft !== null) this.focusRuntime = null;
+    if (this.focusRuntime !== null) this.activeFocusTask = this.focusRuntime.task;
+    this.taskStatusOverrides.clear();
+    (saved.taskStatuses ?? []).forEach((entry: StoredTaskStatus) => {
+      this.taskStatusOverrides.set(entry.taskId, entry.status);
+    });
+    this.restoreFocusStatuses();
+    this.notifyFocusDataChanged();
+    this.notifyLearningDataChanged();
+  }
+
+  private async syncImportedKnowledge(): Promise<void> {
+    this.notifyLearningDataChanged();
+    const version: number = ++this.knowledgeSyncVersion;
+    const userId: string = this.currentUser.userId;
+    const courses: string[] = [];
+    this.courses.forEach((item: CourseInfo) => {
+      if (item.courseName.trim().length > 0 && courses.indexOf(item.courseName) < 0) courses.push(item.courseName);
+    });
+    this.homeworkDDLs.forEach((item: HomeworkDDL) => {
+      if (item.courseName.trim().length > 0 && courses.indexOf(item.courseName) < 0) courses.push(item.courseName);
+    });
+    if (courses.length === 0) return;
+    AppStorage.setOrCreate('knowledgeSyncMessage', '本地导入已完成，正在同步知识点…');
+    try {
+      const result = await AgentApiClient.importKnowledgePoints(userId, courses);
+      if (userId !== this.currentUser.userId || version !== this.knowledgeSyncVersion) return;
+      if (result.ok) {
+        ClientCache.cacheProfile(result.data);
+        ClientCache.invalidateCurrentPlan();
+        AppStorage.setOrCreate('knowledgeSyncMessage', `已为你的 ${courses.length} 门课准备 ${result.data.mastery.length} 个知识点，点“开始诊断”即可练习。`);
+        this.notifyLearningDataChanged();
+      } else {
+        console.warn('课程知识点同步失败，本地导入数据已保留');
+        AppStorage.setOrCreate('knowledgeSyncMessage', '本地导入成功，知识点同步失败，请检查连接后重新导入。');
+      }
+    } catch (error) {
+      if (userId === this.currentUser.userId && version === this.knowledgeSyncVersion) {
+        AppStorage.setOrCreate('knowledgeSyncMessage', '本地导入成功，知识点同步失败，请稍后重新导入。');
+      }
+    }
+  }
+
+  /* ========== 用户 & 课程数据 ========== */
+  public currentUser: UserProfile = mockCurrentUser;
+  // 用户数据默认必须为空。演示课程只能由显式“恢复演示数据”动作加载，
+  // 不能在启动时伪装成已经导入的真实课程。
+  public courses: CourseInfo[] = [];
+  public homeworkDDLs: HomeworkDDL[] = [];
+  public candidates: UserProfile[] = mockCandidates;
+
+  /* ========== 数据导入状态 ========== */
+  /** 是否已从外部文件导入真实数据（课程表或作业DDL） */
+  public isDataImported: boolean = false;
+  /** 导入的课程数量 */
+  public importedCourseCount: number = 0;
+  /** 导入的 DDL 数量 */
+  public importedDDLCount: number = 0;
+
+  /* ========== 登录态 ========== */
+  /**
+   * 是否处于**真实登录**态（游客 / 一键体验 / 离线 Fixture 都是 false）。
+   * 注意：`currentUser.userId` 在游客态下是 `demo-user`，
+   * 因此判断"是否登录"必须看这个标志，不能看 userId 是否为空。
+   */
+  public isSignedIn: boolean = false;
+  /** 身份来源，用于「我的」页与首页标注。 */
+  public authSource: AuthSource = 'guest';
+  /** 当前展示用的昵称（游客态为演示昵称）。 */
+  public authNickname: string = ApiDefaults.DEMO_USER_NAME;
+  /**
+   * 登录 / 注册成功后要在首屏如实告知用户的一句话（没有则为空串）。
+   *
+   * 为什么需要它：注册页让用户选「载入演示数据」或「从零开始」，而登录成功是
+   * `router.replaceUrl` 直接跳走的 —— 那句说明在登录页上根本来不及被看到。
+   * 于是落到对话页由欢迎区呈现，否则用户永远不知道系统"知道"他什么、
+   * 更不知道画像里是空是满（用户实测反馈：「会让用户有一种虚假的感觉」）。
+   *
+   * 文案由 `AuthClient` 按**服务端事实**生成（见 `AuthClient.registerMessage`），
+   * 这里只负责传递，不在这里拼文案。
+   */
+  public loginNotice: string = '';
+
+  /* ========== 对话持久化 ========== */
+  public chatMessages: string = '';  // JSON 序列化的消息列表
+  public hasActiveChat: boolean = false;
+  /** 当前完整对话的 id；只有用户明确点击「新对话」才会更换。 */
+  public chatSessionId: string = '';
+  public pendingChatPrompt: string = '';  // 从其他页面跳回对话时的预填 prompt
+
+  /* ========== 输入层数据 ========== */
+  public wrongQuestionImages: WrongQuestionImage[] = [];
+
+  /* ========== 理解层/行动层结果 ========== */
+  public latestSuggestion: StudySuggestion | null = null;
+  public latestWrongAnalysis: WrongAnalysisResult | null = null;
+  public latestPartner: PartnerMatch | null = null;
+  public latestReview: LearningReview | null = null;
+
+  /* ========== 专注模式 ========== */
+  public activeFocusTask: FocusTask | null = null;
+  public focusResultDraft: FocusSession | null = null;
+  public focusSessions: FocusSession[] = [];
+  public focusRuntime: FocusRuntime | null = null;
+  private pendingFocusSessions: FocusSession[] = [];
+  private focusSyncUsers: Set<string> = new Set<string>();
+
+  /* ========== 计划 Agent ========== */
+  public weeklyPlan: WeeklyLearningPlan | null = null;
+
+  /* ========== 判断层数据 ========== */
+  public optimalTask: TaskPriority | null = null;
+  public weaknessJudgments: WeaknessJudgment[] = [];
+  public matchFeasibility: MatchFeasibility | null = null;
+
+  /* ========== 工作流状态 ========== */
+  public workflowContext: WorkflowContext = {
+    currentStage: 'idle',
+    lastAction: '',
+    lastActionTime: '',
+    completedStages: [],
+    pendingActions: []
+  };
+
+  /* ========== 用户选择的图片URI ========== */
+  public selectedImageUri: string = '';
+
+  /* ========== 对话与任务页衔接 ========== */
+  public activeChatTask: string = '';
+  private chatHandoff: ChatHandoff | null = null;
+
+  public static getInstance(): AppState {
+    if (AppState.instance === undefined) {
+      AppState.instance = new AppState();
+    }
+    return AppState.instance;
+  }
+
+  /* ========== 登录态 ========== */
+
+  /**
+   * 应用当前登录身份。
+   *
+   * 登录只做两件事：① 把 `currentUser.userId` 换成真实身份；② 记录登录来源供界面标注。
+   * **不改动** `courses` / `homeworkDDLs` 等业务数据——那些由数据导入流程管理，
+   * 与身份解耦，避免"登录一次把演示数据清空"这类副作用。
+   *
+   * 游客身份传入 `ApiDefaults.DEMO_USER_ID`，与后端演示数据天然对齐。
+   *
+   * `user` 允许为 null（防御式）：调用方若因异常拿到空用户，这里直接退化为体验身份，
+   * 而不是把 null 写进 `currentUser` 引发后续一连串空指针。
+   *
+   * `notice` 可选：本次登录 / 注册要说给用户听的一句话（见 `loginNotice`）。
+   * 不传即清空 —— 冷启动恢复登录态时不该再重复弹上次注册的说明。
+   */
+  public applyLogin(user: AuthUser | null, source: AuthSource, notice: string = ''): void {
+    if (user === null) {
+      this.applyLogout();
+      return;
+    }
+    // ⚠️ 必须在覆盖 currentUser **之前**判断身份是否真的变了：
+    // 变了才清账号维度状态，同身份重复登录（刷新 token / 冷启动恢复）不该把数据抖掉。
+    const identityChanged: boolean = this.currentUser.userId !== user.userId;
+    this.currentUser = {
+      userId: user.userId,
+      basicInfo: {
+        name: user.nickname,
+        // ⚠️ 服务端对"注册时跳过年级"的账号存的是**空串**；原实现回落成
+        // `this.currentUser.basicInfo.grade` —— 而登出分支把这个值设成了
+        // MockData 里写死的「大二」，于是**没选年级的新账号会凭空显示
+        // 「在读年级：大二」**，并且 `Account.ets` 只在服务端值非空时才用它纠正
+        // （`user.grade.length > 0`），永远纠不回来。
+        // 这里如实留空，由页面显示「未设置」——不替用户编属性。
+        grade: user.grade.length > 0 ? user.grade : '',
+        major: this.currentUser.basicInfo.major
+      },
+      learningGoal: this.currentUser.learningGoal,
+      time: this.currentUser.time,
+      knowledge: this.currentUser.knowledge
+    };
+    this.authSource = source;
+    this.authNickname = user.nickname;
+    this.isSignedIn = source === 'local' || source === 'restored';
+
+    // 缺陷修复：原实现只换 `currentUser.userId`，既不清 `ClientCache`
+    // （身份盲区 → 账号会读到游客缓存的画像 / 计划 / 工作流 / trace），
+    // 也不调 `resetAccountScopedState()`（`applyLogout` 调了、`applyLogin` 没调，
+    // 于是游客的聊天记录与专注记录会串进账号）。
+    ClientCache.bindIdentity(user.userId);
+    if (identityChanged) {
+      this.resetAccountScopedState();
+      this.restoreLearningData(user.userId);
+    }
+    // ⚠️ 必须放在 `resetAccountScopedState()` **之后**：那里面会把 loginNotice 清空
+    // （它也是账号维度的状态，不能串给下一个登录的人）。
+    this.loginNotice = notice;
+    void this.syncFocusSessions();
+  }
+
+  /**
+   * 退出登录 → 回到演示身份。
+   *
+   * 必须**回到 demo-user**而不是清空：否则退出登录后首页会去查一个不存在的画像而报 404。
+   *
+   * ⚠️ 同时必须清掉**账号绑定的会话态**（对话记录、专注记录、分析结果）。
+   * 只重置身份会让下一个登录的人看到上一个人的数据 —— 见
+   * `resetAccountScopedState()` 的注释。
+   */
+  public applyLogout(): void {
+    this.currentUser = {
+      userId: ApiDefaults.DEMO_USER_ID,
+      basicInfo: {
+        name: ApiDefaults.DEMO_USER_NAME,
+        grade: mockCurrentUser.basicInfo.grade,
+        major: mockCurrentUser.basicInfo.major
+      },
+      learningGoal: mockCurrentUser.learningGoal,
+      time: mockCurrentUser.time,
+      knowledge: mockCurrentUser.knowledge
+    };
+    this.authSource = 'guest';
+    this.authNickname = ApiDefaults.DEMO_USER_NAME;
+    this.isSignedIn = false;
+    // 与 `applyLogin` 对称：回到演示身份同样要让缓存跟着换归属，
+    // 否则退出登录后游客会读到刚退出的那个账号的数据。
+    ClientCache.bindIdentity(ApiDefaults.DEMO_USER_ID);
+    this.resetAccountScopedState();
+    this.restoreLearningData(ApiDefaults.DEMO_USER_ID);
+  }
+
+  public startChatTask(taskName: string): void {
+    this.activeChatTask = taskName;
+  }
+
+  public getChatTaskContext(): string {
+    if (this.activeChatTask.length === 0) {
+      return '由知学Mate为你准备';
+    }
+    return `正在完成：${this.activeChatTask}`;
+  }
+
+  public leaveChatTask(): void {
+    this.activeChatTask = '';
+  }
+
+  public completeChatTask(summary: string, nextPrompt: string, actionLabel: string, targetPage: string): void {
+    const handoff: ChatHandoff = {
+      summary: summary,
+      nextPrompt: nextPrompt,
+      actionLabel: actionLabel,
+      targetPage: targetPage
+    };
+    this.chatHandoff = handoff;
+    this.activeChatTask = '';
+  }
+
+  public consumeChatHandoff(): ChatHandoff | null {
+    const handoff: ChatHandoff | null = this.chatHandoff;
+    this.chatHandoff = null;
+    return handoff;
+  }
+
+  /* ========== 课程数据导入 ========== */
+
+  /**
+   * 导入课程表数据（替换现有课程列表）
+   * 导入后 isDataImported 置为 true，Agent 将基于真实数据进行分析
+   */
+  public importCourses(newCourses: CourseInfo[]): void {
+    if (newCourses.length === 0) {
+      throw new Error('导入数据为空，请检查文件内容');
+    }
+    this.courses = newCourses;
+    this.importedCourseCount = newCourses.length;
+    this.isDataImported = true;
+    this.persistLearningData();
+    this.advanceStage('input', '导入课程表数据');
+    this.syncImportedKnowledge();
+  }
+
+  /**
+   * 导入作业 DDL 数据（替换现有 DDL 列表）
+   */
+  public importDDLs(newDDLs: HomeworkDDL[]): void {
+    this.homeworkDDLs = newDDLs;
+    this.importedDDLCount = newDDLs.length;
+    this.isDataImported = true;
+    this.persistLearningData();
+    this.advanceStage('input', '导入作业DDL数据');
+    this.syncImportedKnowledge();
+  }
+
+  /** 删除指定课程 */
+  public removeCourse(courseId: string): void {
+    const filtered: CourseInfo[] = [];
+    for (let i = 0; i < this.courses.length; i++) {
+      if (this.courses[i].courseId !== courseId) {
+        filtered.push(this.courses[i]);
+      }
+    }
+    this.courses = filtered;
+    this.importedCourseCount = filtered.length;
+    this.isDataImported = this.courses.length > 0 || this.homeworkDDLs.length > 0;
+    this.persistLearningData();
+    this.notifyLearningDataChanged();
+  }
+
+  /**
+   * 只更新一门课程，供图片识别后的人工校正使用。
+   *
+   * 使用新对象和新数组替换旧值，保证 ArkUI 能观察到变化；如果课程名发生变化，
+   * 还要重新同步由课程名派生的知识点。课程 id 始终沿用原值，避免编辑后卡片身份变化。
+   */
+  public updateCourse(courseId: string, updatedCourse: CourseInfo): boolean {
+    const next: CourseInfo[] = [];
+    let found: boolean = false;
+    let courseNameChanged: boolean = false;
+    for (let i = 0; i < this.courses.length; i++) {
+      const current: CourseInfo = this.courses[i];
+      if (current.courseId === courseId) {
+        found = true;
+        courseNameChanged = current.courseName !== updatedCourse.courseName;
+        next.push({
+          courseId: current.courseId,
+          courseName: updatedCourse.courseName,
+          exam: {
+            date: updatedCourse.exam.date,
+            daysLeft: updatedCourse.exam.daysLeft
+          },
+          priority: updatedCourse.priority,
+          recentStatus: {
+            studyHours: current.recentStatus.studyHours,
+            status: current.recentStatus.status
+          }
+        });
+      } else {
+        next.push(current);
+      }
+    }
+    if (!found) return false;
+    this.courses = next;
+    this.persistLearningData();
+    this.notifyLearningDataChanged();
+    if (courseNameChanged) this.syncImportedKnowledge();
+    return true;
+  }
+
+  /**
+   * 应用对话中已经由用户“确认更新”的结构化改动。
+   *
+   * 课程与 DDL 的权威副本就在 AppState；因此确认后应直接写入这里并按账号持久化，
+   * 不需要再把用户赶到“课程与作业”页重复导入。`tasks` 按后端 prompt 的约定是
+   * 该课程更新后的完整任务列表，所以会替换该课程原有 DDL，其他课程完全保留。
+   */
+  public applyChatProfileUpdates(updates: ChatProfileUpdates): string[] {
+    const changed: string[] = [];
+    if (updates.user !== undefined) {
+      if (updates.user.basicInfo !== undefined) {
+        this.currentUser.basicInfo = {
+          name: updates.user.basicInfo.name ?? this.currentUser.basicInfo.name,
+          grade: updates.user.basicInfo.grade ?? this.currentUser.basicInfo.grade,
+          major: updates.user.basicInfo.major ?? this.currentUser.basicInfo.major
+        };
+        changed.push('个人信息');
+      }
+      if (updates.user.learningGoal !== undefined) {
+        this.currentUser.learningGoal = {
+          course: updates.user.learningGoal.course ?? this.currentUser.learningGoal.course,
+          goal: updates.user.learningGoal.goal ?? this.currentUser.learningGoal.goal
+        };
+        changed.push('学习目标');
+      }
+      if (updates.user.time?.freeTime !== undefined) {
+        this.currentUser.time = { freeTime: updates.user.time.freeTime };
+        changed.push('空闲时间');
+      }
+      if (updates.user.knowledge !== undefined) {
+        this.currentUser.knowledge = {
+          weakness: updates.user.knowledge.weakness ?? this.currentUser.knowledge.weakness,
+          strength: updates.user.knowledge.strength ?? this.currentUser.knowledge.strength
+        };
+        changed.push('知识情况');
+      }
+    }
+
+    const courseUpdates: ChatCourseUpdate[] = updates.course ?? [];
+    if (courseUpdates.length === 0) return changed;
+    let nextCourses: CourseInfo[] = this.courses.slice();
+    let nextDDLs: HomeworkDDL[] = this.homeworkDDLs.slice();
+    let changedCourseCount: number = 0;
+    let changedTaskCount: number = 0;
+    const stamp: number = Date.now();
+
+    for (let index: number = 0; index < courseUpdates.length; index++) {
+      const update: ChatCourseUpdate = courseUpdates[index];
+      const requestedId: string = (update.courseId ?? '').trim();
+      const requestedName: string = (update.courseName ?? '').trim();
+      let foundIndex: number = -1;
+      for (let courseIndex: number = 0; courseIndex < nextCourses.length; courseIndex++) {
+        const current: CourseInfo = nextCourses[courseIndex];
+        if ((requestedId.length > 0 && current.courseId === requestedId) ||
+          (requestedName.length > 0 && current.courseName === requestedName)) {
+          foundIndex = courseIndex;
+          break;
+        }
+      }
+
+      const existing: CourseInfo | undefined = foundIndex >= 0 ? nextCourses[foundIndex] : undefined;
+      const oldName: string = existing?.courseName ?? requestedName;
+      const finalName: string = requestedName.length > 0 ? requestedName : oldName;
+      if (finalName.length === 0) continue;
+      const examDate: string = update.exam?.date ?? existing?.exam.date ?? '未设置';
+      const computedDays: number = examDate === '未设置' ? 30 : DateHelper.calculateDaysLeft(examDate);
+      const finalCourse: CourseInfo = {
+        courseId: existing?.courseId ?? (requestedId.length > 0 ? requestedId : `chat-course-${stamp}-${index}`),
+        courseName: finalName,
+        exam: {
+          date: examDate,
+          daysLeft: isNaN(computedDays) ? (existing?.exam.daysLeft ?? 30) : computedDays
+        },
+        priority: update.priority ?? existing?.priority ?? '中',
+        recentStatus: {
+          studyHours: update.recentStatus?.studyHours ?? existing?.recentStatus.studyHours ?? 0,
+          status: update.recentStatus?.status ?? existing?.recentStatus.status ?? '尚未评估'
+        }
+      };
+      if (foundIndex >= 0) nextCourses[foundIndex] = finalCourse;
+      else nextCourses.push(finalCourse);
+      changedCourseCount++;
+
+      // 改课程名时，未被本次 tasks 覆盖的 DDL 也要跟着迁移到新名称。
+      if (oldName.length > 0 && oldName !== finalName) {
+        nextDDLs = nextDDLs.map((item: HomeworkDDL): HomeworkDDL => item.courseName === oldName
+          ? {
+            id: item.id,
+            courseName: finalName,
+            title: item.title,
+            dueDate: item.dueDate,
+            daysLeft: item.daysLeft,
+            priority: item.priority,
+            estimatedMinutes: item.estimatedMinutes,
+            origin: item.origin
+          } : item);
+      }
+
+      if (update.tasks !== undefined) {
+        const previousForCourse: HomeworkDDL[] = nextDDLs.filter(
+          (item: HomeworkDDL): boolean => item.courseName === finalName);
+        nextDDLs = nextDDLs.filter((item: HomeworkDDL): boolean => item.courseName !== finalName);
+        for (let taskIndex: number = 0; taskIndex < update.tasks.length; taskIndex++) {
+          const task: ChatTaskUpdate = update.tasks[taskIndex];
+          const title: string = (task.taskname ?? '').trim();
+          if (title.length === 0) continue;
+          const previous: HomeworkDDL | undefined = previousForCourse.find(
+            (item: HomeworkDDL): boolean => item.title === title);
+          const dueDate: string = (task.deadline ?? previous?.dueDate ?? '').trim();
+          const daysLeft: number = dueDate.length > 0 ? DateHelper.calculateDaysLeft(dueDate) : 30;
+          nextDDLs.push({
+            id: previous?.id ?? `chat-ddl-${stamp}-${index}-${taskIndex}`,
+            courseName: finalName,
+            title: title,
+            dueDate: dueDate,
+            daysLeft: isNaN(daysLeft) ? 30 : daysLeft,
+            priority: finalCourse.priority,
+            estimatedMinutes: task.estimatedMinutes ?? previous?.estimatedMinutes ?? 60,
+            // 模型按约定返回的是“更新后的完整任务列表”，其中会同时包含原有
+            // 导入 DDL 与本轮新增任务。已存在任务必须保留原来源，否则普通 DDL
+            // 会被错误搬进“对话新增任务”；只有真正新增的任务才标记为 chat。
+            // id 是创建入口留下的稳定证据：旧版本曾把 ddl-csv-* 的导入任务
+            // 错写成 origin=chat，这里顺便把已经持久化的脏标记修回来。
+            origin: previous !== undefined
+              ? (previous.id.startsWith('chat-ddl-') ? 'chat' : 'import')
+              : 'chat'
+          });
+          changedTaskCount++;
+        }
+      }
+    }
+
+    this.courses = nextCourses;
+    this.homeworkDDLs = nextDDLs;
+    this.importedCourseCount = nextCourses.length;
+    this.importedDDLCount = nextDDLs.length;
+    this.isDataImported = nextCourses.length > 0 || nextDDLs.length > 0;
+    this.persistLearningData();
+    this.clearWeeklyPlan();
+    this.notifyLearningDataChanged();
+    this.syncImportedKnowledge();
+    if (changedCourseCount > 0) changed.push(`${changedCourseCount} 门课程`);
+    if (changedTaskCount > 0 || courseUpdates.some((item: ChatCourseUpdate): boolean => item.tasks !== undefined)) {
+      changed.push(`${changedTaskCount} 项任务`);
+    }
+    return changed;
+  }
+
+  /** 删除指定DDL */
+  public removeDDL(ddlId: string): void {
+    const filtered: HomeworkDDL[] = [];
+    for (let i = 0; i < this.homeworkDDLs.length; i++) {
+      if (this.homeworkDDLs[i].id !== ddlId) {
+        filtered.push(this.homeworkDDLs[i]);
+      }
+    }
+    this.homeworkDDLs = filtered;
+    this.importedDDLCount = filtered.length;
+    this.isDataImported = this.courses.length > 0 || this.homeworkDDLs.length > 0;
+    this.persistLearningData();
+    this.notifyLearningDataChanged();
+  }
+
+  /**
+   * 追加课程（不替换已有数据）
+   */
+  public appendCourses(newCourses: CourseInfo[]): void {
+    for (let i = 0; i < newCourses.length; i++) {
+      this.courses.push(newCourses[i]);
+    }
+    this.importedCourseCount += newCourses.length;
+    this.isDataImported = true;
+    this.persistLearningData();
+    this.syncImportedKnowledge();
+  }
+
+  /**
+   * 追加 DDL（不替换已有数据）
+   */
+  public appendDDLs(newDDLs: HomeworkDDL[]): void {
+    for (let i = 0; i < newDDLs.length; i++) {
+      this.homeworkDDLs.push(newDDLs[i]);
+    }
+    this.importedDDLCount += newDDLs.length;
+    this.isDataImported = true;
+    this.persistLearningData();
+    this.syncImportedKnowledge();
+  }
+
+  /**
+   * 重置为模拟数据（用于演示回退）
+   */
+  public resetToMockData(): void {
+    this.courses = [...mockCoursesList];
+    this.homeworkDDLs = [...mockHomeworkDDLs];
+    this.isDataImported = false;
+    this.importedCourseCount = 0;
+    this.importedDDLCount = 0;
+    this.persistLearningData();
+    this.resetSession();
+  }
+
+  /**
+   * 获取数据来源描述
+   */
+  public getDataSourceDescription(): string {
+    if (!this.isDataImported && this.courses.length === 0 && this.homeworkDDLs.length === 0) {
+      return '尚未导入课程与作业';
+    }
+    if (!this.isDataImported) {
+      return `演示数据 · ${this.courses.length}门课程 · ${this.homeworkDDLs.length}项作业`;
+    }
+    const parts: string[] = [];
+    if (this.importedCourseCount > 0) {
+      parts.push(`${this.importedCourseCount}门课程`);
+    }
+    if (this.importedDDLCount > 0) {
+      parts.push(`${this.importedDDLCount}项作业`);
+    }
+    return '已导入 · ' + (parts.length > 0 ? parts.join(' · ') : '数据已加载');
+  }
+
+  /* ========== 课程相关查询 ========== */
+
+  public getHighPriorityCourse(): CourseInfo | null {
+    if (this.courses.length === 0) {
+      return null;
+    }
+    let highestCourse: CourseInfo = this.courses[0];
+    for (let index: number = 1; index < this.courses.length; index++) {
+      const course: CourseInfo = this.courses[index];
+      if (course.exam.daysLeft < highestCourse.exam.daysLeft) {
+        highestCourse = course;
+      }
+    }
+    return highestCourse;
+  }
+
+  public getUrgentDDLs(): HomeworkDDL[] {
+    return this.homeworkDDLs.filter((ddl: HomeworkDDL) => ddl.daysLeft <= 7);
+  }
+
+  /**
+   * **全部**待处理作业（= 导入进来的每一条，不做天数过滤）。
+   *
+   * 为什么要与 `getUrgentDDLs()` 分开：两者含义不同，此前却被混用了 ——
+   * 「我的」与账号页那块「待处理作业」统计用的是 `getUrgentDDLs().length`
+   * （只数 7 天内到期的）。于是用户导入 4 条、其中 1 条在 8 天以后，
+   * 界面只显示 3 条。实测反馈：「待处理作业明明上传了4个…这里只显示3个，
+   * 始终少一个，数字对不上」—— 不是算错，是**标签与口径不一致**。
+   *
+   * 现在的分工：文案说「待处理作业」用本方法（全量）；
+   * 文案说「紧急 / 临近」才用 `getUrgentDDLs()`（7 天内）。
+   */
+  public getPendingDDLs(): HomeworkDDL[] {
+    return this.homeworkDDLs;
+  }
+
+  public getDDLsByCourse(courseName: string): HomeworkDDL[] {
+    return this.homeworkDDLs.filter((ddl: HomeworkDDL) => ddl.courseName === courseName);
+  }
+
+  public getWeaknessTags(): string[] {
+    return this.currentUser.knowledge.weakness;
+  }
+
+  public getStrengthTags(): string[] {
+    return this.currentUser.knowledge.strength;
+  }
+
+  /** 从其他页面跳回对话时预填 prompt */
+  public setChatPrompt(prompt: string): void {
+    this.pendingChatPrompt = prompt;
+  }
+
+  public setFocusTask(task: FocusTask): void {
+    this.activeFocusTask = task;
+  }
+
+  public clearFocusTask(): void {
+    this.activeFocusTask = null;
+  }
+
+  public setWeeklyPlan(plan: WeeklyLearningPlan): void {
+    this.weeklyPlan = plan;
+    this.advanceStage('output', 'Agent 已生成并更新本周学习计划');
+  }
+
+  public clearWeeklyPlan(): void {
+    this.weeklyPlan = null;
+  }
+
+  /**
+   * 今天的计划任务。
+   *
+   * ⚠️ 两处修正：
+   *   1. 用 `dateLabel.indexOf(todayLabel) !== -1` 做**子串**匹配是错的 ——
+   *      `getTodayLabel()` 给的是 `"2月1日"` 这种月日串，子串匹配会让它命中
+   *      `"12月1日 周二"`，把 12 月 1 日的任务当成"今天"。改为按空格取日期段
+   *      **精确**比较（`dateLabel` 的格式是 `"9月26日 周六"`）。
+   *   2. 删掉声明后从未使用的 `todayFullLabel`。
+   *
+   * 注：当前没有页面调用本方法（属历史遗留）。保留并修正，是为了避免将来
+   * 一旦被复用就按错误日期取任务。
+   */
+  public getTodayPlanTasks(): LearningPlanTask[] {
+    if (this.weeklyPlan === null) {
+      return [];
+    }
+    const todayLabel: string = DateHelper.getTodayLabel();
+    return this.weeklyPlan.tasks.filter((task: LearningPlanTask) =>
+      task.dateLabel.split(' ')[0] === todayLabel
+    );
+  }
+
+  /**
+   * 专注结算写入的**任务完成状态**，按任务 id 归档（overlay 用）。
+   *
+   * 为什么必须有这张表：App 里同时存在**两份计划**——
+   *   · **用户看得见的那份**：接口返回的契约计划（联机为后端、离线为 Fixture），
+   *     `taskId` 形如 `task-postorder`；
+   *   · `weeklyPlan`：`LocalAgentService.generateWeeklyPlan` 本地生成的，
+   *     `id` 形如 `agent-数据结构-0`。
+   *
+   * 两套 id 空间**互不相通**，而"首页主行动卡 → 专注 → 完成"沿路带下来的是
+   * **契约 id**，于是完成状态永远匹配不到任何计划任务：「任务完成度」恒为 0%、
+   * 「学习复盘」恒说"还没有完成任务"（实测复现）。
+   *
+   * 产品口径（已与产品确认）：**完成状态以用户看得见的那份计划为准**。
+   * 后端没有回写 `task.status` 的接口，所以状态记在本地，读取时与计划做 overlay。
+   */
+  private taskStatusOverrides: Map<string, PlanTaskStatus> = new Map<string, PlanTaskStatus>();
+
+  /**
+   * 对外只读口径：这个计划任务算不算"已完成"。
+   *
+   * 计划页要据此把任务卡从「待执行」改成「已完成」—— 接口不会回写 `task.status`
+   * （后端没有这个接口），完成状态只存在于本地，所以**页面必须问本地**，
+   * 否则专注做完了、计划页还写着「待执行」，与「我的」里的完成度互相打架。
+   */
+  public isTaskCompleted(taskId: string, status: string): boolean {
+    return this.isPlanTaskDone(taskId, status);
+  }
+
+  /** 判定任务是否完成：计划里标了 completed，或本地记录过 completed。 */
+  private isPlanTaskDone(taskId: string, status: string): boolean {
+    if (status === 'completed') {
+      return true;
+    }
+    return this.taskStatusOverrides.get(taskId) === 'completed';
+  }
+
+  /** 已知计划里出现过的全部任务 id（用于判断一次标记有没有命中计划）。 */
+  private knownPlanTaskIds(): string[] {
+    const ids: string[] = [];
+    const visible: VisiblePlan | null = ClientCache.getCurrentPlan();
+    if (visible !== null) {
+      visible.tasks.forEach((task: VisiblePlanTask) => ids.push(task.taskId));
+    }
+    if (this.weeklyPlan !== null) {
+      this.weeklyPlan.tasks.forEach((task: LearningPlanTask) => ids.push(task.id));
+    }
+    return ids;
+  }
+
+  /**
+   * 记录任务完成状态。**无论有没有命中计划都要记**——否则"先专注、后打开计划页"
+   * 的顺序会让完成状态丢掉。
+   *
+   * @returns 是否在"已知的计划"里命中了这个 id（调用方据此决定提示文案，
+   *          避免像原来那样没命中还报"计划进度已更新"）。
+   */
+  public markPlanTaskStatus(taskId: string | undefined, status: PlanTaskStatus): boolean {
+    const key: string = (taskId ?? '').trim();
+    if (key.length === 0) {
+      return false;
+    }
+    if (this.taskStatusOverrides.get(key) === 'completed' && status !== 'completed') {
+      return this.knownPlanTaskIds().indexOf(key) !== -1;
+    }
+    this.taskStatusOverrides.set(key, status);
+    this.persistLearningData();
+    this.notifyFocusDataChanged();
+    return this.knownPlanTaskIds().indexOf(key) !== -1;
+  }
+
+  /**
+   * 「任务完成度」。**优先用用户看得见的那份计划**（契约 / Fixture），
+   * 它才是专注入口传下来的 id 所属的那一份；没有才回落到本地生成的计划。
+   */
+  public getPlanProgress(): number {
+    const visible: VisiblePlan | null = ClientCache.getCurrentPlan();
+    if (visible !== null && visible.tasks.length > 0) {
+      const done: number = visible.tasks.filter(
+        (task: VisiblePlanTask) => this.isPlanTaskDone(task.taskId, task.status)).length;
+      return Math.round(done / visible.tasks.length * 100);
+    }
+    if (this.weeklyPlan === null || this.weeklyPlan.tasks.length === 0) {
+      return 0;
+    }
+    const done: number = this.weeklyPlan.tasks.filter(
+      (task: LearningPlanTask) => this.isPlanTaskDone(task.id, task.status)).length;
+    return Math.round(done / this.weeklyPlan.tasks.length * 100);
+  }
+
+  /**
+   * 「已完成」任务列表（学习复盘展示用）。与 `getPlanProgress()` 同一口径，
+   * 保证"完成度"和"完成任务数"永远对得上。
+   */
+  public getCompletedPlanTasks(): LearningPlanTask[] {
+    const visible: VisiblePlan | null = ClientCache.getCurrentPlan();
+    if (visible !== null && visible.tasks.length > 0) {
+      const done: VisiblePlanTask[] = visible.tasks.filter(
+        (task: VisiblePlanTask) => this.isPlanTaskDone(task.taskId, task.status));
+      const mapped: LearningPlanTask[] = [];
+      done.forEach((task: VisiblePlanTask) => mapped.push(AppState.toDisplayTask(task)));
+      return mapped;
+    }
+    if (this.weeklyPlan === null) {
+      return [];
+    }
+    return this.weeklyPlan.tasks.filter(
+      (task: LearningPlanTask) => this.isPlanTaskDone(task.id, task.status));
+  }
+
+  /** 把契约任务转成复盘页渲染用的本地形状（只填页面真正用到的字段）。 */
+  private static toDisplayTask(task: VisiblePlanTask): LearningPlanTask {
+    return {
+      id: task.taskId,
+      course: '专项学习',
+      title: task.knowledgePointName,
+      knowledgePoint: task.knowledgePointName,
+      type: 'practice',
+      dateLabel: '',
+      plannedMinutes: task.durationMinutes,
+      priorityScore: 0,
+      priorityLabel: '',
+      reason: '',
+      completionCriteria: '',
+      steps: [],
+      status: 'completed',
+      source: 'agent',
+      canCollaborate: false
+    };
+  }
+
+  public updatePlanTaskStatus(taskId: string, status: PlanTaskStatus): void {
+    // 先记账：即使此刻计划还没加载，"完成"这件事也不能丢。
+    const key: string = (taskId ?? '').trim();
+    if (key.length === 0) {
+      return;
+    }
+    this.taskStatusOverrides.set(key, status);
+    if (this.weeklyPlan === null) {
+      return;
+    }
+    const task: LearningPlanTask | undefined = this.weeklyPlan.tasks.find((item: LearningPlanTask) => item.id === key);
+    if (task !== undefined) {
+      task.status = status;
+    }
+  }
+
+  public hasPendingWrongQuestionReview(course: string, knowledgePoint: string): boolean {
+    if (this.weeklyPlan === null) {
+      return false;
+    }
+    return this.weeklyPlan.tasks.some((task: LearningPlanTask) =>
+      task.source === 'wrong_question' &&
+      task.course === course &&
+      task.knowledgePoint === knowledgePoint &&
+      task.status !== 'completed'
+    );
+  }
+
+  public addReviewTask(task: LearningPlanTask, message: string): boolean {
+    if (this.weeklyPlan === null) {
+      return false;
+    }
+    if (this.hasPendingWrongQuestionReview(task.course, task.knowledgePoint)) {
+      this.weeklyPlan.adjustmentMessage = `“${task.knowledgePoint}”已在复习计划中，无需重复添加。`;
+      return false;
+    }
+    this.weeklyPlan.tasks.unshift(task);
+    this.weeklyPlan.adjustmentMessage = message;
+    return true;
+  }
+
+  public hasActiveCollaborativeTask(taskId: string): boolean {
+    if (this.weeklyPlan === null) {
+      return false;
+    }
+    return this.weeklyPlan.tasks.some((task: LearningPlanTask) =>
+      (task.id === taskId || task.id.startsWith(taskId + '-round-')) &&
+      task.source === 'partner_match' && task.status !== 'completed'
+    );
+  }
+
+  public hasCompletedCollaborativeTask(taskId: string): boolean {
+    if (this.weeklyPlan === null) {
+      return false;
+    }
+    return this.weeklyPlan.tasks.some((task: LearningPlanTask) =>
+      (task.id === taskId || task.id.startsWith(taskId + '-round-')) &&
+      task.source === 'partner_match' && task.status === 'completed'
+    );
+  }
+
+  public nextCollaborativeTaskId(taskId: string): string {
+    if (this.weeklyPlan === null) {
+      return taskId;
+    }
+    const count: number = this.weeklyPlan.tasks.filter((task: LearningPlanTask) =>
+      task.source === 'partner_match' &&
+      (task.id === taskId || task.id.startsWith(taskId + '-round-'))
+    ).length;
+    return count === 0 ? taskId : `${taskId}-round-${count + 1}`;
+  }
+
+  public addCollaborativeTask(task: LearningPlanTask, message: string): boolean {
+    if (this.weeklyPlan === null || this.hasActiveCollaborativeTask(task.id)) {
+      if (this.weeklyPlan !== null) {
+        this.weeklyPlan.adjustmentMessage = '该搭子的协同学习任务已在计划中，无需重复添加。';
+      }
+      return false;
+    }
+    this.weeklyPlan.tasks.unshift(task);
+    this.weeklyPlan.adjustmentMessage = message;
+    return true;
+  }
+
+  public clearCurrentWrongQuestionDraft(): void {
+    this.selectedImageUri = '';
+    this.latestWrongAnalysis = null;
+  }
+
+  public beginFocusRuntime(task: FocusTask): boolean {
+    if (this.focusRuntime !== null || this.focusResultDraft !== null) return false;
+    const previousTask: FocusTask | null = this.activeFocusTask;
+    this.focusRuntime = FocusClock.create(this.currentUser.userId, task);
+    this.activeFocusTask = task;
+    if (!this.persistLearningData()) {
+      this.focusRuntime = null;
+      this.activeFocusTask = previousTask;
+      return false;
+    }
+    this.notifyFocusDataChanged();
+    return true;
+  }
+
+  public checkpointFocusRuntime(runtime: FocusRuntime): boolean {
+    if (runtime.ownerId !== this.currentUser.userId || this.focusRuntime?.sessionId !== runtime.sessionId) return false;
+    const previous: FocusRuntime | null = this.focusRuntime;
+    this.focusRuntime = runtime;
+    if (!this.persistLearningData()) {
+      this.focusRuntime = previous;
+      return false;
+    }
+    return true;
+  }
+
+  public setFocusResultDraft(session: FocusSession): boolean {
+    const previousRuntime: FocusRuntime | null = this.focusRuntime;
+    const previousDraft: FocusSession | null = this.focusResultDraft;
+    this.focusRuntime = null;
+    this.focusResultDraft = session;
+    if (!this.persistLearningData()) {
+      this.focusRuntime = previousRuntime;
+      this.focusResultDraft = previousDraft;
+      return false;
+    }
+    this.notifyFocusDataChanged();
+    return true;
+  }
+
+  public clearFocusResultDraft(): void {
+    this.focusResultDraft = null;
+    this.persistLearningData();
+    this.notifyFocusDataChanged();
+  }
+
+  public discardFocusRecovery(): boolean {
+    const runtime: FocusRuntime | null = this.focusRuntime;
+    const draft: FocusSession | null = this.focusResultDraft;
+    this.focusRuntime = null;
+    this.focusResultDraft = null;
+    if (!this.persistLearningData()) {
+      this.focusRuntime = runtime;
+      this.focusResultDraft = draft;
+      return false;
+    }
+    this.notifyFocusDataChanged();
+    return true;
+  }
+
+  public saveFocusSession(session: FocusSession): string {
+    if (this.focusSessions.some((saved: FocusSession) => saved.taskId === session.taskId)) {
+      return 'duplicate';
+    }
+    this.focusSessions.push(session);
+    if (!AgentApiClient.getConfig().useFixture && this.isSignedIn) this.pendingFocusSessions.push(session);
+    if (!this.persistLearningData()) {
+      this.focusSessions = this.focusSessions.filter((item: FocusSession) => item.taskId !== session.taskId);
+      this.pendingFocusSessions = this.pendingFocusSessions.filter((item: FocusSession) => item.taskId !== session.taskId);
+      return 'failed';
+    }
+    this.notifyFocusDataChanged();
+    return 'saved';
+  }
+
+  /** Rebuild completion from persisted facts even if the app exited before overlay save. */
+  private restoreFocusStatuses(): void {
+    const ordered: FocusSession[] = this.focusSessions.slice().sort(
+      (left: FocusSession, right: FocusSession): number => Date.parse(left.endedAt) - Date.parse(right.endedAt));
+    ordered.forEach((item: FocusSession) => {
+      const taskId: string = item.planTaskId ?? '';
+      if (taskId.length === 0 || this.taskStatusOverrides.get(taskId) === 'completed') return;
+      this.taskStatusOverrides.set(taskId, item.selfAssessment === 'completed' ? 'completed' :
+        (item.selfAssessment === 'partial' ? 'partial' : 'deferred'));
+    });
+  }
+
+  /** Each request and result is fenced by its original account; unacked facts stay queued. */
+  public async syncFocusSessions(): Promise<void> {
+    const owner: string = this.currentUser.userId;
+    if (AgentApiClient.getConfig().useFixture || this.focusSyncUsers.has(owner)) return;
+    if (!this.isSignedIn) {
+      AppStorage.setOrCreate('focusSyncMessage', '演示身份的专注记录仅保存在本机。');
+      return;
+    }
+    this.focusSyncUsers.add(owner);
+    AppStorage.setOrCreate('focusSyncMessage', '正在同步专注记录…');
+    try {
+      while (this.pendingFocusSessions.length > 0) {
+        if (this.currentUser.userId !== owner || !this.isSignedIn || AgentApiClient.getConfig().useFixture) return;
+        const session: FocusSession = this.pendingFocusSessions[0];
+        const result = await AgentApiClient.saveFocusSession(session);
+        if (this.currentUser.userId !== owner || !this.isSignedIn) return;
+        if (!result.ok || result.data.userId !== owner) {
+          AppStorage.setOrCreate('focusSyncMessage', '记录已保存在本机，云端同步未完成；回到应用或点击重试后继续。');
+          return;
+        }
+        const remaining: FocusSession[] = this.pendingFocusSessions;
+        this.pendingFocusSessions = remaining.filter((item: FocusSession) => item.taskId !== session.taskId);
+        if (!this.persistLearningData()) {
+          this.pendingFocusSessions = remaining;
+          AppStorage.setOrCreate('focusSyncMessage', '本机同步状态保存失败，稍后将安全重试。');
+          return;
+        }
+      }
+      const history = await AgentApiClient.getFocusHistory();
+      if (this.currentUser.userId !== owner || !this.isSignedIn) return;
+      if (!history.ok || history.data.userId !== owner) {
+        AppStorage.setOrCreate('focusSyncMessage', '本机记录已保留，暂时无法读取云端历史。');
+        return;
+      }
+      history.data.sessions.forEach((session: FocusSession) => {
+        if (!this.focusSessions.some((local: FocusSession) => local.taskId === session.taskId)) {
+          this.focusSessions.push(session);
+        }
+      });
+      this.focusSessions.sort((left: FocusSession, right: FocusSession): number =>
+        Date.parse(left.endedAt) - Date.parse(right.endedAt));
+      this.restoreFocusStatuses();
+      this.notifyFocusDataChanged();
+      AppStorage.setOrCreate('focusSyncMessage', this.persistLearningData()
+        ? '专注记录已同步。' : '云端已同步，本机历史保存失败，请重试。');
+    } finally {
+      this.focusSyncUsers.delete(owner);
+    }
+  }
+
+  public getFocusSummary(): FocusSummary {
+    const courseMinutes: Map<string, number> = new Map();
+    let todayMinutes: number = 0;
+    let totalCompletion: number = 0;
+    const todayKey: string = DateHelper.todayKey();
+    // 收集"有专注记录"的日期键，用于计算连续天数。
+    const studyDays: Set<string> = new Set<string>();
+    for (let index: number = 0; index < this.focusSessions.length; index++) {
+      const session: FocusSession = this.focusSessions[index];
+      totalCompletion += session.completionRate;
+      const accumulated: number = courseMinutes.get(session.course) ?? 0;
+      courseMinutes.set(session.course, accumulated + session.actualMinutes);
+      // ⚠️ `todayMinutes` 必须**按本地日期过滤**。
+      // 原实现对所有历史会话无条件 `+=`，于是"今日专注 X 分钟"实际是"累计专注"，
+      // 跨天常驻进程下会把昨天的分钟算进今天，
+      // 而它还是 ProactiveSurfaceService / Index.loadProactiveDecision 的输入 —— 错误会扩散。
+      const dayKey: string = DateHelper.localDateKey(session.endedAt);
+      if (dayKey.length === 0) {
+        continue;   // 时间戳无法解析：跳过，不猜成今天
+      }
+      studyDays.add(dayKey);
+      if (dayKey === todayKey) {
+        todayMinutes += session.actualMinutes;
+      }
+    }
+    return {
+      todayMinutes: todayMinutes,
+      completionRate: this.focusSessions.length === 0 ? 0 : Math.round(totalCompletion / this.focusSessions.length),
+      streakDays: AppState.countStreakDays(studyDays, todayKey),
+      courseMinutes: courseMinutes,
+      recentSessions: this.focusSessions.slice(-7).reverse()
+    };
+  }
+
+  /**
+   * 连续学习天数：从今天（或昨天）往回数，遇到第一个断档就停。
+   *
+   * ⚠️ 原实现是 `streakDays: this.focusSessions.length === 0 ? 0 : 3`
+   * —— **一个写死的字面量 3**。只要做过一次专注，首页/我的/学习记录
+   * 三处都会显示"连续学习 3 天"，且与真实记录无关。评委追问"这个 3 怎么算的"
+   * 无法回答，属于**展示伪造指标**。
+   *
+   * 口径说明（刻意允许"昨天"作为起点）：今天还没学习不该立刻把连续天数清零，
+   * 否则用户每天早上打开 App 都会看到 0，激励效果反而变差。
+   */
+  private static countStreakDays(studyDays: Set<string>, todayKey: string): number {
+    if (studyDays.size === 0) {
+      return 0;
+    }
+    let cursor: string = todayKey;
+    if (!studyDays.has(cursor)) {
+      // 今天还没学：允许从昨天起算
+      const yesterdayKey: string = AppState.shiftDayKey(cursor, -1);
+      if (!studyDays.has(yesterdayKey)) {
+        return 0;
+      }
+      cursor = yesterdayKey;
+    }
+    let streak: number = 0;
+    while (studyDays.has(cursor)) {
+      streak++;
+      cursor = AppState.shiftDayKey(cursor, -1);
+    }
+    return streak;
+  }
+
+  /** 把 `YYYY-MM-DD` 键平移若干天，返回新的键。 */
+  private static shiftDayKey(key: string, deltaDays: number): string {
+    const base: Date = new Date(`${key}T00:00:00`);
+    if (isNaN(base.getTime())) {
+      return '';
+    }
+    base.setDate(base.getDate() + deltaDays);
+    return `${base.getFullYear()}-${DateHelper.pad(base.getMonth() + 1)}-${DateHelper.pad(base.getDate())}`;
+  }
+
+  /* ========== 图片管理 ========== */
+
+  public addWrongQuestionImage(uri: string, fileName: string): void {
+    const image: WrongQuestionImage = {
+      imageUri: uri,
+      fileName: fileName,
+      uploadTime: new Date().toLocaleString()
+    };
+    this.wrongQuestionImages.push(image);
+    this.selectedImageUri = uri;
+  }
+
+  public getLatestImage(): WrongQuestionImage | null {
+    if (this.wrongQuestionImages.length === 0) {
+      return null;
+    }
+    return this.wrongQuestionImages[this.wrongQuestionImages.length - 1];
+  }
+
+  /* ========== 工作流管理 ========== */
+
+  public advanceStage(stage: WorkflowStage, action: string): void {
+    this.workflowContext.currentStage = stage;
+    this.workflowContext.lastAction = action;
+    this.workflowContext.lastActionTime = new Date().toLocaleString();
+    if (this.workflowContext.completedStages.indexOf(stage) === -1) {
+      this.workflowContext.completedStages.push(stage);
+    }
+  }
+
+  public hasCompleted(stage: WorkflowStage): boolean {
+    return this.workflowContext.completedStages.indexOf(stage) !== -1;
+  }
+
+  /** 获取当前可用的导航选项 */
+  public getAvailableActions(): NavigationIntent[] {
+    const actions: NavigationIntent[] = ['back_to_hub'];
+
+    if (this.wrongQuestionImages.length > 0 && this.latestWrongAnalysis !== null) {
+      actions.push('view_tags');
+    }
+    if (this.latestPartner === null) {
+      actions.push('find_partner');
+    }
+    if (this.latestSuggestion !== null) {
+      actions.push('view_study_plan');
+    }
+    if (this.latestReview !== null) {
+      actions.push('view_review');
+    }
+    if (this.courses.length > 0) {
+      actions.push('view_courses');
+    }
+    if (this.wrongQuestionImages.length === 0 || this.latestWrongAnalysis === null) {
+      actions.push('analyze_wrong_question');
+    }
+
+    return actions;
+  }
+
+  /** 重置学习会话 */
+  public resetSession(): void {
+    this.latestSuggestion = null;
+    this.latestWrongAnalysis = null;
+    this.latestPartner = null;
+    this.latestReview = null;
+    this.optimalTask = null;
+    this.weaknessJudgments = [];
+    this.matchFeasibility = null;
+    this.wrongQuestionImages = [];
+    this.selectedImageUri = '';
+    this.weeklyPlan = null;
+    this.activeChatTask = '';
+    this.chatHandoff = null;
+    this.workflowContext = {
+      currentStage: 'idle',
+      lastAction: '',
+      lastActionTime: '',
+      completedStages: [],
+      pendingActions: []
+    };
+  }
+
+  /**
+   * 清空**与具体账号绑定**的会话态。
+   *
+   * 与 `resetSession()` 的分工：
+   *   `resetSession()` 清的是"本次分析结果"（画像/建议/搭子/周计划等），
+   *   在页面内换任务时也可能调用；
+   *   本方法清的是**对话记录与专注记录**这类"属于某个人"的数据，
+   *   只在**身份变更**（登出 / 切换账号）时调用。
+   *
+   * ⚠️ 为什么必须有这个方法：原实现里登出只重置身份四件套，
+   * `chatMessages` / `hasActiveChat` / `focusSessions` / `pendingChatPrompt`
+   * 全部原样保留，而 `ChatMain.aboutToAppear` 会用
+   * `appState.hasActiveChat && appState.chatMessages.length > 0` 恢复对话历史 ——
+   * 于是 **A 账号退出、B 账号登录后，B 会看到 A 的聊天记录与专注时长**。
+   * 这是可复现的跨账号数据泄露。
+   */
+  public resetAccountScopedState(): void {
+    this.knowledgeSyncVersion++;
+    AppStorage.setOrCreate('knowledgeSyncMessage', '');
+    this.chatMessages = '';
+    this.hasActiveChat = false;
+    this.chatSessionId = '';
+    this.pendingChatPrompt = '';
+    // 登录提示语同理：它描述的是"上一个身份注册时发生了什么"，
+    // 换身份后继续显示等于对新用户说别人的事。
+    this.loginNotice = '';
+    this.focusSessions = [];
+    this.pendingFocusSessions = [];
+    AppStorage.setOrCreate('focusSyncMessage', '');
+    this.activeFocusTask = null;
+    // Identity reset only clears memory; another account's snapshot must not be overwritten.
+    this.focusResultDraft = null;
+    this.focusRuntime = null;
+    // 任务完成状态是**账号维度**的：不清会让下一个登录的人看到上一个人的
+    // "已完成"任务（与 focusSessions / courses 同一类跨身份串数据）。
+    this.taskStatusOverrides.clear();
+    // 课程和 DDL 目前是本地内存数据，没有服务端账号归属。切换身份时若保留，
+    // 会让账号看到游客导入的内容（反之亦然），形成明显的跨身份串数据。
+    this.courses = [];
+    this.homeworkDDLs = [];
+    this.notifyLearningDataChanged();
+    this.isDataImported = false;
+    this.importedCourseCount = 0;
+    this.importedDDLCount = 0;
+    this.resetSession();
+    this.notifyFocusDataChanged();
+  }
+}
+
+export const appState: AppState = AppState.getInstance();

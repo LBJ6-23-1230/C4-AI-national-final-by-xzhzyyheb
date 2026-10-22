@@ -1,0 +1,489 @@
+# -*- coding: utf-8 -*-
+"""知识库第一期回归测试。
+
+覆盖 `docs/12-知识库设计方案.md` 第一期的验收点：
+解析 / 切片 / 知识点提取 / 易错点 / 检索 / 用户隔离 / 诚实降级 / 输入护栏。
+"""
+
+import base64
+import io
+import zipfile
+
+from app import create_app
+from app.agent import knowledge
+
+H = {"X-API-Contract-Version": "api-contract-v0.3"}
+
+LECTURE = """# 第3章 树与二叉树
+
+## 3.2 二叉树遍历
+
+前序遍历的顺序是根-左-右。中序遍历的顺序是左-根-右。
+
+## 3.2.3 后序遍历
+
+后序遍历的顺序是左-右-根，因此根节点总是最后被访问。
+常见错误：把后序遍历与中序遍历的访问时机混淆。
+
+## 3.3 递归理解
+
+递归理解的核心是终止条件与调用栈。递归理解不到位会导致遍历写错。
+递归理解的练习建议从简单树开始。
+"""
+
+
+def _b64(text: str) -> str:
+    return base64.b64encode(text.encode("utf-8")).decode("ascii")
+
+
+def _make_kb(client, name="结构复习库"):
+    response = client.post("/api/v1/knowledge-bases",
+                           json={"courseName": "数据结构", "name": name}, headers=H)
+    assert response.status_code == 201
+    return response.get_json()["kbId"]
+
+
+def _upload(client, kb_id, file_name="二叉树复习讲义.md", text=LECTURE):
+    return client.post(f"/api/v1/knowledge-bases/{kb_id}/documents",
+                       json={"fileName": file_name, "contentBase64": _b64(text),
+                             "mimeType": "text/markdown"},
+                       headers=H)
+
+
+def test_upload_decodes_percent_encoded_file_name(tmp_path):
+    """系统文件选择器返回的 URI 文件名应显示为中文，而不是 `%E5...`。"""
+    client = create_app(tmp_path / "kb-file-name.json").test_client()
+    kb_id = _make_kb(client)
+
+    body = _upload(client, kb_id, file_name="%E8%AF%BE%E7%A8%8B%E8%B5%84%E6%96%99.md").get_json()
+
+    assert body["fileName"] == "课程资料.md"
+
+
+def test_file_name_decode_keeps_path_traversal_out():
+    assert knowledge.normalize_file_name("%2E%2E%2Fsecret.pdf") == "secret.pdf"
+
+
+# --------------------------------------------------------------------- 切片与标题路径
+def test_upload_extracts_chunks_with_heading_path(tmp_path):
+    """切片必须带 `headingPath` —— 这是引用能标注"第几章第几节"的前提。"""
+    client = create_app(tmp_path / "kb.json").test_client()
+    kb_id = _make_kb(client)
+
+    body = _upload(client, kb_id).get_json()
+
+    assert body["status"] == "ready"
+    assert body["chunkCount"] >= 3
+    assert body["charCount"] > 100
+
+    hits = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "后序遍历", "topK": 5}, headers=H).get_json()["hits"]
+    assert hits, "应当能检索到内容"
+    paths = [hit["headingPath"] for hit in hits]
+    assert any("后序遍历" in path for path in paths), f"标题路径缺失：{paths}"
+    assert any(">" in path for path in paths), "应当保留层级（用 > 连接）"
+
+
+# --------------------------------------------------------------------- 知识点提取
+def test_knowledge_points_come_from_headings(tmp_path):
+    """知识点提取应来自标题层级，并剥掉编号前缀。"""
+    client = create_app(tmp_path / "kb-points.json").test_client()
+    kb_id = _make_kb(client)
+
+    points = _upload(client, kb_id).get_json()["knowledgePoints"]
+
+    assert "后序遍历" in points, f"应识别出后序遍历，实际 {points}"
+    assert "递归理解" in points, f"应识别出递归理解，实际 {points}"
+    # 编号前缀必须被剥掉（否则会出现 '.2.3 后序遍历' 这种脏标签）
+    for point in points:
+        assert not point.startswith("."), f"标题编号未剥离干净：{points}"
+        assert not point.startswith("第"), f"标题编号未剥离干净：{points}"
+    assert all(len(point) <= 12 for point in points), f"存在过长标签：{points}"
+
+
+def test_error_point_candidates_are_extracted(tmp_path):
+    """易错点候选来自命中小节标题/易错语境的句子（确定性规则，非模型生成）。"""
+    client = create_app(tmp_path / "kb-errors.json").test_client()
+    kb_id = _make_kb(client)
+
+    candidates = _upload(client, kb_id).get_json()["errorPointCandidates"]
+
+    assert candidates, "应当抽取出易错点候选"
+    assert any("混淆" in item or "错误" in item for item in candidates), \
+        f"应当命中易错语境：{candidates}"
+
+
+# --------------------------------------------------------------------- 检索
+def test_search_ranks_relevant_chunk_first(tmp_path):
+    client = create_app(tmp_path / "kb-search.json").test_client()
+    kb_id = _make_kb(client)
+    _upload(client, kb_id)
+
+    hits = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "后序遍历的顺序", "topK": 3}, headers=H).get_json()["hits"]
+
+    assert hits, "应当有命中"
+    assert "后序" in hits[0]["headingPath"], f"最相关切片应排第一：{hits[0]['headingPath']}"
+    assert hits[0]["score"] > 0
+    # 分数必须递减
+    scores = [hit["score"] for hit in hits]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_search_reports_retrieval_mode_honestly(tmp_path):
+    """检索方式必须诚实标注（答辩时要能解释当前是关键词还是向量）。"""
+    client = create_app(tmp_path / "kb-mode.json").test_client()
+    kb_id = _make_kb(client)
+    _upload(client, kb_id)
+
+    body = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "遍历"}, headers=H).get_json()
+
+    assert body["retrievalMode"] == "keyword+tag"
+    assert body["totalScanned"] >= 1
+
+
+def test_search_hit_carries_file_name_for_citation(tmp_path):
+    """命中必须带文件名 —— 引用要能指回来源。"""
+    client = create_app(tmp_path / "kb-cite.json").test_client()
+    kb_id = _make_kb(client)
+    _upload(client, kb_id, file_name="我的讲义.md")
+
+    hits = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "后序"}, headers=H).get_json()["hits"]
+
+    assert hits
+    assert hits[0]["fileName"] == "我的讲义.md"
+
+
+def test_search_rejects_bad_top_k(tmp_path):
+    client = create_app(tmp_path / "kb-topk.json").test_client()
+    kb_id = _make_kb(client)
+    _upload(client, kb_id)
+
+    for bad in (0, -1, 21, "5", True):
+        response = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                               json={"query": "遍历", "topK": bad}, headers=H)
+        assert response.status_code == 400, f"topK={bad!r} 应当被拒"
+
+
+# --------------------------------------------------------------------- 诚实降级
+def test_invalid_pdf_upload_fails_honestly_not_silently(tmp_path):
+    """损坏的 PDF 必须明确失败，不能假装解析成功。"""
+    client = create_app(tmp_path / "kb-pdf.json").test_client()
+    kb_id = _make_kb(client)
+
+    body = client.post(f"/api/v1/knowledge-bases/{kb_id}/documents",
+                       json={"fileName": "真题.pdf",
+                             "contentBase64": _b64("%PDF-1.4 fake")},
+                       headers=H).get_json()
+
+    assert body["status"] == "failed"
+    assert "PDF" in body["statusMessage"]
+    assert body["chunkCount"] == 0
+
+
+def test_real_pdf_upload_extracts_searchable_text(tmp_path):
+    """真实 PDF 走 PyMuPDF 正式命名空间后仍能提取并检索正文。"""
+    import pymupdf
+
+    document = pymupdf.open()
+    page = document.new_page()
+    page.insert_text((72, 72), "binary tree postorder visits left right root")
+    payload = document.tobytes()
+    document.close()
+
+    client = create_app(tmp_path / "kb-real-pdf.json").test_client()
+    kb_id = _make_kb(client)
+    response = client.post(f"/api/v1/knowledge-bases/{kb_id}/documents", json={
+        "fileName": "postorder.pdf",
+        "contentBase64": base64.b64encode(payload).decode("ascii"),
+        "mimeType": "application/pdf",
+    }, headers=H)
+    body = response.get_json()
+
+    assert body["status"] == "ready"
+    assert body["chunkCount"] == 1
+    hits = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "postorder"}, headers=H).get_json()["hits"]
+    assert hits and "left right root" in hits[0]["text"]
+
+
+def test_docx_upload_extracts_text(tmp_path):
+    client = create_app(tmp_path / "kb-ext.json").test_client()
+    kb_id = _make_kb(client)
+
+    document_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body><w:p><w:r><w:t>二叉树后序遍历的顺序是左右根。</w:t></w:r></w:p></w:body>
+</w:document>"""
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w") as archive:
+        archive.writestr("word/document.xml", document_xml)
+
+    response = client.post(f"/api/v1/knowledge-bases/{kb_id}/documents", json={
+        "fileName": "讲义.docx",
+        "contentBase64": base64.b64encode(payload.getvalue()).decode("ascii"),
+    }, headers=H)
+    body = response.get_json()
+
+    assert body["status"] == "ready"
+    assert body["chunkCount"] == 1
+    hits = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "后序遍历"}, headers=H).get_json()["hits"]
+    assert hits and "左右根" in hits[0]["text"]
+
+
+def test_invalid_legacy_doc_fails_as_invalid_document(tmp_path):
+    client = create_app(tmp_path / "kb-doc.json").test_client()
+    kb_id = _make_kb(client)
+
+    body = _upload(client, kb_id, file_name="讲义.doc", text="内容").get_json()
+
+    assert body["status"] == "failed"
+    assert "DOC" in body["statusMessage"]
+
+
+def test_pdf_text_quality_rejects_garbled_glyph_mapping():
+    readable = "第8章 代数系统 离散数学 8.1 基本概念"
+    garbled = "ϖ ꜛ Ѡ९ ◌◌ ☐ ꙳ Ϡ Ѫ ꜛ ◌◌"
+
+    assert knowledge._pdf_text_quality(readable) > knowledge._pdf_text_quality(garbled)
+
+
+def test_invalid_base64_fails_honestly(tmp_path):
+    client = create_app(tmp_path / "kb-b64.json").test_client()
+    kb_id = _make_kb(client)
+
+    body = client.post(f"/api/v1/knowledge-bases/{kb_id}/documents",
+                       json={"fileName": "内容.md", "contentBase64": "!!!not-base64!!!"},
+                       headers=H).get_json()
+
+    assert body["status"] == "failed"
+    assert body["statusMessage"]
+
+
+def test_gbk_encoded_file_is_decoded(tmp_path):
+    """国内 CSV 常见 GBK 编码，必须能正确解码而不是乱码。"""
+    client = create_app(tmp_path / "kb-gbk.json").test_client()
+    kb_id = _make_kb(client)
+
+    content = "二叉树遍历,后序遍历是左右根".encode("gbk")
+    body = client.post(f"/api/v1/knowledge-bases/{kb_id}/documents",
+                       json={"fileName": "题库.csv",
+                             "contentBase64": base64.b64encode(content).decode("ascii")},
+                       headers=H).get_json()
+
+    assert body["status"] == "ready"
+    hits = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "后序遍历"}, headers=H).get_json()["hits"]
+    assert hits, "GBK 内容应当可被检索"
+
+
+# --------------------------------------------------------------------- 用户隔离
+def test_knowledge_bases_are_isolated_per_user(tmp_path):
+    """知识库是个人资料，**必须按用户隔离**。
+
+    这条是硬要求：审计已发现项目里存在"登录后仍读到 demo-user 数据"的缺陷，
+    新模块不能重复这个错误。
+    """
+    client = create_app(tmp_path / "kb-isolation.json").test_client()
+    kb_id = _make_kb(client)
+    _upload(client, kb_id)
+
+    assert client.get("/api/v1/knowledge-bases?userId=other-user",
+                      headers=H).status_code == 404
+    assert client.get(f"/api/v1/knowledge-bases/{kb_id}?userId=other-user",
+                      headers=H).status_code == 404
+    assert client.get(f"/api/v1/knowledge-bases/{kb_id}/documents?userId=other-user",
+                      headers=H).status_code == 404
+    assert client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "遍历", "userId": "other-user"},
+                       headers=H).status_code == 404
+
+
+def test_same_user_sees_own_knowledge_base(tmp_path):
+    client = create_app(tmp_path / "kb-own.json").test_client()
+    kb_id = _make_kb(client)
+
+    body = client.get("/api/v1/knowledge-bases", headers=H).get_json()
+
+    assert body["total"] == 1
+    assert body["knowledgeBases"][0]["kbId"] == kb_id
+
+
+# --------------------------------------------------------------------- 汇总与删除
+def test_knowledge_base_summary_updates_after_upload(tmp_path):
+    """上传后知识库的文档数/切片数/知识点汇总必须刷新。"""
+    client = create_app(tmp_path / "kb-summary.json").test_client()
+    kb_id = _make_kb(client)
+
+    before = client.get(f"/api/v1/knowledge-bases/{kb_id}", headers=H).get_json()
+    assert before["documentCount"] == 0
+    assert before["chunkCount"] == 0
+
+    _upload(client, kb_id)
+
+    after = client.get(f"/api/v1/knowledge-bases/{kb_id}", headers=H).get_json()
+    assert after["documentCount"] == 1
+    assert after["chunkCount"] >= 3
+    assert after["knowledgePoints"], "汇总里应当有知识点"
+    assert len(after["documents"]) == 1
+    assert after["documents"][0]["status"] == "ready"
+
+
+def test_delete_document_clears_chunks(tmp_path):
+    client = create_app(tmp_path / "kb-del-doc.json").test_client()
+    kb_id = _make_kb(client)
+    document_id = _upload(client, kb_id).get_json()["documentId"]
+
+    assert client.delete(f"/api/v1/documents/{document_id}", headers=H).status_code == 200
+
+    after = client.get(f"/api/v1/knowledge-bases/{kb_id}", headers=H).get_json()
+    assert after["documentCount"] == 0
+    assert after["chunkCount"] == 0
+    hits = client.post(f"/api/v1/knowledge-bases/{kb_id}/search",
+                       json={"query": "遍历"}, headers=H).get_json()["hits"]
+    assert hits == [], "删除文档后不应还能检索到切片"
+
+
+# --------------------------------------------------------------------- 文档详情（正文）
+def test_document_detail_returns_chunk_text_in_order(tmp_path):
+    """详情接口必须回**正文**，且按原文顺序。
+
+    对应一个真实用户反馈："上传了讲义，只看得到大模型给出的大致属性
+    （字数 / 片段数 / 知识点），看不了具体内容"。根因是详情原先只回
+    `documents` 记录、不回 `chunks` —— 正文只存在于后者。
+    顺序错了同样致命：用户看到的讲义会是乱的。
+    """
+    client = create_app(tmp_path / "kb-detail.json").test_client()
+    kb_id = _make_kb(client)
+    document_id = _upload(client, kb_id).get_json()["documentId"]
+
+    body = client.get(f"/api/v1/documents/{document_id}", headers=H).get_json()
+
+    assert body["chunkTotal"] == len(body["chunks"]) == 3
+    assert body["chunksTruncated"] is False
+    # 序号从 1 连续递增，且与原文顺序一致（前序 → 后序 → 递归理解）
+    assert [chunk["index"] for chunk in body["chunks"]] == [1, 2, 3]
+    assert "前序遍历的顺序" in body["chunks"][0]["text"]
+    assert "后序遍历的顺序" in body["chunks"][1]["text"]
+    assert "递归理解" in body["chunks"][2]["text"]
+    # 标题路径（引用来源）必须跟着正文一起回，否则界面上无法标注"出自哪一节"
+    assert "后序遍历" in body["chunks"][1]["headingPath"]
+
+
+def test_document_detail_marks_truncation_honestly(tmp_path):
+    """切片很多时**限量返回但如实标注**，绝不静默截断。
+
+    静默截断会让用户以为"这份讲义只有 50 段"，是欺骗性展示；
+    所以 `chunkTotal` 必须是真实总数、`chunksTruncated` 必须为真。
+    """
+    client = create_app(tmp_path / "kb-detail-trunc.json").test_client()
+    kb_id = _make_kb(client)
+    sections = "\n".join(f"## 第{i}节 小节{i}\n\n这是第 {i} 段正文内容。\n" for i in range(1, 61))
+    document_id = _upload(client, kb_id, file_name="大讲义.md",
+                          text=sections).get_json()["documentId"]
+
+    body = client.get(f"/api/v1/documents/{document_id}", headers=H).get_json()
+
+    assert body["chunkTotal"] == 60
+    assert body["chunksTruncated"] is True
+    assert len(body["chunks"]) == knowledge.MAX_CHUNKS_PER_RESPONSE
+
+
+def test_document_detail_is_isolated_per_user(tmp_path):
+    """正文是最敏感的部分，必须按用户隔离 —— 猜不到 documentId 不等于读得到。"""
+    client = create_app(tmp_path / "kb-detail-iso.json").test_client()
+    kb_id = _make_kb(client)
+    document_id = _upload(client, kb_id).get_json()["documentId"]
+
+    assert client.get(f"/api/v1/documents/{document_id}",
+                      headers=H).status_code == 200
+    assert client.get(f"/api/v1/documents/{document_id}?userId=other-user",
+                      headers=H).status_code == 404
+
+
+def test_delete_knowledge_base(tmp_path):
+    client = create_app(tmp_path / "kb-del.json").test_client()
+    kb_id = _make_kb(client)
+    _upload(client, kb_id)
+
+    assert client.delete(f"/api/v1/knowledge-bases/{kb_id}", headers=H).status_code == 200
+    assert client.get(f"/api/v1/knowledge-bases/{kb_id}", headers=H).status_code == 404
+
+
+# --------------------------------------------------------------------- 护栏
+def test_duplicate_knowledge_base_name_is_conflict(tmp_path):
+    client = create_app(tmp_path / "kb-dup.json").test_client()
+    _make_kb(client, name="重名库")
+
+    response = client.post("/api/v1/knowledge-bases",
+                           json={"courseName": "数据结构", "name": "重名库"}, headers=H)
+
+    assert response.status_code == 409
+    assert response.get_json()["errorCode"] == "CONFLICT"
+
+
+def test_one_course_has_one_knowledge_base(tmp_path):
+    client = create_app(tmp_path / "kb-course-unique.json").test_client()
+    first = client.post("/api/v1/knowledge-bases", json={
+        "courseName": "数据结构", "name": "期中资料",
+    }, headers=H)
+    assert first.status_code == 201
+
+    duplicate_course = client.post("/api/v1/knowledge-bases", json={
+        "courseName": " 数据结构 ", "name": "期末资料",
+    }, headers=H)
+    assert duplicate_course.status_code == 409
+    assert duplicate_course.get_json()["details"]["kbId"] == first.get_json()["kbId"]
+
+
+def test_upload_rejects_path_traversal_in_file_name(tmp_path):
+    """文件名必须是最后一段，防止路径穿越。"""
+    client = create_app(tmp_path / "kb-traversal.json").test_client()
+    kb_id = _make_kb(client)
+
+    body = _upload(client, kb_id, file_name="../../etc/passwd.md").get_json()
+
+    assert "/" not in body["fileName"]
+    assert body["fileName"] == "passwd.md"
+
+
+def test_upload_rejects_empty_payload(tmp_path):
+    client = create_app(tmp_path / "kb-empty.json").test_client()
+    kb_id = _make_kb(client)
+
+    assert client.post(f"/api/v1/knowledge-bases/{kb_id}/documents",
+                       json={"fileName": "空.md", "contentBase64": ""},
+                       headers=H).status_code == 400
+    assert client.post(f"/api/v1/knowledge-bases/{kb_id}/documents",
+                       json={"contentBase64": "YQ=="}, headers=H).status_code == 400
+
+
+def test_knowledge_base_requires_course_and_name(tmp_path):
+    client = create_app(tmp_path / "kb-required.json").test_client()
+
+    assert client.post("/api/v1/knowledge-bases", json={}, headers=H).status_code == 400
+    assert client.post("/api/v1/knowledge-bases",
+                       json={"courseName": "数据结构"}, headers=H).status_code == 400
+
+
+def test_non_object_body_is_rejected(tmp_path):
+    """沿用统一护栏：非对象 JSON 返回 400 而不是 500。"""
+    client = create_app(tmp_path / "kb-body.json").test_client()
+
+    for raw in ('[1,2,3]', '"hello"', '123'):
+        response = client.post("/api/v1/knowledge-bases", data=raw,
+                               content_type="application/json", headers=H)
+        assert response.status_code == 400, f"{raw} → {response.status_code}"
+
+
+def test_upload_unknown_knowledge_base_is_404(tmp_path):
+    client = create_app(tmp_path / "kb-404.json").test_client()
+
+    response = client.post("/api/v1/knowledge-bases/kb-nonexistent/documents",
+                           json={"fileName": "a.md", "contentBase64": _b64("x")},
+                           headers=H)
+
+    assert response.status_code == 404

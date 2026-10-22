@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-21",
+  "workspace": "D:\\project\\zhixue_final",
+  "origin": "https://github.com/LBJ6-23-1230/C4-AI-national-final-by-xzhzyyheb.git",
+  "baseCommit": "7d58fb707e418b83566201e12e6d721a384fb6be",
+  "includesUncommittedChanges": true,
+  "backend": {
+    "python": "3.12.10",
+    "pipCheck": "PASS",
+    "testsPassed": 416,
+    "warnings": 1,
+    "seconds": 33.96,
+    "accessControlCases": 24,
+    "isolatedAuthHttpChecksPassed": 23,
+    "followupValidation": "54 access-control and knowledge tests passed after restoring malformed userId validation"
+  },
+  "contract": {
+    "version": "api-contract-v0.3",
+    "bytes": 150260,
+    "sha256": "3909d86276ade808c5b9820b8fd1c8e404e951873fdcc1cd30840af2e6eeafcb",
+    "mirrorByteIdentical": true
+  },
+  "frontend": {
+    "sdk": "6.1.1(24)",
+    "devecoBuild": "DS-243.24978.46.36.611290",
+    "build": "PASS",
+    "buildSeconds": 34.913,
+    "arktsWarnings": 121,
+    "signatureType": "debug",
+    "signatureVerification": "PASS",
+    "device": "Pura 90 emulator",
+    "api": 24,
+    "system": "emulator 6.1.0.126(SP1DEVC00E120R4P11)",
+    "install": "PASS",
+    "startup": "PASS",
+    "navigation": "NOT PASSED: legacy UI navigation script has startup/viewport timing failures; no full flow claim",
+    "hapPath": "app/entry/build/default/outputs/default/entry-default-signed.hap",
+    "archivedLocalHap": ".local-work/final-baseline-20261021/zhixue-mate-access-control-debug.hap",
+    "hapSha256": "42d2d50878199e808fc452ddb0028685001815724f3b92fd56fb2f5e448d2317",
+    "signingCertificateSha256": "C9F0D3B787714716621A2DD9841918DCA3F3C880D487A79695B3603B6A4664B6",
+    "signingCertificateValidUntil": "2027-09-21 22:23:37"
+  },
+  "onlineModels": {
+    "qwen-vl-max": "HTTP 404",
+    "qwen3-vl-plus": "HTTP 403; not selected",
+    "qwen-plus": "text PASS",
+    "text-embedding-v3": "PASS, 1024 dimensions",
+    "localTextModel": "qwen-plus",
+    "vision": "unavailable; pending model access/quota verification"
+  },
+  "limits": [
+    "No real-device or dual-device validation",
+    "Huawei trusted authorization not implemented; endpoint disabled with HTTP 503",
+    "Report B-F business repairs remain pending",
+    "Historic hap directory unchanged"
+  ]
+}
