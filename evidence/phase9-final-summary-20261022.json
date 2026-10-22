@@ -1,0 +1,27 @@
+{
+  "python": "3.12.10",
+  "lockedDistributions": 32,
+  "pymupdf": "1.28.2",
+  "tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "593",
+    "time": "38.378",
+    "timestamp": "2026-10-22T21:39:52.922015+08:00",
+    "hostname": "lucky"
+  },
+  "modelAuthentication": "recorded_401_no_reprobe_requested",
+  "artifact": "deliverables/知学Mate-第九批-20261022-signed.hap",
+  "hap": {
+    "bytes": 3357913,
+    "sha256": "c2e7bdd56edde6c486e3d6f373c64066bbd2c38a5690575950b9ca33f45fa648",
+    "cleanBuild": true,
+    "signed": true,
+    "signatureVerified": true,
+    "profile": "debug",
+    "arktsWarningLines": 157,
+    "installOrDeviceTest": "not_run"
+  }
+}
