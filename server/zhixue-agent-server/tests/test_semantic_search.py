@@ -95,62 +95,34 @@ def test_encode_returns_none_on_empty_input(monkeypatch):
 
 
 def test_encode_splits_dashscope_requests_at_ten_and_preserves_order(monkeypatch):
-    """真实上限是每批 10 条；25 条应拆成 10/10/5，且结果顺序不变。"""
+    """Keep the upstream batch/order regression against the shared transport."""
+    from types import SimpleNamespace as NS
+    from app.services import llm_runtime
     monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-test")
-    batches: list[list[str]] = []
-
-    class FakeResponse:
-        def __init__(self, rows):
-            self._body = json.dumps({"data": rows}).encode("utf-8")
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def read(self):
-            return self._body
-
-    def fake_urlopen(request, timeout):
-        assert timeout == semantic._TIMEOUT_SECONDS
-        batch = json.loads(request.data.decode("utf-8"))["input"]
+    batches = []
+    def request(kind, payload, **kwargs):
+        assert 0 < kwargs["budget"] <= semantic._TIMEOUT_SECONDS
+        batch = payload["input"]
         batches.append(batch)
-        # 故意倒序返回，验证每一批都按 index 复原后再拼接。
-        rows = [{"index": index, "embedding": [float(text[1:])]}
-                for index, text in reversed(list(enumerate(batch)))]
-        return FakeResponse(rows)
-
-    monkeypatch.setattr(semantic, "urlopen", fake_urlopen)
+        return NS(data=[NS(index=i, embedding=[float(text[1:])])
+                        for i, text in reversed(list(enumerate(batch)))])
+    monkeypatch.setattr(llm_runtime, "request", request)
     vectors = semantic.encode([f"t{i}" for i in range(25)])
-
     assert [len(batch) for batch in batches] == [10, 10, 5]
     assert vectors == [[float(i)] for i in range(25)]
 
 
 def test_encode_fails_honestly_when_one_batch_is_truncated(monkeypatch):
+    from types import SimpleNamespace as NS
+    from app.services import llm_runtime
     monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-test")
-    calls = 0
-
-    class FakeResponse:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def read(self):
-            return json.dumps({"data": []}).encode("utf-8")
-
-    def fake_urlopen(_request, timeout):
-        nonlocal calls
-        calls += 1
-        return FakeResponse()
-
-    monkeypatch.setattr(semantic, "urlopen", fake_urlopen)
-
+    calls = []
+    def request(*args, **kwargs):
+        calls.append(1)
+        return NS(data=[])
+    monkeypatch.setattr(llm_runtime, "request", request)
     assert semantic.encode([f"t{i}" for i in range(12)]) is None
-    assert calls == 1
+    assert len(calls) == 1
 
 
 # ===========================================================================

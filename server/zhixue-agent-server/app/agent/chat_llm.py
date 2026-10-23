@@ -219,10 +219,8 @@ def llm_base_url() -> str:
 
 
 def llm_timeout_seconds() -> float:
-    try:
-        return max(1.0, float(os.getenv("LLM_TIMEOUT_SECONDS", "30")))
-    except ValueError:
-        return 30.0
+    from app.services.llm_runtime import seconds
+    return seconds("LLM_TIMEOUT_SECONDS", 30)
 
 
 def llm_max_retries() -> int:
@@ -267,15 +265,8 @@ def _thinking_kwargs() -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- LLM 调用
-def _client():
-    import openai  # 延迟导入：未安装 openai 时不影响确定性接口
-    return openai.OpenAI(
-        api_key=os.getenv("DASHSCOPE_API_KEY", "").strip(), base_url=llm_base_url(),
-        timeout=llm_timeout_seconds(), max_retries=llm_max_retries())
-
-
 def _call_llm(system_prompt: str, user_prompt: str, temperature: float = 0.7,
-              max_tokens: int = 800, response_json: bool = False) -> str:
+              max_tokens: int = 800, response_json: bool = False, request_type: str = "chat") -> str:
     system_prompt = (system_prompt + "\n你是知学 Mate 学习助手，名字是小知。"
                      "如需自称，只能使用‘小知’，不要使用‘小艺’或其他名字。")
     kwargs: dict[str, Any] = {
@@ -290,7 +281,8 @@ def _call_llm(system_prompt: str, user_prompt: str, temperature: float = 0.7,
     if response_json:
         kwargs["response_format"] = {"type": "json_object"}
     kwargs.update(_thinking_kwargs())
-    response = _client().chat.completions.create(**kwargs)
+    from app.services import llm_runtime
+    response = llm_runtime.request(request_type, kwargs, budget=llm_timeout_seconds())
     return response.choices[0].message.content or ""
 
 
@@ -335,7 +327,8 @@ def _call_llm_with_image(system_prompt: str, user_prompt: str, image_base64: str
     if response_json:
         kwargs["response_format"] = {"type": "json_object"}
     kwargs.update(_thinking_kwargs())
-    response = _client().chat.completions.create(**kwargs)
+    from app.services import llm_runtime
+    response = llm_runtime.request("vision", kwargs, budget=llm_timeout_seconds())
     return response.choices[0].message.content or ""
 
 

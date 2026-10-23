@@ -215,7 +215,7 @@ def main() -> int:
 
     # ---------------- 2. 签名 HAP ----------------
     print("[2/6] 复制签名 HAP")
-    hap_src = SRC / "deliverables" / "知学Mate-signed.hap"
+    hap_src = SRC / "hap" / "知学Mate-signed.hap"
     hap_dst = srcdir / "hap" / "知学Mate-signed.hap"
     hap_dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(hap_src, hap_dst)

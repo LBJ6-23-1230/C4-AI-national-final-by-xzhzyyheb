@@ -26,7 +26,7 @@ $emuDir  = 'D:\DevEco\DevEco Studio\tools\emulator'
 $emu     = Join-Path $emuDir 'Emulator.exe'
 $hdc     = 'D:\DevEco\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe'
 $root    = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$signed  = Join-Path $root 'deliverables\知学Mate-signed.hap'
+$signed  = Join-Path $root 'hap\知学Mate-signed.hap'
 
 Write-Host '=== 知学 Mate · 模拟器启动器 ===' -ForegroundColor Cyan
 

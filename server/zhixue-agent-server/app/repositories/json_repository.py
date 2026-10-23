@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import os
 import threading
+from contextlib import contextmanager
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +24,17 @@ class JsonRepository(Repository):
 		# 全量重写整个文件，本身就是一段临界区：必须串行化。
 		# 见 `_flush()` 的说明（Windows 上并发 replace 会抛 WinError 5/32）。
 		self._write_lock = threading.RLock()
+		from app.repositories.process_lease import acquire
+		self._lease = acquire(self, self.path)
 		self._load()
+
+	def close(self):
+		self._lease()
+
+	@contextmanager
+	def transaction(self):
+		with self._write_lock:
+			yield self
 
 	def _load(self) -> None:
 		if self.path.exists():
@@ -74,18 +86,18 @@ class JsonRepository(Repository):
 
 	def get(self, collection: str, item_id: str) -> dict[str, Any] | None:
 		value = self._data.get(collection, {}).get(item_id)
-		return dict(value) if value is not None else None
+		return deepcopy(value) if value is not None else None
 
 	def save(self, collection: str, item_id: str, value: dict[str, Any]) -> None:
 		# 内存状态与落盘必须在同一个临界区内完成。
 		# 否则 `_flush()` 抛异常时内存已被改写、磁盘还是旧值，
 		# 后续读请求会读到"写了但没存住"的状态（实测会击穿幂等语义）。
 		with self._write_lock:
-			self._data.setdefault(collection, {})[item_id] = dict(value)
+			self._data.setdefault(collection, {})[item_id] = deepcopy(value)
 			self._flush()
 
 	def list(self, collection: str) -> list[dict[str, Any]]:
-		return [dict(value) for value in self._data.get(collection, {}).values()]
+		return deepcopy(list(self._data.get(collection, {}).values()))
 
 	def ids(self, collection: str) -> list[str]:
 		"""列出集合内的 item_id。
@@ -118,7 +130,7 @@ class JsonRepository(Repository):
 					del self._data[collection][item_id]
 					changed = True
 			for collection, item_id, value in saves:
-				self._data.setdefault(collection, {})[item_id] = dict(value)
+				self._data.setdefault(collection, {})[item_id] = deepcopy(value)
 				changed = True
 			if changed:
 				try:
@@ -132,3 +144,11 @@ class JsonRepository(Repository):
 			if collection in self._data:
 				del self._data[collection]
 				self._flush()
+
+	def compare_and_save(self, collection, item_id, expected, replacement):
+		"""Conditional update; JSON deployments support one process only."""
+		with self._write_lock:
+			if self.get(collection, item_id) != expected:
+				return False
+			self.apply_batch([], [(collection, item_id, replacement)])
+			return True

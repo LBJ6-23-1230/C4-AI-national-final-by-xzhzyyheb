@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 
 from flask import Flask, g, request
@@ -120,6 +121,10 @@ def _report_repository_state(path: Path, repository) -> None:
 
 
 def create_app(repository_path: str | Path | None = None) -> Flask:
+    event_logger = logging.getLogger("zhixue")
+    event_logger.setLevel(logging.INFO)
+    if not event_logger.handlers:
+        event_logger.addHandler(logging.StreamHandler())
     app = Flask(__name__)
     _origins = _cors_origins()
     CORS(app, resources={r"/*": {"origins": _origins if _origins != ["*"] else "*"}})

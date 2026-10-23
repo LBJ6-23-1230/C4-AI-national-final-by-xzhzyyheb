@@ -3,6 +3,8 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
+import logging
+logger = logging.getLogger("zhixue.decision")
 
 
 @dataclass(frozen=True)
@@ -59,7 +61,9 @@ def decide_next_step(state: Mapping[str, Any], model_decider: Callable[[Mapping[
 			result = model_decider(state)
 			step = result.get("step") if isinstance(result, Mapping) else None
 			if step in _VALID_STEPS and _is_actionable(step, state):
+				logger.info('{"event":"workflow_decision","source":"model"}')
 				return WorkflowDecision(step, str(result.get("reason", "model decision")), False)
 		except Exception:
 			pass
+	logger.info('{"event":"workflow_decision","source":"fallback","reason":"unavailable_invalid_or_unactionable"}')
 	return fallback_decision(state)

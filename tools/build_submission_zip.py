@@ -36,7 +36,7 @@ EXTRA_DIRS = [("03-演示文件与源代码/联调与验证", "联调与验证")
 
 EXCLUDE_DIRS = {".git", ".hvigor", ".idea", "build", "oh_modules", "node_modules",
                 "__pycache__", ".pytest-tmp", ".pytest_cache", ".cxx"}
-EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".bak-round0", ".har", ".zip")
+EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".bak-round0", ".har", ".zip", ".process.lock")
 EXCLUDE_NAMES = {".env", "repository.json", "history.json", "Thumbs.db", ".DS_Store"}
 
 
@@ -45,7 +45,7 @@ def should_skip(path: Path) -> bool:
         return True
     if path.name.endswith(EXCLUDE_SUFFIXES):
         return True
-    return any(part in EXCLUDE_DIRS for part in path.parts)
+    return any(part in EXCLUDE_DIRS or part.startswith(".venv") or part == ".local-work" for part in path.parts)
 
 
 def main() -> int:

@@ -92,6 +92,25 @@ def test_full_material_assessment_chain(setup):
     assert trace["toolCalls"] == ["retrieve_materials", "generate_grounded_exercises"]
 
 
+def test_material_cache_invalidates_on_document_version_usage_and_deletion(setup):
+    client, repo, users, kb, doc, calls = setup
+    first = generate(setup).get_json()["exercises"]
+    assert generate(setup).get_json()["exercises"] == first
+    assert len(calls) == 1
+    document = repo.get("documents", doc)
+    document["parsedAt"] = "2026-10-22T10:00:00Z"
+    repo.save("documents", doc, document)
+    second = generate(setup).get_json()["exercises"]
+    assert second != first and len(calls) == 2
+    assert client.post(SET + "/submit", headers=users[0][1], json={
+        "idempotencyKey": "cache-used", "answers": [{"exerciseId": second[0]["exerciseId"], "answer": "A"}]}).status_code == 200
+    third = generate(setup).get_json()["exercises"]
+    assert third != second and len(calls) == 3
+    repo.delete("documents", doc)
+    assert generate(setup).status_code == 404
+    assert len(calls) == 3
+
+
 @pytest.mark.parametrize("identity", [1, None])
 def test_other_identity_cannot_generate_read_or_submit(setup, identity):
     client, _, users, kb, doc, calls = setup

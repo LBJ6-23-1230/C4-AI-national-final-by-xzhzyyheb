@@ -1,0 +1,25 @@
+{
+  "applied": false,
+  "deletions": {
+    "submissions": 1
+  },
+  "policies": {
+    "traces": [
+      90,
+      1000
+    ],
+    "submissions": [
+      180,
+      1000
+    ],
+    "wrong_book": [
+      365,
+      1000
+    ],
+    "exercise_usage": [
+      7,
+      5000
+    ]
+  },
+  "unresolvedWrongBook": "preserved"
+}

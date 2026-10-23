@@ -1,3 +1,5 @@
+# Python 3.12 dependency versions verified in requirements-lock-py312.txt.
+-c requirements-lock-py312.txt
 flask>=3.0.0
 flask-cors>=4.0.0
 pytest>=8.0.0

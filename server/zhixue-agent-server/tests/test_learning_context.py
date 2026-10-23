@@ -57,7 +57,8 @@ def test_chat_goal_submission_and_planning_are_one_chain(setup):
     assert current["assessmentTraceId"] == result["traceId"]
     assert [h["receiver"] for h in current["handoffs"]] == ["exercise", "assessment", "planner"]
     assert current["planVersion"] == result["plan"]["version"]
-    assert submit(setup, context).get_json() == result
+    assert submit(setup, context, answer="B").get_json() == result
+    assert submit(setup, context).status_code == 409, "Changing answers must not silently reuse an acknowledged idempotency key"
     assert chat(setup).get_json()["learningContext"]["goalId"] == context["goalId"]
     assert repo.get("profiles", users[0][0])["profileVersion"] == version
     assert "answerKeys" not in str(resumed) and "answerKey" not in str(current)

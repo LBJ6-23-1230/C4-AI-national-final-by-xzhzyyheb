@@ -12,7 +12,7 @@
 
 | 项 | 值 |
 |---|---|
-| 文件 | `deliverables/知学Mate-signed.hap` |
+| 文件 | `hap/知学Mate-signed.hap` |
 | 大小 | **2,301 KB**（2,356,187 字节） |
 | SHA256 | `94FF0A383209194B…`（`Get-FileHash -Algorithm SHA256` 可复算） |
 | 构建产物路径 | `app/entry/build/default/outputs/default/entry-default-signed.hap` |

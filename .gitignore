@@ -59,6 +59,8 @@ Thumbs.db
 desktop.ini
 ~$*
 *.log
+*.process.lock
+.venv-clean*/
 
 # ---- 打包 / 暂存目录（不该入库）----
 # `tools/package_handoff.py` 用 .packaging/ 做暂存；

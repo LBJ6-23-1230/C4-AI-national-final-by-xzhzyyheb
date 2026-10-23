@@ -27,13 +27,11 @@
 
 from __future__ import annotations
 
-import json
 import math
 import os
+import time
 from collections.abc import Callable
 from typing import Any
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
 
 #: 语义分在最终得分里的权重。0.6 表示"以语义为主、关键词为辅" ——
 #: 中文短查询下 embedding 通常比 2-gram 更稳，但保留关键词分可以兜住
@@ -50,7 +48,7 @@ EMBED_BATCH_SIZE = 10
 #: embedding 模型与维度上限（DashScope text-embedding-v3 支持 1024）
 DEFAULT_EMBED_MODEL = "text-embedding-v3"
 
-_TIMEOUT_SECONDS = 8.0
+_TIMEOUT_SECONDS = 30.0
 
 
 def semantic_available() -> bool:
@@ -77,33 +75,30 @@ def encode(texts: list[str]) -> list[list[float]] | None:
     if not cleaned or not semantic_available():
         return None
 
+    from app.services import llm_runtime
+    deadline = time.monotonic() + llm_runtime.seconds("LLM_EMBED_TIMEOUT_SECONDS", _TIMEOUT_SECONDS)
+    vectors = []
     try:
-        vectors: list[list[float]] = []
         for offset in range(0, len(cleaned), EMBED_BATCH_SIZE):
-            batch = cleaned[offset:offset + EMBED_BATCH_SIZE]
-            payload = {"model": _embed_model(), "input": batch,
-                       "encoding_format": "float"}
-            request = Request(
-                f"{_base_url()}/embeddings",
-                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-                headers={
-                    "Authorization": f"Bearer {os.environ['DASHSCOPE_API_KEY'].strip()}",
-                    "Content-Type": "application/json",
-                },
-                method="POST",
-            )
-            with urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
-                body = json.loads(response.read().decode("utf-8"))
-            rows = body["data"]
-            # index 对每个批次从 0 重新编号，所以必须逐批排序后再拼接。
-            if rows and isinstance(rows[0], dict) and "index" in rows[0]:
-                rows = sorted(rows, key=lambda item: item["index"])
-            batch_vectors = [row["embedding"] for row in rows]
-            if len(batch_vectors) != len(batch):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
                 return None
-            vectors.extend(batch_vectors)
+            batch = cleaned[offset:offset + EMBED_BATCH_SIZE]
+            response = llm_runtime.request("embedding", {"model": _embed_model(), "input": batch,
+                "encoding_format": "float"}, budget=remaining, operation="embeddings")
+            rows = sorted(response.data, key=lambda row: row.index)
+            if [row.index for row in rows] != list(range(len(batch))):
+                return None
+            current = [row.embedding for row in rows]
+            if any(not isinstance(v, list) or not v or any(
+                    isinstance(n, bool) or not isinstance(n, (float, int)) or not math.isfinite(n)
+                    for n in v) for v in current):
+                return None
+            vectors.extend(current)
+        if not vectors or any(len(v) != len(vectors[0]) for v in vectors):
+            return None
         return vectors
-    except (HTTPError, KeyError, IndexError, TypeError, ValueError, OSError):
+    except Exception:
         return None
 
 

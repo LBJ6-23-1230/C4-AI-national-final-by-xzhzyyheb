@@ -251,6 +251,30 @@ def test_pdf_text_quality_rejects_garbled_glyph_mapping():
     assert knowledge._pdf_text_quality(readable) > knowledge._pdf_text_quality(garbled)
 
 
+def test_real_pdf_upload_extracts_chunks_and_searchable_text(tmp_path):
+    import pymupdf
+    document = pymupdf.open()
+    try:
+        page = document.new_page()
+        page.insert_text((72, 72), "Binary tree postorder traversal visits left subtree, right subtree, then root.\n"
+                         "A stack supports depth first search. A queue supports breadth first search.")
+        raw = document.tobytes()
+    finally:
+        document.close()
+    client = create_app(tmp_path / "real-pdf.json").test_client()
+    kb = client.post("/api/v1/knowledge-bases", json={"name": "PDF regression", "courseName": "data structures"}).get_json()["kbId"]
+    upload = client.post(f"/api/v1/knowledge-bases/{kb}/documents", json={
+        "fileName": "real.pdf", "contentBase64": base64.b64encode(raw).decode()})
+    assert upload.status_code in (200, 201)
+    body = upload.get_json()
+    assert body["status"] == "ready"
+    from app.api import exercises
+    chunks = [row for row in exercises._repository.list("chunks") if row.get("documentId") == body["documentId"]]
+    assert chunks and "postorder" in " ".join(c["text"] for c in chunks).lower()
+    hits, _ = knowledge.search(chunks, "postorder", 3, use_semantic=False)
+    assert hits and "postorder" in hits[0]["text"].lower()
+
+
 def test_invalid_base64_fails_honestly(tmp_path):
     client = create_app(tmp_path / "kb-b64.json").test_client()
     kb_id = _make_kb(client)

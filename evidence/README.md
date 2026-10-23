@@ -7,6 +7,8 @@
 
 - `integration_YYYY-MM-DD_HHMMSS.json`：逐项接口检查明细。
 - `run_summary_YYYY-MM-DD_HHMMSS.json`：同一轮联调的汇总结果与运行模式。
+- `phase9-final-*`：第九批最终测试、构建、签名校验与汇总记录。
+- `phase9-retention-dryrun-*`：数据保留策略的只读演练结果。
 
 归档规则：
 

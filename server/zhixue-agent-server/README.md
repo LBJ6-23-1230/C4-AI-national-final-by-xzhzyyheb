@@ -33,9 +33,9 @@ python run.py                                       # 默认监听 0.0.0.0:5000
 | `LLM_VL_MODEL` | 图片识别 | `qwen3-vl-plus` |
 | `LLM_DECISION_MODEL` | 工作流结构化决策 | `qwen3.8-flash` |
 | `EMBED_MODEL` | 知识库语义检索向量 | `text-embedding-v3` |
-| `LLM_MAX_RETRIES` | SDK 自动重试次数 | `0` |
+| `LLM_MAX_RETRIES` | 兼容字段；统一运行层固定关闭 SDK 隐式重试 | `0` |
 | `LLM_ENABLE_THINKING` | Qwen3 思考模式 | `0` |
-| `LLM_REVIEW_WAIT_SECONDS` | 交卷等待逐题解析的预算 | `12` |
+| `LLM_REVIEW_WAIT_SECONDS` | 交卷等待逐题解析的预算 | `2` |
 
 两条路径分开是**刻意设计**：识图需要专用视觉模型，工作流决策用更便宜的纯文本
 模型，避免占用 VL 配额。不要为了"统一"改成同一个模型。
@@ -44,10 +44,25 @@ python run.py                                       # 默认监听 0.0.0.0:5000
 > 现用 `qwen3.8-flash`（多模态、1M 上下文）+ `qwen3-vl-plus`（专用视觉）。
 > 可用 `tools/check_llm_ready.ps1` 做逐模型自检。
 
-> ⚠️ **不要开 SDK 自动重试**：`LLM_TIMEOUT_SECONDS` 是*单次尝试*的超时，OpenAI SDK
+> ⚠️ **不要开 SDK 自动重试**：旧实现将 `LLM_TIMEOUT_SECONDS` 作为单次尝试超时，OpenAI SDK
 > 默认 `max_retries=2`，一次 30 秒会变成约 90 秒，而前端读超时只有 40 秒 ——
-> 表现为"提交失败"，其实服务端还在跑。同理，Qwen3 思考模式默认关闭：出题/解析
+> 表现为"提交失败"，其实服务端还在跑。本次统一运行层已改为总预算并固定禁用 SDK 隐式重试。Qwen3 思考模式默认关闭：出题/解析
 > 都是结构化短任务，开启只会慢 2–3 倍（实测 4 题 24.3s → 9.1s）。
+
+文本调用、识图、决策与 Embedding 共用有界调用运行层和连接缓存。仅对 429、500、502、503、504 最多重试一次，短退避计入调用总预算；认证和参数错误直接回落。日志不记录完整题目、响应、密钥或用户身份。
+
+交卷解析默认最多等待 2 秒，先返回确定性解析并完成计分；后台成功后按未变化的提交/错题记录条件补回，重复提交同一请求可读取新解析。默认每个进程 4 个解析任务运行、8 个排队，超限直接降级。后台任务在重启后不恢复。
+
+`LLM_DECISION_TIMEOUT_SECONDS` 默认 8 秒且不超过 `LLM_TIMEOUT_SECONDS`；`LLM_EMBED_TIMEOUT_SECONDS` 默认 30 秒，涵盖整次编码（每批最多 10 条）。`LLM_REVIEW_WORKERS`、`LLM_REVIEW_QUEUE_SIZE`、`LLM_REVIEW_WAIT_SECONDS` 分别控制解析池、队列和交卷等待预算。
+
+出题缓存保留 5 分钟、进程内最多 256 组，按账号、知识点、题量和资料版本区分；已交卷、明确排除、删除或变更的题与资料不复用。跨 worker 不共享此性能缓存。
+
+`GET /api/agent/health` 为被动查询：`configured` 只代表已配置 Key，`verified` 代表 5 分钟内主动验证过当前文本模型，未验证时为 null。旧字段 `llm_ready` 保留为 `configured` 的兼容别名。登录后显式 `POST /api/agent/health` 才发起最小模型验证；每进程最多每分钟一次，不代表识图和 Embedding 模型均可用。
+
+多 worker 部署必须用 SQLite。提交的幂等检查、计分、掌握度及派生记录在同一个 `BEGIN IMMEDIATE` 事务中提交，进程异常时回滚；同一键改交其他答案/目标会返回 409。JSON 后端限制单进程，第二个写进程启动失败。切换后端前停止服务、备份原库，使用项目根目录 `tools/migrate_repository.py --verify` 迁移并逐条比对，然后设置 `ZHIXUE_DB=sqlite`；不要直接切换到一个空 SQLite 库。
+
+Python 3.12 完整锁定安装可用 `pip install -r requirements-lock-py312.txt`。普通 `requirements.txt` 也会读取相同版本约束。运行态保留工具位于项目根 `tools/retention_repository.py`，默认只预览；先备份并停服核对再显式加 `--apply`，不自动清理真实数据。未解决的错题和活动目标引用的数据始终保留。
+
 
 ## 持久化
 
