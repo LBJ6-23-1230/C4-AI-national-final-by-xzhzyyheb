@@ -77,6 +77,11 @@ struct ChatMain {
    */
   @State welcomeNotice: string = '';
   @State learningContext: LearningContext | null = null;
+  /**
+   * 目标卡只属于触发它的那一轮学习对话，不是整场聊天的常驻页脚。
+   * 普通问答发出时先隐藏；只有本轮学习类回复确实返回 learningContext 才重新显示。
+   */
+  @State showLearningGoalCard: boolean = false;
   @State goalMessage: string = '';
   @State isGoalLoading: boolean = false;
   private goalRequestVersion: number = 0;
@@ -540,7 +545,7 @@ struct ChatMain {
           this.MessageBubble(item)
         }
       }, (item: ChatMessage) => item.id)
-      if (this.learningContext !== null) {
+      if (this.learningContext !== null && this.showLearningGoalCard) {
         ListItem() {
           this.LearningGoalCard(this.learningContext)
         }
@@ -571,6 +576,7 @@ struct ChatMain {
     // 这是正常状态，清掉卡片即可；**不能**当成错误去吓用户。
     if (failure.error.statusCode === 404) {
       this.learningContext = null;
+      this.showLearningGoalCard = false;
       this.goalMessage = '';
       return;
     }
@@ -643,7 +649,12 @@ struct ChatMain {
   @Builder
   private LearningGoalCard(context: LearningContext) {
     Column({ space: 10 }) {
-      Text('当前学习目标').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1D4ED8').width('100%')
+      Row() {
+        Text('本轮学习目标').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1D4ED8').layoutWeight(1)
+        Button('收起').fontSize(12).height(28).fontColor('#2563EB')
+          .backgroundColor('#EFF6FF').borderRadius(8)
+          .onClick(() => { this.showLearningGoalCard = false; })
+      }.width('100%')
       Text(context.goal).fontSize(14).fontColor('#1F2937').lineHeight(21).width('100%')
       Text(`当前负责：${this.roleLabel(context.currentAgent)} · ${context.status === 'completed' ? '本轮已完成' :
         context.status === 'tool_failed' ? '执行失败，可重试' : context.waitingFor === 'knowledge_points' ? '等待补充知识点' : context.waitingFor === 'available_time' ? '等待调整时间' : '等待学习与反馈'}`)
@@ -1035,6 +1046,7 @@ struct ChatMain {
     this.goalRequestVersion++;
     this.chatRequestVersion++;
     this.learningContext = null;
+    this.showLearningGoalCard = false;
     this.goalMessage = '';
     this.isGoalLoading = false;
     // 原缺陷：这里写成 `this.messages = [WELCOME_MESSAGE]`，数组长度变成 1，
@@ -1137,6 +1149,9 @@ struct ChatMain {
     const chatId: string = appState.chatSessionId;
 
     const text: string = this.inputText.trim().length > 0 ? this.inputText.trim() : '请分析这张图片';
+    // 新问题开始时不把上一轮目标卡继续钉在消息底部；若本轮仍是学习协作，
+    // 服务端回复中的 learningContext 会在下面重新触发显示。
+    this.showLearningGoalCard = false;
     // 气泡里显示的是**相册 URI**（`Image` 组件要 URI）。
     const bubbleImage: string | undefined = this.pendingImage.length > 0 ? this.pendingImage : undefined;
     // ⚠️ 发给后端的必须是 **base64**，不是 URI。
@@ -1200,6 +1215,7 @@ struct ChatMain {
         this.isGoalLoading = false;
         this.learningContext = response.learningContext;
       }
+      this.showLearningGoalCard = response.learningContext !== undefined && this.isLearningIntent(response.intent);
       this.messages = this.messages.filter((item: ChatMessage) => item.id !== loadingMessage.id);
       let replyText: string = response.reply;
       if (response.profileUpdates !== undefined) {

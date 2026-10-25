@@ -526,7 +526,7 @@ struct Index {
       Text(this.agentPlanMessage).fontSize(12).lineHeight(18).fontColor('#667085').width('100%')
       if (this.agentPlanKind === 'no_plan') {
         Button('导入课程，生成计划').width('100%').height(40).fontSize(13)
-          .fontColor('#2563EB').backgroundColor('#EFF6FF').borderRadius(10)
+          .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(10)
           .onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'import' } }))
       } else {
         Button(this.isAgentPlanLoading ? '读取中…' : '重新读取计划').width('100%').height(40).fontSize(13)

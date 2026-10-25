@@ -572,8 +572,7 @@ struct StudyTags {
               }
 
               Button(this.isStartingWorkflow ? '正在启动 Agent 会话…' : '启动 Agent 诊断会话')
-                .fontSize(15).fontWeight(FontWeight.Bold).fontColor('#2563EB').backgroundColor('#FFFFFF')
-                .border({ width: 1, color: '#BFDBFE' })
+                .fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF').backgroundColor('#2563EB')
                 .height(46).borderRadius(12).width('100%').enabled(!this.isStartingWorkflow)
                 .onClick(() => this.startDiagnosis())
 
