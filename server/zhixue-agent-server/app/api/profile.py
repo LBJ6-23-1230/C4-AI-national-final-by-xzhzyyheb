@@ -5,6 +5,7 @@ from app.agent.course_outline import derive_knowledge_points
 from app.tools.profile_merge import PROFILE_LOCK, merge_points_into_profile
 
 from app.repositories.json_repository import JsonRepository
+from app.repositories.staged_repository import StagedRepository
 
 
 profile_api = Blueprint("profile", __name__)
@@ -50,15 +51,19 @@ def add_knowledge_points(user_id):
 		missing = [c for c in courses if c not in cached]
 	# Never hold the profile lock while waiting for a model.
 	points = derive_knowledge_points(missing, course_details=data.get("courseDetails")) if missing else []
-	with PROFILE_LOCK:
-		profile = _repository.get("profiles", user_id)
+	with PROFILE_LOCK, _repository.transaction():
+		staged = StagedRepository(_repository)
+		profile = staged.get("profiles", user_id)
+		if profile is None:
+			return jsonify({"errorCode": "NOT_FOUND", "message": "profile not found"}), 404
 		cached = profile.setdefault("courseOutlines", {})
 		for course in missing:
 			cached.setdefault(course, [p for p in points if p["sourceCourse"] == course])
 		if missing:
-			_repository.save("profiles", user_id, profile)
+			staged.save("profiles", user_id, profile)
 		selected = [p for c in courses for p in cached[c]]
-		profile = merge_points_into_profile(_repository, user_id, selected)
+		profile = merge_points_into_profile(staged, user_id, selected)
+		staged.commit()
 		return jsonify({"profileVersion": profile.get("profileVersion", 1), "profile": profile,
 			"mastery": profile.get("mastery", []), "history": profile.get("history", []),
 			"evidence": profile.get("evidence", []),

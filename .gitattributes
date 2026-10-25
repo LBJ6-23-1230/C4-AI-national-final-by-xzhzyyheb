@@ -52,8 +52,8 @@
 # ============================================================
 
 # —— 契约（最关键：真源与镜像必须逐字节一致，且字节数是对外承诺值）——
-/contracts/openapi.json           -text
-/app/contracts/openapi.json       -text
+/contracts/openapi.json           -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/app/contracts/openapi.json       -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 # `03-.../` 里的那两份此前**漏了**保护。它是根目录的逐字节副本（见 仓库结构说明.md），
 # 一旦被 `text eol=lf` 归一，就会与真源不一致 —— 即"同步过了"却仍然对不上。
 /03-演示文件与源代码/contracts/openapi.json      -text
@@ -63,12 +63,12 @@
 /evidence/*.json                  -text
 
 # —— 后端代码（作者以 CRLF 编写，不做转换以免 diff 噪声）——
-/server/zhixue-agent-server/app/agent/chat_llm.py                -text
+/server/zhixue-agent-server/app/agent/chat_llm.py                -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /server/zhixue-agent-server/chat/prompts/AnalyzeWrongPrompt.txt  -text
 
 # —— 工具脚本 ——
-/tools/package_handoff.py         -text
-/tools/verify_packages.py         -text
+/tools/package_handoff.py         -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/tools/verify_packages.py         -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 
 # —— 前端源码 ——
 /app/entry/src/main/ets/data/AppState.ets                   -text
@@ -88,4 +88,4 @@
 # —— 含中文的 Windows 脚本：UTF-8 带 BOM，禁止任何转换 ——
 # Windows PowerShell 5.1 靠 BOM 才能正确显示中文
 /tools/sign_hap.ps1        -text
-/tools/读取密钥别名.bat     -text
+/tools/读取密钥别名.bat     -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

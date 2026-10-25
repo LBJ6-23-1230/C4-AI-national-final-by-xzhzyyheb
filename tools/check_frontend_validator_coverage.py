@@ -54,6 +54,9 @@ import re
 import sys
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parents[1]
 VALIDATOR = ROOT / "app" / "entry" / "src" / "main" / "ets" / "api" / "ApiResponseValidator.ets"
 CLIENT = ROOT / "app" / "entry" / "src" / "main" / "ets" / "api" / "AgentApiClient.ets"
@@ -75,19 +78,36 @@ def parse_validator_routes(source: str) -> tuple[set[tuple[str, str]], set[tuple
     prefix = set(re.findall(
         r"method === '([A-Z]+)'\s*&&\s*(?:path|route)\.indexOf\('([^']+)'\)\s*===\s*0",
         source))
+    # Shared routes may dispatch GET/POST inside the body of the same branch.
+    exact.update(("*", route) for route in re.findall(
+        r"if\s*\(\s*(?:path|route) === '([^']+)'\s*\)", source))
     return exact, prefix
 
 
 def parse_client_calls(source: str) -> set[tuple[str, str]]:
     """抽取 `AgentApiClient` 实际发出的 (method, path)。
 
-    形态是 `AgentApiClient.request<...>(http.RequestMethod.GET, '/path', ...)`，
-    也可能包一层常量（如 `const path = ...`）。这里抓直接字面量的那部分；
-    非字面量的模板串会被跳过并在报告里说明。
+    Cover literals, URL templates and local path variables. This only checks
+    route presence; the executable validator regression checks real payloads.
     """
-    pattern = re.compile(
-        r"AgentApiClient\.request<[^>]*>\(\s*http\.RequestMethod\.([A-Z]+)\s*,\s*'([^']+)'")
-    return set(pattern.findall(source))
+    calls = set()
+    blocks = re.split(r"(?=static async \w+\()", source)
+    for block in blocks:
+        for match in re.finditer(
+            r"AgentApiClient\.request<[^>]*>\(\s*http\.RequestMethod\.([A-Z]+)\s*,\s*"
+            r"(?:(['`])(.+?)\2|([a-zA-Z_]\w*))", block, re.S):
+            method, _, route, variable = match.groups()
+            if variable:
+                assignment = re.search(
+                    r"(?:let|const)\s+" + re.escape(variable) +
+                    r"\s*(?::\s*string)?\s*=\s*(['`])(.+?)\1", block, re.S)
+                if assignment is None:
+                    raise ValueError(f"unresolved API path: {method} {variable}")
+                route = assignment[2]
+            route = route.replace("${suffix}", "")
+            route = re.sub(r"\$\{[^}]+\}", "{param}", route).split("?", 1)[0]
+            calls.add((method, route))
+    return calls
 
 
 def contract_operations(obj: dict) -> set[tuple[str, str]]:
@@ -108,10 +128,10 @@ def normalize(path: str) -> str:
 
 def matches(operation: tuple[str, str], exact: set, prefix: set) -> bool:
     method, path = operation
-    if (method, path) in exact:
+    if any(m in (method, "*") and normalize(p) == normalize(path) for m, p in exact):
         return True
     for pm, pp in prefix:
-        if pm == method and path.startswith(pp.rstrip("*")):
+        if pm in (method, "*") and path.startswith(pp.rstrip("*")):
             return True
     return False
 
@@ -128,11 +148,14 @@ def main() -> int:
     exact, prefix = parse_validator_routes(validator_src)
     client_calls = parse_client_calls(client_src)
     operations = contract_operations(json.loads(CONTRACT.read_bytes().decode("utf-8-sig")))
+    declared = {(method, normalize(route)) for method, route in operations}
+    contract_gaps = sorted((method, route) for method, route in client_calls
+                           if (method, normalize(route)) not in declared)
 
     print("=" * 78)
     print("① 真正的不变量：AgentApiClient 会发的调用，校验器必须都有分支")
     print("=" * 78)
-    print("  AgentApiClient 直接字面量调用: %d 个" % len(client_calls))
+    print("  AgentApiClient 字面量/模板/路径变量调用: %d 个" % len(client_calls))
     print("  校验器分支: 精确 %d 条 / 前缀 %d 条" % (len(exact), len(prefix)))
     print()
 
@@ -147,11 +170,16 @@ def main() -> int:
     else:
         print("✅ 无缺口：AgentApiClient 发出的每个调用都有校验分支")
 
+    print("  客户端调用的契约声明缺口: %d 个" % len(contract_gaps))
+    for method, route in contract_gaps:
+        print("     %-6s %s" % (method, route))
+
     print()
     print("=" * 78)
     print("② 契约有、但前端尚未接入的接口（属'声明了但没人用'，不是缺陷）")
     print("=" * 78)
-    unused = sorted(op for op in operations if not matches(op, exact, prefix))
+    unused = sorted(op for op in operations if not any(
+        cm == op[0] and normalize(cp) == normalize(op[1]) for cm, cp in client_calls))
     if unused:
         for method, path in unused:
             print("     %-6s %s" % (method, path))
@@ -184,7 +212,8 @@ def main() -> int:
 
     print()
     print("=" * 78)
-    print("结论：%s" % ("PASS（① 无缺口）" if not gaps else "FAIL（① 有 %d 个缺口）" % len(gaps)))
+    failed = bool(gaps or contract_gaps)
+    print("结论：%s" % ("FAIL（校验分支或接口声明有缺口）" if failed else "PASS（校验分支和接口声明均无缺口）"))
     # ⚠️ 只有 ① 是硬不变量。③ 是"闸门是否提及过该路径"的提示性统计，
     # 它按设计**不影响退出码**（需要 `--strict`）。
     # 原先这里只打一行 `结论：FAIL`，调用方看输出会以为闸门红了、看退出码又是 0，
@@ -193,9 +222,9 @@ def main() -> int:
         print("      ③ 另有 %d 项属于'闸门未提及'的提示，**不影响退出码**"
               "（要让它也失败请加 --strict 之外的判断，或直接看 ③ 小节）。" % len(gate_missing))
     print("      退出码：%d%s" % (
-        (1 if (strict and gaps) else 0),
-        "（--strict 且 ① 有缺口）" if (strict and gaps) else ""))
-    if strict and gaps:
+        (1 if (strict and failed) else 0),
+        "（--strict 且有缺口）" if (strict and failed) else ""))
+    if strict and failed:
         return 1
     return 0
 

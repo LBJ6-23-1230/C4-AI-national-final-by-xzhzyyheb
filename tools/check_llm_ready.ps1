@@ -1,4 +1,4 @@
-﻿# 知学 Mate · 演示前 LLM 自检（30 秒）
+﻿# 知学 Mate · 演示前 LLM 自检（按模型逐项限时）
 #
 # 为什么需要：DashScope 的免费额度**按模型分别计算**，且会在无通知的情况下耗尽。
 # 一旦录制演示视频时才发现识图失效，损失的是不可重来的时间。
@@ -21,6 +21,7 @@ $python = $null
 # 找一个可用解释器（优先工程 venv，其次 PATH）
 $parent = Split-Path -Parent $root
 $candidates = @()
+$candidates += (Join-Path $root 'server/zhixue-agent-server/.venv/Scripts/python.exe')
 if ($parent) {
     $candidates += (Join-Path $parent '.venv-lt\Scripts\python.exe')
     $candidates += (Join-Path $parent '.venv\Scripts\python.exe')

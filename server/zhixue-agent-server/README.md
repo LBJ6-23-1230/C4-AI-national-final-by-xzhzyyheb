@@ -40,9 +40,7 @@ python run.py                                       # 默认监听 0.0.0.0:5000
 两条路径分开是**刻意设计**：识图需要专用视觉模型，工作流决策用更便宜的纯文本
 模型，避免占用 VL 配额。不要为了"统一"改成同一个模型。
 
-> ⚠️ `qwen-vl-plus` / `qwen-vl-max` 已于 **2026-10-10** 从百炼下线，不可再用；
-> 现用 `qwen3.8-flash`（多模态、1M 上下文）+ `qwen3-vl-plus`（专用视觉）。
-> 可用 `tools/check_llm_ready.ps1` 做逐模型自检。
+> 默认模型名来自代码配置。实际可用性应使用目标账号主动验证，配置 Key 本身不能证明模型可用。
 
 > ⚠️ **不要开 SDK 自动重试**：旧实现将 `LLM_TIMEOUT_SECONDS` 作为单次尝试超时，OpenAI SDK
 > 默认 `max_retries=2`，一次 30 秒会变成约 90 秒，而前端读超时只有 40 秒 ——
@@ -59,7 +57,7 @@ python run.py                                       # 默认监听 0.0.0.0:5000
 
 `GET /api/agent/health` 为被动查询：`configured` 只代表已配置 Key，`verified` 代表 5 分钟内主动验证过当前文本模型，未验证时为 null。旧字段 `llm_ready` 保留为 `configured` 的兼容别名。登录后显式 `POST /api/agent/health` 才发起最小模型验证；每进程最多每分钟一次，不代表识图和 Embedding 模型均可用。
 
-多 worker 部署必须用 SQLite。提交的幂等检查、计分、掌握度及派生记录在同一个 `BEGIN IMMEDIATE` 事务中提交，进程异常时回滚；同一键改交其他答案/目标会返回 409。JSON 后端限制单进程，第二个写进程启动失败。切换后端前停止服务、备份原库，使用项目根目录 `tools/migrate_repository.py --verify` 迁移并逐条比对，然后设置 `ZHIXUE_DB=sqlite`；不要直接切换到一个空 SQLite 库。
+多 worker 部署必须用 SQLite。提交的幂等检查、计分、掌握度及派生记录在同一个 `BEGIN IMMEDIATE` 事务中提交，进程异常时回滚；同一键改交其他答案/目标会返回 409。JSON 后端限制单进程，第二个写进程启动失败。切换后端前停止服务、备份原库，使用项目根目录 `tools/migrate_repository.py --verify` 迁移并逐条比对；工具默认拒绝覆盖已有目标，显式 `--overwrite` 会在事务内替换全部目标记录。然后设置 `ZHIXUE_DB=sqlite`；不要直接切换到一个空 SQLite 库。
 
 Python 3.12 完整锁定安装可用 `pip install -r requirements-lock-py312.txt`。普通 `requirements.txt` 也会读取相同版本约束。运行态保留工具位于项目根 `tools/retention_repository.py`，默认只预览；先备份并停服核对再显式加 `--apply`，不自动清理真实数据。未解决的错题和活动目标引用的数据始终保留。
 
@@ -79,34 +77,32 @@ Python 3.12 完整锁定安装可用 `pip install -r requirements-lock-py312.txt
 
 | 位置 | 保护 |
 |---|---|
-| `chat/history.json` | 模块级锁 + `os.replace` 原子落盘 |
+| `chat/history.json` | 进程内锁、跨进程文件锁及原子替换 |
 | `POST /api/v1/exercises/{setId}/submit` | 幂等键检查 → 判分 → 掌握度回写整段串行 |
-| `EventStore.append`（trace） | 模块级锁 |
-| `_run_saved_workflow`（工作流推进） | 可重入锁（`autoRun` 分支同样持锁） |
+| `EventStore.append`（trace） | 仓储事务，覆盖读取、追加和保存 |
+| `_run_saved_workflow`（工作流推进） | 可重入锁及跨进程文件锁；模型调用不占数据库写事务 |
 
 ## 鉴权
 
 | 端点 | 说明 |
 |---|---|
 | `POST /api/v1/auth/register` | 手机号**必填**；重复手机号返回 409 |
-| `POST /api/v1/auth/login` | 昵称免密登录（仅演示/单机场景） |
+| `POST /api/v1/auth/login` | 手机号/昵称与密码登录，或恢复有效 token 会话 |
 | `POST /api/v1/auth/send-code` | 手机验证码签发 |
 | `POST /api/v1/auth/verify-code` | 验证码校验（200 已存在 / 201 新建） |
-| `POST /api/v1/auth/login-with-huawei` | 华为账号一键登录（客户端传 `openId`） |
+| `POST /api/v1/auth/login-with-huawei` | 可信凭证核验尚未接入，当前返回 503、不签发会话 |
 | `DELETE /api/v1/auth/account` | 注销账号 |
 
 未配置短信服务商时，开发模式返回 `devCode` 且 `smsDelivered=false`；
 生产模式**拒绝**暴露开发码。
 
-> ⚠️ `login-with-huawei` **不校验 OpenID 真伪**（那需要服务端调华为接口验签）。
-> 演示/单机场景可用；生产环境必须补上验签，否则伪造 `openId` 即可登入他人账号。
-> 详见 `docs/13`。
+> 华为可信登录和生产短信发送适配器尚未实现。开发验证码不代表短信已发送；默认生产模式不会返回开发码。真实模型、短信与华为能力需要独立验收。
 
 ## 测试
 
 ```bash
-python -m pytest -q                                  # 557 项（2026-10-22）
-python ../../integration/run_liantiao5.py            # 契约 + 单测 + 98 项 HTTP + 归档
+python -m pytest tests -q -p no:cacheprovider
+python ../../integration/run_liantiao5.py --llm-mode offline  # 本地隔离数据，契约、单测及 HTTP 检查
 ```
 
 ## 契约

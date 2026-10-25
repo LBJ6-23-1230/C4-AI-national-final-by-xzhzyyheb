@@ -1,5 +1,7 @@
 import threading
 import uuid
+from contextlib import contextmanager
+from pathlib import Path
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
@@ -16,6 +18,7 @@ from app.api.validation import (MAX_ANSWERS, MAX_ANSWER_CHARS, MAX_ID_CHARS, MAX
 from app.domain.assessment import AssessmentResult
 from app.domain.profile import KnowledgeMastery, LearnerProfile
 from app.repositories.json_repository import JsonRepository
+from app.repositories.file_lock import exclusive_file_lock
 from app.model_adapters.qwen_adapter import QwenAdapter
 from app.runtime.loop import run_workflow
 from app.runtime.session import WorkflowSession
@@ -37,6 +40,24 @@ _repository: JsonRepository | None = None
 # 用可重入锁：`_run_saved_workflow` 也可能被其它已持锁的路径调用。
 from app.tools.profile_merge import PROFILE_LOCK
 _WORKFLOW_RUN_LOCK = PROFILE_LOCK
+_WORKFLOW_GUARD_STATE = threading.local()
+
+
+@contextmanager
+def _workflow_guard():
+    # Serialize workflow advancement across workers without a DB transaction
+    # spanning model requests. Auto-run may enter this guard recursively.
+    with _WORKFLOW_RUN_LOCK:
+        if getattr(_WORKFLOW_GUARD_STATE, 'active', False) or _repository is None:
+            yield
+            return
+        path = Path(_repository.path)
+        with exclusive_file_lock(path.with_name(path.name + '.workflow.process.lock')):
+            _WORKFLOW_GUARD_STATE.active = True
+            try:
+                yield
+            finally:
+                _WORKFLOW_GUARD_STATE.active = False
 
 
 class SubmissionNotFound(KeyError):
@@ -82,7 +103,7 @@ def _next_step(user_id: str) -> tuple[str, str]:
 @workflows_api.post("/api/v1/workflows")
 def create_workflow():
     # 归属检查与创建必须原子执行，避免并发同 ID 请求覆盖他人会话。
-    with _WORKFLOW_RUN_LOCK:
+    with _workflow_guard():
         return _create_workflow()
 
 
@@ -116,16 +137,20 @@ def _create_workflow():
 			return jsonify({key: existing.get(key) for key in
 				("sessionId", "traceId", "status", "currentStep", "nextAction")})
 	current_step, next_action = _next_step(user_id)
+	if data.get("autoRun") is True and data.get("answers") is not None:
+		_, guard = validate_answers(data.get("answers"))
+		if guard is not None:
+			return guard
 	trace_id = f"trace-{session_id}"
 	workflow = {"sessionId": session_id, "traceId": trace_id, "status": "running",
 		"currentStep": current_step, "currentAgent": current_step, "nextAction": next_action,
 		"stateVersion": 1, "finalAction": None, "goal": goal, "userId": user_id,
 		"maxSteps": max_steps}
 	if _repository:
-		_repository.save("workflows", session_id, workflow)
 		# 带上归属：`GET /traces/<id>` 要据此拒绝跨用户读取（否则 trace 里
 		# 的 inputSummary/outputSummary 谁都能读）。
-		_repository.save("traces", trace_id, {"traceId": trace_id, "events": [], "userId": user_id})
+		_repository.apply_batch([], [("workflows", session_id, workflow),
+			("traces", trace_id, {"traceId": trace_id, "events": [], "userId": user_id})])
 	if data.get("autoRun") is True:
 		# 注意：这条分支会**直接**把 answers 交给 `_run_saved_workflow`，
 		# 绕过 `/run` 端点上的那套护栏。已修的教训：护栏只加在一处时会漏掉旁路。
@@ -134,7 +159,7 @@ def _create_workflow():
 		# 同样要**持锁**：这条分支同样会推进工作流并写 profile/history，
 		# 不加锁就绕过了 `/run` 端点上的串行化保护（同一个旁路陷阱）。
 		# `_WORKFLOW_RUN_LOCK` 是可重入的，所以下面再调 `run_workflow_api` 不会自锁。
-		with _WORKFLOW_RUN_LOCK:
+		with _workflow_guard():
 			if data.get("answers") is not None:
 				checked, guard = validate_answers(data.get("answers"))
 				if guard is not None:
@@ -258,9 +283,11 @@ def _agent_action(step: str, state: dict):
 	if step == "planner":
 		if state.get("assessment") and state.get("needReplan"):
 			handoff = state["replanRequest"]
-			result = execute_assessment_replan(_repository, state["userId"],
-				state.get("plan", {}).get("planId", ""), handoff,
-				state.get("evidenceIds", []), state.get("submissionId"))
+			# Re-read progress and commit the plan under the same cross-worker lock.
+			with _repository.transaction():
+				result = execute_assessment_replan(_repository, state["userId"],
+					state.get("plan", {}).get("planId", ""), handoff,
+					state.get("evidenceIds", []), state.get("submissionId"))
 			return {**result, "needReplan": False, "replanHandled": True,
 				"nextAction": result["reason"]}
 		result = agents[step].run(state)
@@ -291,6 +318,13 @@ def _agent_action(step: str, state: dict):
 
 
 def _persist_workflow_assessment(state: dict, assessment_data: dict) -> dict:
+	if _repository is None:
+		return {"assessmentPersisted": False}
+	with PROFILE_LOCK, _repository.transaction():
+		return _persist_workflow_assessment_locked(state, assessment_data)
+
+
+def _persist_workflow_assessment_locked(state: dict, assessment_data: dict) -> dict:
 	"""Persist workflow grading through the same deterministic rules as submit."""
 	if _repository is None or state.get("assessmentPersisted"):
 		return {"assessmentPersisted": bool(state.get("assessmentPersisted"))}
@@ -474,7 +508,7 @@ def run_workflow_api(session_id: str):
 	try:
 		# 持锁跑完整段推进：见 `_WORKFLOW_RUN_LOCK` 的注释
 		# （不加锁时并发 run 会让评估被重复记账）。
-		with _WORKFLOW_RUN_LOCK:
+		with _workflow_guard():
 			current = _repository.get("workflows", session_id) if _repository else None
 			if data.get("expectedStateVersion") is not None:
 				expected = data["expectedStateVersion"]

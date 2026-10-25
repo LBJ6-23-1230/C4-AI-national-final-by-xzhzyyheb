@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import math
 from datetime import date, datetime
 from typing import Any
 
@@ -39,6 +40,8 @@ def _normalize_course(row: Any, index: int) -> dict[str, Any] | None:
     try:
         study_hours = max(0.0, float(row.get("studyHours") or 0))
     except (TypeError, ValueError):
+        study_hours = 0.0
+    if not math.isfinite(study_hours):
         study_hours = 0.0
     status = str(row.get("status") or "").strip() or "待建立复习记录"
     return {
@@ -87,7 +90,7 @@ def recognize_schedule_image():
         parsed = chat_llm.extract_json(response) or {}
     except Exception as exc:  # noqa: BLE001 - 模型失败转为可读 API 错误
         # 详细异常只留服务端日志，避免把上游地址、请求细节等内部信息回显给用户。
-        print(f"[schedule-import] 课表图片识别失败: {exc}")
+        print(f"[schedule-import] 课表图片识别失败: {type(exc).__name__}")
         return jsonify({
             "errorCode": "SCHEDULE_OCR_FAILED",
             "message": "课表图片识别服务暂时不可用，请稍后重试或改用 CSV/JSON 导入。",

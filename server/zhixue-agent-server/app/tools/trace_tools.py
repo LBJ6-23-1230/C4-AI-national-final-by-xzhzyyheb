@@ -1,11 +1,13 @@
 """Trace persistence helpers that keep internal model reasoning out of events."""
 
 import threading
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Any
 
 from app.domain.trace import TraceEvent
 from app.repositories.repository import Repository
+from app.repositories.staged_repository import StagedRepository
 
 # `EventStore.append` 是"读整个 trace → 追加一条 → 写回"，而 Flask 默认多线程。
 # `JsonRepository` 的 `save()` 自己有写锁，但**锁不住这段读—改—写序列**：
@@ -25,7 +27,8 @@ class EventStore:
 
 	def append(self, trace_id: str, event: TraceEvent) -> dict[str, Any]:
 		# 读—改—写必须在同一临界区内完成，否则并发追加会互相覆盖（丢事件）。
-		with _TRACE_LOCK:
+		boundary = nullcontext() if isinstance(self.repository, StagedRepository) else self.repository.transaction()
+		with boundary, _TRACE_LOCK:
 			trace = self.repository.get("traces", trace_id) or {"traceId": trace_id, "events": []}
 			events = list(trace.get("events", []))
 			events.append(event.to_dict())

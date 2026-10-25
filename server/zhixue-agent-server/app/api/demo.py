@@ -6,6 +6,8 @@ from flask import Blueprint, jsonify
 from app.domain.plan import LearningPlan
 from app.domain.profile import KnowledgeMastery, LearnerProfile
 from app.repositories.json_repository import JsonRepository
+from app.repositories.staged_repository import StagedRepository
+from app.tools.profile_merge import PROFILE_LOCK
 from app.api.exercises import configure_exercises_repository
 from app.api.plans import configure_plans_repository
 from app.api.profile import configure_profile_repository
@@ -30,13 +32,17 @@ def configure_demo_repository(repository: JsonRepository) -> None:
 
 
 def ensure_demo_data() -> None:
-	if _repository is None or _repository.get("profiles", "demo-user") is not None:
+	if _repository is None:
 		return
-	profile, plan, trace = _demo_state()
-	_repository.save("profiles", profile.user_id, profile.to_dict())
-	plan_data = plan.to_dict()
-	_repository.save("plans", plan.plan_id, plan_data)
-	_repository.save("traces", trace["traceId"], trace)
+	with PROFILE_LOCK, _repository.transaction():
+		if _repository.get("profiles", "demo-user") is not None:
+			return
+		profile, plan, trace = _demo_state()
+		_repository.apply_batch([], [
+			("profiles", profile.user_id, profile.to_dict()),
+			("plans", plan.plan_id, plan.to_dict()),
+			("traces", trace["traceId"], trace),
+		])
 
 
 def _item_owner(item: dict[str, object]) -> str:
@@ -62,7 +68,7 @@ def _item_owner(item: dict[str, object]) -> str:
 	return ""
 
 
-def _purge_demo_owned(profile_user_id: str) -> dict[str, int]:
+def _purge_demo_owned(profile_user_id: str, repository=None) -> dict[str, int]:
 	"""只删除**能证明属于演示身份**的记录，返回各集合删除条数。
 
 	## 为什么不能整集合 clear（原实现的做法）
@@ -84,7 +90,7 @@ def _purge_demo_owned(profile_user_id: str) -> dict[str, int]:
 	    或 id 命中被删 workflow 会话时删
 	**其余一律保留**：拿不准归属就留着，宁可残留演示数据，也不误删他人记录。
 	"""
-	repo = _repository
+	repo = repository if repository is not None else _repository
 	if repo is None:
 		return {}
 
@@ -232,12 +238,15 @@ def reset_demo():
 	# 拿不准归属的一律保留 —— 宁可少清，不可误删他人数据。
 	#
 	# ⚠️ `sessions` / `users` 从来不在此列（属于鉴权与账号数据）。
-	_purge_demo_owned(profile.user_id)
-	plan_data = plan.to_dict()
-	_repository.apply_batch([], [
-		("profiles", profile.user_id, profile.to_dict()),
-		("plans", plan.plan_id, plan_data),
-		("traces", str(trace["traceId"]), trace),
-	])
+	with PROFILE_LOCK, _repository.transaction():
+		staged = StagedRepository(_repository)
+		_purge_demo_owned(profile.user_id, staged)
+		plan_data = plan.to_dict()
+		staged.apply_batch([], [
+			("profiles", profile.user_id, profile.to_dict()),
+			("plans", plan.plan_id, plan_data),
+			("traces", str(trace["traceId"]), trace),
+		])
+		staged.commit()
 	return jsonify({"status": "reset", "userId": profile.user_id, "profile": profile.to_dict(),
 					"plan": plan.to_dict(), "traceId": trace["traceId"]})

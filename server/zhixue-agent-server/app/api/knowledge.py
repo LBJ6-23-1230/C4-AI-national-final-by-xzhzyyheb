@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from functools import wraps
+from contextlib import nullcontext
 
 from flask import Blueprint, jsonify, request
 
@@ -24,6 +25,7 @@ from app.agent import knowledge
 from app.api.identity import resolve_user_id
 from app.api.validation import bad_request, bounded_str, json_object
 from app.repositories.json_repository import JsonRepository
+from app.repositories.staged_repository import StagedRepository
 from app.tools.profile_merge import PROFILE_LOCK
 
 knowledge_api = Blueprint("knowledge", __name__)
@@ -37,7 +39,7 @@ CHUNKS = "chunks"
 def _locked(function):
     @wraps(function)
     def wrapped(*args, **kwargs):
-        with PROFILE_LOCK:
+        with PROFILE_LOCK, (_repository.transaction() if _repository else nullcontext()):
             return function(*args, **kwargs)
     return wrapped
 
@@ -104,6 +106,7 @@ def list_knowledge_bases():
 
 
 @knowledge_api.post("/api/v1/knowledge-bases")
+@_locked
 def create_knowledge_base():
     data, guard = json_object()
     if guard is not None:
@@ -244,42 +247,52 @@ def upload_document(kb_id: str):
     }
 
     if _repository:
-        saves: list[tuple[str, str, dict]] = [(DOCS, document_id, record)]
-        for index, chunk in enumerate(parsed["chunks"], 1):
-            saves.append((CHUNKS, chunk["chunkId"], {
-                "chunkId": chunk["chunkId"], "documentId": document_id, "kbId": kb_id,
-                "userId": user_id, "text": chunk["text"],
-                "headingPath": chunk["headingPath"],
-                "knowledgePoints": chunk["knowledgePoints"],
-                # 切片序号**显式落库**：`chunkId` 的摘要里虽然也含序号，
-                # 但摘要是单向的、取不回来，此前"按顺序读正文"只能依赖
-                # 仓库的写入顺序（隐式约定）。详情接口要按原文顺序回传正文，
-                # 所以把序号存成字段，让顺序可复核、不依赖存储实现。
-                "index": index,
+        with PROFILE_LOCK, _repository.transaction():
+            # Parsing runs outside the transaction; revalidate ownership and limits now.
+            kb = _get_owned(KB, kb_id, user_id)
+            if kb is None:
+                return jsonify({"errorCode": "NOT_FOUND", "message": "知识库不存在", "details": {"kbId": kb_id}}), 404
+            current_docs = [d for d in _list(DOCS, user_id) if d.get("kbId") == kb_id]
+            if len(current_docs) >= knowledge.MAX_DOCUMENTS_PER_KB:
+                return bad_request(f"单个知识库最多 {knowledge.MAX_DOCUMENTS_PER_KB} 份文档")
+            staged = StagedRepository(_repository)
+            saves: list[tuple[str, str, dict]] = [(DOCS, document_id, record)]
+            for index, chunk in enumerate(parsed["chunks"], 1):
+                saves.append((CHUNKS, chunk["chunkId"], {
+                    "chunkId": chunk["chunkId"], "documentId": document_id, "kbId": kb_id,
+                    "userId": user_id, "text": chunk["text"],
+                    "headingPath": chunk["headingPath"],
+                    "knowledgePoints": chunk["knowledgePoints"],
+                    # 切片序号**显式落库**：`chunkId` 的摘要里虽然也含序号，
+                    # 但摘要是单向的、取不回来，此前"按顺序读正文"只能依赖
+                    # 仓库的写入顺序（隐式约定）。详情接口要按原文顺序回传正文，
+                    # 所以把序号存成字段，让顺序可复核、不依赖存储实现。
+                    "index": index,
+                }))
+            # 刷新知识库汇总（文档数 / 切片数 / 知识点并集）
+            # 本次文档仍在待提交批次中，仓库查询还看不到它，必须显式并入汇总。
+            all_docs = [d for d in _list(DOCS, user_id) if d.get("kbId") == kb_id]
+            all_docs.append(record)
+            points: list[str] = []
+            for doc in all_docs:
+                for point in doc.get("knowledgePoints", []):
+                    if point not in points:
+                        points.append(point)
+            saves.append((KB, kb_id, {
+                **kb,
+                "documentCount": len(all_docs),
+                "chunkCount": sum(int(d.get("chunkCount") or 0) for d in all_docs),
+                "knowledgePoints": points,
+                "updatedAt": timestamp,
             }))
-        # 刷新知识库汇总（文档数 / 切片数 / 知识点并集）
-        # 本次文档仍在待提交批次中，仓库查询还看不到它，必须显式并入汇总。
-        all_docs = [d for d in _list(DOCS, user_id) if d.get("kbId") == kb_id]
-        all_docs.append(record)
-        points: list[str] = []
-        for doc in all_docs:
-            for point in doc.get("knowledgePoints", []):
-                if point not in points:
-                    points.append(point)
-        saves.append((KB, kb_id, {
-            **kb,
-            "documentCount": len(all_docs),
-            "chunkCount": sum(int(d.get("chunkCount") or 0) for d in all_docs),
-            "knowledgePoints": points,
-            "updatedAt": timestamp,
-        }))
-        _repository.apply_batch([], saves)
+            staged.apply_batch([], saves)
 
-    if _repository and parsed["status"] == knowledge.STATUS_READY:
-        from app.tools.profile_merge import merge_points_into_profile
-        merge_points_into_profile(_repository, user_id, [
-            {"name": name, "source": "document", "sourceCourse": kb.get("courseName", "")}
-            for name in parsed["knowledgePoints"]])
+            if parsed["status"] == knowledge.STATUS_READY:
+                from app.tools.profile_merge import merge_points_into_profile
+                merge_points_into_profile(staged, user_id, [
+                    {"name": name, "source": "document", "sourceCourse": kb.get("courseName", "")}
+                    for name in parsed["knowledgePoints"]])
+            staged.commit()
 
     # 201 = 已接收并处理完成（含 failed，因为"受理"成功了，处理结果在 status 里）
     return jsonify(record), 201

@@ -36,14 +36,8 @@ def _load_env_file(path: str) -> None:
 			print(f"提示：未找到 {os.path.basename(path)}，将使用系统环境变量"
 				f"（未配置 DASHSCOPE_API_KEY 时聊天层走确定性规则）")
 		return
-	with open(path, "r", encoding="utf-8") as stream:
-		for line in stream:
-			line = line.strip()
-			if not line or line.startswith("#") or "=" not in line:
-				continue
-			name, value = line.split("=", 1)
-			value = value.strip().strip('"').strip("'")
-			os.environ.setdefault(name.strip(), value)
+	from dotenv import load_dotenv
+	load_dotenv(path, override=False, encoding="utf-8-sig")
 
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -92,10 +86,11 @@ if __name__ == "__main__":
 		os.environ["ZHIXUE_QUIET"] = "1"
 		logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
-	application = create_app()
-	_banner(application)
-
+	if not 1 <= args.port <= 65535:
+		parser.error("port must be between 1 and 65535")
+	_banner(None)
 	if args.check:
 		sys.exit(0)
 
+	application = create_app()
 	application.run(host="0.0.0.0", port=args.port, debug=False)

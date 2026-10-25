@@ -20,6 +20,7 @@ import base64
 import json
 import os
 import re
+from app.repositories.file_lock import exclusive_file_lock
 import threading
 import time
 import uuid
@@ -392,7 +393,7 @@ def _write_history_store(store: dict[str, list[dict[str, Any]]]) -> None:
 def get_history(user_id: str | None = None) -> list[dict[str, Any]]:
     """读取**指定用户**的对话历史；`user_id` 缺省取演示身份。"""
     key = (user_id or DEFAULT_HISTORY_USER).strip() or DEFAULT_HISTORY_USER
-    with _HISTORY_LOCK:
+    with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
         # 旧版本已落盘的回复里可能仍有旧称呼，读取时一并迁移展示口径。
         return [dict(item, bot_response=str(item.get("bot_response") or "").replace("小艺", "小知"))
                 for item in _load_history_store().get(key, [])]
@@ -401,7 +402,7 @@ def get_history(user_id: str | None = None) -> list[dict[str, Any]]:
 def clear_history(user_id: str | None = None) -> None:
     """清空**指定用户**的历史，不动其他用户。"""
     key = (user_id or DEFAULT_HISTORY_USER).strip() or DEFAULT_HISTORY_USER
-    with _HISTORY_LOCK:
+    with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
         store = _load_history_store()
         if key in store:
             store[key] = []
@@ -413,7 +414,7 @@ def append_history(user_input: str, bot_response: str,
                    session_id: str | None = None) -> None:
     key = (user_id or DEFAULT_HISTORY_USER).strip() or DEFAULT_HISTORY_USER
     # 读—改—写必须在**同一把锁**内完成，否则并发 append 会互相覆盖（丢历史）。
-    with _HISTORY_LOCK:
+    with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
         store = _load_history_store()
         bucket = store.get(key, [])
         entry = {

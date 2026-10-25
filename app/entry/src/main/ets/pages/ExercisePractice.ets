@@ -1,6 +1,6 @@
 import router from '@ohos.router';
 import { AIFloatButton } from '../components/AIFloatButton';
-import { Exercise, ExerciseAnswer, ExerciseReview, ExerciseSetResponse, ExerciseSubmissionResult, KnowledgeMastery, PointMasteryUpdate } from '../api/ApiModels';
+import { Exercise, ExerciseAnswer, ExerciseReview, ExerciseSetResponse, ExerciseSubmission, ExerciseSubmissionResult, KnowledgeMastery, PointMasteryUpdate } from '../api/ApiModels';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { DemoSnapshot } from '../cache/DemoSnapshot';
 import { PlanDiffCard } from '../components/PlanDiffCard';
@@ -16,6 +16,7 @@ import { ApiFailure } from '../api/ApiResult';
 struct ExercisePractice {
   @State isLoading: boolean = true;
   @State isSubmitting: boolean = false;
+  @State submissionUnconfirmed: boolean = false;
   @State errorMessage: string = '';
   @State warningMessage: string = '';
   @State setId: string = DemoSnapshot.EXERCISE_SET_ID;
@@ -55,13 +56,18 @@ struct ExercisePractice {
   private viewModel: ExerciseViewModel = new ExerciseViewModel();
   private pageScroller: Scroller = new Scroller();
   private submissionKey: string = '';
+  private pendingSubmission: ExerciseSubmission | null = null;
+  private pendingSubmissionOwner: string = '';
   private requestVersion: number = 0;
+  private pickerRequestVersion: number = 0;
+  private isDisposed: boolean = false;
   private isPageActive: boolean = false;
   private observedResetVersion: number = DemoSnapshot.getResetVersion();
   /** 首帧的 `onPageShow` 与 `aboutToAppear` 是同一次进入，不重复请求。 */
   private hasShownOnce: boolean = false;
 
   aboutToAppear(): void {
+    this.isDisposed = false;
     this.isPageActive = true;
     this.readRouteParams();
     if (this.consumeDemoReset()) {
@@ -93,12 +99,13 @@ struct ExercisePractice {
    * 不重新计算掌握度（与项目纪律一致）。
    */
   private async loadPickerOptions(): Promise<void> {
+    const version: number = ++this.pickerRequestVersion;
     this.pickerLoading = true;
     this.pickerErrorMessage = '';
     const id: string = appState.currentUser.userId;
     const state: ProfileViewState =
       await this.profileViewModel.load(id.length > 0 ? id : DemoSnapshot.USER_ID, true);
-    if (!this.isPageActive) {
+    if (this.isDisposed || version !== this.pickerRequestVersion || id !== appState.currentUser.userId) {
       return;
     }
     this.pickerLoading = false;
@@ -138,6 +145,12 @@ struct ExercisePractice {
 
   /** 从练习界面回到选择器，换一个知识点练。 */
   private backToPicker(): void {
+    if (this.isSubmitting) return;
+    this.requestVersion++;
+    this.sourceRequestVersion++;
+    this.sourceVisible = false;
+    this.isLoading = false;
+    this.practiceFromRoute = false;
     this.learningGoalId = '';
     this.learningGoalVersion = 0;
     this.sourceMode = 'general';
@@ -184,27 +197,29 @@ struct ExercisePractice {
 
   onPageShow(): void {
     this.isPageActive = true;
-    this.consumeDemoReset();
+    if (this.consumeDemoReset()) return;
     if (!this.hasShownOnce) {
       this.hasShownOnce = true;
       return;
     }
+    if (this.result !== null) this.scrollToTop();
     // 空选择器上只有一条路：去导入课程／资料。导入完返回本页时如果不再读一次画像，
     // 页面还是"还没有可练的知识点" —— 用户会以为导入没生效，只能反复上传。
-    if (this.showPicker && !this.practiceFromRoute && this.result === null && this.pickerOptions.length === 0) {
+    if (this.showPicker && !this.pickerLoading && !this.practiceFromRoute && this.result === null && this.pickerOptions.length === 0) {
       void this.loadPickerOptions();
     }
   }
 
   onPageHide(): void {
     this.isPageActive = false;
-    this.requestVersion++;
+    // A covered page still owns its in-flight request and its idempotency key.
   }
 
   private consumeDemoReset(): boolean {
     const resetVersion: number = DemoSnapshot.getResetVersion();
     if (resetVersion !== this.observedResetVersion) {
       this.observedResetVersion = resetVersion;
+      this.isSubmitting = false;
       this.result = null;
       this.loadExercises(true);
       return true;
@@ -213,8 +228,11 @@ struct ExercisePractice {
   }
 
   aboutToDisappear(): void {
+    this.isDisposed = true;
     this.isPageActive = false;
     this.requestVersion++;
+    this.pickerRequestVersion++;
+    this.sourceRequestVersion++;
   }
 
   /**
@@ -233,6 +251,11 @@ struct ExercisePractice {
   }
 
   private async loadExercises(forceRefresh: boolean = false): Promise<void> {
+    if (this.isSubmitting) return;
+    this.pendingSubmission = null;
+    this.submissionUnconfirmed = false;
+    this.pickerRequestVersion++;
+    this.pickerLoading = false;
     const currentRequestVersion: number = ++this.requestVersion;
     const owner: string = appState.currentUser.userId;
     this.isLoading = true;
@@ -253,7 +276,7 @@ struct ExercisePractice {
         // 由服务端现场出题；用演示默认知识点时**不带这个参数**，演示基线不受影响。
         generate: this.practiceFromRoute
       });
-    if (!this.isPageActive || currentRequestVersion !== this.requestVersion || owner !== appState.currentUser.userId) {
+    if (this.isDisposed || currentRequestVersion !== this.requestVersion || owner !== appState.currentUser.userId) {
       return;
     }
     // ⚠️ 用户**主动要一组新题**（forceRefresh）却没拿到新题时，必须清空上一轮的题与作答。
@@ -292,7 +315,7 @@ struct ExercisePractice {
   }
 
   private selectAnswer(questionIndex: number, option: string): void {
-    if (this.isSubmitting || this.result !== null) {
+    if (this.isSubmitting || this.submissionUnconfirmed || this.result !== null) {
       return;
     }
     const nextAnswers: string[] = this.answers.slice();
@@ -315,7 +338,7 @@ struct ExercisePractice {
     this.sourceError = '';
     this.sourceFragments = [];
     const response = await AgentApiClient.getExerciseSources(exerciseId);
-    if (!this.isPageActive || version !== this.sourceRequestVersion || owner !== appState.currentUser.userId) return;
+    if (this.isDisposed || version !== this.sourceRequestVersion || owner !== appState.currentUser.userId) return;
     this.sourceLoading = false;
     if (response.ok) this.sourceFragments = response.data.sources;
     else this.sourceError = (response as ApiFailure).error.message;
@@ -381,6 +404,10 @@ struct ExercisePractice {
     if (this.isSubmitting) {
       return;
     }
+    if (this.pendingSubmission !== null && this.pendingSubmissionOwner !== owner) {
+      this.errorMessage = '账号已切换，请返回原账号确认交卷结果。';
+      return;
+    }
     if (this.exercises.length === 0) {
       this.errorMessage = '当前暂无可用练习题，请重试。';
       return;
@@ -393,22 +420,35 @@ struct ExercisePractice {
     for (let index: number = 0; index < this.exercises.length; index++) {
       exerciseAnswers.push({ exerciseId: this.exercises[index].exerciseId, answer: this.answers[index] });
     }
+    if (this.pendingSubmission === null) {
+      this.pendingSubmission = {
+        goalId: this.learningGoalId.length > 0 ? this.learningGoalId : undefined,
+        goalStateVersion: this.learningGoalId.length > 0 ? this.learningGoalVersion : undefined,
+        idempotencyKey: this.submissionKey,
+        answers: exerciseAnswers
+      };
+      this.pendingSubmissionOwner = owner;
+    }
     this.isSubmitting = true;
     this.errorMessage = '';
-    const submissionResult: ExerciseSubmissionResult | null = await this.viewModel.submit(this.setId, {
-      goalId: this.learningGoalId.length > 0 ? this.learningGoalId : undefined,
-      goalStateVersion: this.learningGoalId.length > 0 ? this.learningGoalVersion : undefined,
-      idempotencyKey: this.submissionKey,
-      answers: exerciseAnswers
-    });
-    if (!this.isPageActive || owner !== appState.currentUser.userId || version !== this.requestVersion) {
+    const submissionResult: ExerciseSubmissionResult | null = await this.viewModel.submit(this.setId, this.pendingSubmission);
+    if (this.isDisposed || owner !== appState.currentUser.userId || version !== this.requestVersion) {
       return;
     }
     this.isSubmitting = false;
     if (submissionResult === null) {
-      this.errorMessage = this.viewModel.getErrorMessage() || '提交失败，请稍后重试。';
+      const failure: ApiFailure | null = this.viewModel.getSubmissionFailure();
+      const status: number = failure?.error.statusCode ?? 0;
+      // A timeout or malformed success body may hide an already committed grade.
+      // Keep both key and answers until that exact submission has been confirmed.
+      this.submissionUnconfirmed = !(status >= 400 && status < 500 && status !== 408 && status !== 429);
+      if (!this.submissionUnconfirmed) this.pendingSubmission = null;
+      this.errorMessage = (this.viewModel.getErrorMessage() || '提交失败，请稍后重试。') +
+        (this.submissionUnconfirmed ? ' 交卷结果尚未确认，已保留原答案；请重试确认结果。' : '');
       return;
     }
+    this.pendingSubmission = null;
+    this.submissionUnconfirmed = false;
     this.warningMessage = this.viewModel.getWarningMessage();
     this.result = submissionResult;
     this.wrongBookFlags = submissionResult.review.map((item: ExerciseReview): boolean => item.inWrongBook);
@@ -418,7 +458,7 @@ struct ExercisePractice {
 
   private scrollToTop(): void {
     setTimeout(() => {
-      this.pageScroller.scrollEdge(Edge.Top);
+      if (this.isPageActive) this.pageScroller.scrollEdge(Edge.Top);
     }, 100);
   }
 
@@ -429,7 +469,7 @@ struct ExercisePractice {
       .backgroundColor(this.isSelected(questionIndex, option) ? '#2563EB' : '#F8FAFC')
       .border({ width: 1, color: this.isSelected(questionIndex, option) ? '#2563EB' : '#D0D5DD' })
       .borderRadius(10).width('100%').height(42)
-      .enabled(!this.isSubmitting)
+      .enabled(!this.isSubmitting && !this.submissionUnconfirmed)
       .onClick(() => this.selectAnswer(questionIndex, option))
   }
 
@@ -721,6 +761,7 @@ struct ExercisePractice {
           Blank()
           if (!this.showPicker && !this.pickerLoading) {
             Text('换知识点').fontSize(13).fontColor('#2563EB')
+              .enabled(!this.isSubmitting)
               .onClick(() => this.backToPicker())
           }
           Text(this.showPicker || this.pickerLoading ? '选择知识点' : this.practiceTitle())
@@ -768,7 +809,7 @@ struct ExercisePractice {
               if (this.errorMessage.length > 0) {
                 Text(this.errorMessage).fontSize(13).fontColor('#B45309').width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(10)
               }
-              Button(this.isSubmitting ? '正在提交…' : '提交诊断')
+              Button(this.isSubmitting ? '正在提交…' : (this.submissionUnconfirmed ? '重试确认交卷结果' : '提交诊断'))
                 .width('100%').height(48).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
                 .backgroundColor('#2563EB').borderRadius(14)
                 .enabled(!this.isSubmitting && this.answeredCount() === this.exercises.length)

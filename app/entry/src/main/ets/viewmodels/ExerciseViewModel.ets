@@ -13,6 +13,11 @@ export class ExerciseViewModel {
   private errorMessage: string = '';
   private warningMessage: string = '';
   private loadVersion: number = 0;
+  private submissionFailure: ApiFailure | null = null;
+
+  getSubmissionFailure(): ApiFailure | null {
+    return this.submissionFailure;
+  }
 
   getErrorMessage(): string {
     return this.errorMessage;
@@ -79,6 +84,7 @@ export class ExerciseViewModel {
   }
 
   async submit(setId: string, submission: ExerciseSubmission): Promise<ExerciseSubmissionResult | null> {
+    this.submissionFailure = null;
     const owner: string = ClientCache.currentOwnerUserId();
     this.errorMessage = '';
     this.warningMessage = '';
@@ -159,7 +165,8 @@ export class ExerciseViewModel {
       }
       return submissionResult;
     }
-    this.errorMessage = (result as ApiFailure).error.message;
+    this.submissionFailure = result as ApiFailure;
+    this.errorMessage = this.submissionFailure.error.message;
     return null;
   }
 }

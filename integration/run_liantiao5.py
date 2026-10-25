@@ -88,6 +88,7 @@ def run_backend_tests():
         return False, {"error": "tests 目录缺失"}
     WORKSPACE_TMP.mkdir(parents=True, exist_ok=True)
     report = WORKSPACE_TMP / "pytest_report.json"
+    report.unlink(missing_ok=True)
     plugin = ROOT / "integration" / "pytest_report_plugin.py"
     env = dict(os.environ)
     env["DSH_PYTEST_REPORT"] = str(report)
@@ -102,7 +103,7 @@ def run_backend_tests():
     summary = {}
     if report.exists():
         summary = json.loads(report.read_text(encoding="utf-8")).get("summary", {})
-    ok = summary.get("failed", 1) == 0 and summary.get("error", 1) == 0
+    ok = proc.returncode == 0 and summary.get("failed", 1) == 0 and summary.get("error", 1) == 0
     if not summary:
         tail = proc.stdout.decode("utf-8", "replace")[-800:]
         summary = {"error": "pytest 未产出报告", "tail": tail}
@@ -230,6 +231,11 @@ def main():
         env["PORT"] = str(args.port)
         env["PYTHONIOENCODING"] = "utf-8"
         env["ZHIXUE_QUIET"] = "1"
+        env["ZHIXUE_ENABLE_DEV_TOOLS"] = "1"
+        env["ZHIXUE_ENV"] = "development"
+        env.pop("ZHIXUE_DB", None)
+        if llm_mode["mode"] == "offline":
+            env["DASHSCOPE_API_KEY"] = ""
         # 让联调产生的账号 / 计划 / 会话写进临时数据文件，**绝不污染交付包里的
         # `data/repository.json`**。本脚本会真实注册账号、提交练习、推进工作流，
         # 全部是写操作；用默认文件时每跑一次就给交付包塞进十几个测试账号
@@ -266,7 +272,8 @@ def main():
             import verify_integration  # noqa: E402
 
             verify_integration.RESULTS.clear()
-            out_path = Path(args.out) if args.out else (EVIDENCE_DIR / f"integration_{stamp}.json")
+            out_path = (Path(args.out) if args.out else (EVIDENCE_DIR / f"integration_{stamp}.json")).resolve()
+            out_path.parent.mkdir(parents=True, exist_ok=True)
             argv = sys.argv
             cli = ["verify_integration", "--base", base, "--out", str(out_path)]
             if llm_mode["skipDegradationChecks"]:
@@ -277,7 +284,7 @@ def main():
             finally:
                 sys.argv = argv
             result = json.loads(out_path.read_text(encoding="utf-8"))
-            evidence["integration"] = {"ok": code == 0, "report": str(out_path.relative_to(ROOT)),
+            evidence["integration"] = {"ok": code == 0, "report": os.path.relpath(out_path, ROOT),
                                        "summary": {k: result[k] for k in ("total", "passed", "failed", "passRate")}}
         else:
             code = 3
@@ -329,7 +336,7 @@ def main():
 
     log("")
     log("=" * 78)
-    log(f"  契约 {'PASS' if contract_ok else 'FAIL'} | 后端测试 {'PASS' if tests_ok else 'FAIL'} | "
+    log(f"  契约 {'PASS' if contract_ok else 'FAIL'} | 后端测试 {'SKIP' if args.skip_tests else ('PASS' if tests_ok else 'FAIL')} | "
         f"启动 {'PASS' if boot_ok else 'FAIL'} | 联调 {'PASS' if code == 0 else 'FAIL'}")
     log(f"  总体：{evidence['overall']}")
     if result and code != 0:
@@ -337,7 +344,7 @@ def main():
         log("  ⚠️ 退出码非 0 不代表演示链坏了 —— 请分开看这两件事：")
         log(f"     · 演示主链基线：{'全部命中' if baseline_ok else '有漂移，必须立刻排查'}")
         log(f"     · HTTP 检查：{result['passed']}/{result['total']} 通过，"
-            f"{result['failed']} 项未过（见上面『失败项』，属已知待修缺陷）")
+            f"{result['failed']} 项未过（见上面『失败项』，需核对原因）")
     log(f"  汇总证据：{summary_path.relative_to(ROOT)}")
     log("=" * 78)
     return 0 if overall else 1

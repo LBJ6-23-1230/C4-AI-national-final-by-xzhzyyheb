@@ -60,7 +60,7 @@ def record(name, ok, detail="", expected=None, actual=None):
 
 
 def http(method, url, body=None, contract=CONTRACT, raw_text=None, content_type=None,
-         timeout=None):
+         timeout=None, authorization=None):
     """发一个真实 HTTP 请求，返回 `(status, parsed_body, headers)`。
 
     `raw_text` / `content_type` 用于构造**非 JSON** 请求体（例如验证
@@ -82,6 +82,8 @@ def http(method, url, body=None, contract=CONTRACT, raw_text=None, content_type=
         data = json.dumps(body).encode("utf-8") if body is not None else None
     request = urllib.request.Request(url, data=data, method=method)
     request.add_header("Accept", "application/json")
+    if authorization:
+        request.add_header("Authorization", "Bearer " + authorization)
     if contract:
         request.add_header("X-API-Contract-Version", contract)
     if data is not None:
@@ -696,27 +698,12 @@ def main():
            f"错误密码 HTTP {status_wrong_password}", expected=401,
            actual=str(status_wrong_password))
 
-    # 华为账号一键登录（登录优先，注册兜底）
+    # 未接服务端凭证核验时，客户端 OpenID 不能直接成为登录凭据。
     hw_open_id = f"verify-hw-open-{int(time.time())}"
-    status_hw, hw_first, _ = http("POST", f"{base}/api/v1/auth/login-with-huawei",
-                                  {"openId": hw_open_id})
-    if isinstance(hw_first, dict) and status_hw in (200, 201):
-        check_contract("auth login-with-huawei", "POST",
-                       "/api/v1/auth/login-with-huawei", hw_first)
-    record("华为账号首次登录自动建号", status_hw == 201
-           and isinstance(hw_first, dict) and hw_first.get("created") is True,
-           f"HTTP {status_hw} created={hw_first.get('created') if isinstance(hw_first, dict) else '?'}",
-           expected="201 + created=true", actual=str(status_hw))
-
-    status_hw2, hw_second, _ = http("POST", f"{base}/api/v1/auth/login-with-huawei",
-                                    {"openId": hw_open_id})
-    hw_same = (isinstance(hw_first, dict) and isinstance(hw_second, dict)
-               and (hw_first.get("user") or {}).get("userId")
-               == (hw_second.get("user") or {}).get("userId"))
-    record("华为账号再次登录复用账号（不重复建号）",
-           status_hw2 == 200 and hw_same and hw_second.get("created") is False,
-           f"HTTP {status_hw2} created={hw_second.get('created') if isinstance(hw_second, dict) else '?'}",
-           expected="200 + created=false + 同一 userId", actual=str(status_hw2))
+    status_hw, hw_first, _ = http("POST", f"{base}/api/v1/auth/login-with-huawei", {"openId": hw_open_id})
+    record("未经服务端核验的华为 OpenID 不签发会话",
+           status_hw == 503 and isinstance(hw_first, dict) and 'token' not in hw_first,
+           f"HTTP {status_hw}", expected="503 + no token", actual=str(status_hw))
 
     if isinstance(hw_first, dict):
         record("华为账号登录不泄漏 OpenID",
@@ -876,28 +863,27 @@ def main():
 
         http("DELETE", f"{base}/api/v1/knowledge-bases/{kb}")
 
-    # ---- 18. 对话历史按用户隔离（原先全局可读可删）------------------------
-    http("DELETE", f"{base}/api/agent/history?userId=probe-a")
-    http("DELETE", f"{base}/api/agent/history?userId=probe-b")
-    http("POST", f"{base}/api/agent/chat", {"message": "甲的问题", "userId": "probe-a"},
-         timeout=LLM_TIMEOUT)
-    http("POST", f"{base}/api/agent/chat", {"message": "乙的问题", "userId": "probe-b"},
-         timeout=LLM_TIMEOUT)
-
-    status, hist_a, _ = http("GET", f"{base}/api/agent/history?userId=probe-a")
+    # ---- 18. 使用两个真实会话验证历史隔离 -----------------------------
+    sessions = []
+    for i in (1, 2):
+        status, account, _ = http("POST", f"{base}/api/v1/auth/register", {
+            "nickname": f"历史验证{i}", "phone": '139' + f"{int(time.time()) % 10000000:07d}" + str(i)})
+        assert status == 201 and 'token' in account, 'history test account setup failed'
+        sessions.append(account['token'])
+    token_a, token_b = sessions
+    http("POST", f"{base}/api/agent/chat", {"message": "甲的问题"}, timeout=LLM_TIMEOUT, authorization=token_a)
+    http("POST", f"{base}/api/agent/chat", {"message": "乙的问题"}, timeout=LLM_TIMEOUT, authorization=token_b)
+    status, hist_a, _ = http("GET", f"{base}/api/agent/history", authorization=token_a)
     check_contract("agent history", "GET", "/api/agent/history", hist_a)
-    inputs_a = [e.get("user_input") for e in (hist_a or {}).get("history", [])] \
-        if isinstance(hist_a, dict) else []
-    record("对话历史按用户隔离（甲只看得到自己的）", inputs_a == ["甲的问题"],
-           f"甲的历史={inputs_a}", expected="['甲的问题']", actual=str(inputs_a))
-
-    http("DELETE", f"{base}/api/agent/history?userId=probe-a")
-    status, hist_b, _ = http("GET", f"{base}/api/agent/history?userId=probe-b")
-    inputs_b = [e.get("user_input") for e in (hist_b or {}).get("history", [])] \
-        if isinstance(hist_b, dict) else []
-    record("清理甲的历史不影响乙（原先 DELETE 会清空所有人）", inputs_b == ["乙的问题"],
-           f"乙的历史={inputs_b}", expected="['乙的问题']", actual=str(inputs_b))
-    http("DELETE", f"{base}/api/agent/history?userId=probe-b")
+    inputs_a = [e.get("user_input") for e in hist_a.get("history", [])]
+    record("对话历史按会话身份隔离", status == 200 and inputs_a == ["甲的问题"], expected="['甲的问题']", actual=str(inputs_a))
+    http("DELETE", f"{base}/api/agent/history", authorization=token_a)
+    status, hist_b, _ = http("GET", f"{base}/api/agent/history", authorization=token_b)
+    inputs_b = [e.get("user_input") for e in hist_b.get("history", [])]
+    record("清理甲的历史不影响乙", status == 200 and inputs_b == ["乙的问题"], expected="['乙的问题']", actual=str(inputs_b))
+    status, _, _ = http("GET", f"{base}/api/agent/history?userId=probe-a")
+    record("游客不能伪造身份读取历史", status == 404, expected=404, actual=status)
+    http("DELETE", f"{base}/api/agent/history", authorization=token_b)
 
     # ---- 19. 非 2xx 的 HTTP 错误必须是 JSON（前端校验器按 JSON 解析）------
     status, body, _ = http("GET", f"{base}/api/v1/workflows")

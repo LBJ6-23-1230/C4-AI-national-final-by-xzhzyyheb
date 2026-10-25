@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-25",
+  "readyForUserRegression": true,
+  "previousFullBackendTests": 631,
+  "rerunHttpOffline": {
+    "passed": 97,
+    "total": 97
+  },
+  "rerunPageRecovery": 20,
+  "rerunWorkflowIsolation": 6,
+  "startupConfigCheck": "PASS",
+  "contractMirror": "PASS",
+  "emulator": {
+    "target": "127.0.0.1:5555",
+    "api": 24,
+    "appPresent": true,
+    "installedBuildVerified": false
+  },
+  "defaultBackendPort5000ListeningAtCheck": true,
+  "deviceInstallPerformed": false,
+  "testHap": "deliverables/user-test-20261025/知学Mate-user-test-20261025-signed.hap",
+  "sha256": "c1b08a766550409bad100df81bb33526f4f4275adbb55976660d6f465026314d",
+  "guide": "05-决赛准备/用户端测试清单-20261025.md",
+  "externalCapabilitiesPending": [
+    "production SMS",
+    "Huawei trusted login",
+    "live model acceptance"
+  ],
+  "backendHealthHttpStatus": 200,
+  "backendStateCorrection": "Confirmed by direct HTTP request; earlier empty port-query output was not evidence of a stopped backend."
+}

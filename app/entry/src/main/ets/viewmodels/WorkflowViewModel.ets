@@ -9,6 +9,12 @@ export class WorkflowViewModel {
   private errorMessage: string = '';
   //: 上一次操作是否因为"服务端已无此会话"而丢弃了本地缓存（供调用方决定要不要重建）。
   private staleSession: boolean = false;
+  private requestVersion: number = 0;
+
+  private ownsRequest(owner: string, version: number, sessionId?: string): boolean {
+    return owner === ClientCache.currentOwnerUserId() && version === this.requestVersion &&
+      (sessionId === undefined || ClientCache.getWorkflow()?.sessionId === sessionId);
+  }
 
   getErrorMessage(): string {
     return this.errorMessage;
@@ -35,7 +41,9 @@ export class WorkflowViewModel {
    * 判据用 `statusCode === 404`：只有"服务端明确说这条会话不存在"才丢缓存。
    * 网络故障（statusCode = 0）**绝不能丢** —— 否则断网一次就把会话清了。
    */
-  private async discardIfMissing(failure: ApiFailure): Promise<boolean> {
+  private async discardIfMissing(failure: ApiFailure, owner: string, version: number,
+    sessionId: string): Promise<boolean> {
+    if (!this.ownsRequest(owner, version, sessionId)) return false;
     if (failure.error.statusCode !== 404) {
       return false;
     }
@@ -49,6 +57,7 @@ export class WorkflowViewModel {
       userId: appState.currentUser.userId,
       maxSteps: 5
     });
+    if (!this.ownsRequest(owner, version) || ClientCache.getWorkflow() !== null) return true;
     if (rebuilt.ok) {
       ClientCache.cacheWorkflow(rebuilt.data);
       // 自愈成功 = 问题已经解决，不要再把"刚失效过一次"以红字+重试的形式留在卡片上
@@ -66,6 +75,8 @@ export class WorkflowViewModel {
   }
 
   async start(goal: string, userId: string): Promise<WorkflowResponse | null> {
+    const owner: string = ClientCache.currentOwnerUserId();
+    const version: number = ++this.requestVersion;
     this.errorMessage = '';
     const request: WorkflowCreateRequest = {
       goal: goal.trim().length > 0 ? goal : '完成当前薄弱知识点诊断',
@@ -73,6 +84,7 @@ export class WorkflowViewModel {
       maxSteps: 5
     };
     const result = await AgentApiClient.createWorkflow(request);
+    if (!this.ownsRequest(owner, version)) return null;
     if (result.ok) {
       ClientCache.cacheWorkflow(result.data);
       ClientCache.invalidateWorkflowStatus();
@@ -84,6 +96,8 @@ export class WorkflowViewModel {
   }
 
   async refreshStatus(forceRefresh: boolean = false): Promise<WorkflowStatusResponse | null> {
+    const owner: string = ClientCache.currentOwnerUserId();
+    const version: number = ++this.requestVersion;
     this.errorMessage = '';
     this.staleSession = false;
     const workflow: WorkflowResponse | null = ClientCache.getWorkflow();
@@ -96,12 +110,13 @@ export class WorkflowViewModel {
       return cached;
     }
     const result = await AgentApiClient.getWorkflow(workflow.sessionId);
+    if (!this.ownsRequest(owner, version, workflow.sessionId)) return null;
     if (result.ok) {
       ClientCache.cacheWorkflowStatus(result.data);
       return result.data;
     }
     const failure: ApiFailure = result as ApiFailure;
-    if (await this.discardIfMissing(failure)) {
+    if (await this.discardIfMissing(failure, owner, version, workflow.sessionId)) {
       return null;   // 文案由 discardIfMissing 按"重建成功与否"如实决定
     }
     this.errorMessage = failure.error.message;
@@ -109,6 +124,8 @@ export class WorkflowViewModel {
   }
 
   async runUntilComplete(maxRuns: number = 5): Promise<WorkflowStatusResponse | null> {
+    const owner: string = ClientCache.currentOwnerUserId();
+    const version: number = ++this.requestVersion;
     this.errorMessage = '';
     this.staleSession = false;
     const workflow: WorkflowResponse | null = ClientCache.getWorkflow();
@@ -119,9 +136,10 @@ export class WorkflowViewModel {
     let latest: WorkflowStatusResponse | null = null;
     for (let runIndex: number = 0; runIndex < maxRuns; runIndex++) {
       const result = await AgentApiClient.runWorkflow(workflow.sessionId);
+      if (!this.ownsRequest(owner, version, workflow.sessionId)) return null;
       if (!result.ok) {
         const failure: ApiFailure = result as ApiFailure;
-        if (await this.discardIfMissing(failure)) {
+        if (await this.discardIfMissing(failure, owner, version, workflow.sessionId)) {
           return latest;   // 文案由 discardIfMissing 按"重建成功与否"如实决定
         }
         this.errorMessage = failure.error.message;

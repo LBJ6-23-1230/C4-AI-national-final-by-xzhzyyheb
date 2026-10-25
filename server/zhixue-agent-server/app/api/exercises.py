@@ -280,7 +280,7 @@ def _material_set(set_id, point, count):
 	document_id = request.args.get("documentId", "").strip()
 	if not point or not kb_id or len(point) > 200 or len(kb_id) > 200 or len(document_id) > 200 or count > 6:
 		return jsonify({"errorCode": "BAD_REQUEST", "message": "资料题需指定知识点和资料库，题数为1至6", "details": None}), 400
-	with PROFILE_LOCK:
+	with PROFILE_LOCK, _repository.transaction():
 		sources, failure = grounding.retrieve(_repository, owner, point, kb_id, document_id)
 	if failure == "NOT_FOUND":
 		return jsonify({"errorCode": "NOT_FOUND", "message": "资料不存在", "details": None}), 404
@@ -297,7 +297,7 @@ def _material_set(set_id, point, count):
 	if not items:
 		return jsonify(dict(response, generationFailed=True, failureReason="GENERATION_FAILED",
 			message="资料题生成失败或来源校验未通过，请重试；也可以主动切换通用知识练习。"))
-	with PROFILE_LOCK:
+	with PROFILE_LOCK, _repository.transaction():
 		if not grounding.sources_current(_repository, owner, sources):
 			return jsonify(dict(response, generationFailed=True, failureReason="SOURCE_CHANGED",
 				message="出题期间资料已删除或变更，请重新选择资料。"))
@@ -320,7 +320,7 @@ def _material_set(set_id, point, count):
 def get_exercise_sources(exercise_id):
 	from app.services import grounded_exercises as grounding
 	owner = resolve_user_id(None)
-	with PROFILE_LOCK:
+	with PROFILE_LOCK, _repository.transaction():
 		item = _repository.get("exercises", exercise_id) if _repository else None
 		if not item or item.get("userId", "demo-user") != owner:
 			return jsonify({"errorCode": "NOT_FOUND", "message": "题目不存在", "details": None}), 404

@@ -6,8 +6,8 @@
 1. 本地账号可设置密码；只保存 Werkzeug 生成的加盐哈希，明文不落库、不回传。
 2. **`demo-user` 是保留的游客身份**。未登录 / 「一键体验」/ 离线 Fixture 全部使用它，
    因此**演示主链的数值与行为完全不受登录功能影响**（`demo/reset` 依然只作用于 demo-user）。
-3. **不记录手机号明文**。`auth_subject` 只存第三方（如 AGC）返回的 uid，
-   需要展示时由客户端脱敏。
+3. 手机号规范化后用于账号唯一性检查，公开响应只提供脱敏手机号。
+   数据库及备份应按包含个人信息的运行数据管理，不随源码交付。
 4. 全部函数只接收 `Repository`，便于把 `JsonRepository` 换成 `SqliteRepository`
    （`app/repositories/sqlite_repository.py` 已实现同一套协议，`create_app` 改一行即可）。
 """
@@ -21,10 +21,12 @@ import secrets
 import threading
 import uuid
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from typing import Any
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.repositories.repository import Repository
+from app.repositories.staged_repository import StagedRepository
 
 # --------------------------------------------------------------------------- 常量
 USERS = "users"
@@ -45,6 +47,7 @@ VERIFICATION_MAX_ATTEMPTS = 5
 VERIFICATION_LOCK_SECONDS = 15 * 60
 
 _VERIFICATION_LOCK = threading.RLock()
+_AUTH_LOCK = threading.RLock()
 
 #: 用户主表中同时保有值、但**不属于**用户个人信息的内容。
 _ALLOWED_GRADES = ("大一", "大二", "大三", "大四", "大五", "研一", "研二", "研三", "博士")
@@ -75,6 +78,31 @@ class AuthError(Exception):
         self.message = message
         self.status = status
         self.details = details or {}
+
+
+def atomic_auth(function):
+    """Publish account changes once, with cross-worker isolation and rollback.
+
+    Expected auth failures may update verification attempt counters. Commit those
+    counters before re-raising outside the SQLite transaction; unexpected failures
+    discard every staged write. Nested auth helpers share the outer operation.
+    """
+    @wraps(function)
+    def wrapped(repository, *args, **kwargs):
+        if isinstance(repository, StagedRepository):
+            return function(repository, *args, **kwargs)
+        failure = None
+        with _AUTH_LOCK, repository.transaction():
+            staged = StagedRepository(repository)
+            try:
+                result = function(staged, *args, **kwargs)
+            except AuthError as error:
+                failure = error
+            staged.commit()
+        if failure is not None:
+            raise failure
+        return result
+    return wrapped
 
 
 # --------------------------------------------------------------------------- 工具
@@ -297,9 +325,11 @@ def resolve_session(repository: Repository, token: str) -> dict[str, Any] | None
     user_id = str(session.get("userId", ""))
     if not user_id:
         return None
-    return repository.get(USERS, user_id)
+    user = repository.get(USERS, user_id)
+    return user if user is not None and user.get("status") == "active" else None
 
 
+@atomic_auth
 def revoke_session(repository: Repository, token: str) -> bool:
     if not token or repository.get(SESSIONS, token) is None:
         return False
@@ -307,6 +337,7 @@ def revoke_session(repository: Repository, token: str) -> bool:
     return True
 
 
+@atomic_auth
 def revoke_all_sessions(repository: Repository, user_id: str) -> int:
     """注销账号 / 安全事件时清空该用户所有会话。"""
     deletes: list[tuple[str, str]] = []
@@ -344,6 +375,7 @@ def find_users_by_nickname(repository: Repository, nickname: Any) -> list[dict[s
     return matches
 
 
+@atomic_auth
 def login_by_nickname(repository: Repository, nickname: Any,
                       password: Any = None) -> dict[str, Any]:
     """按昵称登录；新账号若设置了密码则必须校验，旧账号保持兼容。"""
@@ -387,6 +419,7 @@ def find_user_by_phone(repository: Repository, phone: Any) -> dict[str, Any] | N
     return None
 
 
+@atomic_auth
 def login_by_phone(repository: Repository, phone: Any,
                    password: Any = None, *, verify_secret: bool = True) -> dict[str, Any]:
     """手机号登录（**免验证码版本**）。
@@ -411,6 +444,7 @@ def login_by_phone(repository: Repository, phone: Any,
             "expiresAt": session["expiresAt"]}
 
 
+@atomic_auth
 def change_password(repository: Repository, user_id: Any,
                     old_password: Any, new_password: Any) -> dict[str, Any]:
     """修改 / 首次设置密码。**必须已登录**（由 API 层用 Bearer token 解析出 user_id）。
@@ -444,6 +478,7 @@ def change_password(repository: Repository, user_id: Any,
     return {"status": "ok", "hasPassword": True, "wasFirstTime": not had_password}
 
 
+@atomic_auth
 def send_verification_code(repository: Repository, phone: Any,
                            *, now: datetime | None = None) -> dict[str, Any]:
     """签发手机号验证码；开发环境回显 devCode，生产环境不回显。
@@ -545,6 +580,7 @@ def send_verification_code(repository: Repository, phone: Any,
     }
 
 
+@atomic_auth
 def verify_verification_code(repository: Repository, phone: Any, code: Any,
                              nickname: Any = None, grade: Any = None,
                              *, now: datetime | None = None,
@@ -637,6 +673,7 @@ def verify_verification_code(repository: Repository, phone: Any, code: Any,
         return {**result, "created": True, "demoDataSeeded": seeded}
 
 
+@atomic_auth
 def register_user(repository: Repository, nickname: Any, grade: Any = None,
                   phone: Any = None, password: Any = None) -> dict[str, Any]:
     """创建账号：昵称 + 年级 + 手机号 + 可选密码 → userId + token。
@@ -686,6 +723,7 @@ def register_user(repository: Repository, nickname: Any, grade: Any = None,
             "expiresAt": session["expiresAt"]}
 
 
+@atomic_auth
 def login_user(repository: Repository, user_id: Any, token: Any) -> dict[str, Any]:
     """用已保存的 (userId, token) 恢复登录态。
 
@@ -790,6 +828,7 @@ def get_user(repository: Repository, user_id: str) -> dict[str, Any] | None:
     return _public_user(user)
 
 
+@atomic_auth
 def deactivate_user(repository: Repository, user_id: str) -> bool:
     """注销账号：标记停用 + 清空全部会话。
 
@@ -808,6 +847,7 @@ def deactivate_user(repository: Repository, user_id: str) -> bool:
 
 
 # --------------------------------------------------------------------------- 新用户画像预置
+@atomic_auth
 def provision_starter_profile(repository: Repository, user_id: str, nickname: str,
                               with_demo_data: bool = False) -> bool:
     """给新账号预置画像；**是否连演示数据一起写入由调用方决定**。
@@ -882,6 +922,16 @@ def provision_starter_profile(repository: Repository, user_id: str, nickname: st
     )
     repository.save("plans", plan.plan_id, plan.to_dict())
     return True
+
+
+@atomic_auth
+def register_and_provision(repository: Repository, nickname: Any, grade: Any = None,
+                           phone: Any = None, password: Any = None,
+                           with_demo_data: bool = False) -> dict:
+    result = register_user(repository, nickname, grade, phone, password)
+    seeded = provision_starter_profile(repository, result["user"]["userId"], result["user"]["nickname"],
+                                       with_demo_data=with_demo_data)
+    return {**result, "demoDataSeeded": seeded}
 
 
 # --------------------------------------------------------------------------- 供中间件使用

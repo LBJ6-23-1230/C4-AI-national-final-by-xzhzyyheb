@@ -1,5 +1,6 @@
 """One atomic boundary for discovery and assessment profile writes."""
 import threading
+from contextlib import nullcontext
 from datetime import datetime, timezone
 import uuid
 
@@ -14,7 +15,7 @@ def merge_points_into_profile(repository, user_id, points):
 	from app.api.plans import plan_belongs_to
 	from app.tools.plan_tools import create_plan_history
 	bank = {row["knowledgePointName"]: row["knowledgePointId"] for row in _EXERCISE_BANK}
-	with PROFILE_LOCK:
+	with PROFILE_LOCK, (nullcontext() if isinstance(repository, StagedRepository) else repository.transaction()):
 		repository = StagedRepository(repository)
 		profile = repository.get("profiles", user_id)
 		if profile is None:

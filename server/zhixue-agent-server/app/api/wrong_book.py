@@ -1,5 +1,8 @@
 """Per-user wrong-question book with deterministic three-correct removal."""
 from datetime import datetime, timezone
+from functools import wraps
+from contextlib import nullcontext
+from app.tools.profile_merge import PROFILE_LOCK
 
 from flask import Blueprint, jsonify, request
 
@@ -10,6 +13,14 @@ from app.repositories.json_repository import JsonRepository
 
 wrong_book_api = Blueprint("wrong_book", __name__)
 _repository: JsonRepository | None = None
+
+
+def _locked(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with PROFILE_LOCK, (_repository.transaction() if _repository else nullcontext()):
+            return function(*args, **kwargs)
+    return wrapped
 
 
 def configure_wrong_book_repository(repository: JsonRepository) -> None:
@@ -113,6 +124,7 @@ def list_wrong_book():
 
 
 @wrong_book_api.post("/api/v1/wrong-book/<exercise_id>")
+@_locked
 def toggle_wrong_book(exercise_id: str):
 	data, guard = json_object()
 	if guard is not None:
@@ -135,6 +147,7 @@ def toggle_wrong_book(exercise_id: str):
 
 
 @wrong_book_api.post("/api/v1/wrong-book/<exercise_id>/attempt")
+@_locked
 def practice_wrong_book(exercise_id: str):
 	data, guard = json_object()
 	if guard is not None:

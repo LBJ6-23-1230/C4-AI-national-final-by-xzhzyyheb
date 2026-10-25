@@ -16,7 +16,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Cm
 
-OUT = Path(r"E:\C4-liantiao\V2")
+OUT = Path(__file__).resolve().parents[1] / ".local-work" / "submission-docs"
 CN = "微软雅黑"
 
 

@@ -104,6 +104,8 @@ def decode_binary(content_base64: Any) -> tuple[bytes, str]:
     """校验 base64 与大小限制，返回原始字节。"""
     if not isinstance(content_base64, str) or not content_base64.strip():
         return b"", "文件内容为空"
+    if len(content_base64) > 4 * ((MAX_FILE_BYTES + 2) // 3):
+        return b"", f"文件超过 {MAX_FILE_BYTES // (1024 * 1024)}MB 上限"
     try:
         raw = base64.b64decode(content_base64, validate=True)
     except (binascii.Error, ValueError):

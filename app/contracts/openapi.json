@@ -3190,6 +3190,474 @@
           }
         }
       }
+    },
+    "/api/v1/agent/partner-invitations": {
+      "post": {
+        "operationId": "createPartnerInvitation",
+        "summary": "真实账号发起学习邀请",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersionHeader"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "真实账号发起学习邀请",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerInvitationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效或过期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "不支持的方法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "目标真实账号不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerInvitationCreateRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listPartnerInvitations",
+        "summary": "读取当前身份的邀请",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersionHeader"
+          },
+          {
+            "name": "box",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "inbox",
+                "outbox"
+              ],
+              "default": "inbox"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "读取当前身份的邀请",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerInvitationListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效或过期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "不支持的方法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/partner-invitations/{invitationId}/accept": {
+      "post": {
+        "operationId": "acceptPartnerInvitation",
+        "summary": "接受邀请；相同动作可幂等重试",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersionHeader"
+          },
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "接受邀请；相同动作可幂等重试",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerInvitationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效或过期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "不支持的方法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "只有被邀请人可以处理",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "邀请不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "已被处理为不同状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/partner-invitations/{invitationId}/decline": {
+      "post": {
+        "operationId": "declinePartnerInvitation",
+        "summary": "拒绝邀请；相同动作可幂等重试",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersionHeader"
+          },
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "拒绝邀请；相同动作可幂等重试",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerInvitationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效或过期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "不支持的方法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "只有被邀请人可以处理",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "邀请不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "已被处理为不同状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/partner-invitations/{invitationId}/dismiss": {
+      "post": {
+        "operationId": "dismissPartnerInvitation",
+        "summary": "无视邀请；相同动作可幂等重试",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersionHeader"
+          },
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "无视邀请；相同动作可幂等重试",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerInvitationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效或过期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "不支持的方法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "只有被邀请人可以处理",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "邀请不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "已被处理为不同状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/partner-contacts": {
+      "get": {
+        "operationId": "listPartnerContacts",
+        "summary": "读取当前身份已建立联系的搭子",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersionHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "读取当前身份已建立联系的搭子",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerContactListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "凭据无效或过期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "不支持的方法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6098,6 +6566,151 @@
           }
         },
         "description": "Actual dispatch/outcome references; agent tasks differ from user plan tasks. Submission handoffs link original assessment traces without duplicating events."
+      },
+      "PartnerInvitation": {
+        "type": "object",
+        "required": [
+          "invitationId",
+          "fromUserId",
+          "fromName",
+          "toUserId",
+          "toName",
+          "message",
+          "status",
+          "targetKind",
+          "createdAt",
+          "respondedAt"
+        ],
+        "properties": {
+          "invitationId": {
+            "type": "string"
+          },
+          "fromUserId": {
+            "type": "string"
+          },
+          "fromName": {
+            "type": "string"
+          },
+          "toUserId": {
+            "type": "string"
+          },
+          "toName": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "declined",
+              "dismissed"
+            ]
+          },
+          "targetKind": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "respondedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "PartnerInvitationCreateRequest": {
+        "type": "object",
+        "required": [
+          "toUserId"
+        ],
+        "properties": {
+          "toUserId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      },
+      "PartnerInvitationResponse": {
+        "type": "object",
+        "required": [
+          "invitation"
+        ],
+        "properties": {
+          "invitation": {
+            "$ref": "#/components/schemas/PartnerInvitation"
+          }
+        }
+      },
+      "PartnerInvitationListResponse": {
+        "type": "object",
+        "required": [
+          "box",
+          "userId",
+          "invitations",
+          "pendingCount"
+        ],
+        "properties": {
+          "box": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "invitations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerInvitation"
+            }
+          },
+          "pendingCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PartnerContact": {
+        "type": "object",
+        "required": [
+          "partnerUserId",
+          "partnerName",
+          "pairedAt"
+        ],
+        "properties": {
+          "partnerUserId": {
+            "type": "string"
+          },
+          "partnerName": {
+            "type": "string"
+          },
+          "pairedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "PartnerContactListResponse": {
+        "type": "object",
+        "required": [
+          "userId",
+          "contacts"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerContact"
+            }
+          }
+        }
       }
     },
     "responses": {

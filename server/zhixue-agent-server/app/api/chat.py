@@ -20,6 +20,7 @@ from flask import Blueprint, jsonify, request
 from app.agent import chat_llm
 from app.api.identity import DEMO_USER_ID, resolve_user_id
 from app.repositories.json_repository import JsonRepository
+from app.tools.profile_merge import PROFILE_LOCK
 
 chat_api = Blueprint("chat", __name__)
 
@@ -67,6 +68,13 @@ def _history_with_sessions(history: list[dict]) -> list[dict]:
 
 
 def _apply_profile_updates(user_id: str | None, updates: dict) -> list[str]:
+    if _repository is None:
+        return []
+    with PROFILE_LOCK, _repository.transaction():
+        return _apply_profile_updates_locked(user_id, updates)
+
+
+def _apply_profile_updates_locked(user_id: str | None, updates: dict) -> list[str]:
     """把"更新档案"意图解析出的 `updates.user` 落到 `profiles` 集合。
 
     返回**实际写入成功的字段名**（中文名，直接用于回复文案），

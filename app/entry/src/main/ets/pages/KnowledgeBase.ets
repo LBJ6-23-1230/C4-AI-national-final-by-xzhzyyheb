@@ -89,6 +89,11 @@ struct KnowledgeBasePage {
   @State detailStatusMessage: string = '';
 
   private isActive: boolean = true;
+  private pageVersion: number = 0;
+  private listRequestVersion: number = 0;
+  private documentRequestVersion: number = 0;
+  private searchRequestVersion: number = 0;
+  private detailRequestVersion: number = 0;
   private uploadHintTimer: number = -1;
   private deleteHintTimer: number = -1;
 
@@ -111,6 +116,7 @@ struct KnowledgeBasePage {
 
   aboutToDisappear(): void {
     this.isActive = false;
+    this.pageVersion++;
     this.stopUploadHint();
     this.stopDeleteHint();
   }
@@ -127,11 +133,31 @@ struct KnowledgeBasePage {
     this.messageIsError = isError;
   }
 
+  private ownsRequest(owner: string, version: number): boolean {
+    return this.isActive && owner === this.currentUserId() && version === this.pageVersion;
+  }
+
+  private selectKnowledgeBase(kbId: string): void {
+    this.selectedKbId = kbId;
+    this.documentRequestVersion++;
+    this.searchRequestVersion++;
+    this.detailRequestVersion++;
+    this.documents = [];
+    this.hits = [];
+    this.retrievalMode = '';
+    this.lastScanned = 0;
+    this.isSearching = false;
+    this.detailVisible = false;
+  }
+
   // ---------------------------------------------------------------- 数据加载
   private async loadKnowledgeBases(): Promise<void> {
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
+    const version: number = ++this.listRequestVersion;
     this.isLoading = true;
-    const result = await AgentApiClient.listKnowledgeBases(this.currentUserId());
-    if (!this.isActive) {
+    const result = await AgentApiClient.listKnowledgeBases(owner);
+    if (!this.ownsRequest(owner, page) || version !== this.listRequestVersion) {
       return;
     }
     this.isLoading = false;
@@ -141,8 +167,8 @@ struct KnowledgeBasePage {
     }
     const payload: KnowledgeBaseListResponse = result.data;
     this.knowledgeBases = payload.knowledgeBases;
-    if (this.selectedKbId.length === 0 && this.knowledgeBases.length > 0) {
-      this.selectedKbId = this.knowledgeBases[0].kbId;
+    if (!this.knowledgeBases.some((kb: KnowledgeBase): boolean => kb.kbId === this.selectedKbId)) {
+      this.selectKnowledgeBase(this.knowledgeBases.length > 0 ? this.knowledgeBases[0].kbId : '');
     }
     if (this.selectedKbId.length > 0) {
       await this.loadDocuments();
@@ -150,12 +176,16 @@ struct KnowledgeBasePage {
   }
 
   private async loadDocuments(): Promise<void> {
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
+    const version: number = ++this.documentRequestVersion;
+    const kbId: string = this.selectedKbId;
     if (this.selectedKbId.length === 0) {
       this.documents = [];
       return;
     }
-    const result = await AgentApiClient.getKnowledgeBase(this.selectedKbId);
-    if (!this.isActive) {
+    const result = await AgentApiClient.getKnowledgeBase(kbId);
+    if (!this.ownsRequest(owner, page) || version !== this.documentRequestVersion || kbId !== this.selectedKbId) {
       return;
     }
     if (!result.ok) {
@@ -192,13 +222,15 @@ struct KnowledgeBasePage {
       return;
     }
     const courseName: string = this.newCourseName.trim();
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
     this.isCreating = true;
     const result = await AgentApiClient.createKnowledgeBase({
       courseName: courseName,
       name: `${courseName}知识库`,
-      userId: this.currentUserId()
+      userId: owner
     });
-    if (!this.isActive) {
+    if (!this.ownsRequest(owner, page)) {
       return;
     }
     this.isCreating = false;
@@ -206,7 +238,7 @@ struct KnowledgeBasePage {
       this.showMessage((result as ApiFailure).error.message, true);
       return;
     }
-    this.selectedKbId = result.data.kbId;
+    this.selectKnowledgeBase(result.data.kbId);
     this.newCourseName = '';
     this.showMessage(`已创建知识库「${result.data.name}」。`, false);
     await this.loadKnowledgeBases();
@@ -240,6 +272,8 @@ struct KnowledgeBasePage {
 
   private async confirmDelete(): Promise<void> {
     if (this.isDeleting || this.deleteTargetId.length === 0) return;
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
     const targetType: string = this.deleteTargetType;
     const targetId: string = this.deleteTargetId;
     const targetKbId: string = this.deleteTargetKbId;
@@ -248,7 +282,7 @@ struct KnowledgeBasePage {
     const result = targetType === 'knowledgeBase'
       ? await AgentApiClient.deleteKnowledgeBase(targetId)
       : await AgentApiClient.deleteKnowledgeDocument(targetId);
-    if (!this.isActive) {
+    if (!this.ownsRequest(owner, page)) {
       return;
     }
     if (result.ok) {
@@ -257,7 +291,7 @@ struct KnowledgeBasePage {
     }
     this.deleteProgressText = '正在确认服务端删除结果…';
     const deleted: boolean = await this.confirmDeleteResult(targetType, targetId, targetKbId);
-    if (!this.isActive) return;
+    if (!this.ownsRequest(owner, page)) return;
     if (deleted) {
       await this.finishDelete(targetType, targetId, true);
       return;
@@ -313,9 +347,7 @@ struct KnowledgeBasePage {
     this.stopDeleteHint();
     this.deleteConfirmVisible = false;
     if (targetType === 'knowledgeBase' && this.selectedKbId === targetId) {
-      this.selectedKbId = '';
-      this.documents = [];
-      this.hits = [];
+      this.selectKnowledgeBase('');
     }
     this.showMessage(`${recoveredAfterTimeout ? '后台处理已完成：' : ''}` +
       `${targetType === 'knowledgeBase' ? '知识库' : '文档'}已删除。`, false);
@@ -360,6 +392,9 @@ struct KnowledgeBasePage {
   /** 上传已经完成 base64 编码的文件；文本粘贴与系统文件选择共用。 */
   private async uploadEncoded(fileName: string, encoded: string,
     sizeBytes: number, mimeType: string): Promise<void> {
+    if (this.isUploading || this.selectedKbId.length === 0) return;
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
     this.isUploading = true;
     this.startUploadHint();
     const uploadKbId: string = this.selectedKbId;
@@ -372,9 +407,9 @@ struct KnowledgeBasePage {
       contentBase64: encoded,
       mimeType: mimeType,
       sizeBytes: sizeBytes,
-      userId: this.currentUserId()
+      userId: owner
     });
-    if (!this.isActive) {
+    if (!this.ownsRequest(owner, page)) {
       return;
     }
     if (!result.ok) {
@@ -383,12 +418,12 @@ struct KnowledgeBasePage {
         this.uploadProgressText = '服务端仍在处理，正在自动确认…';
         this.showMessage('上传请求已发送，正在确认后台解析结果，请稍候…', false);
         const recovered: KnowledgeDocument | null = await this.confirmBackgroundUpload(
-          uploadKbId, fileName, documentIdsBeforeUpload);
-        if (!this.isActive) return;
+          uploadKbId, fileName, documentIdsBeforeUpload, owner, page);
+        if (!this.ownsRequest(owner, page)) return;
         if (recovered !== null) {
           this.isUploading = false;
           this.stopUploadHint();
-          this.showUploadSuccess(recovered, true);
+          await this.showUploadSuccess(recovered, true);
           return;
         }
       }
@@ -401,7 +436,7 @@ struct KnowledgeBasePage {
     }
     this.isUploading = false;
     this.stopUploadHint();
-    this.showUploadSuccess(result.data, false);
+    await this.showUploadSuccess(result.data, false);
   }
 
   private startUploadHint(): void {
@@ -434,11 +469,13 @@ struct KnowledgeBasePage {
    * 对比上传前后的列表；只有出现一份本次新增的同名文档才认定为成功。
    */
   private async confirmBackgroundUpload(kbId: string, fileName: string,
-    documentIdsBeforeUpload: string[]): Promise<KnowledgeDocument | null> {
+    documentIdsBeforeUpload: string[], owner: string, page: number): Promise<KnowledgeDocument | null> {
     for (let attempt: number = 0; attempt < 10; attempt++) {
-      if (!this.isActive) return null;
+      if (!this.ownsRequest(owner, page)) return null;
       if (attempt > 0) await this.waitFor(2000);
+      if (!this.ownsRequest(owner, page)) return null;
       const detailResult = await AgentApiClient.getKnowledgeBase(kbId);
+      if (!this.ownsRequest(owner, page)) return null;
       if (!detailResult.ok) continue;
       const detail: KnowledgeBaseDetail = detailResult.data;
       const latestDocuments: KnowledgeDocument[] = detail.documents ?? [];
@@ -454,24 +491,12 @@ struct KnowledgeBasePage {
   }
 
   private async showUploadSuccess(doc: KnowledgeDocument, recoveredAfterTimeout: boolean): Promise<void> {
-    this.documents = [doc, ...this.documents];
-    const updatedBases: KnowledgeBase[] = [];
-    for (let index: number = 0; index < this.knowledgeBases.length; index++) {
-      const item: KnowledgeBase = this.knowledgeBases[index];
-      updatedBases.push(item.kbId === this.selectedKbId ? {
-        kbId: item.kbId,
-        userId: item.userId,
-        courseName: item.courseName,
-        name: item.name,
-        description: item.description,
-        documentCount: this.documents.length,
-        chunkCount: (item.chunkCount ?? 0) + (doc.chunkCount ?? 0),
-        knowledgePoints: item.knowledgePoints,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt
-      } : item);
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
+    if (doc.kbId === this.selectedKbId) {
+      this.documentRequestVersion++;
+      this.documents = [doc, ...this.documents.filter((item: KnowledgeDocument): boolean => item.documentId !== doc.documentId)];
     }
-    this.knowledgeBases = updatedBases;
     if (doc.status === 'failed') {
       // 失败态照实展示 —— 不假装成功
       this.showMessage(`「${doc.fileName}」解析失败：${doc.statusMessage ?? '未知原因'}`, true);
@@ -484,7 +509,7 @@ struct KnowledgeBasePage {
     // 结果浮层位于屏幕中间，避免顶部状态条在长页面中不可见。
     this.uploadResultVisible = true;
     await this.loadKnowledgeBases();
-    this.activeTab = 'documents';
+    if (this.ownsRequest(owner, page) && this.selectedKbId === doc.kbId) this.activeTab = 'documents';
   }
 
   private fileNameFromUri(uri: string): string {
@@ -516,6 +541,10 @@ struct KnowledgeBasePage {
 
   /** 从系统文件选择器读取二进制文件，不能先按 UTF-8 转字符串（PDF/DOCX 会损坏）。 */
   private async pickAndUploadDocument(): Promise<void> {
+    if (this.isUploading) return;
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
+    const kbId: string = this.selectedKbId;
     if (this.selectedKbId.length === 0) {
       this.showMessage('请先选择或创建一个知识库。', true);
       return;
@@ -523,6 +552,7 @@ struct KnowledgeBasePage {
     try {
       const documentPicker = new picker.DocumentViewPicker();
       const result: string[] = await documentPicker.select();
+      if (!this.ownsRequest(owner, page) || kbId !== this.selectedKbId) return;
       if (result.length === 0) return;
       const uri: string = result[0];
       const file: fileIo.File = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY);
@@ -553,6 +583,7 @@ struct KnowledgeBasePage {
         fileIo.closeSync(file);
       }
     } catch (error) {
+      if (!this.ownsRequest(owner, page)) return;
       this.isUploading = false;
       this.stopUploadHint();
       this.showMessage('文件选择或读取失败，请重试。', true);
@@ -648,6 +679,9 @@ struct KnowledgeBasePage {
    * 「重试」按钮复用的就是这个方法。
    */
   private async fetchDocumentDetail(documentId: string): Promise<void> {
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
+    const version: number = ++this.detailRequestVersion;
     this.detailChunks = [];
     this.detailChunkTotal = 0;
     this.detailTruncated = false;
@@ -656,7 +690,7 @@ struct KnowledgeBasePage {
     this.detailStatusMessage = '';
     this.detailLoading = true;
     const result = await AgentApiClient.getKnowledgeDocument(documentId);
-    if (!this.isActive) {
+    if (!this.ownsRequest(owner, page) || version !== this.detailRequestVersion) {
       return;
     }
     // 请求返回前用户可能已经关了浮层、或点了另一份文档：
@@ -679,6 +713,7 @@ struct KnowledgeBasePage {
   }
 
   private closeDocumentDetail(): void {
+    this.detailRequestVersion++;
     this.detailVisible = false;
   }
 
@@ -696,14 +731,20 @@ struct KnowledgeBasePage {
       return;
     }
     this.isSearching = true;
-    const result = await AgentApiClient.searchKnowledgeBase(this.selectedKbId, {
-      query: this.searchQuery.trim(),
+    const owner: string = this.currentUserId();
+    const page: number = this.pageVersion;
+    const kbId: string = this.selectedKbId;
+    const query: string = this.searchQuery.trim();
+    const version: number = ++this.searchRequestVersion;
+    const result = await AgentApiClient.searchKnowledgeBase(kbId, {
+      query: query,
       topK: 5
     });
-    if (!this.isActive) {
+    if (!this.ownsRequest(owner, page) || version !== this.searchRequestVersion || kbId !== this.selectedKbId) {
       return;
     }
     this.isSearching = false;
+    if (query !== this.searchQuery.trim()) return;
     if (!result.ok) {
       this.showMessage((result as ApiFailure).error.message, true);
       return;
@@ -842,8 +883,7 @@ struct KnowledgeBasePage {
         .width('100%').padding(12).borderRadius(12).backgroundColor('#FFFFFF')
         .border({ width: 1, color: kb.kbId === this.selectedKbId ? '#2563EB' : '#E2E8F0' })
         .onClick(() => {
-          this.selectedKbId = kb.kbId;
-          this.hits = [];
+          this.selectKnowledgeBase(kb.kbId);
           this.loadDocuments();
         })
       }, (kb: KnowledgeBase) => kb.kbId)

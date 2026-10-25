@@ -22,6 +22,8 @@
 """
 
 import argparse
+import os
+import uuid
 import json
 import pathlib
 import sqlite3
@@ -41,10 +43,12 @@ def load_json(path: pathlib.Path) -> dict:
     if not isinstance(data, dict):
         print(f"{path} 顶层不是对象，无法迁移")
         sys.exit(1)
+    if any(not isinstance(table, dict) for table in data.values()):
+        raise ValueError("每个集合必须是对象；拒绝跳过无效集合以免丢失数据")
     return data
 
 
-def migrate(json_path: pathlib.Path, sqlite_path: pathlib.Path, dry_run: bool) -> dict:
+def migrate(json_path: pathlib.Path, sqlite_path: pathlib.Path, dry_run: bool, overwrite: bool = False) -> dict:
     data = load_json(json_path)
     counts = {}
     total = 0
@@ -67,9 +71,12 @@ def migrate(json_path: pathlib.Path, sqlite_path: pathlib.Path, dry_run: bool) -
         print("\n  --dry-run：未写入。")
         return counts
 
+    if sqlite_path.exists() and not overwrite:
+        raise FileExistsError("目标已存在；停止服务并备份后，使用 --overwrite 才可替换")
     sqlite_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(sqlite_path)
     try:
+        connection.execute("BEGIN IMMEDIATE")
         connection.execute("""
             CREATE TABLE IF NOT EXISTS records (
                 collection TEXT NOT NULL,
@@ -81,6 +88,7 @@ def migrate(json_path: pathlib.Path, sqlite_path: pathlib.Path, dry_run: bool) -
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_records_collection ON records(collection)")
 
+        connection.execute("DELETE FROM records")
         written = 0
         for collection, table in data.items():
             if not isinstance(table, dict):
@@ -106,7 +114,7 @@ def migrate(json_path: pathlib.Path, sqlite_path: pathlib.Path, dry_run: bool) -
 def verify(json_path: pathlib.Path, sqlite_path: pathlib.Path) -> bool:
     """逐条比对 JSON 与 SQLite 内容是否一致。"""
     data = load_json(json_path)
-    connection = sqlite3.connect(sqlite_path)
+    connection = sqlite3.connect(sqlite_path.resolve().as_uri() + "?mode=ro", uri=True)
     ok = True
     checked = 0
     try:
@@ -141,6 +149,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="JSON <-> SQLite 仓储迁移")
     parser.add_argument("--json", default=str(DEFAULT_JSON))
     parser.add_argument("--sqlite", default=str(DEFAULT_SQLITE))
+    parser.add_argument("--overwrite", action="store_true", help="停服备份后显式替换目标；不会合并旧数据")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--verify", action="store_true", help="迁移后逐条比对")
     parser.add_argument("--to-json", action="store_true", help="反向：SQLite -> JSON")
@@ -151,7 +160,7 @@ def main() -> int:
 
     if args.to_json:
         print("反向迁移（SQLite -> JSON）")
-        connection = sqlite3.connect(sqlite_path)
+        connection = sqlite3.connect(sqlite_path.resolve().as_uri() + "?mode=ro", uri=True)
         try:
             rows = connection.execute(
                 "SELECT collection, item_id, value FROM records").fetchall()
@@ -163,11 +172,19 @@ def main() -> int:
         if args.dry_run:
             print(f"  将写出 {len(rows)} 条到 {json_path}（--dry-run 未写入）")
             return 0
-        json_path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+        if json_path.exists() and not args.overwrite:
+            raise FileExistsError("目标已存在；停止服务并备份后，使用 --overwrite 才可替换")
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = json_path.with_name(json_path.name + "." + uuid.uuid4().hex + ".tmp")
+        try:
+            temporary.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(temporary, json_path)
+        finally:
+            temporary.unlink(missing_ok=True)
         print(f"  已写出 {len(rows)} 条 -> {json_path}")
         return 0
 
-    migrate(json_path, sqlite_path, args.dry_run)
+    migrate(json_path, sqlite_path, args.dry_run, args.overwrite)
     if args.verify and not args.dry_run:
         return 0 if verify(json_path, sqlite_path) else 1
     return 0

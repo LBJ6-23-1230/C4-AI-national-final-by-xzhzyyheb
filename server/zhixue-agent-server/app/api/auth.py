@@ -104,16 +104,13 @@ def register():
         return _error("INTERNAL_ERROR", "auth repository is not configured", 500)
     data = _body()
     try:
-        result = service.register_user(_repository, data.get("nickname"),
+        result = service.register_and_provision(_repository, data.get("nickname"),
                                        data.get("grade"), data.get("phone"),
-                                       data.get("password"))
+                                       data.get("password"), with_demo_data=_seed_demo_data(data))
     except service.AuthError as error:
         return _error(error.error_code, error.message, error.status)
 
-    seeded = service.provision_starter_profile(
-        _repository, result["user"]["userId"], result["user"]["nickname"],
-        with_demo_data=_seed_demo_data(data))
-    return jsonify({**result, "demoDataSeeded": seeded}), 201
+    return jsonify(result), 201
 
 
 @auth_api.post("/api/v1/auth/login")
@@ -242,14 +239,12 @@ def login_or_register():
         return jsonify({**result, "created": False})
 
     try:
-        result = service.register_user(_repository, data.get("nickname"),
-                                       data.get("grade"), phone, data.get("password"))
+        result = service.register_and_provision(_repository, data.get("nickname"),
+                                       data.get("grade"), phone, data.get("password"),
+                                       with_demo_data=_seed_demo_data(data))
     except service.AuthError as error:
         return _error(error.error_code, error.message, error.status)
-    seeded = service.provision_starter_profile(
-        _repository, result["user"]["userId"], result["user"]["nickname"],
-        with_demo_data=_seed_demo_data(data))
-    return jsonify({**result, "created": True, "demoDataSeeded": seeded}), 201
+    return jsonify({**result, "created": True}), 201
 
 
 @auth_api.post("/api/v1/auth/login-with-huawei")

@@ -34,28 +34,20 @@ ROOT_DIRS = ["app", "contracts", "server", "tools", "integration", "演示测试
 #: 只存在于源码区、但也该进包的目录（源 → arcname 前缀）
 EXTRA_DIRS = [("03-演示文件与源代码/联调与验证", "联调与验证")]
 
-EXCLUDE_DIRS = {".git", ".hvigor", ".idea", "build", "oh_modules", "node_modules",
-                "__pycache__", ".pytest-tmp", ".pytest_cache", ".cxx"}
-EXCLUDE_SUFFIXES = (".pyc", ".pyo", ".bak-round0", ".har", ".zip", ".process.lock")
-EXCLUDE_NAMES = {".env", "repository.json", "history.json", "Thumbs.db", ".DS_Store"}
-
-
-def should_skip(path: Path) -> bool:
-    if path.name in EXCLUDE_NAMES or path.name.startswith(".env"):
-        return True
-    if path.name.endswith(EXCLUDE_SUFFIXES):
-        return True
-    return any(part in EXCLUDE_DIRS or part.startswith(".venv") or part == ".local-work" for part in path.parts)
+from packaging_policy import should_skip, iter_source_files, sanitized_bytes, assert_safe_content
+import os
+import uuid
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="只统计，不写文件")
+    parser.add_argument("--hap", type=Path, help="明确指定本次已构建签名 HAP")
     args = parser.parse_args()
 
-    hap = ROOT / "hap" / "知学Mate-signed.hap"
+    hap = args.hap or ROOT / "app/entry/build/default/outputs/default/entry-default-signed.hap"
     if not hap.exists():
-        print("[FAIL] 找不到 %s —— 先构建签名 HAP 再打包" % hap.relative_to(ROOT))
+        print("[FAIL] 找不到 %s —— 先构建签名 HAP 再打包" % hap.name)
         return 1
 
     zip_path = ROOT / ZIP_NAME
@@ -66,7 +58,9 @@ def main() -> int:
         if arcname in written:
             dup.append(arcname)
             return False
-        archive.write(src, arcname)
+        data = sanitized_bytes(src)
+        assert_safe_content(data, arcname)
+        archive.writestr(arcname, data)
         written.add(arcname)
         return True
 
@@ -75,11 +69,12 @@ def main() -> int:
         for name in ROOT_DIRS:
             base = ROOT / name
             if base.exists():
-                count += sum(1 for p in base.rglob("*") if p.is_file() and not should_skip(p))
+                count += sum(1 for p in iter_source_files(base) if p.is_file() and not should_skip(p))
         print("[CHECK] 预计条目数（不含文档/HAP）：%d" % count)
         return 0
 
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+    temporary = zip_path.with_name(zip_path.name + "." + uuid.uuid4().hex + ".tmp")
+    with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         # HAP 放包内 hap/ 下 —— 规程要求"演示文件需压缩为包"
         add(z, hap, f"{PRODUCT}/hap/知学Mate-signed.hap")
 
@@ -89,7 +84,7 @@ def main() -> int:
             if not base.is_dir():
                 print("  !! 缺少目录 %s" % name)
                 continue
-            for path in sorted(base.rglob("*")):
+            for path in sorted(iter_source_files(base)):
                 if not path.is_file() or should_skip(path):
                     continue
                 add(z, path, f"{PRODUCT}/{path.relative_to(ROOT).as_posix()}")
@@ -99,7 +94,7 @@ def main() -> int:
             base = ROOT / src_rel
             if not base.is_dir():
                 continue
-            for path in sorted(base.rglob("*")):
+            for path in sorted(iter_source_files(base)):
                 if not path.is_file() or should_skip(path):
                     continue
                 add(z, path, f"{PRODUCT}/{arc_prefix}/{path.relative_to(base).as_posix()}")
@@ -110,7 +105,7 @@ def main() -> int:
                 continue
             if path.name == ZIP_NAME:
                 continue
-            if path.suffix.lower() in (".md", ".gitattributes", "") or path.name == "LICENSE":
+            if path.suffix.lower() in (".md", ".ps1", ".gitattributes", "") or path.name == "LICENSE":
                 add(z, path, f"{PRODUCT}/{path.name}")
 
         # 作品说明文档（只放 PDF —— 评委要的就是 PDF；DOCX 留作可编辑源）
@@ -118,6 +113,7 @@ def main() -> int:
         for p in sorted(docdir.glob("*.pdf")) if docdir.is_dir() else []:
             add(z, p, f"{PRODUCT}/作品说明文档/{p.name}")
 
+    os.replace(temporary, zip_path)
     size = zip_path.stat().st_size
     print("[OK] 已生成 %s" % zip_path.name)
     print("     条目数 : %d" % len(written))

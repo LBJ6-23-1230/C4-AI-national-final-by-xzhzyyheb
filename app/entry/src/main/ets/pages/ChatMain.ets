@@ -86,6 +86,8 @@ struct ChatMain {
   @State isGoalLoading: boolean = false;
   private goalRequestVersion: number = 0;
   private chatRequestVersion: number = 0;
+  private pendingChatOwner: string = '';
+  private historyRequestVersion: number = 0;
   /**
    * 身份是否已判定完成。默认 false —— 冷启动时先显示**启动加载态**，
    * 由 `EntryAbility.restoreIdentity()` 结束时翻成 true。
@@ -136,6 +138,15 @@ struct ChatMain {
   }
 
   aboutToDisappear(): void {
+    this.historyRequestVersion++;
+    // A destroyed page cannot consume the response. Persist a retryable message
+    // rather than an endless sending placeholder, only for the original owner.
+    if (this.isSending && this.pendingChatOwner === appState.currentUser.userId) {
+      this.messages = this.messages.map((item: ChatMessage): ChatMessage => item.status === 'sending'
+        ? { id: item.id, role: item.role, text: '本次对话已离开，可在历史记录查看回复或重新发送。',
+          time: item.time, status: 'error' } : item);
+      this.saveMessages();
+    }
     this.isPageActive = false;
     this.goalRequestVersion++;
     this.chatRequestVersion++;
@@ -160,6 +171,7 @@ struct ChatMain {
       this.hasShownOnce = true;
       return;
     }
+    this.scrollToLatestMessage();
     // 返回时可能同时带回"目标已交卷"与"计划已重排"，两处都要重新读。
     void this.refreshLearningContext();
     void this.refreshWorkflowStatus();
@@ -168,17 +180,15 @@ struct ChatMain {
   onPageHide(): void {
     this.isPageActive = false;
     this.goalRequestVersion++;
-    this.chatRequestVersion++;
-    // 离开时进行中的请求会因版本号变化被丢弃，**必须同时复位忙碌标志**：
-    // 否则那条请求回来时走的是"版本已过期 → 直接 return"的早退分支，
-    // 永远没有机会把 isSending 置回 false，返回本页后输入框会一直不可用。
-    this.isSending = false;
+    // Keep a same-session chat request alive while a pushed page covers it.
     this.isGoalLoading = false;
+    this.workflowRequestVersion++;
+    this.isWorkflowLoading = false;
   }
 
   private scrollToLatestMessage(): void {
     setTimeout(() => {
-      this.messageScroller.scrollEdge(Edge.Bottom);
+      if (this.isPageActive) this.messageScroller.scrollEdge(Edge.Bottom);
     }, 100);
   }
 
@@ -238,9 +248,12 @@ struct ChatMain {
   }
 
   private async openHistory(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const version: number = ++this.historyRequestVersion;
     this.showHistory = true;
     this.historyLoading = true;
     const records: ChatHistoryRecord[] = await AgentBridge.loadHistory();
+    if (owner !== appState.currentUser.userId || version !== this.historyRequestVersion) return;
     this.historySessions = this.groupHistorySessions(records);
     this.historyLoading = false;
   }
@@ -277,6 +290,12 @@ struct ChatMain {
 
   /** 点击历史卡片时恢复整场对话，不再只恢复被点击的单轮问答。 */
   private restoreHistory(session: ChatHistorySession): void {
+    this.chatRequestVersion++;
+    this.goalRequestVersion++;
+    this.isSending = false;
+    this.isGoalLoading = false;
+    this.inputText = '';
+    this.pendingImage = '';
     const restored: ChatMessage[] = [];
     for (let index: number = 0; index < session.turns.length; index++) {
       const record: ChatHistoryRecord = session.turns[index];
@@ -415,6 +434,7 @@ struct ChatMain {
   }
 
   private async refreshWorkflowStatus(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
     const workflow: WorkflowResponse | null = ClientCache.getWorkflow();
     this.syncWorkflowSummary(ClientCache.getWorkflowStatus());
     if (workflow === null || this.isWorkflowLoading) {
@@ -424,7 +444,7 @@ struct ChatMain {
     this.workflowMessage = '';
     const requestVersion: number = ++this.workflowRequestVersion;
     const status: WorkflowStatusResponse | null = await this.workflowViewModel.refreshStatus(true);
-    if (!this.isPageActive || requestVersion !== this.workflowRequestVersion) {
+    if (!this.isPageActive || requestVersion !== this.workflowRequestVersion || owner !== appState.currentUser.userId) {
       return;
     }
     this.isWorkflowLoading = false;
@@ -1140,6 +1160,7 @@ struct ChatMain {
     this.isSending = true;
     const owner: string = appState.currentUser.userId;
     const requestVersion: number = ++this.chatRequestVersion;
+    this.pendingChatOwner = owner;
 
     // 一场对话只生成一次 id。页面跳转、返回和连续追问都沿用；
     // 只有 resetChat（用户明确点「新对话」）才会清空并在下一次发送时换新 id。
@@ -1161,7 +1182,7 @@ struct ChatMain {
     let imageForAgent: string | undefined = undefined;
     if (this.pendingImage.length > 0) {
       const encoded: string = await ImageEncoder.toBase64(this.pendingImage);
-      if (!this.isPageActive || requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
+      if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
         chatId !== appState.chatSessionId) return;
       if (encoded.length === 0) {
         this.isSending = false;
@@ -1177,7 +1198,7 @@ struct ChatMain {
       }
       imageForAgent = encoded;
     }
-    if (!this.isPageActive || requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
+    if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
       chatId !== appState.chatSessionId) return;
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -1208,7 +1229,7 @@ struct ChatMain {
 
     try {
       const response = await AgentBridge.callAgent(text, imageForAgent, historyBeforeSend);
-      if (!this.isPageActive || requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
+      if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
         chatId !== appState.chatSessionId) return;
       if (response.learningContext !== undefined) {
         this.goalRequestVersion++;
@@ -1247,7 +1268,7 @@ struct ChatMain {
       this.saveMessages();
       this.scrollToLatestMessage();
     } catch (error) {
-      if (!this.isPageActive || requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
+      if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
         chatId !== appState.chatSessionId) return;
       this.messages = this.messages.filter((item: ChatMessage) => item.id !== loadingMessage.id);
       const errorMessage: ChatMessage = {

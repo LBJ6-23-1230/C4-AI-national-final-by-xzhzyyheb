@@ -115,7 +115,7 @@ def _report_repository_state(path: Path, repository) -> None:
     except Exception as error:  # noqa: BLE001 - 诊断信息绝不影响启动
         print(f"  [数据] 无法读取账号库统计: {error}")
         return
-    print(f"  [数据] 账号库   : {path}")
+    print(f"  [数据] 账号库   : {getattr(repository, 'path', path)}")
     print(f"  [数据] 已存账号 : {len(users)} 个 · 会话 {len(sessions)} 个"
           + ("   ← 空库：之前注册的账号不在这个文件里" if not users else ""))
 
@@ -126,6 +126,7 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
     if not event_logger.handlers:
         event_logger.addHandler(logging.StreamHandler())
     app = Flask(__name__)
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
     _origins = _cors_origins()
     CORS(app, resources={r"/*": {"origins": _origins if _origins != ["*"] else "*"}})
     # 数据文件优先级：显式入参 > 环境变量 `ZHIXUE_REPOSITORY` > 仓库内默认文件。

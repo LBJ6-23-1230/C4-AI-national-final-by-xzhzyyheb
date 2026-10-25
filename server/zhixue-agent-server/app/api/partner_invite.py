@@ -143,7 +143,12 @@ def _load(invitation_id: str) -> dict[str, Any] | None:
 
 
 def _respond(invitation_id: str, responder: str, status: str):
-	"""收件人改状态。三个动作（接受 / 不接受 / 无视）共用这一条路径。"""
+	"""Check state and persist the invitation and both contacts atomically."""
+	with _repository.transaction():
+		return _respond_in_transaction(invitation_id, responder, status)
+
+
+def _respond_in_transaction(invitation_id: str, responder: str, status: str):
 	invitation = _load(invitation_id)
 	if invitation is None:
 		return jsonify({"errorCode": "NOT_FOUND", "message": "邀请不存在", "details": None}), 404
@@ -155,41 +160,44 @@ def _respond(invitation_id: str, responder: str, status: str):
 			"message": "只有被邀请的人可以处理这条邀请",
 			"details": None,
 		}), 403
-	if invitation.get("status") != PENDING:
+	previous_status = invitation.get("status")
+	if previous_status not in (PENDING, status):
 		return jsonify({
 			"errorCode": "CONFLICT",
 			"message": f"这条邀请已经处理过了（{invitation.get('status')}）",
 			"details": {"status": invitation.get("status")},
 		}), 409
 
-	invitation["status"] = status
-	invitation["respondedAt"] = _now()
-	if _repository is not None:
-		_repository.save(COLLECTION, invitation_id, invitation)
-
-	# 「两个人联系起来」的落地：接受之后，双方各自的 `contacts` 集合里都写一条
-	# 对方的信息，这样"我的搭子"不再是发起方本机的一个内存变量。
-	# 注意这是**双向**写 —— 只写发起方那侧的话，被邀请的人点完"接受"什么都看不到。
+	saves = []
+	if previous_status == PENDING:
+		invitation["status"] = status
+		invitation["respondedAt"] = _now()
+		saves.append((COLLECTION, invitation_id, invitation))
+	# Same-action retries are idempotent and also repair older partial accepts.
 	if status == ACCEPTED:
-		_pair_up(invitation["fromUserId"], invitation["toUserId"], invitation_id)
+		saves.extend(_contact_records(invitation))
+	if saves:
+		_repository.apply_batch([], saves)
 
 	return jsonify({"invitation": _public(invitation)})
 
 
-def _pair_up(left: str, right: str, invitation_id: str) -> None:
-	"""接受之后把两人互相登记为搭子（双方各存一条，幂等）。"""
-	if _repository is None:
-		return
+def _contact_records(invitation: dict) -> list:
+	left, right = invitation["fromUserId"], invitation["toUserId"]
+	saves = []
 	for owner, other in ((left, right), (right, left)):
 		contact_id = f"{owner}:{other}"
-		_repository.save("contacts", contact_id, {
+		if _repository.get("contacts", contact_id) is not None:
+			continue
+		saves.append(("contacts", contact_id, {
 			"contactId": contact_id,
 			"userId": owner,
 			"partnerUserId": other,
 			"partnerName": _display_name(other),
-			"invitationId": invitation_id,
-			"pairedAt": _now(),
-		})
+			"invitationId": invitation["invitationId"],
+			"pairedAt": invitation.get("respondedAt") or _now(),
+		}))
+	return saves
 
 
 # --------------------------------------------------------------------------- 接口
@@ -200,8 +208,8 @@ def create_invitation():
 		return error
 
 	sender = resolve_user_id(None)
-	if not sender:
-		return bad_request("无法确定发起人身份")
+	if _active_user(sender) is None:
+		return jsonify({"errorCode": "UNAUTHORIZED", "message": "请先登录真实账号再发送邀请", "details": None}), 401
 
 	target, error = bounded_str(data.get("toUserId"), "toUserId", MAX_ID_CHARS)
 	if error is not None:

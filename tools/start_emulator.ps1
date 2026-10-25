@@ -17,16 +17,18 @@
 param(
     [string]$Name = 'Pura 90',
     [switch]$InstallHap,
+    [string]$DevEcoHome = 'D:/develop/DevEco Studio',
+    [string]$HapPath = '',
     [switch]$SkipBuildCheck
 )
 
 $ErrorActionPreference = 'Continue'
 
-$emuDir  = 'D:\DevEco\DevEco Studio\tools\emulator'
+$emuDir  = Join-Path $DevEcoHome 'tools/emulator'
 $emu     = Join-Path $emuDir 'Emulator.exe'
-$hdc     = 'D:\DevEco\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe'
+$hdc     = Join-Path $DevEcoHome 'sdk/default/openharmony/toolchains/hdc.exe'
 $root    = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$signed  = Join-Path $root 'hap\知学Mate-signed.hap'
+$signed  = if ($HapPath) { $HapPath } else { Join-Path $root 'app/entry/build/default/outputs/default/entry-default-signed.hap' }
 
 Write-Host '=== 知学 Mate · 模拟器启动器 ===' -ForegroundColor Cyan
 
@@ -45,7 +47,7 @@ if ($targets -and $targets -notmatch 'Empty') {
 } else {
     Write-Host "[1] 启动实例: $Name" -ForegroundColor Cyan
     Write-Host '    （脱离父进程启动，否则模拟器会随本脚本退出而关闭）' -ForegroundColor Gray
-    cmd /c "start `"HarmonyOS Emulator`" `"$emu`" -start `"$Name`""
+    Start-Process -FilePath $emu -ArgumentList @('-start', ('"{0}"' -f $Name)) -WindowStyle Hidden
 
     Write-Host '[2] 等待设备就绪（首次启动约 1~3 分钟）...' -ForegroundColor Cyan
     $ready = $false

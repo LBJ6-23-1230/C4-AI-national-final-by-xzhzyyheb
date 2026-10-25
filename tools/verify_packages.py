@@ -8,20 +8,11 @@ from pathlib import Path
 ROOT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[1]
 OUT = ROOT / "deliverables"
 
-FORBIDDEN = ("__pycache__", ".pytest-tmp", "/build/", "oh_modules",
-             ".hvigor/", ".idea/", "/.git/")
+from packaging_policy import should_skip
 
 
-def is_forbidden(name: str) -> bool:
-    """判断某个 zip 条目是否属于"不该出现"的类别。
-
-    ⚠️ `.env` 要精确判断 —— 用 `'/.env' in name` 会把
-    `.env.example` 一起误伤（实测），而那是**模板，必须随包下发**。
-    """
-    if any(token in name for token in FORBIDDEN):
-        return True
-    basename = name.rsplit("/", 1)[-1]
-    return basename == ".env" or basename.startswith(".env.")
+def is_forbidden(name):
+    return should_skip(Path(name))
 
 
 def check(archive: Path, required: list[str]) -> bool:
@@ -112,7 +103,8 @@ def main() -> int:
         "server/zhixue-agent-server/tests/test_semantic_search.py",
         "server/zhixue-agent-server/tests/test_sqlite_backend.py",
         "server/zhixue-agent-server/tests/test_technical_improvements.py",
-        "server/zhixue-agent-server/data/repository.json",
+        "server/zhixue-agent-server/data/question_bank.json",
+        "start-backend.ps1",
         "server/zhixue-agent-server/.env.example",
         "server/zhixue-agent-server/tests/test_chat_history_redirect.py",
         "docs/21-后端同学完成报告_2026-09-21.md",

@@ -78,7 +78,7 @@ def _status(session):
 @focus_api.get("/api/v1/focus-sessions")
 def list_focus_sessions():
     owner = resolve_user_id(request.args.get("userId"))
-    with PROFILE_LOCK:
+    with PROFILE_LOCK, _repository.transaction():
         records = [r for r in _repository.list("focus_sessions") if r.get("userId") == owner]
         records.sort(key=lambda r: (r["session"]["endedAt"], r["session"]["taskId"]))
         statuses = {}
@@ -101,7 +101,7 @@ def submit_focus_session():
     if guard is not None:
         return guard
     key = hashlib.sha256(f"{owner}\0{session['taskId']}".encode()).hexdigest()
-    with PROFILE_LOCK:
+    with PROFILE_LOCK, _repository.transaction():
         previous = _repository.get("focus_sessions", key)
         if previous is not None:
             if previous["session"] != session:

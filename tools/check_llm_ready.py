@@ -21,7 +21,7 @@ ENV = os.path.join(ROOT, "server", "zhixue-agent-server", ".env")
 
 from dotenv import load_dotenv
 
-load_dotenv(ENV)
+load_dotenv(ENV, encoding="utf-8-sig")
 
 KEY = (os.getenv("DASHSCOPE_API_KEY") or "").strip()
 BASE = os.getenv("LLM_BASE_URL") or "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -36,7 +36,7 @@ except Exception as exc:
     print("  [X] 未安装 openai 库: %r" % (exc,))
     sys.exit(1)
 
-client = OpenAI(api_key=KEY, base_url=BASE)
+client = OpenAI(api_key=KEY, base_url=BASE, max_retries=0, timeout=30)
 
 print("  模型配置：")
 for name in ("LLM_MODEL", "LLM_VL_MODEL", "LLM_DECISION_MODEL", "EMBED_MODEL"):
@@ -79,9 +79,9 @@ def classify(msg):
 
 
 # --- 1) 文本 / 决策模型 ---
-for role, model in (("自然语言层", os.getenv("LLM_MODEL")),
-                    ("识图模型", os.getenv("LLM_VL_MODEL")),
-                    ("工作流决策层", os.getenv("LLM_DECISION_MODEL"))):
+for role, model in (("自然语言层", os.getenv("LLM_MODEL", "").strip() or "qwen3.8-flash"),
+                    ("识图模型", os.getenv("LLM_VL_MODEL", "").strip() or "qwen3-vl-plus"),
+                    ("工作流决策层", os.getenv("LLM_DECISION_MODEL", "").strip() or "qwen3.8-flash")):
     if not model:
         print("  [!] %-12s 未配置，跳过" % role)
         continue
@@ -96,10 +96,10 @@ for role, model in (("自然语言层", os.getenv("LLM_MODEL")),
     except Exception as exc:
         tag = classify(str(exc))
         print("  [X]  %-12s %-22s %s" % (role, model, tag or type(exc).__name__))
-        failures.append((role, model, tag, str(exc)[:180]))
+        failures.append((role, model, tag, tag or type(exc).__name__))
 
 # --- 2) 识图链路（带图，真正压测 VL） ---
-vl = os.getenv("LLM_VL_MODEL") or os.getenv("LLM_MODEL")
+vl = os.getenv("LLM_VL_MODEL", "").strip() or "qwen3-vl-plus"
 if vl:
     try:
         b64 = base64.b64encode(make_png()).decode("ascii")
@@ -117,7 +117,7 @@ if vl:
     except Exception as exc:
         tag = classify(str(exc))
         print("  [X]  %-12s %-22s %s" % ("识图链路", vl, tag or type(exc).__name__))
-        failures.append(("识图链路", vl, tag, str(exc)[:180]))
+        failures.append(("识图链路", vl, tag, tag or type(exc).__name__))
 
 # --- 3) embedding（知识库语义检索依赖） ---
 emb = os.getenv("EMBED_MODEL") or "text-embedding-v3"
@@ -128,6 +128,7 @@ except Exception as exc:
     tag = classify(str(exc))
     print("  [!] %-12s %-22s %s（语义检索会降级为关键词）"
           % ("语义检索", emb, tag or type(exc).__name__))
+    failures.append(("语义检索", emb, tag, tag or type(exc).__name__))
 
 print()
 if failures:

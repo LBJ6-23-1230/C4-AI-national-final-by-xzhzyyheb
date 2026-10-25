@@ -85,19 +85,17 @@ class JsonRepository(Repository):
 				raise
 
 	def get(self, collection: str, item_id: str) -> dict[str, Any] | None:
-		value = self._data.get(collection, {}).get(item_id)
-		return deepcopy(value) if value is not None else None
+		with self._write_lock:
+			value = self._data.get(collection, {}).get(item_id)
+			return deepcopy(value) if value is not None else None
 
 	def save(self, collection: str, item_id: str, value: dict[str, Any]) -> None:
-		# 内存状态与落盘必须在同一个临界区内完成。
-		# 否则 `_flush()` 抛异常时内存已被改写、磁盘还是旧值，
-		# 后续读请求会读到"写了但没存住"的状态（实测会击穿幂等语义）。
-		with self._write_lock:
-			self._data.setdefault(collection, {})[item_id] = deepcopy(value)
-			self._flush()
+		# Use the same rollback boundary as multi-record writes.
+		self.apply_batch([], [(collection, item_id, value)])
 
 	def list(self, collection: str) -> list[dict[str, Any]]:
-		return deepcopy(list(self._data.get(collection, {}).values()))
+		with self._write_lock:
+			return deepcopy(list(self._data.get(collection, {}).values()))
 
 	def ids(self, collection: str) -> list[str]:
 		"""列出集合内的 item_id。
@@ -107,16 +105,11 @@ class JsonRepository(Repository):
 		（traceId / submissionId / evidenceId / sessionId …），由调用方按需从
 		value 里取，本方法只负责给出**权威的键集合**。
 		"""
-		return list(self._data.get(collection, {}).keys())
+		with self._write_lock:
+			return list(self._data.get(collection, {}).keys())
 
 	def delete(self, collection: str, item_id: str) -> None:
-		# 内存改动与落盘必须在同一临界区（与 save 同理）。
-		# 原实现先判存在再 del，两步都在锁外：同键并发删除时，
-		# 第二个线程会因键已被删而抛 KeyError → 冒泡成 500。
-		with self._write_lock:
-			if item_id in self._data.get(collection, {}):
-				del self._data[collection][item_id]
-				self._flush()
+		self.apply_batch([(collection, item_id)], [])
 
 	def apply_batch(self, deletes: list[tuple[str, str]],
 					saves: list[tuple[str, str, dict[str, Any]]]) -> None:
@@ -142,8 +135,14 @@ class JsonRepository(Repository):
 	def clear(self, collection: str) -> None:
 		with self._write_lock:
 			if collection in self._data:
+				previous = self._data
+				self._data = dict(previous)
 				del self._data[collection]
-				self._flush()
+				try:
+					self._flush()
+				except BaseException:
+					self._data = previous
+					raise
 
 	def compare_and_save(self, collection, item_id, expected, replacement):
 		"""Conditional update; JSON deployments support one process only."""

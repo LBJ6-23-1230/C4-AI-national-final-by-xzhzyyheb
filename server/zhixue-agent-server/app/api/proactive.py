@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from app.agent.proactive import proactive_decision
+from app.api.identity import resolve_user_id
 from app.repositories.json_repository import JsonRepository
 
 proactive_api = Blueprint("proactive", __name__)
@@ -57,6 +58,7 @@ def post_proactive():
             "message": "request body must be an object",
             "details": None,
         }), 400
+    owner = resolve_user_id(data.get("userId"))
     context = data.get("context")
     if context is not None and not isinstance(context, dict):
         return jsonify({
@@ -79,7 +81,7 @@ def post_proactive():
     # 调用方显式传值时仍以调用方为准，便于情景模拟与测试。
     context = dict(context) if isinstance(context, dict) else {}
     if "masteryScore" not in context or "taskName" not in context:
-        weakest = _weakest_knowledge(str(data.get("userId") or "demo-user"))
+        weakest = _weakest_knowledge(owner)
         if weakest is not None:
             if "masteryScore" not in context:
                 context["masteryScore"] = weakest["masteryScore"]
@@ -89,6 +91,7 @@ def post_proactive():
             if "knowledgePointId" not in context and weakest["knowledgePointId"]:
                 context["knowledgePointId"] = weakest["knowledgePointId"]
     payload = dict(data)
+    payload["userId"] = owner
     payload["context"] = context
     result = proactive_decision(payload)
     return jsonify(result)

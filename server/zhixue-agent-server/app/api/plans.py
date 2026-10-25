@@ -35,7 +35,7 @@ def update_available_minutes():
 		return jsonify({"errorCode": "BAD_REQUEST", "message": "expectedPlanVersion must be a positive integer"}), 400
 	operation_id = hashlib.sha256(f"{owner}\0{key}".encode()).hexdigest()
 	facts = {"availableMinutes": minutes, "expectedPlanVersion": version}
-	with PROFILE_LOCK:
+	with PROFILE_LOCK, _repository.transaction():
 		previous = _repository.get("plan_adjustments", operation_id)
 		if previous:
 			if previous["request"] != facts:
