@@ -10,6 +10,7 @@ import {
   KnowledgeDocument,
   KnowledgeDocumentChunk,
   KnowledgeDocumentDetail,
+  KnowledgePointEvidence,
   KnowledgeSearchResponse
 } from '../api/ApiModels';
 import { ApiFailure } from '../api/ApiResult';
@@ -34,6 +35,12 @@ import { appState } from '../data/AppState';
 @Entry
 @Component
 struct KnowledgeBasePage {
+  @State expandedPointsId: string = '';
+  @State practiceDocId: string = '';
+  @State practicePoint: string = '';
+  @State editingPointsId: string = '';
+  @State editedPoints: string = '';
+  @State pointsSaving: boolean = false;
   @State isLoading: boolean = true;
   @State message: string = '';
   @State messageIsError: boolean = false;
@@ -79,6 +86,7 @@ struct KnowledgeBasePage {
   @State detailDocumentId: string = '';
   @State detailFileName: string = '';
   @State detailKbLabel: string = '';
+  @State detailEvidence: KnowledgePointEvidence[] = [];
   @State detailChunks: KnowledgeDocumentChunk[] = [];
   @State detailChunkTotal: number = 0;
   @State detailTruncated: boolean = false;
@@ -96,6 +104,24 @@ struct KnowledgeBasePage {
   private detailRequestVersion: number = 0;
   private uploadHintTimer: number = -1;
   private deleteHintTimer: number = -1;
+
+  private async revisePoints(doc: KnowledgeDocument, reparse: boolean): Promise<void> {
+    if (this.pointsSaving) return;
+    this.pointsSaving = true;
+    const owner: string = appState.currentUser.userId;
+    const version: number = this.pageVersion;
+    const result = await AgentApiClient.reviseDocumentPoints(doc.documentId, {
+      knowledgePoints: this.editedPoints.split(/[、,，;；\n]/).map((v: string): string => v.trim()).filter((v: string): boolean => v.length > 0),
+      reparse: reparse, expectedParsedAt: doc.parsedAt ?? ''
+    });
+    this.pointsSaving = false;
+    if (!this.isActive || owner !== appState.currentUser.userId || version !== this.pageVersion) return;
+    if (result.ok) {
+      this.editingPointsId = '';
+      this.showMessage(reparse ? '已从原文重新提取，请核对并确认知识点。' : '知识点已去重并确认，画像已同步。', false);
+      await this.loadKnowledgeBases();
+    } else this.showMessage((result as ApiFailure).error.message, true);
+  }
 
   aboutToAppear(): void {
     this.isActive = true;
@@ -529,6 +555,7 @@ struct KnowledgeBasePage {
 
   private mimeTypeFor(fileName: string): string {
     const lower: string = fileName.toLowerCase();
+    if (lower.endsWith('.pptx')) return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
     if (lower.endsWith('.pdf')) return 'application/pdf';
     if (lower.endsWith('.docx')) {
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -683,6 +710,7 @@ struct KnowledgeBasePage {
     const page: number = this.pageVersion;
     const version: number = ++this.detailRequestVersion;
     this.detailChunks = [];
+    this.detailEvidence = [];
     this.detailChunkTotal = 0;
     this.detailTruncated = false;
     this.detailError = '';
@@ -706,6 +734,7 @@ struct KnowledgeBasePage {
     const payload: KnowledgeDocumentDetail = result.data;
     // 全部直接来自响应：切片正文、真实切片总数、是否被截断、解析状态。
     this.detailChunks = payload.chunks;
+    this.detailEvidence = payload.knowledgePointEvidence ?? [];
     this.detailChunkTotal = payload.chunkTotal;
     this.detailTruncated = payload.chunksTruncated;
     this.detailStatus = payload.status;
@@ -943,7 +972,7 @@ struct KnowledgeBasePage {
             Text(doc.fileName).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#0F172A')
               .layoutWeight(1).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
             // 状态标签：失败必须显眼
-            Text(doc.status === 'ready' ? '已解析' : '解析失败')
+            Text(doc.status === 'ready' ? '基础解析完成' : '解析失败')
               .fontSize(11).fontColor('#FFFFFF')
               .backgroundColor(doc.status === 'ready' ? '#10B981' : '#DC2626')
               .padding({ left: 8, right: 8, top: 3, bottom: 3 }).borderRadius(8)
@@ -969,16 +998,49 @@ struct KnowledgeBasePage {
               .fontSize(12).fontColor('#B91C1C').width('100%').lineHeight(18)
           }
 
+          if (doc.status === 'ready') {
+            Text(doc.tagsConfirmed ? '知识点已确认' : '知识点待核对；点击正文可查看原文依据').fontSize(12).fontColor('#64748B')
+            Row({ space: 8 }) {
+              Button('修改 / 确认知识点').fontSize(12).height(32).onClick(() => {
+                this.editingPointsId = doc.documentId;
+                this.editedPoints = (doc.knowledgePoints ?? []).join('、');
+              })
+              Button('重新提取').fontSize(12).height(32).enabled(!this.pointsSaving)
+                .onClick(() => { void this.revisePoints(doc, true); })
+            }
+            if (this.editingPointsId === doc.documentId) {
+              TextArea({ text: this.editedPoints, placeholder: '输入知识点，以逗号或顿号分隔；保存时去重' })
+                .onChange((v: string) => this.editedPoints = v)
+              Button(this.pointsSaving ? '保存中…' : '确认并同步画像').enabled(!this.pointsSaving)
+                .onClick(() => { void this.revisePoints(doc, false); })
+              Button('取消').onClick(() => this.editingPointsId = '')
+            }
+          }
           if ((doc.knowledgePoints ?? []).length > 0) {
-            Text(`知识点：${(doc.knowledgePoints ?? []).join('、')}`)
+            Text(`候选知识点 ${(doc.knowledgePoints ?? []).length} 项：${(this.expandedPointsId === doc.documentId ? (doc.knowledgePoints ?? []) : (doc.knowledgePoints ?? []).slice(0, 3)).join('、')}`)
               .fontSize(12).fontColor('#2563EB').width('100%').lineHeight(18)
+            if ((doc.knowledgePoints ?? []).length > 3) {
+              Text(this.expandedPointsId === doc.documentId ? '收起知识点 ↑' : '查看全部知识点 ↓').fontSize(12).fontColor('#2563EB')
+                .onClick(() => this.expandedPointsId = this.expandedPointsId === doc.documentId ? '' : doc.documentId)
+            }
             if (doc.status === 'ready') {
-              ForEach((doc.knowledgePoints ?? []).slice(0, 6), (point: string) => {
-                Button(`依据本资料练习：${point}`).fontSize(12).height(34)
+              Button(doc.tagsConfirmed ? '选择知识点开始练习' : '核对知识点后开始练习').fontSize(13).height(36)
+                .onClick(() => {
+                  if (!doc.tagsConfirmed) { this.editingPointsId = doc.documentId; this.editedPoints = (doc.knowledgePoints ?? []).join('、'); }
+                  else { this.practiceDocId = doc.documentId; this.practicePoint = (doc.knowledgePoints ?? [])[0] ?? ''; }
+                })
+              if (this.practiceDocId === doc.documentId && doc.tagsConfirmed) {
+                Flex({ wrap: FlexWrap.Wrap }) {
+                  ForEach(doc.knowledgePoints ?? [], (point: string) => {
+                    Button(`${point === this.practicePoint ? '✓ ' : ''}${point}`).fontSize(12).height(30).margin(4)
+                      .onClick(() => this.practicePoint = point)
+                  }, (point: string) => point)
+                }
+                Button('依据本资料练习').fontSize(13).height(36).enabled(this.practicePoint.length > 0)
                   .onClick(() => router.pushUrl({ url: 'pages/ExercisePractice', params: {
-                    knowledgePointId: point, kbId: doc.kbId, documentId: doc.documentId, sourceMode: 'materials'
+                    knowledgePointId: this.practicePoint, kbId: doc.kbId, documentId: doc.documentId, sourceMode: 'materials'
                   } }))
-              }, (point: string) => point)
+              }
             }
             Text(`资料解析结果：识别 ${(doc.knowledgePoints ?? []).length} 个知识点、` +
               `提取 ${doc.chunkCount ?? 0} 个可检索片段` +
@@ -1058,6 +1120,13 @@ struct KnowledgeBasePage {
         } else {
           Scroll() {
             Column({ space: 12 }) {
+              Text('知识点原文依据').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+              ForEach(this.detailEvidence, (item: KnowledgePointEvidence) => {
+                Column({ space: 4 }) {
+                  Text(`${item.name} · ${item.headingPath || '原文片段'}`).fontSize(13).fontColor('#2563EB')
+                  Text(item.excerpt || '此名称由用户修订，尚无可直接对应的原文短语。').fontSize(12).fontColor('#64748B').lineHeight(18)
+                }.width('100%').padding(10).backgroundColor('#EFF6FF').borderRadius(10)
+              }, (item: KnowledgePointEvidence) => item.name)
               ForEach(this.detailChunks, (chunk: KnowledgeDocumentChunk) => {
                 Column({ space: 5 }) {
                   Text(this.chunkTitle(chunk))
@@ -1137,7 +1206,7 @@ struct KnowledgeBasePage {
   @Builder
   UploadSection() {
     Column({ space: 12 }) {
-      Text('支持 TXT / Markdown / CSV / JSON / Word（DOCX）/ PDF。扫描版 PDF 需先做 OCR。')
+      Text('支持 TXT / Markdown / CSV / JSON / Word（DOCX）/ PDF / PPTX。旧 PPT 请转换；纯图片需先做 OCR。')
         .fontSize(12).fontColor('#64748B').width('100%').lineHeight(18)
 
       Button(this.isUploading ? this.uploadProgressText : '选择 Word / PDF / 文本文件')

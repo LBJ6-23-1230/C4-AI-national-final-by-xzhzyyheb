@@ -40,6 +40,19 @@ export class AuthStore {
   private static session: StoredSession | null = null;
   /** 本次运行是否处于"加密不可用 → 明文降级"状态。 */
   private static degraded: boolean = false;
+  private static keepSignedIn: boolean = true;
+  private static recentAccount: string = '';
+  private static rememberAccount: boolean = true;
+
+  static getRecentAccount(): string { return AuthStore.recentAccount; }
+  static getRememberAccount(): boolean { return AuthStore.rememberAccount; }
+  static getKeepSignedIn(): boolean { return AuthStore.keepSignedIn; }
+  static setLoginPreferences(account: string, remember: boolean, keep: boolean): void {
+    AuthStore.recentAccount = remember ? account.trim() : '';
+    AuthStore.rememberAccount = remember;
+    AuthStore.keepSignedIn = keep;
+    AuthStore.persist();
+  }
 
   /**
    * 初始化并**尝试**启用 token 加密。
@@ -65,6 +78,9 @@ export class AuthStore {
       const store: preferences.Preferences = preferences.getPreferencesSync(context, {
         name: AuthStore.STORE_NAME
       });
+      AuthStore.recentAccount = store.getSync('recent_account', '') as string;
+      AuthStore.rememberAccount = store.getSync('remember_account', true) as boolean;
+      AuthStore.keepSignedIn = store.getSync('keep_signed_in', true) as boolean;
       const userId: string = store.getSync(AuthStore.KEY_USER_ID, '') as string;
       const storedToken: string = store.getSync(AuthStore.KEY_TOKEN, '') as string;
       if (userId.length === 0 || storedToken.length === 0) {
@@ -183,7 +199,10 @@ export class AuthStore {
       const store: preferences.Preferences = preferences.getPreferencesSync(context, {
         name: AuthStore.STORE_NAME
       });
-      const session: StoredSession | null = AuthStore.session;
+      store.putSync('recent_account', AuthStore.recentAccount);
+      store.putSync('remember_account', AuthStore.rememberAccount);
+      store.putSync('keep_signed_in', AuthStore.keepSignedIn);
+      const session: StoredSession | null = AuthStore.keepSignedIn ? AuthStore.session : null;
       if (session === null) {
         store.deleteSync(AuthStore.KEY_USER_ID);
         store.deleteSync(AuthStore.KEY_TOKEN);

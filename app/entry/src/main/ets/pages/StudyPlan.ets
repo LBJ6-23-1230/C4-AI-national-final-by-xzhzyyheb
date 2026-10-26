@@ -1,8 +1,8 @@
 import router from '@ohos.router';
 import { appState } from '../data/AppState';
-import { FocusTask, HomeworkDDL } from '../models/AgentModels';
+import { CourseInfo, FocusTask, HomeworkDDL } from '../models/AgentModels';
 import { AIFloatButton } from '../components/AIFloatButton';
-import { LearningPlan, PlanTask, PlanBudgetRequest, PlanDiff } from '../api/ApiModels';
+import { KnowledgeMastery, LearningPlan, PlanTask, PlanBudgetRequest, PlanDiff } from '../api/ApiModels';
 import { PlanViewModel } from '../viewmodels/PlanViewModel';
 import { PlanDiffCard } from '../components/PlanDiffCard';
 import { ClientCache } from '../cache/ClientCache';
@@ -17,6 +17,10 @@ struct StudyPlan {
   @State isApiPlanLoading: boolean = true;
   @State apiPlan: LearningPlan | null = null;
   @State apiPlanMessage: string = '';
+  @State selectedCourse: string = '';
+  @State showReason: boolean = false;
+  @State showDeferred: boolean = false;
+  @State showCandidates: boolean = false;
   @State budgetText: string = '60';
   @State budgetMessage: string = '';
   @State budgetSaving: boolean = false;
@@ -87,12 +91,22 @@ struct StudyPlan {
     const state = await this.planViewModel.load(forceRefresh);
     if (!this.isPageActive || requestVersion !== this.planRequestVersion) return;
     this.apiPlan = state.plan;
+    if (this.selectedCourse.length === 0) this.selectedCourse = state.plan?.targetCourse ?? '';
     this.planKind = state.kind;
     if (this.pendingBudget === null && state.plan?.budgetSummary !== undefined) {
       this.budgetText = state.plan.budgetSummary.availableMinutes.toString();
     }
     this.apiPlanMessage = state.errorMessage;
     this.isApiPlanLoading = false;
+  }
+
+  private courseChoices(): string[] {
+    const choices: string[] = appState.courses.map((c: CourseInfo): string => c.courseName);
+    (this.apiPlan?.candidatePool ?? []).forEach((point: KnowledgeMastery) => {
+      const name: string = point.sourceCourse ?? '';
+      if (name.length > 0 && choices.indexOf(name) < 0) choices.push(name);
+    });
+    return choices;
   }
 
   private startTask(task: PlanTask): void {
@@ -114,8 +128,8 @@ struct StudyPlan {
       return;
     }
     const owner: string = ClientCache.currentOwnerUserId();
-    if (this.pendingBudget === null || this.pendingBudget.availableMinutes !== minutes || this.pendingBudgetOwner !== owner) {
-      this.pendingBudget = { availableMinutes: minutes, expectedPlanVersion: this.apiPlan.version,
+    if (this.pendingBudget === null || this.pendingBudget.availableMinutes !== minutes || this.pendingBudget.targetCourse !== this.selectedCourse || this.pendingBudgetOwner !== owner) {
+      this.pendingBudget = { availableMinutes: minutes, targetCourse: this.selectedCourse, expectedPlanVersion: this.apiPlan.version,
         idempotencyKey: `availability-${Date.now()}-${Math.random().toString(36).substring(2, 8)}` };
       this.pendingBudgetOwner = owner;
     }
@@ -189,7 +203,7 @@ struct StudyPlan {
           .fontColor('#2563EB').backgroundColor('#EFF6FF').borderRadius(10).padding({ left: 8, right: 8, top: 4, bottom: 4 })
       }.width('100%')
       if (task.priority !== undefined) {
-        Text(task.priority === 'high' ? 'Agent 优先处理' : `优先级：${task.priority}`)
+        Text(task.priority === 'high' ? '优先处理' : task.priority === 'medium' ? '优先级：中' : task.priority === 'low' ? '优先级：低' : `优先级：${task.priority}`)
           .fontSize(12).fontColor('#475467').width('100%')
       }
       // 已完成的任务不再给「开始任务」—— 判据与上面那行文案**同源**（都走 appState）。
@@ -234,7 +248,7 @@ struct StudyPlan {
               Text('Agent 学习计划').fontSize(25).fontWeight(FontWeight.Bold).fontColor('#1F2937')
               Blank()
               if (this.apiPlan !== null) {
-                Text(`Plan V${this.apiPlan.version}`).fontSize(12).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+                Text(`计划版本 ${this.apiPlan.version}`).fontSize(12).fontWeight(FontWeight.Bold).fontColor('#2563EB')
                   .backgroundColor('#EFF6FF').borderRadius(9).padding({ left: 8, right: 8, top: 4, bottom: 4 })
               }
             }.width('100%')
@@ -269,8 +283,14 @@ struct StudyPlan {
               }.width('100%').padding(32).alignItems(HorizontalAlign.Center).backgroundColor('#FFFFFF').borderRadius(16)
             } else if (this.apiPlan !== null) {
               Column({ space: 8 }) {
-                Text('本次专项计划可用时间').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
-                Text('仅约束下方专项任务；课程DDL仍需另外预留时间。系统保留完整任务，安排不下时列为暂未安排。')
+                Text('本次学习安排').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
+                ForEach(this.courseChoices(), (course: string) => {
+                  Button(course === this.selectedCourse ? `✓ ${course}` : course).fontSize(13).height(32)
+                    .onClick(() => { this.selectedCourse = course; this.pendingBudget = null; })
+                }, (course: string) => course)
+                TextInput({ text: this.selectedCourse, placeholder: '先选主攻课程（与课程/资料名称一致）' })
+                  .onChange((v: string) => { this.selectedCourse = v; this.pendingBudget = null; })
+                Text('按课程和时长安排最多3项任务，其余知识点保留在候选池。课程作业另行安排。')
                   .fontSize(12).fontColor('#667085').width('100%')
                 Row({ space: 8 }) {
                   TextInput({ text: this.budgetText, placeholder: '可用分钟' }).type(InputType.Number)
@@ -291,14 +311,16 @@ struct StudyPlan {
               if (this.budgetDiff !== null) PlanDiffCard({ value: this.budgetDiff })
               if (this.apiPlan.reason !== undefined) {
                 Column({ space: 6 }) {
-                  Text('本次计划依据').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+                  Text(this.showReason ? '本次计划依据 ↑' : '本次计划依据 ↓').onClick(() => this.showReason = !this.showReason).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+                  if (this.showReason) {
                   Text(this.apiPlan.reason).fontSize(13).fontColor('#475467').lineHeight(20)
                   Text(`基于画像版本 ${this.apiPlan.generatedFromProfileVersion} 生成`).fontSize(12).fontColor('#667085')
+                  }
                 }.width('100%').padding(16).backgroundColor('#EFF6FF').borderRadius(16)
               }
               Text(`${this.apiPlan.tasks.length} 项当前任务`).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
               if (this.apiPlan.tasks.length === 0) {
-                Text('当前没有可执行的专项任务；如有暂未安排任务，可调整可用时间后重试。').fontSize(14).fontColor('#667085')
+                Text('先选择主攻课程，再确认本次学习时长，即可从候选池安排任务。').fontSize(14).fontColor('#667085')
                   .width('100%').padding(22).backgroundColor('#FFFFFF').borderRadius(14)
               } else {
                 ForEach(this.apiPlan.tasks, (task: PlanTask) => {
@@ -306,13 +328,24 @@ struct StudyPlan {
                 }, (task: PlanTask) => `${task.taskId}-${task.status}`)
               }
               if (this.apiPlan.unscheduledTasks !== undefined && this.apiPlan.unscheduledTasks.length > 0) {
-                Text('暂未安排，仍保留').fontSize(17).fontWeight(FontWeight.Bold).fontColor('#92400E').width('100%')
+                Text(`暂未安排 ${this.apiPlan.unscheduledTasks.length} 项 ${this.showDeferred ? '↑' : '↓'}`).onClick(() => this.showDeferred = !this.showDeferred).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#92400E').width('100%')
+                if (this.showDeferred) {
                 ForEach(this.apiPlan.unscheduledTasks, (task: PlanTask) => {
                   Column({ space: 4 }) {
                     Text(`${task.knowledgePointName} · ${task.durationMinutes}分钟`).fontSize(14).fontColor('#344054')
                     Text(task.deferredReason ?? '等待后续安排').fontSize(12).fontColor('#667085')
                   }.width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(12)
                 }, (task: PlanTask) => task.taskId)
+                }
+              }
+              if (this.apiPlan.candidatePool !== undefined) {
+                Text(`候选知识点 ${this.apiPlan.candidatePool.length} 项 ${this.showCandidates ? '↑' : '↓'}`)
+                  .fontSize(15).fontColor('#475467').onClick(() => this.showCandidates = !this.showCandidates)
+                if (this.showCandidates) {
+                  ForEach(this.apiPlan.candidatePool, (point: KnowledgeMastery) => {
+                    Text(point.knowledgePointName).fontSize(13).fontColor('#64748B')
+                  }, (point: KnowledgeMastery) => point.knowledgePointId)
+                }
               }
             } else {
               Column({ space: 10 }) {
@@ -328,7 +361,7 @@ struct StudyPlan {
                   : '若刚切换过后端地址，请确认地址可访问。页面不会改用本地计划替代接口结果。')
                   .fontSize(12).fontColor('#667085').lineHeight(18)
                 if (this.planKind === 'no_plan') {
-                  Button('导入课程，生成计划').width('100%').height(44).fontSize(14).fontWeight(FontWeight.Bold)
+                  Button('导入课程，准备候选知识点').width('100%').height(44).fontSize(14).fontWeight(FontWeight.Bold)
                     .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
                     .onClick(() => this.openCourseImport())
                   Button('去对话建立学习目标').width('100%').height(44).fontSize(14)

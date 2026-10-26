@@ -34,6 +34,8 @@ export interface ChatHandoff {
 }
 
 export interface ChatMessage {
+  wrongAnalysis?: WrongAnalysis;
+  attachmentStatus?: string;
   id: string;
   role: ChatRole;
   text: string;
@@ -77,6 +79,7 @@ export interface AgentRequest {
 }
 
 export interface AgentResponse {
+  attachmentStatus?: string;
   learningContext?: LearningContext;
   reply: string;
   intent: string;
@@ -155,6 +158,9 @@ export interface ChatProfileUpdates {
 
 /** 错题分析的结构化结果（后端 `wrongAnalysis`）。 */
 export interface WrongAnalysis {
+  diagnosisId?: string;
+  questionText?: string;
+  recognitionStatus?: string;
   knowledgePoint?: string;
   wrongType?: string;
 }

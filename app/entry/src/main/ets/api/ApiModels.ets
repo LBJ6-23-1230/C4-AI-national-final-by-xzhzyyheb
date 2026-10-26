@@ -35,6 +35,8 @@ export interface KnowledgeBaseDetail extends KnowledgeBase {
 }
 
 export interface KnowledgeDocument {
+  parseSource?: string;
+  tagsConfirmed?: boolean;
   documentId: string;
   kbId: string;
   userId: string;
@@ -77,6 +79,7 @@ export interface KnowledgeDocumentChunk {
  * 这三个字段为必需项，`ApiResponseValidator` 会一并校验。
  */
 export interface KnowledgeDocumentDetail extends KnowledgeDocument {
+  knowledgePointEvidence?: KnowledgePointEvidence[];
   chunks: KnowledgeDocumentChunk[];
   /** 该文档实际拥有的切片总数（来自 chunks 集合，不是解析时的快照）。 */
   chunkTotal: number;
@@ -173,6 +176,7 @@ export interface Evidence {
 }
 
 export interface KnowledgeMastery {
+  sourceCourse?: string;
   knowledgePointId: string;
   knowledgePointName: string;
   masteryScore: number;
@@ -189,6 +193,8 @@ export interface MasteryHistory {
 }
 
 export interface LearnerProfile {
+  targetCourses?: string[];
+  targetCourse?: string;
   userId: string;
   goal: string;
   examDate: string | null;
@@ -198,6 +204,8 @@ export interface LearnerProfile {
 }
 
 export interface ProfileResponse {
+  source?: string;
+  parseStatus?: string;
   profileVersion: number;
   profile?: LearnerProfile;
   mastery: KnowledgeMastery[];
@@ -241,6 +249,7 @@ export interface LearningContextAction {
 }
 
 export interface LearningContext {
+  needsConfirmation?: boolean;
   assessmentStatus: string;
   assessedQuestionCount: number;
   goalId: string;
@@ -366,6 +375,7 @@ export interface PlanTask {
 }
 
 export interface PlanBudgetRequest {
+  targetCourse?: string;
   availableMinutes: number;
   expectedPlanVersion: number;
   idempotencyKey: string;
@@ -387,6 +397,8 @@ export interface PlanBudgetResponse {
 }
 
 export interface LearningPlan {
+  candidatePool?: KnowledgeMastery[];
+  targetCourse?: string;
   planId: string | null;
   version: number;
   tasks: PlanTask[];
@@ -500,6 +512,7 @@ export interface MasteryUpdate {
 }
 
 export interface PlanTaskChange {
+  knowledgePointName?: string;
   taskId: string;
   knowledgePointId?: string;
   durationMinutes?: number;
@@ -516,6 +529,7 @@ export interface PlanDiff {
 }
 
 export interface ExerciseSubmissionResult {
+  reviewStatus?: string;
   goalId?: string;
   learningContext?: LearningContext;
   userId?: string;
@@ -649,6 +663,7 @@ export interface PartnerCandidateBasicInfo {
 }
 
 export interface PartnerCandidateGoal {
+  courses?: string[];
   course?: string;
   goal?: string;
 }
@@ -664,6 +679,9 @@ export interface PartnerCandidateKnowledge {
 
 /** 一个候选人的匹配结果。 */
 export interface PartnerRankedCandidate {
+  sharedCourses?: string[];
+  courseMatch?: string;
+  goalMatch?: string;
   candidate: PartnerCandidateProfile;
   score: number;
   factors: PartnerMatchFactors;
@@ -697,6 +715,7 @@ export interface PartnerMatchRequest {
  * 前端必须据此如实说明，不能让用户以为邀请已经送达了一个真人。
  */
 export interface PartnerInvitation {
+  courseName?: string;
   invitationId: string;
   fromUserId: string;
   fromName: string;
@@ -711,6 +730,7 @@ export interface PartnerInvitation {
 }
 
 export interface PartnerInvitationCreateRequest {
+  courseName?: string;
   toUserId: string;
   message?: string;
 }
@@ -737,3 +757,21 @@ export interface PartnerContactListResponse {
   userId: string;
   contacts: PartnerContact[];
 }
+
+export interface LearningPreferencesRequest {
+  targetCourses?: string[];
+  targetCourse: string;
+  goal: string;
+  freeTimeSlots: string[];
+}
+export interface DocumentPointsRequest {
+  knowledgePoints: string[];
+  reparse: boolean;
+  expectedParsedAt: string;
+}
+
+export interface GoalActionRequest { action: string; goalId?: string; diagnosisId?: string; knowledgePoint?: string; }
+export interface GoalActionResponse { status: string; learningContext?: LearningContext; }
+export interface GoalHistoryResponse { goals: LearningContext[]; }
+
+export interface KnowledgePointEvidence { name: string; excerpt: string; headingPath: string; chunkId: string; }

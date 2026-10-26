@@ -201,7 +201,7 @@ def get_workflow(session_id: str):
 @workflows_api.get("/api/v1/workflows/chat/<chat_session_id>")
 def get_chat_workflow(chat_session_id):
 	owner = resolve_user_id(None)
-	workflow = _repository.get("workflows", learning_context.chat_workflow_id(owner, chat_session_id)) if _repository else None
+	workflow = learning_context.current_chat_workflow(_repository, owner, chat_session_id) if _repository else None
 	if not _owns_record(workflow, owner):
 		return _error("NOT_FOUND", "learning goal not found", None, 404)
 	context = learning_context.snapshot(_repository, workflow)
@@ -485,6 +485,9 @@ def run_workflow_api(session_id: str):
 			existing_workflow, resolve_user_id(data.get("userId"))):
 		return _error("NOT_FOUND", "workflow not found", {"sessionId": session_id}, 404)
 
+	if existing_workflow and existing_workflow.get("userEnded"):
+		return _error("CONFLICT", "目标已结束，请建立新目标", None, 409)
+
 	# ---------------------------------------------------------------- 输入护栏
 	#
 	# 为什么必须校验：`_run_saved_workflow` 会把 answers **原样存进会话 state**
@@ -524,3 +527,60 @@ def run_workflow_api(session_id: str):
 					  {"sessionId": session_id, "submissionId": data.get("submissionId")}, 404)
 	except KeyError:
 		return _error("NOT_FOUND", "workflow not found", {"sessionId": session_id}, 404)
+
+
+@workflows_api.get("/api/v1/workflows/chat/<chat_session_id>/goals")
+def list_chat_goals(chat_session_id):
+    owner = resolve_user_id(None)
+    return jsonify({"goals": learning_context.chat_goal_history(_repository, owner, chat_session_id)})
+
+
+@workflows_api.post("/api/v1/workflows/chat/<chat_session_id>/goals")
+def manage_chat_goals(chat_session_id):
+    from app.tools.profile_merge import PROFILE_LOCK, merge_points_into_profile
+    data, guard = json_object()
+    if guard is not None:
+        return guard
+    owner = resolve_user_id(None)
+    action = data.get("action")
+    if action not in ("start", "select", "end"):
+        return _error("BAD_REQUEST", "请选择建立、切换或结束目标", None, 400)
+    with _workflow_guard(), PROFILE_LOCK:
+        base = learning_context.chat_workflow_id(owner, chat_session_id)
+        current = learning_context.current_chat_workflow(_repository, owner, chat_session_id)
+        if action in ("end", "select"):
+            with _repository.transaction():
+                goal_id = data.get("goalId")
+                goal = _repository.get("workflows", goal_id) if isinstance(goal_id, str) else None
+                if not _owns_record(goal, owner) or goal.get("state", {}).get("coordination", {}).get("chatSessionId") != chat_session_id:
+                    return _error("NOT_FOUND", "目标不存在", None, 404)
+                if action == "end" and (current["sessionId"] if current else (_repository.get("chat_goal_links", base) or {}).get("activeGoalId", base)) != goal_id:
+                    return _error("CONFLICT", "当前目标已变化，请刷新", None, 409)
+                if action == "end":
+                    goal = dict(goal, userEnded=True, stateVersion=goal.get("stateVersion", 1) + 1)
+                    _repository.save("workflows", goal_id, goal)
+                _repository.save("chat_goal_links", base, {"userId": owner, "chatSessionId": chat_session_id,
+                    "activeGoalId": goal_id, "ended": action == "end"})
+                return jsonify({"status": "ended" if action == "end" else "selected",
+                    "learningContext": None if action == "end" else learning_context.snapshot(_repository, goal)})
+        diagnosis_id = data.get("diagnosisId")
+        diagnosis = _repository.get("chat_diagnoses", diagnosis_id) if isinstance(diagnosis_id, str) else None
+        if not diagnosis or diagnosis.get("userId") != owner or diagnosis.get("chatSessionId") != chat_session_id:
+            return _error("NOT_FOUND", "请先上传并识别本会话的题目", None, 404)
+        point, guard = bounded_str(data.get("knowledgePoint", diagnosis["knowledgePoint"]), "knowledgePoint", 60)
+        if guard is not None:
+            return guard
+        from app.agent.knowledge import valid_knowledge_term
+        if not valid_knowledge_term(point):
+            return _error("BAD_REQUEST", "请选择具体知识点，不能使用掌握、熟悉等考纲要求作为知识点", None, 400)
+        # One confirmation is idempotent; another question creates a distinct goal.
+        if diagnosis.get("goalId"):
+            saved = _repository.get("workflows", diagnosis["goalId"])
+            if diagnosis.get("confirmedPoint") != point:
+                return _error("CONFLICT", "该题目已建立目标，请重新识别后修改", None, 409)
+            return jsonify({"status": "created", "learningContext": learning_context.snapshot(_repository, saved)})
+        merge_points_into_profile(_repository, owner, [{"name": point, "source": "diagnosis"}])
+        context = learning_context.ensure_chat_context(_repository, owner, chat_session_id,
+            "针对" + point + "完成练习与测评", point, new_goal=True, diagnosis_id=diagnosis_id)
+        _repository.save("chat_diagnoses", diagnosis_id, dict(diagnosis, goalId=context["goalId"], confirmedPoint=point))
+        return jsonify({"status": "created", "learningContext": context})

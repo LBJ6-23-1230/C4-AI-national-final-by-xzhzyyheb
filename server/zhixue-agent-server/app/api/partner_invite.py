@@ -117,6 +117,7 @@ def _public(invitation: dict[str, Any]) -> dict[str, Any]:
 		"toUserId": invitation.get("toUserId", ""),
 		"toName": invitation.get("toName", ""),
 		"message": invitation.get("message", ""),
+		"courseName": invitation.get("courseName", ""),
 		"status": invitation.get("status", PENDING),
 		# `account` = 真实账号（对方登录就能看到并能回复）；
 		# `demo`    = 演示候选同学（没有账号，不会真的回复）。前端据此如实说明。
@@ -195,6 +196,7 @@ def _contact_records(invitation: dict) -> list:
 			"partnerUserId": other,
 			"partnerName": _display_name(other),
 			"invitationId": invitation["invitationId"],
+			"courseName": invitation.get("courseName", ""),
 			"pairedAt": invitation.get("respondedAt") or _now(),
 		}))
 	return saves
@@ -233,6 +235,16 @@ def create_invitation():
 	if error is not None:
 		return error
 
+	from app.services.course_names import profile_courses
+	shared = set(profile_courses(_repository.get("profiles", sender) or {})) & set(profile_courses(_repository.get("profiles", target) or {}))
+	course = data.get("courseName", "")
+	if not isinstance(course, str) or len(course) > 80:
+		return bad_request("共同课程格式错误")
+	if course and course not in shared:
+		return bad_request("所选课程不在双方共同课程中，请刷新匹配结果")
+	if not course and len(shared) > 1:
+		return bad_request("请选择本次共同学习的课程")
+	course = course or next(iter(shared), "")
 	invitation_id = _invitation_id(sender, target)
 	invitation = {
 		"invitationId": invitation_id,
@@ -241,6 +253,7 @@ def create_invitation():
 		"toUserId": target,
 		"toName": _display_name(target),
 		"message": message,
+		"courseName": course,
 		"status": PENDING,
 		"targetKind": "account",
 		"createdAt": _now(),

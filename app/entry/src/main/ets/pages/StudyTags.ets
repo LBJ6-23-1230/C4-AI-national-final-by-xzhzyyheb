@@ -26,6 +26,7 @@ struct StudyTags {
   @State evidence: Evidence[] = [];
   @State expandedHistoryTimestamp: string = '';
   @State showAllMastery: boolean = false;
+  @State showHistory: boolean = false;
   @State showAllHistory: boolean = false;
   @State chartDims: string[] = [];
   @State chartCurrent: number[] = [];
@@ -472,7 +473,7 @@ struct StudyTags {
                   Text('尚未建立知识画像').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937')
                     .width('100%')
                   Text('完成一次诊断或练习后，系统会在这里展示掌握度和证据。'
-                    + '导入课程或讲义后，服务端会写入你的知识点并生成计划 —— 本页不会用演示数据填充。')
+                    + '导入课程或讲义后，服务端会写入你的知识点加入候选池；选定课程和本次时长后再安排任务。')
                     .fontSize(14).fontColor('#64748B').lineHeight(22).width('100%')
                   Button('导入课程 / 资料').width('100%').height(44).fontSize(14).fontWeight(FontWeight.Bold)
                     .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
@@ -490,11 +491,11 @@ struct StudyTags {
               if (this.history.length > 0) {
                 Column({ space: 10 }) {
                   Row() {
-                    Text('掌握度变化').fontSize(17).fontWeight(FontWeight.Bold).fontColor('#111827')
+                    Text(`掌握度变化 ${this.meaningfulHistory().length} 次 ${this.showHistory ? '↑' : '↓'}`).onClick(() => this.showHistory = !this.showHistory).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#111827')
                     Blank()
-                    Text(`有效变化 ${this.meaningfulHistory().length} 次`).fontSize(12).fontColor('#667085')
                   }.width('100%')
-                  Text('只展示分数真实发生变化的记录；0 → 0 的重复评估已隐藏。')
+                  if (this.showHistory) {
+                  Text('只展示分数真实发生变化的记录。')
                     .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
                   if (this.meaningfulHistory().length === 0) {
                     Column({ space: 5 }) {
@@ -543,6 +544,7 @@ struct StudyTags {
                       .width('100%').height(40).fontSize(13).fontColor('#2563EB')
                       .backgroundColor('#EFF6FF').borderRadius(10)
                       .onClick(() => { this.showAllHistory = !this.showAllHistory; })
+                  }
                   }
                 }
                 .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)

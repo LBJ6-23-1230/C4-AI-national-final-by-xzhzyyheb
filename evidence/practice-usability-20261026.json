@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-26",
+  "scope": "五张截图的提示残留、考纲题、作业入口、误建目标及目标文案",
+  "backendTestsPassed": 694,
+  "httpChecksPassed": 97,
+  "frontendControllerChecksPassed": 24,
+  "newBackendRegressionCases": 17,
+  "buildSuccess": true,
+  "signatureVerified": true,
+  "package": {
+    "path": "deliverables/practice-usability-20261026/知学Mate-practice-usability-20261026-signed.hap",
+    "bytes": 3520337,
+    "sha256": "7dbf622e0519ba925755579377ae62f63268e5efe2261851da7a5ab70e0e2567"
+  },
+  "native": {
+    "installed": true,
+    "fiveRoutineChipsNoImageHint": true,
+    "noAutomaticGoalCard": true,
+    "pendingArrowVisible": true,
+    "pendingClickOpensCourseAndHomework": true
+  },
+  "limitations": [
+    "需重启后端加载服务端规则及提示词",
+    "知识题生成校验是确定性场景回归，不代表全部题目正确率已验证",
+    "新目标卡全文状态经编译和控制器验证，未宣称全部设备端状态均已逐一验收"
+  ]
+}

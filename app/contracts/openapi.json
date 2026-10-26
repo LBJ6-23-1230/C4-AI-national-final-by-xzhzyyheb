@@ -256,13 +256,17 @@
                       "type": "string"
                     },
                     "matchedCandidate": {
-                      "type": "object",
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PartnerRankedCandidate"
+                        }
+                      ],
                       "nullable": true
                     },
                     "candidates": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "$ref": "#/components/schemas/PartnerRankedCandidate"
                       }
                     },
                     "generatedAt": {
@@ -3658,6 +3662,223 @@
           }
         }
       }
+    },
+    "/api/v1/profile/{userId}/preferences": {
+      "put": {
+        "summary": "确认主攻课程、目标与空闲时间",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法"
+          },
+          "401": {
+            "description": "会话无效"
+          },
+          "404": {
+            "description": "资源不存在或不属于当前用户"
+          },
+          "409": {
+            "description": "数据版本变化"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearningPreferencesRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{documentId}/knowledge-points": {
+      "put": {
+        "summary": "确认、修订或从已保存原文重新提取知识点",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法"
+          },
+          "401": {
+            "description": "会话无效"
+          },
+          "404": {
+            "description": "资源不存在或不属于当前用户"
+          },
+          "409": {
+            "description": "数据版本变化"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentPointsRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exercise-submissions/{submissionId}": {
+      "get": {
+        "summary": "读取交卷解析最新状态，不重复评分",
+        "parameters": [
+          {
+            "name": "submissionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseSubmitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法"
+          },
+          "401": {
+            "description": "会话无效"
+          },
+          "404": {
+            "description": "资源不存在或不属于当前用户"
+          },
+          "409": {
+            "description": "数据版本变化"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/chat/{chatSessionId}/goals": {
+      "get": {
+        "summary": "查看本会话学习目标历史",
+        "parameters": [
+          {
+            "name": "chatSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalHistoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法"
+          },
+          "404": {
+            "description": "目标或诊断不存在或不属于当前会话"
+          },
+          "409": {
+            "description": "目标状态变化"
+          }
+        }
+      },
+      "post": {
+        "summary": "确认本题目标、切换或结束目标",
+        "parameters": [
+          {
+            "name": "chatSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalActionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法"
+          },
+          "404": {
+            "description": "目标或诊断不存在或不属于当前会话"
+          },
+          "409": {
+            "description": "目标状态变化"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalActionRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3832,12 +4053,24 @@
               },
               "wrongType": {
                 "type": "string"
+              },
+              "diagnosisId": {
+                "type": "string"
+              },
+              "questionText": {
+                "type": "string"
+              },
+              "recognitionStatus": {
+                "type": "string"
               }
             },
             "description": "仅 analyze_wrong 意图下可能非空：错题分析识别出的**结构化**知识点。前端据此把「拍一道错题」接到「针对这个知识点练」——知识点若只存在于自然语言答复里，程序无法使用。识别不出时不下发该字段，前端如实回落，不编造知识点。"
           },
           "learningContext": {
             "$ref": "#/components/schemas/LearningContext"
+          },
+          "attachmentReceipt": {
+            "$ref": "#/components/schemas/AttachmentReceipt"
           }
         }
       },
@@ -4095,6 +4328,9 @@
           "lastUpdated": {
             "type": "string",
             "format": "date-time"
+          },
+          "sourceCourse": {
+            "type": "string"
           }
         }
       },
@@ -4133,6 +4369,24 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/KnowledgeMastery"
+            }
+          },
+          "targetCourse": {
+            "type": "string"
+          },
+          "preferencesConfirmed": {
+            "type": "boolean"
+          },
+          "targetCourses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "courseGoals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
             }
           }
         }
@@ -4210,6 +4464,12 @@
             "items": {
               "$ref": "#/components/schemas/Evidence"
             }
+          },
+          "parseStatus": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
           }
         }
       },
@@ -4309,6 +4569,15 @@
                 "maximum": 1440
               }
             }
+          },
+          "candidatePool": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeMastery"
+            }
+          },
+          "targetCourse": {
+            "type": "string"
           }
         }
       },
@@ -4582,6 +4851,16 @@
           },
           "goalId": {
             "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "unconfigured",
+              "basic",
+              "failed"
+            ]
           }
         }
       },
@@ -5288,9 +5567,11 @@
           },
           "knowledgePoints": {
             "type": "array",
+            "maxItems": 30,
             "items": {
               "type": "string"
-            }
+            },
+            "description": "提取候选，tagsConfirmed为true后才发布到画像"
           },
           "errorPointCandidates": {
             "type": "array",
@@ -5303,6 +5584,19 @@
           },
           "parsedAt": {
             "type": "string"
+          },
+          "parseSource": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "failed"
+            ]
+          },
+          "tagsConfirmed": {
+            "type": "boolean"
+          },
+          "extractionVersion": {
+            "type": "integer"
           }
         }
       },
@@ -6256,6 +6550,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "targetCourse": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "本次主攻课程，存在知识点候选池时必填"
           }
         }
       },
@@ -6474,6 +6773,9 @@
             "items": {
               "$ref": "#/components/schemas/LearningHandoff"
             }
+          },
+          "needsConfirmation": {
+            "type": "boolean"
           }
         }
       },
@@ -6617,6 +6919,10 @@
           },
           "respondedAt": {
             "type": "string"
+          },
+          "courseName": {
+            "type": "string",
+            "maxLength": 80
           }
         }
       },
@@ -6634,6 +6940,10 @@
           "message": {
             "type": "string",
             "maxLength": 200
+          },
+          "courseName": {
+            "type": "string",
+            "maxLength": 80
           }
         }
       },
@@ -6691,6 +7001,10 @@
           },
           "pairedAt": {
             "type": "string"
+          },
+          "courseName": {
+            "type": "string",
+            "maxLength": 80
           }
         }
       },
@@ -6708,6 +7022,287 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PartnerContact"
+            }
+          }
+        }
+      },
+      "LearningPreferencesRequest": {
+        "type": "object",
+        "required": [
+          "freeTimeSlots"
+        ],
+        "properties": {
+          "targetCourse": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "goal": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "freeTimeSlots": {
+            "type": "array",
+            "maxItems": 14,
+            "items": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d-(?:[01]\\d|2[0-3]):[0-5]\\d$"
+            }
+          },
+          "targetCourses": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 12,
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            }
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "targetCourse"
+            ]
+          },
+          {
+            "required": [
+              "targetCourses"
+            ]
+          }
+        ]
+      },
+      "DocumentPointsRequest": {
+        "type": "object",
+        "required": [
+          "expectedParsedAt"
+        ],
+        "properties": {
+          "expectedParsedAt": {
+            "type": "string"
+          },
+          "knowledgePoints": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 24
+            }
+          },
+          "reparse": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AttachmentReceipt": {
+        "type": "object",
+        "required": [
+          "status",
+          "message"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "received",
+              "invalid",
+              "recognized",
+              "unreadable",
+              "failed"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "attachmentId": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          }
+        }
+      },
+      "GoalActionRequest": {
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "start",
+              "select",
+              "end"
+            ]
+          },
+          "goalId": {
+            "type": "string"
+          },
+          "diagnosisId": {
+            "type": "string"
+          },
+          "knowledgePoint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        }
+      },
+      "GoalActionResponse": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "learningContext": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LearningContext"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "GoalHistoryResponse": {
+        "type": "object",
+        "required": [
+          "goals"
+        ],
+        "properties": {
+          "goals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningContext"
+            }
+          }
+        }
+      },
+      "PartnerCandidateGoal": {
+        "type": "object",
+        "properties": {
+          "course": {
+            "type": "string"
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "goal": {
+            "type": "string"
+          },
+          "courseGoals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PartnerRankedCandidate": {
+        "type": "object",
+        "required": [
+          "candidate",
+          "score",
+          "factors"
+        ],
+        "properties": {
+          "candidate": {
+            "type": "object",
+            "required": [
+              "userId"
+            ],
+            "properties": {
+              "userId": {
+                "type": "string"
+              },
+              "basicInfo": {
+                "type": "object"
+              },
+              "learningGoal": {
+                "$ref": "#/components/schemas/PartnerCandidateGoal"
+              },
+              "time": {
+                "type": "object"
+              },
+              "knowledge": {
+                "type": "object"
+              },
+              "accountKind": {
+                "type": "string"
+              }
+            }
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "sharedCourses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "courseMatch": {
+            "type": "string",
+            "enum": [
+              "full",
+              "partial",
+              "none"
+            ]
+          },
+          "goalMatch": {
+            "type": "string",
+            "enum": [
+              "same",
+              "different",
+              "unconfirmed"
+            ]
+          },
+          "factors": {
+            "type": "object",
+            "required": [
+              "goal",
+              "timeOverlap",
+              "knowledgeComplement",
+              "basicMatch",
+              "stability",
+              "overlapMinutes"
+            ],
+            "properties": {
+              "goal": {
+                "type": "number",
+                "minimum": 0
+              },
+              "timeOverlap": {
+                "type": "number",
+                "minimum": 0
+              },
+              "knowledgeComplement": {
+                "type": "number",
+                "minimum": 0
+              },
+              "basicMatch": {
+                "type": "number",
+                "minimum": 0
+              },
+              "stability": {
+                "type": "number",
+                "minimum": 0
+              },
+              "overlapMinutes": {
+                "type": "number",
+                "minimum": 0
+              }
             }
           }
         }

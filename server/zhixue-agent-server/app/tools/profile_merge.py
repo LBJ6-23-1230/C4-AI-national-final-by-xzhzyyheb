@@ -9,7 +9,7 @@ from app.repositories.staged_repository import StagedRepository
 PROFILE_LOCK = threading.RLock()
 
 
-def merge_points_into_profile(repository, user_id, points):
+def merge_points_into_profile(repository, user_id, points, refresh=False):
 	from app.api.exercises import _EXERCISE_BANK
 	from app.agents.planner import PlannerAgent
 	from app.api.plans import plan_belongs_to
@@ -37,35 +37,25 @@ def merge_points_into_profile(repository, user_id, points):
 			ids.add(key)
 			names.add(name)
 			changed = True
-		if changed:
+		if changed or refresh:
 			profile["profileVersion"] = profile.get("profileVersion", 1) + 1
 			repository.save("profiles", user_id, profile)
 		plans = [p for p in repository.list("plans") if plan_belongs_to(p, user_id)]
-		if rows and (changed or not plans):
+		if rows and (changed or not plans or refresh):
 			state = {"knowledgePoints": [dict(row, importance=round(row.get("importance", 0.6) * 100),
 				errorIntensity=0) for row in rows]}
 			result = PlannerAgent().run(state)
 			tools = list(result.tool_calls)
 			previous = plans[0] if plans else None
 			if previous is not None:
-				# Preserve IDs, progress, durations and all deferred work; append only new points.
-				tasks = [*previous.get("tasks", []), *previous.get("unscheduledTasks", [])]
-				known = {t["knowledgePointId"] for t in tasks}
-				for task in result.output["plan"]["tasks"]:
-					if task["knowledgePointId"] not in known:
-						tasks.append(task)
-						known.add(task["knowledgePointId"])
-				plan = dict(previous, tasks=tasks, unscheduledTasks=[])
-				budget = previous.get("constraints", {}).get("availableMinutes")
-				if budget is not None:
-					fitted = PlannerAgent().run({"plan": plan, "availableMinutes": budget})
-					plan = fitted.output["plan"]
-					tools.extend(fitted.tool_calls)
-				plan["version"] = previous.get("version", 1) + 1
+				plan = dict(previous, version=previous.get("version", 1) + 1)
 			else:
-				plan = dict(result.output["plan"], planId=f"plan-import-{user_id}")
+				plan = {"planId": f"plan-import-{user_id}", "version": 1, "tasks": [], "unscheduledTasks": []}
+			plan["candidatePool"] = [dict(row) for row in rows if not any(
+				t.get("knowledgePointId") == row.get("knowledgePointId")
+				for t in plan.get("tasks", []))]
 			plan.update(userId=user_id, generatedFromProfileVersion=profile.get("profileVersion", 1),
-				reason="根据新增课程或资料知识点更新专项计划；保留已有学习进度")
+				reason="新增知识点已加入候选池；选择本次主攻课程与时长后安排少量任务，保留已有学习进度")
 			repository.save("plans", plan["planId"], plan)
 			event_id = f"input-{uuid.uuid4().hex}"
 			trace_id = f"trace-{event_id}"

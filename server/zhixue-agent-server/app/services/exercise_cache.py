@@ -1,6 +1,7 @@
 """Short-lived, bounded question cache; all reuse checks are owner scoped."""
 from collections import OrderedDict
 from copy import deepcopy
+from app.services.exercise_quality import is_subject_question
 import hashlib
 import json
 import threading
@@ -30,7 +31,7 @@ def get(cache_key, repository, excluded=()):
         expires, items = entry
         owner = cache_key[1]
         if expires <= time.monotonic() or any(
-                q["exerciseId"] in excluded or
+                not is_subject_question(q) or q["exerciseId"] in excluded or
                 repository.get("exercise_usage", f"{owner}:{q['exerciseId']}") or
                 repository.get("exercises", q["exerciseId"]) != dict(q, userId=owner)
                 for q in items):

@@ -37,8 +37,10 @@ def execute_assessment_replan(repository, user_id: str, plan_id: str,
     profile = repository.get("profiles", user_id) or {}
     updated = dict(result.output["plan"], planId=plan_id, userId=user_id,
                    generatedFromProfileVersion=profile.get("profileVersion", 1))
+    point = handoff["replanState"]["knowledgePointId"]
+    name = next((r.get("knowledgePointName") for r in profile.get("mastery", []) if r.get("knowledgePointId") == point), None) or point
     reason = "按本次得分 %.2f 调整知识点 %s 的学习安排" % (
-        handoff["replanState"]["assessmentScore"], handoff["replanState"]["knowledgePointId"])
+        handoff["replanState"]["assessmentScore"], name)
     history = create_plan_history(plan, updated, reason, evidence_ids)
     history.update({"planId": plan_id, "adjustmentReason": history["reason"],
                     "triggerEvidence": history["evidenceIds"]})

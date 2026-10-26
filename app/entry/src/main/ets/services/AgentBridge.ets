@@ -321,7 +321,9 @@ export class AgentBridge {
       const point: string = AgentBridge.stringField(record, 'knowledgePoint');
       const wrongType: string = AgentBridge.stringField(record, 'wrongType');
       if (point.length > 0 || wrongType.length > 0) {
-        wrongAnalysis = { knowledgePoint: point, wrongType: wrongType };
+        wrongAnalysis = { knowledgePoint: point, wrongType: wrongType,
+          diagnosisId: AgentBridge.stringField(record, 'diagnosisId'), questionText: AgentBridge.stringField(record, 'questionText'),
+          recognitionStatus: AgentBridge.stringField(record, 'recognitionStatus') };
       }
     }
 
@@ -329,7 +331,9 @@ export class AgentBridge {
     const learningContext: LearningContext | undefined = AgentBridge.parseLearningContext(data['learningContext']);
 
     return { reply: reply, intent: intent, card: card, llmUsed: llmUsed,
-      profileUpdates: profileUpdates, wrongAnalysis: wrongAnalysis, learningContext: learningContext };
+      profileUpdates: profileUpdates, wrongAnalysis: wrongAnalysis, learningContext: learningContext,
+      attachmentStatus: data['attachmentReceipt'] !== undefined && typeof data['attachmentReceipt'] === 'object'
+        ? AgentBridge.stringField(data['attachmentReceipt'] as Record<string, Object>, 'message') : undefined };
   }
 
   private static parseLearningContext(raw: Object | undefined): LearningContext | undefined {

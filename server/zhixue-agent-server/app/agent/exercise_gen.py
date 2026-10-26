@@ -36,6 +36,7 @@ import uuid
 from typing import Any
 
 from app.agent import chat_llm
+from app.services.exercise_quality import is_subject_question
 
 #: 一次最多生成几道（防止一句 prompt 要 20 道，既慢又容易出废题）
 MAX_GENERATE_COUNT = 6
@@ -86,7 +87,7 @@ def _normalize_item(item: Any, knowledge_point_name: str, index: int,
 	if not isinstance(item, dict):
 		return None
 	stem = str(item.get("stem") or "").strip()
-	if not stem:
+	if not stem or not is_subject_question(item):
 		return None
 	options = _normalize_options(item.get("options"))
 	if options is None:
@@ -123,7 +124,8 @@ _USER_PROMPT = """请针对知识点「{point}」出 {count} 道**单项选择�
 1. 每题**恰好 4 个选项**，按 `A. xxx` 的格式书写；
 2. `answer` 只能是 "A"/"B"/"C"/"D" 之一，且必须是**唯一的正确答案**；
 3. 题干要具体、可判断，不要出现"以上都对""以上都不对"这类选项；
-4. `explanation` 用一句话说明为什么这个答案对，并点出最常见的错误理解。
+4. 禁止考资料要求“掌握/熟悉/了解”到何种程度，必须考实际概念、计算或应用。
+5. `explanation` 用一句话说明为什么这个答案对，并点出最常见的错误理解。
 
 只输出如下 JSON（不要 markdown 代码块）：
 {{"exercises":[{{"stem":"题干","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A","explanation":"..."}}]}}"""
@@ -222,7 +224,8 @@ def generate_exercises(knowledge_point_name: str, count: int) -> list[dict[str, 
 	不抛异常：出题失败不该把练习页打挂。
 	"""
 	point = (knowledge_point_name or "").strip()
-	if not point or count < 1:
+	from app.agent.knowledge import valid_knowledge_term
+	if not point or not valid_knowledge_term(point) or count < 1:
 		return None
 	wanted = min(count, MAX_GENERATE_COUNT)
 	if not generation_available():

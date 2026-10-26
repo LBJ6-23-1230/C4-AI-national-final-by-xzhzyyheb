@@ -594,7 +594,7 @@ def test_profile_confirmation_bypasses_intent_model_and_returns_course_updates(t
     create_app(tmp_path / "chat-confirm-command.json")
     owner = "demo-user"
     with chat_llm._PENDING_PROFILE_LOCK:
-        chat_llm._PENDING_PROFILE_UPDATES[owner] = {
+        chat_llm._PENDING_PROFILE_UPDATES[(owner, None)] = {
             "course": [{"courseName": "数据结构", "tasks": [{
                 "taskname": "递归与图算法共同学习",
                 "deadline": "2026-09-29",

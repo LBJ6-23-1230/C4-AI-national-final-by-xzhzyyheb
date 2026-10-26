@@ -29,6 +29,77 @@ let otherCandidateMatches: CandidateMatchEntry[] = [];
 @Entry
 @Component
 struct PartnerMatch {
+  @State targetCourse: string = '';
+  @State targetCourses: string[] = [];
+  @State extraCourse: string = '';
+  @State invitationCourse: string = '';
+  @State targetGoal: string = '';
+  @State freeSlotsText: string = '';
+  @State preferencesMessage: string = '';
+  @State preferencesSaving: boolean = false;
+  private courseOptions(): string[] {
+    const options: string[] = ['数据结构', '计算机网络', '操作系统', '高等数学', '线性代数', '概率论与数理统计'];
+    this.targetCourses.forEach((course: string) => { if (options.indexOf(course) < 0) options.push(course); });
+    return options;
+  }
+  private toggleCourse(course: string): void {
+    this.targetCourses = this.targetCourses.indexOf(course) >= 0 ? this.targetCourses.filter((c: string): boolean => c !== course) : [...this.targetCourses, course];
+  }
+  private async loadPreferences(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const result = await AgentApiClient.getProfile(owner);
+    if (!this.pageActive || owner !== appState.currentUser.userId || !result.ok) return;
+    this.targetCourse = result.data.profile?.targetCourse ?? '';
+    this.targetCourses = result.data.profile?.targetCourses ?? (this.targetCourse.length > 0 ? [this.targetCourse] : []);
+    this.targetGoal = result.data.profile?.goal ?? '';
+    this.freeSlotsText = (result.data.profile?.freeTimeSlots ?? []).join('、');
+  }
+  private async savePreferences(): Promise<void> {
+    if (this.preferencesSaving) return;
+    this.preferencesSaving = true;
+    const owner: string = appState.currentUser.userId;
+    const result = await AgentApiClient.saveLearningPreferences(owner, {
+      targetCourse: this.targetCourses[0] ?? '', targetCourses: this.targetCourses, goal: this.targetGoal,
+      freeTimeSlots: this.freeSlotsText.split(/[、,，;；\n]/).map((v: string): string => v.trim()).filter((v: string): boolean => v.length > 0)
+    });
+    this.preferencesSaving = false;
+    if (!this.pageActive || owner !== appState.currentUser.userId) return;
+    this.preferencesMessage = result.ok ? '学习偏好已同步，正在重新匹配。' : (result as ApiFailure).error.message;
+    if (result.ok) {
+      this.targetCourse = this.targetCourses[0] ?? '';
+      appState.currentUser.learningGoal.course = this.targetCourse;
+      appState.currentUser.learningGoal.goal = this.targetGoal;
+      void this.loadOnlineMatch();
+    }
+  }
+  @Builder
+  PreferencesForm() {
+    Column({ space: 8 }) {
+      Text('我的匹配偏好').fontSize(17).fontWeight(FontWeight.Bold)
+      Text('学习课程（可多选）').fontSize(13).fontColor('#475467')
+      Flex({ wrap: FlexWrap.Wrap }) {
+        ForEach(this.courseOptions(), (course: string) => {
+          Button(`${this.targetCourses.indexOf(course) >= 0 ? '✓ ' : ''}${course}`).fontSize(12).height(32).margin(4)
+            .backgroundColor(this.targetCourses.indexOf(course) >= 0 ? '#2563EB' : '#EFF6FF')
+            .fontColor(this.targetCourses.indexOf(course) >= 0 ? '#FFFFFF' : '#2563EB').onClick(() => this.toggleCourse(course))
+        }, (course: string) => course)
+      }.width('100%')
+      Row({ space: 8 }) {
+        TextInput({ text: this.extraCourse, placeholder: '其他完整课程名，例如概率论与数理统计' }).layoutWeight(1).onChange((v: string) => this.extraCourse = v)
+        Button('添加').fontSize(12).onClick(() => {
+          const course: string = this.extraCourse.trim();
+          if (course.length > 0 && this.targetCourses.indexOf(course) < 0) this.targetCourses = [...this.targetCourses, course];
+          this.extraCourse = '';
+        })
+      }
+      Text('请核对勾选的课程；课程可以部分重合，学习目标单独填写。').fontSize(12).fontColor('#64748B')
+      TextInput({ text: this.targetGoal, placeholder: '目标，例如准备期末考试' }).onChange((v: string) => this.targetGoal = v)
+      TextInput({ text: this.freeSlotsText, placeholder: '空闲时间：19:00-21:00，多段用逗号分隔' }).onChange((v: string) => this.freeSlotsText = v)
+      Text('未填写时间不计稳定性分；知识互补仅依据已保存的测评证据。').fontSize(12).fontColor('#64748B')
+      Button(this.preferencesSaving ? '保存中…' : '保存偏好并重新匹配').enabled(!this.preferencesSaving).onClick(() => { void this.savePreferences(); })
+      if (this.preferencesMessage.length > 0) Text(this.preferencesMessage).fontSize(12).fontColor('#475467')
+    }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
+  }
   @State invitationSent: boolean = false;
   /**
    * 联机模式下是否正在向后端请求匹配结果。
@@ -76,6 +147,7 @@ struct PartnerMatch {
       this.loadLocalFixtureMatch();
     } else {
       this.loadOnlineMatch();
+      void this.loadPreferences();
       // 收件箱与匹配结果互不依赖，但都必须在进页面时拉一次 ——
       // 邀请是**别人**发起的状态变化，不主动拉就永远看不到。
       this.loadInvitations();
@@ -111,6 +183,7 @@ struct PartnerMatch {
       if (result.ok) {
         const payload: PartnerMatchResponse = result.data;
         this.onlineBest = payload.matchedCandidate;
+        if ((payload.matchedCandidate?.sharedCourses ?? []).indexOf(this.invitationCourse) < 0) this.invitationCourse = payload.matchedCandidate?.sharedCourses?.[0] ?? '';
         const others: PartnerRankedCandidate[] = [];
         for (let index: number = 0; index < payload.candidates.length; index++) {
           const item: PartnerRankedCandidate = payload.candidates[index];
@@ -232,7 +305,8 @@ struct PartnerMatch {
     const result: ApiResult<PartnerInvitationResponse> =
       await AgentApiClient.createPartnerInvitation({
         toUserId: targetId,
-        message: '一起学数据结构吧'
+        courseName: this.invitationCourse,
+        message: `一起学习${this.invitationCourse}吧`
       });
     this.inviteBusy = '';
 
@@ -339,6 +413,10 @@ struct PartnerMatch {
       ));
     }
     const collaborativeTask: LearningPlanTask = LocalAgentService.createCollaborativeTask(partner, appState.currentUser);
+    if (!AgentApiClient.getConfig().useFixture && this.invitationCourse.length > 0) {
+      collaborativeTask.course = this.invitationCourse;
+      collaborativeTask.title = `与${partner.matchName}共同学习${this.invitationCourse}`;
+    }
     collaborativeTask.id = this.collaborativeTaskId.length > 0 ? this.collaborativeTaskId :
       appState.nextCollaborativeTaskId(collaborativeTask.id);
     const added: boolean = appState.addCollaborativeTask(
@@ -382,6 +460,7 @@ struct PartnerMatch {
           }.width('100%')
 
           if (item.message.length > 0) {
+            if (item.courseName) Text(`共同课程：${item.courseName}`).fontSize(12).fontColor('#2563EB')
             Text(item.message).fontSize(13).fontColor('#5F7485').lineHeight(19).width('100%')
           }
           if (item.targetKind === 'demo') {
@@ -492,7 +571,7 @@ Text(`${generatedPartner.score}%`).fontSize(28).fontWeight(FontWeight.Bold).font
     return [
       {
         label: '目标一致', score: `${f.goal} / 30`, match: f.goal >= 30,
-        detail: f.goal >= 30 ? '课程与目标完全相同' : (f.goal > 0 ? '课程相同、具体目标不同' : '目标不一致')
+        detail: (item.sharedCourses ?? []).length === 0 ? '暂无共同课程' : `${item.courseMatch === 'partial' ? '部分课程重合' : '课程重合'}：${(item.sharedCourses ?? []).join('、')}；${item.goalMatch === 'same' ? '共同课程学习目标一致' : item.goalMatch === 'unconfirmed' ? '学习目标尚未确认' : '具体学习目标不同'}`
       },
       {
         label: '时间重叠', score: `${f.timeOverlap} / 30`, match: f.timeOverlap >= 30,
@@ -523,7 +602,8 @@ Text(`${generatedPartner.score}%`).fontSize(28).fontWeight(FontWeight.Bold).font
     const parts: string[] = [];
     if (basic?.grade) { parts.push(basic.grade); }
     if (basic?.major) { parts.push(basic.major); }
-    if (goal?.course) { parts.push(goal.course); }
+    if ((goal?.courses ?? []).length > 0) parts.push((goal?.courses ?? []).join('、'));
+    else if (goal?.course) parts.push(goal.course);
     return parts.join(' · ');
   }
 
@@ -615,6 +695,7 @@ Text(`${generatedPartner.score}%`).fontSize(28).fontWeight(FontWeight.Bold).font
 
       Scroll() {
         Column({ space: 18 }) {
+            if (!AgentApiClient.getConfig().useFixture) this.PreferencesForm()
           Text('找学习搭子')
             .fontSize(26).fontWeight(FontWeight.Bold).fontColor('#172033').width('100%')
 
@@ -704,6 +785,11 @@ Text(`${generatedPartner.score}%`).fontSize(28).fontWeight(FontWeight.Bold).font
               Column({ space: 8 }) {
                 Text('确认后将回到对话，由知学Mate继续安排共同学习。')
                   .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
+                Text('本次一起学习的课程').fontSize(13).fontColor('#475467')
+                ForEach(this.onlineBest.sharedCourses ?? [], (course: string) => {
+                  Button(`${this.invitationCourse === course ? '✓ ' : ''}${course}`).fontSize(12).height(32)
+                    .onClick(() => this.invitationCourse = course)
+                }, (course: string) => course)
                 Button(this.inviteBusy === this.onlineBest.candidate.userId
                   ? '正在发送邀请…' : (this.invitationSent ? '查看协同任务' : '向该搭子发起学习邀请'))
                   .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')

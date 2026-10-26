@@ -26,7 +26,7 @@ import io
 import re
 import struct
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any
 from urllib.parse import unquote
 from xml.etree import ElementTree
@@ -54,6 +54,7 @@ TEXT_EXTENSIONS = {".txt", ".md", ".markdown", ".csv", ".json"}
 PDF_EXTENSIONS = {".pdf"}
 DOCX_EXTENSIONS = {".docx"}
 DOC_EXTENSIONS = {".doc"}
+PPTX_EXTENSIONS = {".pptx"}
 
 # 处理状态：必须真实反映后端进度，失败态要可见（评审看到"能失败、能重试"更可信）
 STATUS_READY = "ready"
@@ -62,6 +63,19 @@ STATUS_FAILED = "failed"
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def next_parsed_at(previous: str | None) -> str:
+    """A revision fence must advance even on coarse Windows clocks."""
+    now = datetime.now(timezone.utc)
+    try:
+        old = datetime.fromisoformat(previous or "")
+        if old.tzinfo is None:
+            old = old.replace(tzinfo=timezone.utc)
+        now = max(now, old + timedelta(microseconds=1))
+    except (TypeError, ValueError):
+        pass
+    return now.isoformat()
 
 
 def _digest(*parts: str) -> str:
@@ -97,6 +111,10 @@ def classify(file_name: str) -> tuple[str, str]:
         return "docx", ""
     if ext in DOC_EXTENSIONS:
         return "doc", ""
+    if ext in PPTX_EXTENSIONS:
+        return "pptx", ""
+    if ext == ".ppt":
+        return "unsupported", "旧版 PPT 请先另存为 PPTX 后上传"
     return "unsupported", f"暂不支持的文件类型：{ext or '（无扩展名）'}"
 
 
@@ -159,6 +177,48 @@ def decode_docx(content_base64: Any) -> tuple[str, str]:
         if text and (not lines or text != lines[-1]):
             lines.append(text)
     return "\n\n".join(lines), "" if lines else "DOCX 中没有可提取的文字"
+
+
+def decode_pptx(content_base64: Any) -> tuple[str, str]:
+    """Read title, body and table cells in presentation order, retaining slide sources."""
+    import posixpath
+    raw, error = decode_binary(content_base64)
+    if error:
+        return "", error
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            if sum(i.file_size for i in archive.infolist()) > 64 * 1024 * 1024:
+                return "", "PPTX 解压内容超过 64MB 解析上限"
+            presentation = ElementTree.fromstring(archive.read("ppt/presentation.xml"))
+            rels = ElementTree.fromstring(archive.read("ppt/_rels/presentation.xml.rels"))
+            relationships = {r.get("Id"): r.get("Target", "") for r in rels
+                             if r.get("TargetMode") != "External"}
+            ns = {"p": "http://schemas.openxmlformats.org/presentationml/2006/main",
+                  "a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+            sections = []
+            empty_slides = []
+            slides = presentation.findall("p:sldIdLst/p:sldId", ns)
+            if len(slides) > 300:
+                return "", "PPTX 超过 300 页解析上限，请拆分后上传"
+            for index, slide in enumerate(slides, 1):
+                rid = slide.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
+                target = relationships.get(rid, "")
+                path = posixpath.normpath(target.lstrip("/") if target.startswith("/") else "ppt/" + target)
+                if not path.startswith("ppt/slides/"):
+                    return "", "PPTX 幻灯片引用无效"
+                root = ElementTree.fromstring(archive.read(path))
+                lines = ["".join(t.text or "" for t in p.findall(".//a:t", ns)).strip()
+                         for p in root.findall(".//a:p", ns)]
+                lines = [line for line in lines if line]
+                if not lines:
+                    empty_slides.append(index)
+                    lines = ["本页没有可提取文字（图片或空白页），需 OCR 后补充。"]
+                sections.append(f"# 幻灯片 {index}\n\n" + "\n".join(lines))
+            if not slides or len(empty_slides) == len(slides):
+                return "", "PPTX 没有可提取文字（纯图片或空白页），请先执行 OCR"
+            return "\n\n".join(sections), ""
+    except (zipfile.BadZipFile, KeyError, ElementTree.ParseError, OSError, ValueError):
+        return "", "PPTX 结构损坏或缺少幻灯片，无法解析"
 
 
 def _clean_word_text(text: str) -> str:
@@ -258,6 +318,21 @@ def _pdf_text_quality(text: str) -> float:
     return (normal - replacement * 3) / len(visible)
 
 
+def _pdf_pages_text(pages: list[str]) -> str:
+    from collections import Counter
+    margins = Counter(line.strip() for page in pages for line in
+                      (page.splitlines()[:2] + page.splitlines()[-2:]) if line.strip())
+    repeated = {line for line, count in margins.items() if len(pages) >= 3 and count >= max(3, len(pages) // 2)}
+    sections = []
+    for index, page in enumerate(pages, 1):
+        lines = [line for line in page.splitlines()
+                 if line.strip() not in repeated and not re.fullmatch(r"\s*[-—]?\s*\d+\s*[-—]?\s*", line)
+                 and not re.search(r"(?:编著|主编|出版社)|(?:每题\s*\d*\s*分)", line)]
+        if any(line.strip() for line in lines):
+            sections.append(f"# 第{index}页\n\n" + "\n".join(lines))
+    return "\n\n".join(sections)
+
+
 def decode_pdf(content_base64: Any) -> tuple[str, str]:
     """优先用 PyMuPDF 提取中文文本，并用 pypdf 作为兼容回退。"""
     raw, error = decode_binary(content_base64)
@@ -276,8 +351,8 @@ def decode_pdf(content_base64: Any) -> tuple[str, str]:
         with pymupdf.open(stream=raw, filetype="pdf") as document:
             if document.needs_pass:
                 return "", "PDF 已加密，暂时无法解析"
-            text = "\n\n".join(document[index].get_text("text", sort=True).strip()
-                                 for index in range(min(len(document), 300))).strip()
+            text = _pdf_pages_text([document[index].get_text("text", sort=True).strip()
+                                   for index in range(min(len(document), 300))])
             if text:
                 candidates.append(text)
     except ImportError:
@@ -290,8 +365,7 @@ def decode_pdf(content_base64: Any) -> tuple[str, str]:
         reader = PdfReader(io.BytesIO(raw))
         if reader.is_encrypted:
             return "", "PDF 已加密，暂时无法解析"
-        text = "\n\n".join((page.extract_text() or "").strip()
-                             for page in reader.pages[:300]).strip()
+        text = _pdf_pages_text([(page.extract_text() or "").strip() for page in reader.pages[:300]])
         if text:
             candidates.append(text)
     except ImportError:
@@ -311,6 +385,7 @@ def decode_pdf(content_base64: Any) -> tuple[str, str]:
 
 # --------------------------------------------------------------------------- 切片
 _HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*$")
+_CHAPTER_RE = re.compile(r"^\s*((?:第\s*[\d一二三四五六七八九十]+\s*[章节]|\d+(?:\.\d+){1,3})\s*[^。！？]{2,40})\s*$")
 _SENTENCE_END = "。！？!?；;\n"
 
 
@@ -340,6 +415,9 @@ def split_into_chunks(text: str) -> list[dict[str, Any]]:
             chunks.append({"text": piece, "headingPath": heading_path()})
 
     for line in text.splitlines():
+        chapter = _CHAPTER_RE.match(line)
+        if chapter and not line.lstrip().startswith('#'):
+            line = '## ' + chapter.group(1)
         match = _HEADING_RE.match(line)
         if match:
             flush()
@@ -365,7 +443,7 @@ def _split_long_paragraph(paragraph: str) -> list[str]:
     current = ""
     for char in paragraph:
         current += char
-        if char in _SENTENCE_END and len(current) >= MAX_CHUNK_CHARS:
+        if len(current) >= MAX_CHUNK_CHARS:
             pieces.append(current.strip())
             # 保留尾部作为下一片的开头，避免答案正好被切断
             current = current[-CHUNK_OVERLAP_CHARS:]
@@ -415,36 +493,39 @@ def extract_knowledge_points(chunks: list[dict[str, Any]],
     def add(term: str) -> None:
         term = term.strip()
         # 过长的标题（如"第3章 树与二叉树"）不是知识点粒度，跳过
-        if not term or len(term) > 12 or term in found:
+        if not term or len(term) > 24 or term in found or not valid_knowledge_term(term):
             return
         found.append(term)
 
-    # 1) 标题层级
+    # Trusted terminology comes first, then meaningful headings. Never fill a quota
+    # with frequent words or fragments from exam instructions.
+    for term in (*COURSE_TERMS, *(vocabulary or [])):
+        if isinstance(term, str) and valid_knowledge_term(term) and term.casefold() in corpus.casefold():
+            add(term)
     for chunk in chunks:
-        path = chunk.get("headingPath") or ""
-        for raw_title in path.split(">"):
+        for raw_title in (chunk.get("headingPath") or "").split(">"):
             cleaned = _strip_heading_number(raw_title.strip())
-            if cleaned:
+            if (valid_knowledge_term(cleaned) and 2 <= len(cleaned) <= 24 and
+                    (cleaned in COURSE_TERMS or re.search(r"算法|排序|递归|遍历|二叉树|链表|队列|栈|协议|模型|定理|结构|方程|复杂度|函数|矩阵|极限|积分|导数|网络|进程|内存|同步|死锁|检索|编码|调制|传输|路由|握手|窗口|匹配|查找|散列|哈希|图论|向量|分布|推断|概述|物理层|链路层|运输层|应用层", cleaned))):
                 add(cleaned)
+    return found[:30]
 
-    # 2) 词表匹配
-    for term in (vocabulary or []):
-        if isinstance(term, str) and term.strip() and term.strip() in corpus:
-            add(term.strip())
 
-    # 3) 高频术语候选
-    counts: dict[str, int] = {}
-    for match in re.finditer(r"[\u4e00-\u9fa5]{2,6}", corpus):
-        word = match.group(0)
-        counts[word] = counts.get(word, 0) + 1
-    frequent = sorted((w for w, c in counts.items() if c >= 3),
-                      key=lambda w: (-counts[w], w))
-    for word in frequent:
-        if len(found) >= 8:
-            break
-        add(word)
+COURSE_TERMS = ("计算机网络", "网络体系结构", "数据链路层", "网络层", "运输层", "传输层", "应用层",
+                "TCP", "UDP", "IP地址", "子网划分", "路由选择", "拥塞控制", "流量控制", "可靠传输",
+                "以太网", "域名系统", "HTTP", "分组交换", "信道", "二叉树", "哈希表", "线性表",
+                "排序算法", "堆排序", "归并排序", "快速排序", "冒泡排序", "选择排序", "插入排序", "希尔排序", "基数排序", "字符串匹配", "KMP", "二叉搜索树", "二叉树遍历", "顺序表", "链表", "队列", "栈", "图算法", "最短路径", "最小生成树", "拓扑排序", "时间复杂度", "空间复杂度", "进程调度", "虚拟内存", "死锁", "图算法", "后序遍历",
+                "物理层", "分层体系结构", "通信子网", "资源子网", "电路交换", "比特率", "波特率",
+                "奈氏准则", "香农公式", "曼彻斯特编码", "透明传输", "CRC", "PPP", "CSMA/CD",
+                "CIDR", "ARP", "RIP", "VLAN", "停止等待协议", "滑动窗口", "三次握手", "四次挥手", "DNS")
 
-    return found[:8]
+
+def valid_knowledge_term(term: str) -> bool:
+    if not term or re.search(r"^(?:掌握|熟悉|了解|重点掌握|重点掌握，必考|必考|基础|选择|解答|得分|题型|总复习|程序填空题|填空题|单选题|综合计算题)$|(?:个字符|字符前面|每题|满分|得分|掌握以下|选择正确)", term):
+        return False
+    if term in {"编著", "谢希仁", "每题", "作者", "协议", "目录", "参考文献", "习题", "选择题", "填空题", "简答题"}:
+        return False
+    return not bool(re.search(r"^(?:幻灯片\s*\d+|第?\s*\d+\s*页|\d+|.*(?:编著|主编|出版社)|.*每题.*)$", term))
 
 
 def extract_error_point_candidates(chunks: list[dict[str, Any]]) -> list[str]:
@@ -586,6 +667,8 @@ def process_document(file_name: str, content_base64: str,
         text, error = decode_doc(content_base64)
     elif category == "docx":
         text, error = decode_docx(content_base64)
+    elif category == "pptx":
+        text, error = decode_pptx(content_base64)
     else:
         text, error = decode_text(content_base64)
     if error:

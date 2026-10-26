@@ -104,6 +104,10 @@ def _apply_profile_updates_locked(user_id: str | None, updates: dict) -> list[st
     # 学习目标：prompt 的 learningGoal.goal（也容忍直接给字符串）
     learning_goal = user_block.get("learningGoal")
     if isinstance(learning_goal, dict):
+        course = learning_goal.get("course")
+        if isinstance(course, str) and course.strip() and course.strip() != profile.get("targetCourse"):
+            profile["targetCourse"] = course.strip()[:80]
+            changed.append("主攻课程")
         goal = learning_goal.get("goal")
         if isinstance(goal, str) and goal.strip() and goal.strip() != profile.get("goal"):
             profile["goal"] = goal.strip()[:200]
@@ -197,8 +201,10 @@ def _user_context_for(user_id: str) -> dict:
     scored: list[dict] = []
     mastery = profile.get("mastery") if isinstance(profile, dict) else None
     if isinstance(mastery, list):
+        from app.agent.knowledge import valid_knowledge_term
         scored = [item for item in mastery
-                  if isinstance(item, dict) and isinstance(item.get("masteryScore"), (int, float))]
+                  if isinstance(item, dict) and isinstance(item.get("masteryScore"), (int, float))
+                  and valid_knowledge_term(str(item.get("knowledgePointName") or item.get("knowledgePointId") or ""))]
         scored.sort(key=lambda item: item["masteryScore"])
         for item in scored:
             name = str(item.get("knowledgePointName") or item.get("knowledgePointId") or "").strip()
@@ -225,7 +231,7 @@ def _user_context_for(user_id: str) -> dict:
     }
     if isinstance(profile, dict):
         if profile.get("goal"):
-            context["learningGoal"] = {"course": "", "goal": profile["goal"]}
+            context["learningGoal"] = {"course": profile.get("targetCourse", ""), "goal": profile["goal"]}
         if profile.get("freeTimeSlots"):
             context["time"] = {"freeTime": profile["freeTimeSlots"]}
     return context
@@ -326,6 +332,10 @@ def agent_chat():
             "details": None,
         }), 400
 
+    from app.services.image_inputs import inspect_image
+    receipt = inspect_image(image)
+    if receipt["status"] == "invalid":
+        return jsonify({"errorCode": "INVALID_IMAGE", "message": receipt["message"], "details": receipt}), 400
     if not message and not image:
         return jsonify({
             "reply": "请告诉我你需要什么帮助？",
@@ -369,6 +379,9 @@ def agent_chat():
         "card": result["card"],
         "llmUsed": bool(result.get("llmUsed", False)),
     }
+    if image or (result["intent"] == "analyze_wrong" and data.get("coordinateLearning") is True
+                 and not result.get("wrongAnalysis", {}).get("questionText")):
+        payload["attachmentReceipt"] = receipt
     # `profileUpdates`：仅"更新档案"意图下非空。
     # 为什么必须下发：后端 `profiles` 集合只持有 goal/examDate/freeTimeSlots/mastery，
     # **课程与任务是前端本地数据**。prompt 让模型返回 updates 而不是最终文案，
@@ -385,23 +398,29 @@ def agent_chat():
     wrong_analysis = result.get("wrongAnalysis")
     if isinstance(wrong_analysis, dict) and wrong_analysis:
         payload["wrongAnalysis"] = wrong_analysis
-        point = wrong_analysis.get("knowledgePoint")
-        if _repository and isinstance(point, str) and point.strip():
-            from app.tools.profile_merge import merge_points_into_profile
-            merge_points_into_profile(_repository, _identity,
-                [{"name": point.strip(), "source": "diagnosis"}])
+        if image:
+            receipt["status"] = wrong_analysis.get("recognitionStatus", "failed")
+            receipt["message"] = "图片已接收，识别完成待核对" if receipt["status"] == "recognized" else "图片已接收，但本次识别未完成"
+        if _repository and wrong_analysis.get("questionText") and wrong_analysis.get("knowledgePoint") and session_id:
+            import uuid
+            diagnosis_id = "diagnosis-" + uuid.uuid4().hex
+            _repository.save("chat_diagnoses", diagnosis_id, {"diagnosisId": diagnosis_id, "userId": _identity,
+                "chatSessionId": session_id, "knowledgePoint": wrong_analysis["knowledgePoint"],
+                "questionText": wrong_analysis["questionText"], "attachmentId": receipt.get("attachmentId", "")})
+            payload["wrongAnalysis"]["diagnosisId"] = diagnosis_id
+    if image and receipt["status"] == "received":
+        receipt.update(status="failed", message="图片已接收，但识图服务未完成，请重试或粘贴题干")
     if session_id:
         payload["sessionId"] = session_id
     if data.get("coordinateLearning") is True and _repository and session_id:
         from app.services.learning_context import ensure_chat_context, chat_workflow_id
-        existing = _repository.get("workflows", chat_workflow_id(_identity, session_id))
-        learning_request = (result["intent"] in ("get_suggestion", "analyze_weakness", "analyze_wrong")
-            and (bool(image) or any(word in message for word in
-                 ("学", "复习", "练", "诊断", "知识", "薄弱", "错题", "计划", "考试", "建议", "优先", "安排"))))
-        if existing or learning_request:
-            point = str((wrong_analysis or {}).get("knowledgePoint") or "").strip()
-            payload["learningContext"] = ensure_chat_context(
-                _repository, _identity, session_id, message or "依据本次图片开展学习诊断", point)
+        from app.services.learning_context import current_chat_workflow
+        existing = current_chat_workflow(_repository, _identity, session_id)
+        from app.services.learning_context import is_learning_request
+        learning_request = is_learning_request(message)
+        # Diagnosis requests need a confirmed question, never an unrelated profile fallback.
+        if not image and result["intent"] != "analyze_wrong" and learning_request:
+            payload["learningContext"] = ensure_chat_context(_repository, _identity, session_id, message)
     return jsonify(payload)
 
 

@@ -3,6 +3,7 @@ import { common } from '@kit.AbilityKit';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { ApiDefaults } from '../api/ApiDefaults';
 import { ApiEnvironmentStore } from '../api/ApiEnvironmentStore';
+import { AuthStore } from '../api/AuthStore';
 import { AuthClient } from '../api/AuthClient';
 import { AuthResult } from '../api/AuthResult';
 import { GRADE_OPTIONS } from '../api/AuthModels';
@@ -69,6 +70,7 @@ struct Login {
   @State devCode: string = '';
   @State grade: string = '';
   @State rememberMe: boolean = true;
+  @State rememberAccount: boolean = true;
   @State showPassword: boolean = false;
   @State busy: boolean = false;
   @State message: string = '';
@@ -82,6 +84,11 @@ struct Login {
 
   aboutToAppear(): void {
     this.isActive = true;
+    this.rememberMe = AuthStore.getKeepSignedIn();
+    this.rememberAccount = AuthStore.getRememberAccount();
+    const account: string = AuthStore.getRecentAccount();
+    if (/^1\d{10}$/.test(account)) this.phone = account;
+    else this.nickname = account;
     const params: Record<string, Object> = router.getParams() as Record<string, Object>;
     // ⚠️ `router.getParams()` 在**没有路由参数**时返回 undefined —— 而"冷启动直接进登录页"
     // 正是这种情况（App 未登录时的必经路径）。
@@ -215,6 +222,7 @@ struct Login {
    * 密码字段参与后端注册与登录校验。
    */
   private async onSubmit(): Promise<void> {
+    AuthStore.setLoginPreferences(this.phone.trim() || this.nickname.trim(), this.rememberAccount, this.rememberMe);
     if (this.busy) {
       return;
     }
@@ -379,6 +387,7 @@ struct Login {
 
   /** 校验验证码并登录 / 自动注册。 */
   private async onVerifyCodeLogin(): Promise<void> {
+    AuthStore.setLoginPreferences(this.phone.trim(), this.rememberAccount, this.rememberMe);
     const phoneError: string = this.validatePhone();
     if (phoneError.length > 0) {
       this.message = phoneError;
@@ -672,10 +681,15 @@ struct Login {
             Row({ space: 8 }) {
               Text(this.rememberMe ? '☑' : '☐')
                 .fontSize(16).fontColor(this.rememberMe ? '#2563EB' : '#94A3B8')
-              Text('记住我').fontSize(13).fontColor('#475467')
+              Text('保持登录（下次自动进入）').fontSize(13).fontColor('#475467')
             }
             .width('100%')
             .onClick(() => { this.rememberMe = !this.rememberMe; })
+
+            Row({ space: 8 }) {
+              Text(this.rememberAccount ? '☑' : '☐').fontSize(16).fontColor('#2563EB')
+              Text('记住账号').fontSize(13).fontColor('#475467')
+            }.width('100%').onClick(() => { this.rememberAccount = !this.rememberAccount; })
 
             // 主按钮
             // 文案必须与当前标签严格对应：此前两个标签下都是"登录 →"，

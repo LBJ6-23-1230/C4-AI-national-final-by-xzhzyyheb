@@ -26,6 +26,15 @@ export class ApiResponseValidator {
     // 一律用去查询串的路径做匹配，避免 `?a=b` 让精确比较失效。
     const route: string = ApiResponseValidator.basePath(path);
 
+    if (method === 'PUT' && route.indexOf('/api/v1/profile/') === 0 && route.endsWith('/preferences')) {
+      return ApiResponseValidator.hasNumber(data, 'profileVersion') && ApiResponseValidator.hasArray(data, 'mastery');
+    }
+    if (method === 'PUT' && route.indexOf('/api/v1/documents/') === 0 && route.endsWith('/knowledge-points')) {
+      return ApiResponseValidator.hasString(data, 'documentId') && ApiResponseValidator.hasArray(data, 'knowledgePoints');
+    }
+    if (method === 'GET' && route.indexOf('/api/v1/exercise-submissions/') === 0) {
+      return ApiResponseValidator.hasArray(data, 'review') && ApiResponseValidator.isRecordField(data, 'assessment');
+    }
     if (route === '/api/v1/focus-sessions') {
       return ApiResponseValidator.hasString(data, 'userId') && (method === 'GET'
         ? ApiResponseValidator.hasArray(data, 'sessions')
@@ -39,6 +48,9 @@ export class ApiResponseValidator {
         ApiResponseValidator.hasString(data, 'status') &&
         ApiResponseValidator.hasString(data, 'currentStep') &&
         ApiResponseValidator.hasString(data, 'nextAction');
+    }
+    if (route.indexOf('/api/v1/workflows/chat/') === 0 && route.endsWith('/goals')) {
+      return method === 'GET' ? ApiResponseValidator.hasArray(data, 'goals') : ApiResponseValidator.hasString(data, 'status');
     }
     if (method === 'GET' && route.indexOf('/api/v1/workflows/chat/') === 0) {
       return ApiResponseValidator.isLearningContext(payload);

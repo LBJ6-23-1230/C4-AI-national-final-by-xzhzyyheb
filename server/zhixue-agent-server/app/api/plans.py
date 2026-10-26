@@ -34,7 +34,11 @@ def update_available_minutes():
 	if isinstance(version, bool) or not isinstance(version, int) or version < 1:
 		return jsonify({"errorCode": "BAD_REQUEST", "message": "expectedPlanVersion must be a positive integer"}), 400
 	operation_id = hashlib.sha256(f"{owner}\0{key}".encode()).hexdigest()
-	facts = {"availableMinutes": minutes, "expectedPlanVersion": version}
+	course = data.get("targetCourse", "")
+	if not isinstance(course, str) or len(course) > 80:
+		return jsonify({"errorCode": "BAD_REQUEST", "message": "请选择主攻课程"}), 400
+	course = course.strip()
+	facts = {"availableMinutes": minutes, "expectedPlanVersion": version, "targetCourse": course}
 	with PROFILE_LOCK, _repository.transaction():
 		previous = _repository.get("plan_adjustments", operation_id)
 		if previous:
@@ -46,7 +50,30 @@ def update_available_minutes():
 			return jsonify({"errorCode": "NOT_FOUND", "message": "current plan not found"}), 404
 		if plan["version"] != version:
 			return jsonify({"errorCode": "CONFLICT", "message": "plan changed; refresh before applying new constraints"}), 409
-		result = PlannerAgent().run({"plan": plan, "availableMinutes": minutes})
+		if course:
+			profile = _repository.get("profiles", owner) or {}
+			pool = [r for r in profile.get("mastery", []) if r.get("sourceCourse") == course]
+			if not pool:
+				return jsonify({"errorCode": "BAD_REQUEST", "message": "该课程暂无候选知识点，请先导入课程或资料"}), 400
+			completed = [t for t in plan.get("tasks", []) + plan.get("unscheduledTasks", []) if t.get("status") == "completed"]
+			done = {t["knowledgePointId"] for t in completed}
+			pool = sorted([r for r in pool if r["knowledgePointId"] not in done], key=lambda r: (r.get("masteryScore", 0), r["knowledgePointId"]))
+			count = min(3, max(1, minutes // 15)) if minutes else 0
+			selected = pool[:count]
+			old_tasks = {t["knowledgePointId"]: t for t in plan.get("tasks", []) + plan.get("unscheduledTasks", [])}
+			tasks = [dict(old_tasks.get(r["knowledgePointId"], {}), taskId=old_tasks.get(r["knowledgePointId"], {}).get("taskId", f"task-{r['knowledgePointId']}"),
+				knowledgePointId=r["knowledgePointId"], knowledgePointName=r["knowledgePointName"], sourceCourse=course,
+				durationMinutes=min(30, minutes // max(1, len(selected))), status="pending") for r in selected]
+			plan_for_budget = dict(plan, tasks=completed + tasks, unscheduledTasks=[], targetCourse=course,
+				candidatePool=[r for r in profile.get("mastery", []) if r["knowledgePointId"] not in done | {x["knowledgePointId"] for x in selected}])
+		elif "candidatePool" in plan:
+			return jsonify({"errorCode": "BAD_REQUEST", "message": "请先选择本次主攻课程，再安排学习时长"}), 400
+		else:
+			plan_for_budget = plan
+		result = PlannerAgent().run({"plan": plan_for_budget, "availableMinutes": minutes})
+		if plan_for_budget != plan:
+			result.output["changed"] = True
+			result.output["plan"]["version"] = version + 1
 		updated = dict(result.output["plan"], userId=owner)
 		reason = f"本次专项计划可用{minutes}分钟，已安排{updated['budgetSummary']['scheduledMinutes']}分钟；暂未安排的任务保留待后续选择"
 		updated["reason"] = reason
@@ -121,6 +148,26 @@ def get_current_plan():
 	if not plans:
 		return jsonify({"errorCode": "NOT_FOUND", "message": "current plan not found", "details": {"userId": user_id}}), 404
 	plan = dict(plans[0])
+	# Upgrade discovery-generated backlog on first read; completed tasks remain intact.
+	if user_id != "demo-user" and "candidatePool" not in plan and (
+		str(plan.get("planId", "")).startswith("plan-import-") or
+		str(plan.get("reason", "")).startswith("根据新增课程或资料知识点")):
+		from app.tools.profile_merge import PROFILE_LOCK
+		with PROFILE_LOCK, _repository.transaction():
+			plan = _repository.get("plans", plan["planId"])
+			if "candidatePool" not in plan:
+				before = dict(plan)
+				profile = _repository.get("profiles", user_id) or {}
+				completed = [t for t in plan.get("tasks", []) + plan.get("unscheduledTasks", []) if t.get("status") == "completed"]
+				done = {t["knowledgePointId"] for t in completed}
+				plan.update(tasks=completed, unscheduledTasks=[], candidatePool=[r for r in profile.get("mastery", []) if r.get("knowledgePointId") not in done],
+					version=plan.get("version", 1) + 1, reason="历史自动积压任务已转为候选知识点；请选择本次课程与时长，完成记录已保留")
+				plan.pop("budgetSummary", None)
+				from app.tools.plan_tools import create_plan_history
+				history = create_plan_history(before, plan, plan["reason"], [])
+				history.update(planId=plan["planId"], adjustmentReason=plan["reason"], triggerEvidence=[])
+				_repository.apply_batch([], [("plans", plan["planId"], plan),
+					("plan_histories", f"{plan['planId']}:v{plan['version']}", history)])
 	if plan.get("tasks"):
 		# ⚠️ 五因子必须用**该用户的真实画像**，不能喂常量。
 		#

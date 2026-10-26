@@ -47,7 +47,7 @@ def test_real_accounts_replace_demo_people_when_available(tmp_path):
 	assert body["candidates"][0]["candidate"]["basicInfo"]["name"] == "真实测试同学"
 
 
-def test_target_course_comes_from_imported_courses(tmp_path, monkeypatch):
+def test_target_course_requires_explicit_preferences(tmp_path, monkeypatch):
 	"""导入课程后「主攻课程」必须真的进 `learningGoal.course` —— 否则目标一致因子恒为 0。
 
 	回归的是什么：`_real_candidates` / `_real_user_profile` 里 course 原先**硬编码为空串**，
@@ -72,6 +72,11 @@ def test_target_course_comes_from_imported_courses(tmp_path, monkeypatch):
 		client.post(f"/api/v1/profile/{人['user']['userId']}/knowledge-points",
 			json={"courses": courses}, headers=headers)
 
+	for person, goal in [(甲, "准备期末"), (乙, "课程练习")]:
+		response = client.put(f"/api/v1/profile/{person['user']['userId']}/preferences",
+			headers={"Authorization": f"Bearer {person['token']}"},
+			json={"targetCourse": "数据结构", "goal": goal, "freeTimeSlots": []})
+		assert response.status_code == 200
 	headers = {"Authorization": f"Bearer {甲['token']}"}
 	body = client.post("/api/v1/agent/partner-match", json={}, headers=headers).get_json()
 	by_name = {item["candidate"]["basicInfo"]["name"]: item for item in body["candidates"]}

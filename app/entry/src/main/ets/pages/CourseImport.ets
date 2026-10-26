@@ -17,11 +17,14 @@ import { ImageEncoder } from '../utils/ImageEncoder';
 struct CourseImport {
   @StorageLink('knowledgeSyncMessage') knowledgeSyncMessage: string = '';
   @StorageLink('learningDataRevision') @Watch('onLearningDataChanged') learningDataRevision: number = 0;
+  @State ddlFilter: string = 'all';
+  @State ddlDetailId: string = '';
   @State activeTab: string = 'courses';
 
   aboutToAppear(): void {
     const params = router.getParams() as Record<string, string>;
-    if (params && params['initialTab'] === 'import') this.activeTab = 'import';
+    if (params && (params['initialTab'] === 'import' || params['initialTab'] === 'ddls')) this.activeTab = params['initialTab'];
+    if (params && params['ddlFilter'] === 'pending') this.ddlFilter = 'pending';
     this.refreshLearningData();
   }
 
@@ -55,6 +58,16 @@ struct CourseImport {
    * 所有会改 `ddlList` 的地方都调一次 `syncUrgentCount()`，两边才一致。
    */
   @State urgentDdlCount: number = appState.getUrgentDDLs().length;
+
+  private filteredDDLs(): HomeworkDDL[] {
+    return this.ddlList.filter((ddl: HomeworkDDL): boolean => {
+      const done: boolean = appState.isTaskCompleted(ddl.id, 'pending');
+      if (this.ddlFilter === 'completed') return done;
+      if (this.ddlFilter === 'pending') return !done;
+      if (this.ddlFilter === 'urgent') return !done && ddl.daysLeft <= 7;
+      return true;
+    });
+  }
 
   private onLearningDataChanged(): void {
     this.refreshLearningData();
@@ -448,6 +461,7 @@ struct CourseImport {
 
   @Builder
   DDLItem(ddl: HomeworkDDL) {
+    Column({ space: 8 }) {
     Row() {
       Column() {
         Text(ddl.daysLeft.toString()).fontSize(26).fontWeight(FontWeight.Bold)
@@ -466,10 +480,17 @@ struct CourseImport {
       }.alignItems(HorizontalAlign.Start).margin({ left: 12 }).layoutWeight(1)
 
       Column({ space: 6 }) {
-        Text('加入计划').fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Medium).onClick(() => this.openPlan())
+        Text(appState.isTaskCompleted(ddl.id, 'pending') ? '已完成' : '加入计划').fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Medium).onClick(() => this.openPlan())
         Text(ddl.priority).fontSize(12).fontColor('#FFFFFF').fontWeight(FontWeight.Bold)
           .backgroundColor(ddl.priority === '高' ? '#DC2626' : (ddl.priority === '中' ? '#F59E0B' : '#3B82F6'))
           .borderRadius(10).padding({ left: 10, right: 10, top: 4, bottom: 4 })
+        Text('详情').fontSize(12).fontColor('#2563EB').onClick(() => this.ddlDetailId = this.ddlDetailId === ddl.id ? '' : ddl.id)
+        if (!appState.isTaskCompleted(ddl.id, 'pending')) {
+          Text('标记完成').fontSize(12).fontColor('#0F766E').onClick(() => {
+            appState.markPlanTaskStatus(ddl.id, 'completed');
+            this.refreshLearningData();
+          })
+        }
         Text('删除').fontSize(10).fontColor('#DC2626').fontWeight(FontWeight.Medium)
           .backgroundColor('#FEF2F2').borderRadius(6)
           .padding({ left: 6, right: 6, top: 2, bottom: 2 })
@@ -483,6 +504,12 @@ struct CourseImport {
     }
     .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
     .border({ width: 1, color: '#F1F5F9' })
+      if (this.ddlDetailId === ddl.id) {
+        Text(`${ddl.courseName}：${ddl.title}\n截止 ${ddl.dueDate}，预计 ${ddl.estimatedMinutes} 分钟\n${appState.isTaskCompleted(ddl.id, 'pending') ? '已完成' : '待处理'}`)
+          .fontSize(13).fontColor('#475467').width('100%').padding(12)
+      }
+    }
+
   }
 
   @Builder
@@ -640,6 +667,7 @@ struct CourseImport {
       Text('导入数据后，Agent 会感知课程、考试和 DDL，生成可执行并可动态调整的本周计划。')
         .fontSize(11).fontColor('#94A3B8').width('100%').lineHeight(16)
     }.width('100%')
+
   }
 
   /* ==================== 主构建 ==================== */
@@ -747,7 +775,13 @@ struct CourseImport {
                     .onClick(() => this.activeTab = 'import')
                 }.width('100%').padding(24).alignItems(HorizontalAlign.Center)
               } else {
-                ForEach(this.ddlList, (ddl: HomeworkDDL) => {
+                Row({ space: 8 }) {
+                Button('全部').onClick(() => this.ddlFilter = 'all')
+                Button('待处理').onClick(() => this.ddlFilter = 'pending')
+                Button('临近截止').onClick(() => this.ddlFilter = 'urgent')
+                Button('已完成').onClick(() => this.ddlFilter = 'completed')
+              }
+              ForEach(this.filteredDDLs(), (ddl: HomeworkDDL) => {
                   this.DDLItem(ddl)
                 }, (ddl: HomeworkDDL) => ddl.id)
               }

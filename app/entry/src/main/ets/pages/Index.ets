@@ -541,12 +541,13 @@ struct Index {
 
   /** 「我的」标签的统计块（任务完成度 / 专注次数等）。 */
   @Builder
-  StatCard(value: string, label: string) {
+  StatCard(value: string, label: string, target: string = '') {
     Column({ space: 4 }) {
       Text(value).fontSize(20).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-      Text(label).fontSize(11).fontColor('#64748B').textAlign(TextAlign.Center)
+      Text(target.length > 0 ? `${label} ›` : label).fontSize(11).fontColor('#64748B').textAlign(TextAlign.Center)
     }
-    .layoutWeight(1).padding({ top: 14, bottom: 14 })
+    .layoutWeight(1).height(84).padding({ top: 14, bottom: 14 })
+    .onClick(() => { if (target.length > 0) router.pushUrl({ url: target, params: { initialTab: 'ddls', ddlFilter: 'pending' } }); })
     .backgroundColor('#FFFFFF').borderRadius(14)
     .border({ width: 1, color: '#EAECF0' })
   }
@@ -982,7 +983,7 @@ struct Index {
                       .fontSize(11.5).fontColor(appState.isSignedIn ? '#1E6B3A' : '#B45309')
                       .width('100%')
                   }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-                  Text('管理 ›').fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+                  Text('管理 ›').onClick(() => router.pushUrl({ url: 'pages/Account' })).fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
                 }.width('100%')
                 Button('账号与密码管理')
                   .width('100%').height(44).fontSize(14).fontColor('#2563EB')
@@ -1027,7 +1028,7 @@ struct Index {
                 this.StatCard(`${Math.round(appState.getFocusSummary().completionRate)}%`, '专注完成率')
                 // 同 Account 页：这里是**全部**待处理作业。用只数 7 天内的
                 // getUrgentDDLs() 会让"导入 N 条却显示 N-1 条"（实测反馈的数字对不上）。
-                this.StatCard(`${appState.getPendingDDLs().length}`, '待处理作业')
+                this.StatCard(`${appState.getPendingDDLs().length}`, '待处理作业', 'pages/CourseImport')
               }.width('100%')
 
               this.PanelRow('◰', '学习复盘', '汇总任务、知识点与下一步建议', 'pages/ReviewSummary')

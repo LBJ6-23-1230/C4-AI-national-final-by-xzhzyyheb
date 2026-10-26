@@ -76,19 +76,21 @@ def test_upload_cannot_resurrect_library_deleted_during_parse(tmp_path, monkeypa
     assert knowledge_api._repository.list('chunks') == []
 
 
-def test_upload_profile_failure_rolls_back_document_and_summary(tmp_path, monkeypatch):
+def test_confirmation_profile_failure_rolls_back_document_and_summary(tmp_path, monkeypatch):
     from app.tools import profile_merge
     client = create_app(tmp_path / 'upload.json').test_client()
     kb = client.post('/api/v1/knowledge-bases', json={'name': 'audit', 'courseName': 'audit'}).get_json()['kbId']
+    doc = client.post(f'/api/v1/knowledge-bases/{kb}/documents', json={
+        'fileName': 'audit.md', 'contentBase64': base64.b64encode('二叉树后序遍历'.encode()).decode()}).get_json()
+    before = knowledge_api._repository.get('documents', doc['documentId'])
     def fail(*args, **kwargs):
         raise OSError('injected merge failure')
     monkeypatch.setattr(profile_merge, 'merge_points_into_profile', fail)
-    result = client.post(f'/api/v1/knowledge-bases/{kb}/documents', json={
-        'fileName': 'audit.md', 'contentBase64': base64.b64encode('二叉树后序遍历'.encode()).decode()})
+    result = client.put(f"/api/v1/documents/{doc['documentId']}/knowledge-points", json={
+        'knowledgePoints': ['后序遍历'], 'expectedParsedAt': doc['parsedAt']})
     assert result.status_code == 500
-    assert knowledge_api._repository.list('documents') == []
-    assert knowledge_api._repository.list('chunks') == []
-    assert knowledge_api._repository.get('knowledge_bases', kb)['documentCount'] == 0
+    assert knowledge_api._repository.get('documents', doc['documentId']) == before
+    assert knowledge_api._repository.get('knowledge_bases', kb)['documentCount'] == 1
 
 
 def test_oversize_http_body_is_rejected_before_json_decode(tmp_path):
@@ -414,3 +416,16 @@ assert calls == ['qwen3.8-flash', 'qwen3-vl-plus', 'qwen3.8-flash', 'qwen3-vl-pl
                             env=env, capture_output=True, timeout=15)
     assert result.returncode == 0, result.stderr.decode(errors='replace')
     assert b'PRIVATE_UPSTREAM_RESPONSE' not in result.stdout
+
+
+def test_export_filters_mutated_seed_without_touching_local_user_records(tmp_path):
+    import json
+    policy = tool('packaging_policy')
+    path = tmp_path / 'mock_wrong_questions.json'
+    rows = [{'userId': 'demo-user', 'createdAt': '2026-09-20', 'questionId': 'seed'},
+            {'userId': 'demo-user', 'createdAt': '2026-10-25', 'questionId': 'runtime'},
+            {'userId': 'private-user', 'createdAt': '2026-09-01', 'questionId': 'private'}]
+    original = json.dumps(rows).encode()
+    path.write_bytes(original)
+    assert json.loads(policy.sanitized_bytes(path)) == [rows[0]]
+    assert path.read_bytes() == original

@@ -4,8 +4,26 @@ The workflow is the goal aggregate: goalId equals sessionId. This module stores
 references and decisions, never another copy of mastery or plan business facts.
 """
 import hashlib
+import re
+import uuid
+from datetime import datetime, timezone
 
 from app.agents.secretary import SecretaryAgent
+
+
+def is_learning_request(message):
+    """Profile edits and requests to inspect data do not start practice."""
+    if re.search(r"更新.*画像|修改.*画像|不(?:需要|想|要|再).{0,8}(?:学|复习|练)|功能|怎么使用|如何使用|是什么|介绍|说明书", message):
+        return False
+    return bool(re.search(
+        r"(?:帮我|请)(?:按.{0,12})?(?:安排|制定|生成|规划).{0,25}(?:复习|练习|计划|学习)|"
+        r"(?:我要|我想|请|帮我|开始|启动|确认)(?:开始|进行)?(?:学习|复习|练习)(?!目标|画像)|"
+        r"(?:开始|启动|生成|制定).{0,8}(?:学习计划|复习计划|练习计划)", message))
+
+
+def valid_point(point):
+    from app.agent.knowledge import valid_knowledge_term
+    return bool(point) and valid_knowledge_term(point)
 
 
 def chat_workflow_id(owner, chat_session_id):
@@ -16,15 +34,18 @@ def chat_workflow_id(owner, chat_session_id):
 def prepare(repository, workflow, state):
     """Refresh authoritative inputs without changing the chosen goal point."""
     profile = state.get("profile") or {}
-    points = [p for p in profile.get("mastery", []) if p.get("knowledgePointId")]
+    points = [p for p in profile.get("mastery", []) if p.get("knowledgePointId") and valid_point(p.get("knowledgePointName") or p["knowledgePointId"])]
     coordination = dict(state["coordination"])
     target = coordination.get("knowledgePointId")
+    if target and not valid_point(coordination.get("knowledgePointName") or target):
+        target = ""
+        coordination.update(knowledgePointId="", knowledgePointName="")
     if target and not any(p["knowledgePointId"] == target for p in points):
         same_name = next((p for p in points if p.get("knowledgePointName") == coordination.get("knowledgePointName")), None)
         if same_name:
             target = same_name["knowledgePointId"]
             coordination["knowledgePointId"] = target
-    if not target and points:
+    if not target and points and coordination.get("allowProfileSelection") is True:
         point = min(points, key=lambda p: (p.get("masteryScore", 0), p["knowledgePointId"]))
         target = point["knowledgePointId"]
         coordination["knowledgePointId"] = target
@@ -110,6 +131,19 @@ def snapshot(repository, workflow):
     owned = [k for k in repository.list("knowledge_bases") if k.get("userId") == workflow["userId"] and k.get("kbId") in kbs]
     context["sourceMode"] = "materials" if len(owned) == 1 else "general"
     context["kbId"] = owned[0]["kbId"] if len(owned) == 1 else ""
+    legacy_unconfirmed = bool(re.search(r"这道错题|这道题|这张图", workflow.get("goal", "")) and not coordination.get("diagnosisId"))
+    if legacy_unconfirmed:
+        context.update(needsConfirmation=True, knowledgePointId="", knowledgePointName="", status="waiting_for_input",
+            nextAction="旧诊断目标尚未核对题干，请重新上传或输入题目后确认", action={"label": "补充题目", "targetPage": ""})
+    if not valid_point(context["knowledgePointName"] or context["knowledgePointId"]):
+        context.update(knowledgePointId="", knowledgePointName="", sourceMode="general", kbId="")
+    if (coordination.get("knowledgePointId") and not valid_point(coordination.get("knowledgePointName") or coordination.get("knowledgePointId"))
+            or not coordination.get("diagnosisId") and not is_learning_request(workflow.get("goal", ""))):
+        context.update(needsConfirmation=True, knowledgePointId="", knowledgePointName="", status="waiting_for_input",
+            nextAction="这个旧目标由资料标签或画像更新误触发。请重新选择具体知识点，历史记录已保留。",
+            action={"label": "请重新选择知识点", "targetPage": ""})
+    if workflow.get("userEnded"):
+        context.update(status="ended", nextAction="此目标已由你结束，历史测评与完成记录仍保留", action={"label": "目标已结束", "targetPage": ""})
     return context
 
 
@@ -164,17 +198,59 @@ def handoff(state, result, step, version):
     return [*previous[-19:], task]
 
 
-def ensure_chat_context(repository, owner, chat_session_id, goal, point=""):
+def current_chat_workflow(repository, owner, chat_session_id):
+    base = chat_workflow_id(owner, chat_session_id)
+    link = repository.get("chat_goal_links", base) or {}
+    if link.get("ended"):
+        return None
+    workflow = repository.get("workflows", link.get("activeGoalId", base))
+    if not workflow or workflow.get("userId") != owner:
+        return None
+    coordination = workflow.get("state", {}).get("coordination", {})
+    # Old unconfirmed diagnosis goals (including HTTP fallback) are historical only.
+    if re.search(r"这道错题|这道题|这张图", workflow.get("goal", "")) and not coordination.get("diagnosisId"):
+        return None
+    if (not coordination.get("diagnosisId") and not is_learning_request(workflow.get("goal", ""))
+            or not valid_point(coordination.get("knowledgePointName") or coordination.get("knowledgePointId"))
+            and coordination.get("knowledgePointId")):
+        return None
+    return workflow
+
+
+def chat_goal_history(repository, owner, chat_session_id):
+    rows = [w for w in repository.list("workflows") if w.get("userId") == owner and
+            w.get("state", {}).get("coordination", {}).get("chatSessionId") == chat_session_id]
+    rows.sort(key=lambda w: (w.get("createdAt", ""), w["sessionId"]))
+    return [snapshot(repository, w) for w in rows[-20:][::-1] if w.get("state", {}).get("coordination")]
+
+
+def ensure_chat_context(repository, owner, chat_session_id, goal, point="", new_goal=False, diagnosis_id=""):
     # Called by chat only after the caller explicitly opts into coordination.
-    from app.api.workflows import _run_saved_workflow
+    from app.api.workflows import _run_saved_workflow, _workflow_guard
     from app.tools.profile_merge import PROFILE_LOCK
-    session_id = chat_workflow_id(owner, chat_session_id)
-    with PROFILE_LOCK:
-        workflow = repository.get("workflows", session_id)
+    base = chat_workflow_id(owner, chat_session_id)
+    with _workflow_guard(), PROFILE_LOCK:
+        workflow = current_chat_workflow(repository, owner, chat_session_id)
+        if workflow and not point:
+            named_now = [r for r in (repository.get("profiles", owner) or {}).get("mastery", [])
+                         if r.get("knowledgePointName") and r["knowledgePointName"] in goal]
+            if named_now:
+                selected_now = max(named_now, key=lambda r: len(r["knowledgePointName"]))
+                if selected_now["knowledgePointId"] != workflow.get("state", {}).get("coordination", {}).get("knowledgePointId"):
+                    point = selected_now["knowledgePointId"]
+                    new_goal = True
+        if new_goal or workflow and workflow.get("userEnded"):
+            workflow = None
+        session_id = workflow["sessionId"] if workflow else (f"{base}-{uuid.uuid4().hex[:10]}" if repository.get("workflows", base) or new_goal else base)
+        if diagnosis_id:
+            session_id = base + "-" + hashlib.sha256(diagnosis_id.encode()).hexdigest()[:10]
+            saved_diagnosis_goal = repository.get("workflows", session_id)
+            if saved_diagnosis_goal:
+                workflow = saved_diagnosis_goal
         if workflow is None:
             trace_id = f"trace-{session_id}"
             profile = repository.get("profiles", owner) or {}
-            points = profile.get("mastery", [])
+            points = [p for p in profile.get("mastery", []) if valid_point(p.get("knowledgePointName") or p.get("knowledgePointId"))]
             # Prefer explicitly named points/courses in the user's real input.
             named = [p for p in points if any(name and name in goal for name in
                      (p.get("knowledgePointName", ""), p.get("knowledgePointId", "")))]
@@ -192,12 +268,17 @@ def ensure_chat_context(repository, owner, chat_session_id, goal, point=""):
             if selected:
                 point = selected["knowledgePointId"]
             workflow = {"sessionId": session_id, "traceId": trace_id, "userId": owner, "goal": goal[:1000],
+                        "createdAt": datetime.now(timezone.utc).isoformat(),
                         "status": "running", "currentStep": "secretary", "currentAgent": "secretary",
                         "stateVersion": 1, "maxSteps": 6, "finalAction": None,
                         "state": {"coordination": {"chatSessionId": chat_session_id,
                                                   "knowledgePointId": point,
+                                                  "diagnosisId": diagnosis_id,
+                                                  "allowProfileSelection": bool(re.search(r"薄弱|短板|查漏补缺", goal)),
                                                   "knowledgePointName": selected.get("knowledgePointName", point) if selected else point}}}
             repository.apply_batch([], [("workflows", session_id, workflow),
                                          ("traces", trace_id, {"traceId": trace_id, "userId": owner, "events": []})])
+        repository.save("chat_goal_links", base, {"userId": owner, "chatSessionId": chat_session_id,
+            "activeGoalId": session_id, "ended": False})
         _run_saved_workflow(session_id)
         return snapshot(repository, repository.get("workflows", session_id))

@@ -32,7 +32,7 @@ def test_new_user_import_is_idempotent_and_creates_plan(setup):
     assert len(first.json['mastery']) >= 8
     assert client.post(path, json={'courses': ['数据结构', '操作系统']}, headers=headers).data == first.data
     plan = client.get('/api/v1/plans/current', headers=headers)
-    assert plan.status_code == 200 and plan.json['tasks']
+    assert plan.status_code == 200 and not plan.json['tasks'] and plan.json['candidatePool']
     assert plan.json['userId'] == user
 
 
@@ -54,7 +54,11 @@ def test_plan_task_names_are_human_readable(setup):
 	plan = client.get('/api/v1/plans/current', headers=headers).json
 
 	name_of = {row['knowledgePointId']: row['knowledgePointName'] for row in profile['mastery']}
-	assert plan['tasks'], '导入后必须真的生成计划'
+	assert not plan['tasks'] and plan['candidatePool']
+	plan = client.post('/api/v1/plans/current/availability', headers=headers, json={
+		'targetCourse': '数据结构', 'availableMinutes': 30, 'expectedPlanVersion': plan['version'],
+		'idempotencyKey': 'names'}).json['plan']
+	assert 1 <= len(plan['tasks']) <= 3
 	# 至少要有命中题库的知识点（它们的 id 是英文），否则这条测试没有判别力
 	assert any(re.fullmatch(r'[a-z]+(-[a-z]+)+', key) for key in name_of), name_of
 	for task in plan['tasks']:
@@ -117,10 +121,18 @@ def test_document_and_diagnosis_seed_real_points(setup):
     response = client.post(f'/api/v1/knowledge-bases/{kb["kbId"]}/documents', headers=headers, json={
         'fileName': '讲义.md', 'contentBase64': base64.b64encode(content.encode()).decode()})
     assert response.status_code == 201 and response.json['status'] == 'ready'
+    assert not client.get(f'/api/v1/profile/{user}', headers=headers).json['mastery']
+    doc = response.json
+    confirmed = client.put(f"/api/v1/documents/{doc['documentId']}/knowledge-points", headers=headers,
+        json={'expectedParsedAt': doc['parsedAt'], 'knowledgePoints': ['哈希表']})
+    assert confirmed.status_code == 200
     assert client.get(f'/api/v1/profile/{user}', headers=headers).json['mastery']
-    with patch('app.api.chat.chat_llm.chat', return_value={'reply': '诊断', 'intent': 'analyze_wrong',
-               'card': None, 'llmUsed': True, 'wrongAnalysis': {'knowledgePoint': '进程调度', 'wrongType': '概念混淆'}}):
-        assert client.post('/api/agent/chat', json={'message': '分析错题'}, headers=headers).status_code == 200
+    with patch('app.api.chat.chat_llm.chat', return_value={'reply': '识别待确认', 'intent': 'analyze_wrong',
+               'card': None, 'llmUsed': True, 'wrongAnalysis': {'knowledgePoint': '进程调度', 'questionText': '请说明进程调度算法的区别'}}):
+        result = client.post('/api/agent/chat', json={'message': '分析错题', 'sessionId': 'confirmed-diagnosis'}, headers=headers).json
+    assert not any(p['knowledgePointName'] == '进程调度' for p in client.get(f'/api/v1/profile/{user}', headers=headers).json['mastery'])
+    assert client.post('/api/v1/workflows/chat/confirmed-diagnosis/goals', headers=headers,
+        json={'action': 'start', 'diagnosisId': result['wrongAnalysis']['diagnosisId']}).status_code == 200
     assert any(p['knowledgePointName'] == '进程调度' for p in client.get(f'/api/v1/profile/{user}', headers=headers).json['mastery'])
 
 

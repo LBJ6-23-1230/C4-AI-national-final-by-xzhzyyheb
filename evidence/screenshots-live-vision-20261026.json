@@ -1,0 +1,9 @@
+{
+  "sample": "built-in sample_wrong.png",
+  "configured": true,
+  "status": "recognized",
+  "knowledgePoint": "哈希表中的哈希冲突概念及处理机制",
+  "questionChars": 93,
+  "wrongType": "",
+  "elapsedSeconds": 10.11
+}

@@ -513,31 +513,6 @@ struct Account {
           .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
           .border({ width: 1, color: '#E2E8F0' })
 
-          // ---------- 学习数据（任务完成度 / 专注记录） ----------
-          Column({ space: 12 }) {
-            Row() {
-              Text('学习数据').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#1F2937')
-              Blank()
-              Text('明细 ›').fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
-            }.width('100%')
-              .onClick(() => router.pushUrl({ url: 'pages/LearningHistory' }))
-
-            Row({ space: 10 }) {
-              this.StatBlock(`${appState.getPlanProgress()}%`, '任务完成度')
-              this.StatBlock(`${appState.getFocusSummary().todayMinutes}`, '今日专注分钟')
-              this.StatBlock(`${appState.getFocusSummary().recentSessions.length}`, '专注记录次数')
-            }.width('100%')
-            Row({ space: 10 }) {
-              this.StatBlock(`${appState.getFocusSummary().streakDays}`, '连续学习天数')
-              this.StatBlock(`${Math.round(appState.getFocusSummary().completionRate)}%`, '专注完成率')
-              // 「待处理作业」= **全部**导入的作业，不能再用只数 7 天内的 getUrgentDDLs()，
-              // 否则导入 4 条里有一条在 8 天后，界面就少一个（实测反馈的数字对不上）。
-              this.StatBlock(`${appState.getPendingDDLs().length}`, '待处理作业')
-            }.width('100%')
-          }
-          .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-          .border({ width: 1, color: '#E2E8F0' })
-
           // ---------- 修改密码 ----------
           //
           // 这个入口所在页面以前叫「账号与密码管理」，却**没有任何密码管理能力**

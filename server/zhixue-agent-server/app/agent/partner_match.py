@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from app.services.course_names import course_names
 
 
 def _time_ranges(value: Any) -> list[tuple[int, int]]:
@@ -15,7 +16,7 @@ def _time_ranges(value: Any) -> list[tuple[int, int]]:
 			start, end = str(item).split("-", 1)
 			start_minutes = int(start.split(":")[0]) * 60 + int(start.split(":")[1])
 			end_minutes = int(end.split(":")[0]) * 60 + int(end.split(":")[1])
-			if end_minutes > start_minutes:
+			if 0 <= start_minutes < end_minutes <= 1440 and all(0 <= int(v.split(":")[1]) < 60 for v in (start, end)):
 				ranges.append((start_minutes, end_minutes))
 		except (ValueError, IndexError):
 			continue
@@ -62,8 +63,13 @@ def _dict(value: Any) -> dict[str, Any]:
 def score_partner(user: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
 	user_goal = _dict(user.get("learningGoal"))
 	candidate_goal = _dict(candidate.get("learningGoal"))
-	goal_score = 30 if user_goal.get("course") and user_goal == candidate_goal else (
-		20 if user_goal.get("course") and user_goal.get("course") == candidate_goal.get("course") else 0)
+	left = set(course_names(user_goal.get("courses") or user_goal.get("course")))
+	right = set(course_names(candidate_goal.get("courses") or candidate_goal.get("course")))
+	shared = sorted(left & right)
+	def goal_for(goal, course):
+		return str(_dict(goal.get("courseGoals")).get(course, goal.get("goal")) or "").strip().casefold()
+	same_goal = any(goal_for(user_goal, c) and goal_for(user_goal, c) == goal_for(candidate_goal, c) for c in shared)
+	goal_score = (20 + (10 if same_goal else 0)) if shared else 0
 	overlap = _overlap_minutes(user, candidate)
 	time_score = 30 if overlap >= 120 else 20 if overlap >= 60 else 10 if overlap >= 30 else 0
 	complement = len(_list(user, "knowledge", "weakness") & _list(candidate, "knowledge", "strength"))
@@ -71,11 +77,15 @@ def score_partner(user: dict[str, Any], candidate: dict[str, Any]) -> dict[str, 
 	complement_score = 20 if complement >= 2 else 10 if complement == 1 else 0
 	user_info = _dict(user.get("basicInfo"))
 	candidate_info = _dict(candidate.get("basicInfo"))
-	basic_score = 10 if (user_info.get("grade") == candidate_info.get("grade") and
-		user_info.get("major") == candidate_info.get("major")) else 5 if user_info.get("grade") == candidate_info.get("grade") else 0
-	stability_score = 10 if len(_time_ranges(_dict(candidate.get("time")).get("freeTime"))) == 1 else 5 if candidate.get("time") else 0
+	basic_score = 10 if (user_info.get("grade") and user_info.get("major") and
+		user_info.get("grade") == candidate_info.get("grade") and user_info.get("major") == candidate_info.get("major")) else 5 if user_info.get("grade") and user_info.get("grade") == candidate_info.get("grade") else 0
+	ranges = _time_ranges(_dict(candidate.get("time")).get("freeTime"))
+	stability_score = 10 if len(ranges) == 1 else 5 if ranges else 0
 	total = goal_score + time_score + complement_score + basic_score + stability_score
-	return {"candidate": candidate, "score": total, "factors": {
+	return {"candidate": candidate, "score": total, "sharedCourses": shared,
+		"courseMatch": "full" if shared and left == right else "partial" if shared else "none",
+		"goalMatch": "same" if same_goal else "unconfirmed" if not user_goal.get("goal") or not candidate_goal.get("goal") else "different",
+		"factors": {
 		"goal": goal_score, "timeOverlap": time_score, "knowledgeComplement": complement_score,
 		"basicMatch": basic_score, "stability": stability_score, "overlapMinutes": overlap,
 	}}

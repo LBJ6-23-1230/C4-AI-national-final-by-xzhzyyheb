@@ -18,13 +18,17 @@ def test_second_course_changes_existing_plan_preserving_ids_and_progress(tmp_pat
     assert client.post(url, json={"courses": ["数据结构"]}, headers=headers).status_code == 200
     repo = profile_api._repository
     before = client.get("/api/v1/plans/current", headers=headers).get_json()
-    saved = repo.get("plans", before["planId"])
+    planned = client.post("/api/v1/plans/current/availability", headers=headers, json={
+        "targetCourse": "数据结构", "availableMinutes": 60, "expectedPlanVersion": before["version"], "idempotencyKey": "start"})
+    assert planned.status_code == 200
+    saved = planned.get_json()["plan"]
+    before = saved
     saved["tasks"][0]["status"] = "completed"
     done = deepcopy(saved["tasks"][0])
     repo.save("plans", before["planId"], saved)
     if budget is not None:
         result = client.post("/api/v1/plans/current/availability", json={"availableMinutes": budget,
-            "expectedPlanVersion": saved["version"], "idempotencyKey": "budget"}, headers=headers)
+            "expectedPlanVersion": saved["version"], "idempotencyKey": "budget", "targetCourse": "数据结构"}, headers=headers)
         assert result.status_code == 200
         before = result.get_json()["plan"]
     response = client.post(url, json={"courses": ["数据结构", "操作系统"]}, headers=headers)
@@ -36,7 +40,8 @@ def test_second_course_changes_existing_plan_preserving_ids_and_progress(tmp_pat
     assert next(t for t in combined if t["taskId"] == done["taskId"]) == done
     new_points = {r["knowledgePointId"] for r in response.get_json()["mastery"] if r.get("sourceCourse") == "操作系统"}
     assert new_points
-    assert new_points <= {t["knowledgePointId"] for t in combined}
+    assert new_points <= {t["knowledgePointId"] for t in after["candidatePool"]}
+    assert not new_points.intersection(t["knowledgePointId"] for t in combined)
     assert len({t["taskId"] for t in combined}) == len(combined)
     if budget is not None:
         assert sum(t["durationMinutes"] for t in after["tasks"] if t["status"] != "completed") <= budget
@@ -52,7 +57,7 @@ def test_new_material_point_updates_plan_without_resetting_existing_score(tmp_pa
     before = deepcopy(repo.get("profiles", "demo-user"))
     merge_points_into_profile(repo, "demo-user", [{"name": "进程调度", "source": "document"}])
     plan = repo.get("plans", "plan-demo-001")
-    assert any(t["knowledgePointId"] == "进程调度" for t in plan["tasks"])
+    assert any(t["knowledgePointId"] == "进程调度" for t in plan["candidatePool"])
     after = repo.get("profiles", "demo-user")
     for row in before["mastery"]:
         assert next(r for r in after["mastery"] if r["knowledgePointId"] == row["knowledgePointId"]) == row

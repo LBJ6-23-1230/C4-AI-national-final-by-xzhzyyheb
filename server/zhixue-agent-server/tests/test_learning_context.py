@@ -28,7 +28,7 @@ def setup(tmp_path, monkeypatch, request):
 
 def chat(setup, chat_id="chat-a", identity=0):
     return setup[0].post("/api/agent/chat", headers=setup[2][identity][1], json={
-        "message": "帮我安排复习并诊断", "sessionId": chat_id, "coordinateLearning": True})
+        "message": "帮我按薄弱点安排复习并诊断", "sessionId": chat_id, "coordinateLearning": True})
 
 
 def submit(setup, context, key="goal-submit", answer="A"):

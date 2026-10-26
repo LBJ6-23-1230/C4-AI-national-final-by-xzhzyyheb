@@ -44,7 +44,7 @@ export class ImageEncoder {
       }
       const buffer: ArrayBuffer = new ArrayBuffer(size);
       const read: number = fileIo.readSync(file.fd, buffer);
-      if (read <= 0) {
+      if (read !== size) {
         return '';
       }
       // 读满才编码：`readSync` 允许短读，短读时尾部是空字节，

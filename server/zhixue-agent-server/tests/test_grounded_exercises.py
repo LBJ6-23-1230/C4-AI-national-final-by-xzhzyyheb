@@ -29,6 +29,9 @@ def setup(tmp_path, monkeypatch):
         "courseName": "数据结构", "name": "本次讲义"}).get_json()["kbId"]
     doc = client.post(f"/api/v1/knowledge-bases/{kb}/documents", headers=headers,
                       json={"fileName": "复习.md", "contentBase64": base64.b64encode(TEXT.encode()).decode()}).get_json()["documentId"]
+    document = client.get(f"/api/v1/documents/{doc}", headers=headers).get_json()
+    assert client.put(f"/api/v1/documents/{doc}/knowledge-points", headers=headers,
+        json={"expectedParsedAt": document["parsedAt"], "knowledgePoints": ["后序遍历"]}).status_code == 200
     calls = []
 
     def model(system, prompt, **kwargs):
@@ -61,6 +64,10 @@ def test_full_material_assessment_chain(setup):
         if mastery["knowledgePointId"] == "后序遍历":
             mastery["masteryScore"] = 42
     repo.save("profiles", users[0][0], profile)
+    plan = client.get('/api/v1/plans/current', headers=users[0][1]).get_json()
+    assert client.post('/api/v1/plans/current/availability', headers=users[0][1], json={
+        'targetCourse': '数据结构', 'availableMinutes': 60, 'expectedPlanVersion': plan['version'],
+        'idempotencyKey': 'material-course'}).status_code == 200
     body = generate(setup).get_json()
     assert len(calls) == 1
     question = body["exercises"][0]

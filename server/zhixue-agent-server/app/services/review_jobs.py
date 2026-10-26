@@ -86,8 +86,7 @@ def attach(future, repository, submission_id, expected, wrong_snapshots):
                 if row.get("explanationSource") == "fallback" and key in ids and explanations.get(key):
                     row.update(explanation=explanations[key], explanationSource="llm")
                     changed.append(key)
-            if not changed:
-                return
+            updated["response"]["reviewStatus"] = "completed" if changed else "failed"
             # Compare the full snapshot so resets, edits and duplicate callbacks win.
             if not repository.compare_and_save("submissions", submission_id, expected, updated):
                 return
@@ -98,6 +97,9 @@ def attach(future, repository, submission_id, expected, wrong_snapshots):
                     repository.compare_and_save("wrong_book", f"{owner}:{key}", previous, replacement)
             logger.info("review_backfill status=completed count=%s", len(changed))
         except Exception:
+            failed = deepcopy(expected)
+            failed["response"]["reviewStatus"] = "failed"
+            repository.compare_and_save("submissions", submission_id, expected, failed)
             # Do not log exception text: provider errors may contain user content.
             logger.warning("review_backfill status=failed")
 

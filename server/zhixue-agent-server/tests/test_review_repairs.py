@@ -248,7 +248,7 @@ def test_sqlite_workers_serialize_read_modify_write(tmp_path, first_action, seco
                 assert plan['constraints']['availableMinutes'] == 10
                 assert plan['budgetSummary']['scheduledMinutes'] == 10
             elif first_action == 'discover':
-                assert any(t['knowledgePointId'] == 'new-point' for t in tasks.values())
+                assert any(t['knowledgePointId'] == 'new-point' for t in plan['candidatePool'])
             else:
                 assert plan['version'] == 2
     finally:

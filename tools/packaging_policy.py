@@ -1,5 +1,6 @@
 """Shared source-package policy; never export runtime data or local signing material."""
 import os
+import json
 import re
 from pathlib import Path
 
@@ -34,6 +35,15 @@ def iter_source_files(base):
 
 def sanitized_bytes(path):
     data = path.read_bytes()
+    if path.name == 'mock_wrong_questions.json':
+        rows = json.loads(data.decode('utf-8-sig'))
+        if not isinstance(rows, list):
+            raise ValueError('Wrong-question seed must be a list')
+        # Local files may contain appended user records. Export only historical demo seeds.
+        seeds = [row for row in rows if isinstance(row, dict)
+                 and row.get('userId') in (None, '', 'demo-user', 'u001')
+                 and str(row.get('createdAt') or '')[:10] <= '2026-09-21']
+        return (json.dumps(seeds, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     if path.name != 'build-profile.json5':
         return data
     text = data.decode('utf-8-sig')

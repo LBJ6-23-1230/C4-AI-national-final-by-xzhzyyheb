@@ -1,3 +1,5 @@
+import { GoalActionRequest, GoalActionResponse, GoalHistoryResponse } from './ApiModels';
+import { LearningPreferencesRequest, DocumentPointsRequest } from './ApiModels';
 import { http } from '@kit.NetworkKit';
 import { ExerciseSourcesResponse } from './ApiModels';
 import { LearningContext } from './ApiModels';
@@ -80,6 +82,24 @@ export class AgentApiClient {
       ApiDefaults.LLM_BOUND_READ_TIMEOUT_MS);
   }
 
+  static async saveLearningPreferences(userId: string, request: LearningPreferencesRequest): Promise<ApiResult<ProfileResponse>> {
+    return AgentApiClient.request<ProfileResponse>(http.RequestMethod.PUT,
+      `/api/v1/profile/${encodeURIComponent(userId)}/preferences`, request);
+  }
+  static async reviseDocumentPoints(id: string, request: DocumentPointsRequest): Promise<ApiResult<KnowledgeDocument>> {
+    return AgentApiClient.request<KnowledgeDocument>(http.RequestMethod.PUT,
+      `/api/v1/documents/${encodeURIComponent(id)}/knowledge-points`, request);
+  }
+  static async getSubmissionReview(id: string): Promise<ApiResult<ExerciseSubmissionResult>> {
+    return AgentApiClient.request<ExerciseSubmissionResult>(http.RequestMethod.GET,
+      `/api/v1/exercise-submissions/${encodeURIComponent(id)}`);
+  }
+  static async getChatGoalHistory(chatId: string): Promise<ApiResult<GoalHistoryResponse>> {
+    return AgentApiClient.request<GoalHistoryResponse>(http.RequestMethod.GET, `/api/v1/workflows/chat/${encodeURIComponent(chatId)}/goals`);
+  }
+  static async manageChatGoal(chatId: string, request: GoalActionRequest): Promise<ApiResult<GoalActionResponse>> {
+    return AgentApiClient.request<GoalActionResponse>(http.RequestMethod.POST, `/api/v1/workflows/chat/${encodeURIComponent(chatId)}/goals`, request);
+  }
   static async getProfile(userId: string): Promise<ApiResult<ProfileResponse>> {
     return AgentApiClient.request<ProfileResponse>(http.RequestMethod.GET, `/api/v1/profile/${encodeURIComponent(userId)}`);
   }

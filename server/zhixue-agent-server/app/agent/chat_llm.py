@@ -17,6 +17,9 @@
 from __future__ import annotations
 
 import base64
+from contextvars import ContextVar
+
+_CHAT_SESSION = ContextVar("chat_session", default=None)
 import json
 import os
 import re
@@ -56,7 +59,7 @@ _PARTNER_MATCH_HOOK: Any = None
 # 对话式画像修改采用“两步确认”：第一轮只暂存模型解析出的结构化改动，
 # 用户明确回复“确认更新”后才落盘。这样既防止模型误解一句自然语言就改档案，
 # 也给用户一次核对机会。暂存只含普通业务字段，不含口令等敏感信息。
-_PENDING_PROFILE_UPDATES: dict[str, dict[str, Any]] = {}
+_PENDING_PROFILE_UPDATES: dict[tuple[str, str | None], dict[str, Any]] = {}
 _PENDING_PROFILE_LOCK = threading.RLock()
 _PROFILE_CONFIRM_WORDS = {"确认", "确认更新", "确认修改", "同意更新", "可以更新"}
 _PROFILE_CANCEL_WORDS = {"取消", "取消更新", "不要改", "不更新", "算了"}
@@ -322,14 +325,16 @@ def _call_llm_with_image(system_prompt: str, user_prompt: str, image_base64: str
                 {"type": "text", "text": user_prompt},
             ]},
         ],
-        "temperature": 0.7,
-        "max_tokens": 800,
+        "temperature": 0.1,
+        "max_tokens": 1200,
     }
     if response_json:
         kwargs["response_format"] = {"type": "json_object"}
     kwargs.update(_thinking_kwargs())
     from app.services import llm_runtime
     response = llm_runtime.request("vision", kwargs, budget=llm_timeout_seconds())
+    if getattr(response.choices[0], "finish_reason", None) == "length":
+        raise ValueError("vision_output_truncated")
     return response.choices[0].message.content or ""
 
 
@@ -411,7 +416,7 @@ def clear_history(user_id: str | None = None) -> None:
 
 def append_history(user_input: str, bot_response: str,
                    user_id: str | None = None,
-                   session_id: str | None = None) -> None:
+                   session_id: str | None = None, question_context: dict | None = None) -> None:
     key = (user_id or DEFAULT_HISTORY_USER).strip() or DEFAULT_HISTORY_USER
     # 读—改—写必须在**同一把锁**内完成，否则并发 append 会互相覆盖（丢历史）。
     with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
@@ -427,6 +432,9 @@ def append_history(user_input: str, bot_response: str,
         clean_session_id = (session_id or "").strip()
         if clean_session_id:
             entry["session_id"] = clean_session_id[:128]
+        if question_context and question_context.get("questionText"):
+            entry["question_context"] = {k: str(question_context.get(k) or "")[:5000]
+                                         for k in ("questionText", "knowledgePoint")}
         bucket.append(entry)
         store[key] = bucket[-HISTORY_MAX_ENTRIES:]
         _write_history_store(store)
@@ -434,7 +442,7 @@ def append_history(user_input: str, bot_response: str,
 
 def _format_history(num_entries: int = 10, user_id: str | None = None) -> str:
     lines = []
-    for entry in get_history(user_id)[-num_entries:]:
+    for entry in [e for e in get_history(user_id) if _CHAT_SESSION.get() and e.get("session_id") == _CHAT_SESSION.get()][-num_entries:]:
         lines.append(
             f"用户: {entry.get('user_input', '')}\n知学Mate: {entry.get('bot_response', '')}")
     return "\n".join(lines)
@@ -627,6 +635,7 @@ def _task_lines(courses: Any) -> list[str]:
 def _context_prompt(user_message: str, data: dict[str, Any],
                     user_id: str | None = None) -> str:
     return (
+        "事实约束：只使用本次输入与本会话的已知事实。历史中的图片没有随本次请求上传，不得声称看到它。没有题干或图片时要求补充，不得编造题目、选项或识图结论。\n"
         f"对话历史：{_format_history(user_id=user_id)}\n"
         f"用户输入：{user_message}\n"
         f"当前日期：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}\n"
@@ -1023,18 +1032,19 @@ def _handle_update_profile(message: str, data: dict[str, Any],
     不必强制用户再去“课程与作业”页重复确认。
     """
     owner = (user_id or "").strip() or "demo-user"
+    pending_key = (owner, _CHAT_SESSION.get())
     command = (message or "").strip()
     with _PENDING_PROFILE_LOCK:
-        pending = _PENDING_PROFILE_UPDATES.get(owner)
+        pending = _PENDING_PROFILE_UPDATES.get(pending_key)
 
     if pending is not None and command in _PROFILE_CANCEL_WORDS:
         with _PENDING_PROFILE_LOCK:
-            _PENDING_PROFILE_UPDATES.pop(owner, None)
+            _PENDING_PROFILE_UPDATES.pop(pending_key, None)
         return "已取消，本次没有修改学习档案。", {}
 
     if pending is not None and command in _PROFILE_CONFIRM_WORDS:
         with _PENDING_PROFILE_LOCK:
-            confirmed = _PENDING_PROFILE_UPDATES.pop(owner, {})
+            confirmed = _PENDING_PROFILE_UPDATES.pop(pending_key, {})
         applied: list[str] = []
         if confirmed and _PROFILE_UPDATE_HOOK is not None:
             try:
@@ -1072,7 +1082,7 @@ def _handle_update_profile(message: str, data: dict[str, Any],
 
     if updates:
         with _PENDING_PROFILE_LOCK:
-            _PENDING_PROFILE_UPDATES[owner] = updates
+            _PENDING_PROFILE_UPDATES[pending_key] = updates
         summary = _clean_profile_update_reply(reply) or "我已理解你想修改学习档案。"
         return (summary + "\n\n为避免误改，我还没有保存。请回复“确认更新”继续，"
                 "或回复“取消更新”放弃。"), {}
@@ -1090,27 +1100,44 @@ def _handle_analyze_wrong(message: str, data: dict[str, Any], image_base64: str 
         # 需要把知识点**结构化地带出去**（前端拿它去请求对应题集 / 现场出题）。
         # 答复文本仍然照常返回（放在 `reply` 里），只是多带两个字段。
         system_prompt = (
-            "你是一个专业的错题分析助手。根据用户提供的错题图片和文字信息，"
-            "深入分析错误原因，定位知识点薄弱处，并给出可执行的补强建议。"
-            "**只输出 JSON，不要任何解释性文字或 markdown 代码块。**"
+            "你是解题助手小知。先给正确答案和解析，再在有明确用户作答时分析错因。"
+            "无用户作答也必须独立解题，不得要求用户先提供标准答案。"
+            "手写勾叉、红笔订正可能是批改，不能直接当作用户的原答案。"
+            "图片有多道题时，只处理用户指定的一道；未指定默认第1道。"
+            "不得逐字转录整页、页眉或其他题。开头说明本次处理第几题，其他题可按题号重新上传或裁剪。"
+            "questionText仅含该题题干和完整选项，reply先写答案，再简要解释各选项。"
+            "questionText控制在500字内，reply控制在300字内；较长题可压缩表述但保留解题条件。"
+            "不能认清关键条件才readable=false。只输出完整JSON，不用代码块。"
         )
         user_prompt = (
-            _context_prompt(message, data, user_id)
-            + "\n\n请输出这样的 JSON："
-              "{\"reply\":\"不超过 200 字的分析，先说结论再说建议\","
-              "\"knowledgePoint\":\"这道题考查的知识点名称，4-12 个字，"
-              "例如「哈希表」「二叉树遍历」「图算法」；图片看不清或判断不了就填空字符串\","
-              "\"wrongType\":\"错误类型，例如「概念混淆」「顺序记反」「计算失误」；不确定填空字符串\"}"
+            "本次附件已接收，图片见image_url。\n"
+            f"本次要求：{message}\n"
+            '输出JSON：{"readable":true,"answerVisible":false,"questionText":"选中题目的完整题干和选项",'
+            '"reply":"本次解答第N题。答案：…；解析：…",'
+            '"knowledgePoint":"本题知识点",'
+            '"wrongType":"只有用户原作答明确且错误时填写，否则为空"}'
         )
         raw = _call_llm_with_image(system_prompt, user_prompt, image_base64, response_json=True)
-        parsed = extract_json(raw) or {}
-        reply = str(parsed.get("reply") or raw or "").strip()
-        point = str(parsed.get("knowledgePoint") or "").strip()
-        wrong_type = str(parsed.get("wrongType") or "").strip()
-        return reply, ({"knowledgePoint": point, "wrongType": wrong_type} if point else {})
+        parsed = extract_json(raw)
+        if not parsed:
+            raise ValueError("vision_invalid_structure")
+        question = str(parsed.get("questionText") or "").strip()[:5000]
+        point = str(parsed.get("knowledgePoint") or "").strip()[:60]
+        readable = parsed.get("readable") is True and len(question) >= 6
+        if not readable:
+            return ("图片已接收，但未能识别出完整题干。请上传更清晰的图片或粘贴题目文字；本次没有生成知识点或错因结论。",
+                    {"recognitionStatus": "unreadable", "questionText": "", "knowledgePoint": ""})
+        reply = str(parsed.get("reply") or "请核对下方识别题干，确认无误后可开展针对性练习。信心不足时请修改知识点。").strip()
+        if re.search(r"(?:没有|未).{0,8}(?:上传|提供|收到).{0,8}(?:图片|题目)|未提供具体错题", reply):
+            reply = "图片已接收并读取题干，请先核对识别内容。未提供用户答案时，只能讲解题目，不能判断个人错因。"
+        answer_visible = parsed.get("answerVisible") is True
+        if not answer_visible and re.search(r"你(?:的)?(?:答案|作答|解法|思路)(?:是|存在|有|出现了|出现)?(?:错误|有误)|你错在", reply):
+            reply = "已读取题干，但未看到可核验的用户答案或解题过程，暂不能判断个人错因。请核对题干后再补充作答。"
+        return reply, {"knowledgePoint": point, "wrongType": str(parsed.get("wrongType") or "")[:80] if answer_visible else "",
+                       "questionText": question, "recognitionStatus": "recognized"}
 
     raw = _call_llm(_load_prompt("AnalyzeWrongPrompt.txt"), _context_prompt(message, data, user_id),
-                    response_json=True)
+                    temperature=0.1, max_tokens=1200, response_json=True)
     parsed = extract_json(raw) or {}
     reply = str(parsed.get("reply") or raw or "").strip()
     analysis = parsed.get("analysis")
@@ -1127,13 +1154,13 @@ def _handle_analyze_wrong(message: str, data: dict[str, Any], image_base64: str 
             _mutable_path("mock_wrong_questions.json").write_text(
                 json.dumps(questions, ensure_ascii=False, indent=2), encoding="utf-8")
     # 无图这条路径：从 `analysis` 里取知识点（模型按 prompt 返回的结构化结果）
-    point = ""
-    if isinstance(analysis, dict):
+    point = str(parsed.get("knowledgePoint") or "").strip()
+    if not point and isinstance(analysis, dict):
         raw_point = analysis.get("knowledgePoint") or analysis.get("knowledge") or ""
         if isinstance(raw_point, list):
             raw_point = raw_point[0] if raw_point else ""
         point = str(raw_point).strip()
-    return reply, ({"knowledgePoint": point} if point else {})
+    return reply, ({"knowledgePoint": point, "questionText": str(parsed.get("questionText") or message)[:5000], "recognitionStatus": "recognized"} if point else {})
 
 
 _HANDLERS = {
@@ -1187,7 +1214,26 @@ def _build_profile_update_card(profile_updates: dict[str, Any]) -> dict[str, Any
     }
 
 
-def chat(message: str, image_base64: str | None = None,
+def _question_followup(message: str) -> bool:
+    return bool(re.search(r"这[道个]题|上[一面次].{0,4}题|答案是什么|为什么选|怎么解|继续讲|再解释|我选[了的]?\s*[A-D]|第\s*[一二三四五六七八九十0-9]+\s*题", message))
+
+
+def _recent_question(user_id: str | None, session_id: str | None) -> dict:
+    if not session_id:
+        return {}
+    for entry in reversed(get_history(user_id)):
+        if entry.get("session_id") != session_id:
+            continue
+        context = entry.get("question_context")
+        if isinstance(context, dict) and context.get("questionText"):
+            return context
+        # A newer failed image/question request invalidates the preceding question.
+        if re.search(r"图片已接收|上传|这[道个]题", str(entry.get("user_input", "")) + str(entry.get("bot_response", ""))):
+            return {}
+    return {}
+
+
+def _chat_in_session(message: str, image_base64: str | None = None,
          frontend_data: dict[str, Any] | None = None,
          user_id: str | None = None,
          user_context: dict[str, Any] | None = None,
@@ -1205,11 +1251,24 @@ def chat(message: str, image_base64: str | None = None,
     那条回落路径此前被无条件使用，导致模型照着"小明 + 二叉树遍历"回话。
     """
     message = (message or "").strip()
+    previous_question = _recent_question(user_id, session_id) if not image_base64 and _question_followup(message) and not re.search(r"[A-D][.、．]|已知|设有", message) else {}
+    original_message = message
+    if previous_question:
+        message = "本会话已识别题干：" + previous_question["questionText"] + "\n本次追问：" + message
+    if not previous_question and not image_base64 and re.search(r"(?:这[道张个](?:错)?题|这张图|图片|图中|附件|上[面次]的图)", message) and len(message) < 55 and not re.search(r"[=：:]|[A-D][.、]|已知|设有|求解", message):
+        reply = "本次消息没有附带可分析的图片或完整题干，请上传图片，或粘贴题干和选项后再分析。"
+        append_history(message, reply, user_id, session_id)
+        return {"reply": reply, "intent": "analyze_wrong", "card": None, "llmUsed": False,
+                "profileUpdates": {}, "wrongAnalysis": {}}
     if not message and image_base64:
         message = "帮我分析这道题"
 
     data = _user_data(frontend_data, user_context, user_id)
-    intent, llm_used = detect_intent(message, has_image=bool(image_base64))
+    direct_question = previous_question or bool(re.search(r"[A-D][.、．]|[（(][）)].{0,8}[。.]?\s*$|答案是什么|求解|解答这", message))
+    if not image_base64 and direct_question:
+        intent, llm_used = "analyze_wrong", llm_ready()
+    else:
+        intent, llm_used = detect_intent(message, has_image=bool(image_base64))
 
     reply = ""
     profile_updates: dict[str, Any] = {}
@@ -1217,7 +1276,7 @@ def chat(message: str, image_base64: str | None = None,
     llm_attempted = llm_used  # 模型的意图判定是否真的成功（后续据此决定能否说"调用失败"）
     owner = (user_id or "").strip() or "demo-user"
     with _PENDING_PROFILE_LOCK:
-        has_pending_profile_update = owner in _PENDING_PROFILE_UPDATES
+        has_pending_profile_update = (owner, _CHAT_SESSION.get()) in _PENDING_PROFILE_UPDATES
     is_profile_confirmation = (has_pending_profile_update and
                                message in (_PROFILE_CONFIRM_WORDS | _PROFILE_CANCEL_WORDS))
     if is_profile_confirmation:
@@ -1255,8 +1314,7 @@ def chat(message: str, image_base64: str | None = None,
         else:
             reply = _LOCAL_REPLY.get(intent, _LOCAL_REPLY["unknown"])
         if image_base64:
-            reply = ("图片已收到。当前未接入多模态识别，请进入错题分析页手动确认知识点，"
-                     "或在服务端配置 DASHSCOPE_API_KEY 后重试。")
+            reply = ("图片已接收，但本次识图未成功。请重试或粘贴完整题干；模型未配置或不可用时无法识图。")
             llm_attempted = False
         # ⚠️ 只有"模型调用确实失败"才把 llmUsed 置 False。
         # `unknown` 是模型**依 prompt 正确返回**的兜底意图（prompt 第 84/127 行），
@@ -1271,12 +1329,17 @@ def chat(message: str, image_base64: str | None = None,
     elif not is_profile_confirmation and not llm_ready():
         reply += _LOCAL_NOTICE
 
+    if not image_base64 and re.search(r"(?:看到|收到了|收到|读到了).{0,25}(?:图片|上传.{0,4}图)|图片中显示|图中可见", reply):
+        reply = "本次消息未附图片，我不能声称看到图片。请上传题目，或粘贴完整题干和你的作答后再诊断。"
+        wrong_analysis = {}
+        llm_used = False
+
     # 历史上下文或模型惯性仍可能带出旧称呼；在落盘和下发前统一为产品名“小知”。
     reply = reply.replace("小艺", "小知")
 
     if message:
         try:
-            append_history(message, reply, user_id, session_id)
+            append_history(original_message, reply, user_id, session_id, question_context=wrong_analysis)
         except OSError:
             pass
 
@@ -1295,3 +1358,11 @@ def chat(message: str, image_base64: str | None = None,
         # 识别不出时为空 dict —— 前端据此如实回落，不编造知识点。
         "wrongAnalysis": wrong_analysis,
     }
+
+
+def chat(message: str, image_base64=None, frontend_data=None, user_id=None, user_context=None, session_id=None):
+    token = _CHAT_SESSION.set(session_id)
+    try:
+        return _chat_in_session(message, image_base64, frontend_data, user_id, user_context, session_id)
+    finally:
+        _CHAT_SESSION.reset(token)

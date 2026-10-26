@@ -73,25 +73,66 @@ def _get_owned(collection: str, item_id: str, user_id: str) -> dict | None:
 
 
 def _vocabulary(user_id: str) -> list[str]:
-    """知识点词表：取该用户画像里已有的知识点名 + 课程名。
-
-    与 `StudyTags` 共用同一套标签，避免"知识库标签"与"画像标签"两套体系。
-    """
-    words: list[str] = []
+    """Only assessed or explicitly confirmed concepts may seed another extraction."""
     profile = _repository.get("profiles", user_id) if _repository else None
-    if isinstance(profile, dict):
-        for mastery in profile.get("mastery", []):
-            if isinstance(mastery, dict):
-                name = mastery.get("knowledgePointName")
-                if isinstance(name, str) and name:
-                    words.append(name)
-    for plan in _list("plans", user_id):
-        for task in plan.get("tasks", []):
-            if isinstance(task, dict):
-                name = task.get("knowledgePointName")
-                if isinstance(name, str) and name:
-                    words.append(name)
-    return list(dict.fromkeys(words))
+    words = [r.get("knowledgePointName", "") for r in (profile or {}).get("mastery", [])
+             if r.get("confidence", 0) > 0]
+    for doc in _list(DOCS, user_id):
+        if doc.get("tagsConfirmed") is True:
+            words.extend(doc.get("knowledgePoints", []))
+    return list(dict.fromkeys(w for w in words if knowledge.valid_knowledge_term(w)))
+
+
+def _upgrade_tags(record):
+    """Migrate old automatic labels once, preserving source, revisions and assessed work."""
+    if record.get("status") != "ready" or (record.get("extractionVersion") == 2 and all(knowledge.valid_knowledge_term(p) for p in record.get("knowledgePoints", []))):
+        return record
+    user_id, document_id = record["userId"], record["documentId"]
+    with PROFILE_LOCK, _repository.transaction():
+        record = _get_owned(DOCS, document_id, user_id)
+        if not record or (record.get("extractionVersion") == 2 and all(knowledge.valid_knowledge_term(p) for p in record.get("knowledgePoints", []))):
+            return record
+        staged = StagedRepository(_repository)
+        old = dict(record)
+        chunks = [c for c in _list(CHUNKS, user_id) if c.get("documentId") == document_id]
+        points = knowledge.extract_knowledge_points(chunks, _vocabulary(user_id))
+        if record.get("tagsConfirmed"):
+            points = [p for p in record.get("knowledgePoints", []) if knowledge.valid_knowledge_term(p)]
+        record = dict(record, knowledgePoints=points, extractionVersion=2, parsedAt=knowledge.next_parsed_at(record.get("parsedAt")))
+        revision_id = document_id + ":before-v2"
+        if staged.get("document_tag_revisions", revision_id):
+            revision_id += ":" + str(record["parsedAt"])
+        staged.save("document_tag_revisions", revision_id, {"userId": user_id, "documentId": document_id, "previous": old,
+            "previousProfile": staged.get("profiles", user_id)})
+        staged.save(DOCS, document_id, record)
+        for chunk in chunks:
+            staged.save(CHUNKS, chunk["chunkId"], dict(chunk,
+                knowledgePoints=[p for p in points if p.casefold() in chunk.get("text", "").casefold()]))
+        confirmed = {p for d in staged.list(DOCS) if d.get("userId") == user_id and d.get("tagsConfirmed") for p in d.get("knowledgePoints", [])}
+        profile = staged.get("profiles", user_id)
+        if profile:
+            removed = {r["knowledgePointId"] for r in profile.get("mastery", []) if r.get("source") == "document" and
+                not r.get("confidence", 0) and r.get("knowledgePointName") not in confirmed}
+            if removed:
+                profile = dict(profile, mastery=[r for r in profile["mastery"] if r["knowledgePointId"] not in removed],
+                    profileVersion=profile.get("profileVersion", 1) + 1)
+                staged.save("profiles", user_id, profile)
+                from app.api.plans import plan_belongs_to
+                from app.tools.time_budget import fit_plan_to_budget
+                for plan in staged.list("plans"):
+                    if plan_belongs_to(plan, user_id):
+                        for key in ("tasks", "unscheduledTasks", "candidatePool"):
+                            plan[key] = [t for t in plan.get(key, []) if t.get("knowledgePointId") not in removed or t.get("status") == "completed"]
+                        if "availableMinutes" in plan.get("constraints", {}):
+                            plan = fit_plan_to_budget(plan, plan["constraints"]["availableMinutes"])["plan"]
+                        plan.update(version=plan.get("version", 1) + 1, reason="未确认的资料标签已回到资料候选区；测评和完成记录保留")
+                        staged.save("plans", plan["planId"], plan)
+        kb = staged.get(KB, record["kbId"])
+        if kb:
+            docs = [d for d in staged.list(DOCS) if d.get("userId") == user_id and d.get("kbId") == record["kbId"]]
+            staged.save(KB, kb["kbId"], dict(kb, knowledgePoints=list(dict.fromkeys(p for d in docs for p in d.get("knowledgePoints", [])))))
+        staged.commit()
+        return record
 
 
 # --------------------------------------------------------------------------- 知识库 CRUD
@@ -161,8 +202,8 @@ def get_knowledge_base(kb_id: str):
         return jsonify({"errorCode": "NOT_FOUND", "message": "知识库不存在",
                         "details": {"kbId": kb_id}}), 404
     documents = _list(DOCS, user_id)
-    return jsonify({**record,
-                    "documents": [doc for doc in documents if doc.get("kbId") == kb_id]})
+    documents = [_upgrade_tags(doc) for doc in documents if doc.get("kbId") == kb_id]
+    return jsonify({**(_get_owned(KB, kb_id, user_id) or record), "documents": documents})
 
 
 @knowledge_api.delete("/api/v1/knowledge-bases/<kb_id>")
@@ -196,6 +237,7 @@ def list_documents(kb_id: str):
         return jsonify({"errorCode": "NOT_FOUND", "message": "知识库不存在",
                         "details": {"kbId": kb_id}}), 404
     documents = [d for d in _list(DOCS, user_id) if d.get("kbId") == kb_id]
+    documents = [_upgrade_tags(d) for d in documents]
     documents.sort(key=lambda item: item.get("uploadedAt", ""), reverse=True)
     return jsonify({"kbId": kb_id, "documents": documents, "total": len(documents)})
 
@@ -242,6 +284,9 @@ def upload_document(kb_id: str):
         "status": parsed["status"], "statusMessage": parsed["statusMessage"],
         "charCount": parsed["charCount"], "chunkCount": len(parsed["chunks"]),
         "knowledgePoints": parsed["knowledgePoints"],
+        "parseSource": "basic" if parsed["status"] == knowledge.STATUS_READY else "failed",
+        "tagsConfirmed": False,
+        "extractionVersion": 2,
         "errorPointCandidates": parsed["errorPointCandidates"],
         "uploadedAt": timestamp, "parsedAt": timestamp,
     }
@@ -287,11 +332,7 @@ def upload_document(kb_id: str):
             }))
             staged.apply_batch([], saves)
 
-            if parsed["status"] == knowledge.STATUS_READY:
-                from app.tools.profile_merge import merge_points_into_profile
-                merge_points_into_profile(staged, user_id, [
-                    {"name": name, "source": "document", "sourceCourse": kb.get("courseName", "")}
-                    for name in parsed["knowledgePoints"]])
+            # Extracted labels are candidates until the user confirms them.
             staged.commit()
 
     # 201 = 已接收并处理完成（含 failed，因为"受理"成功了，处理结果在 status 里）
@@ -319,6 +360,7 @@ def get_document(document_id: str):
         return jsonify({"errorCode": "NOT_FOUND", "message": "文档不存在",
                         "details": {"documentId": document_id}}), 404
 
+    record = _upgrade_tags(record)
     chunks = [chunk for chunk in _list(CHUNKS, user_id)
               if chunk.get("documentId") == document_id]
     # 正文必须按**原文顺序**回传，否则用户看到的讲义是乱的。
@@ -332,6 +374,11 @@ def get_document(document_id: str):
     returned = chunks[:knowledge.MAX_CHUNKS_PER_RESPONSE]
     return jsonify({
         **record,
+        "knowledgePointEvidence": [{"name": point,
+            "chunkId": next((c["chunkId"] for c in chunks if point.casefold() in c.get("text", "").casefold()), ""),
+            "excerpt": next((c["text"][:500] for c in chunks if point.casefold() in c.get("text", "").casefold()), ""),
+            "headingPath": next((c.get("headingPath", "") for c in chunks if point.casefold() in c.get("text", "").casefold()), "")}
+            for point in record.get("knowledgePoints", [])],
         # 切片总数取自 chunks 集合的**实测值**，不直接用 record["chunkCount"]：
         # 后者是解析当时的快照，若两边不一致，界面应当看到事实而不是旧快照。
         "chunkTotal": total,
@@ -349,6 +396,66 @@ def get_document(document_id: str):
             "knowledgePoints": chunk.get("knowledgePoints", []),
         } for position, chunk in enumerate(returned, 1)],
     })
+
+
+@knowledge_api.put("/api/v1/documents/<document_id>/knowledge-points")
+@_locked
+def revise_document_points(document_id):
+    data, guard = json_object()
+    if guard is not None:
+        return guard
+    user_id, guard = _resolve_user_id(data)
+    if guard is not None:
+        return guard
+    record = _get_owned(DOCS, document_id, user_id)
+    if record is None:
+        return jsonify({"errorCode": "NOT_FOUND", "message": "文档不存在"}), 404
+    if record.get("status") != "ready":
+        return bad_request("文档没有可用正文，请转换格式或 OCR 后重新上传")
+    if data.get("expectedParsedAt") != record.get("parsedAt"):
+        return jsonify({"errorCode": "CONFLICT", "message": "资料已变更，请刷新后重试"}), 409
+    chunks = [c for c in _list(CHUNKS, user_id) if c.get("documentId") == document_id]
+    points = knowledge.extract_knowledge_points(chunks, _vocabulary(user_id)) if data.get("reparse") is True else data.get("knowledgePoints")
+    if not isinstance(points, list) or len(points) > 30 or any(not isinstance(p, str) or not 1 <= len(p.strip()) <= 24 for p in points):
+        return bad_request("知识点应为不超过30个名称，每个1至24字")
+    points = list(dict.fromkeys(p.strip() for p in points))
+    if any(not knowledge.valid_knowledge_term(p) for p in points):
+        return bad_request("作者、页码及题型说明不能作为知识点")
+    old = set(record.get("knowledgePoints", []))
+    record.update(knowledgePoints=points, extractionVersion=2, parsedAt=knowledge.next_parsed_at(record.get("parsedAt")), tagsConfirmed=data.get("reparse") is not True, parseSource="basic")
+    staged = StagedRepository(_repository)
+    staged.save("document_tag_revisions", document_id + ":" + str(data["expectedParsedAt"]),
+        {"userId": user_id, "documentId": document_id, "previous": _get_owned(DOCS, document_id, user_id)})
+    staged.save(DOCS, document_id, record)
+    for chunk in chunks:
+        chunk["knowledgePoints"] = [p for p in points if p.casefold() in chunk.get("text", "").casefold()]
+        staged.save(CHUNKS, chunk["chunkId"], chunk)
+    kb = _get_owned(KB, record["kbId"], user_id)
+    docs = [d for d in staged.list(DOCS) if d.get("userId") == user_id]
+    kb["knowledgePoints"] = list(dict.fromkeys(p for d in docs if d.get("kbId") == kb["kbId"] for p in d.get("knowledgePoints", [])))
+    staged.save(KB, kb["kbId"], kb)
+    profile = staged.get("profiles", user_id)
+    still_used = {p for d in docs if d.get("tagsConfirmed") is True for p in d.get("knowledgePoints", [])}
+    if profile:
+        removed_ids = {r["knowledgePointId"] for r in profile.get("mastery", []) if
+            r.get("knowledgePointName") in old - set(points) - still_used and r.get("source") == "document" and not r.get("confidence", 0)}
+        profile["mastery"] = [r for r in profile.get("mastery", []) if not (
+            r.get("knowledgePointName") in old - set(points) - still_used and r.get("source") == "document" and not r.get("confidence", 0))]
+        staged.save("profiles", user_id, profile)
+        from app.api.plans import plan_belongs_to
+        for plan in staged.list("plans"):
+            if plan_belongs_to(plan, user_id) and removed_ids:
+                for key in ("tasks", "unscheduledTasks", "candidatePool"):
+                    plan[key] = [t for t in plan.get(key, []) if t.get("knowledgePointId") not in removed_ids or t.get("status") == "completed"]
+                budget = plan.get("constraints", {}).get("availableMinutes")
+                if budget is not None:
+                    from app.tools.time_budget import fit_plan_to_budget
+                    plan = fit_plan_to_budget(plan, budget)["plan"]
+                staged.save("plans", plan["planId"], plan)
+        from app.tools.profile_merge import merge_points_into_profile
+        merge_points_into_profile(staged, user_id, [{"name": p, "source": "document", "sourceCourse": kb.get("courseName", "")} for p in points] if record["tagsConfirmed"] else [], refresh=True)
+    staged.commit()
+    return jsonify(record)
 
 
 @knowledge_api.delete("/api/v1/documents/<document_id>")

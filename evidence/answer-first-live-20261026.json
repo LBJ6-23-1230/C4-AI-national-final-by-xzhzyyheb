@@ -1,0 +1,34 @@
+{
+  "before": {
+    "finishReason": "length",
+    "responseChars": 1203,
+    "tokens": 800,
+    "status": "unreadable",
+    "questionChars": 0,
+    "elapsedSeconds": 23.17
+  },
+  "afterStatus": "recognized",
+  "calls": [
+    {
+      "kind": "vision",
+      "finishReason": "stop",
+      "elapsedSeconds": 8.38
+    },
+    {
+      "kind": "chat",
+      "finishReason": "stop",
+      "elapsedSeconds": 2.2
+    }
+  ],
+  "note": "同一原图默认仅解答第1题；原图与完整回复保留在私有工作目录，不代表整页全部通过。",
+  "package": {
+    "path": "deliverables\\answer-first-20261026\\知学Mate-answer-first-20261026-signed.hap",
+    "sha256": "baa3a392bd50853a1c690a2d0ec7ce7bea615bde9b21f664df73909af63421bc"
+  },
+  "scope": "多题原图只解答默认第1题；追问沿用同一用户同一会话的已识别题干；并非整页批量测评",
+  "backendTestsPassed": 677,
+  "frontendControllerChecksPassed": 22,
+  "buildSuccess": true,
+  "signatureVerified": true,
+  "emulatorInstalledAndStarted": true
+}

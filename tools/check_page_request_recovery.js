@@ -66,7 +66,7 @@ function loadPage(name) {
   assert.equal(compiled.diagnostics.length, 0, 'controller extraction must compile');
   const context = vm.createContext({ console, Date, JSON, Promise, Map, Set,
     // Scrolling and device services do not participate in request decisions.
-    setTimeout: () => 0, clearTimeout: () => {},
+    setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, clearInterval: () => {},
     appState, DemoSnapshot: snapshot, AgentApiClient: network,
     ApiDefaults: { DEMO_USER_ID: 'demo-user' },
     router: { getParams: () => ({ knowledgePointId: 'point' }) },
@@ -390,6 +390,45 @@ async function check(name, run) {
     assert.equal(validator.isValid('GET', '/api/v1/focus-sessions', { userId: 'alice' }), false);
     assert.equal(validator.isValid('POST', '/api/v1/focus-sessions', { userId: 'alice', eventId: 'e' }), false);
     assert.equal(validator.isValid('GET', '/api/v1/missing', {}), false);
+  });
+  await check('late diagnosis confirmation cannot overwrite a newer goal request', async () => {
+    appState.currentUser.userId = 'alice'; appState.chatSessionId = 'goals-chat';
+    const pending = deferred(); network.manageChatGoal = () => pending.promise;
+    const page = loadPage('ChatMain'); page.loadGoalHistory = async () => {};
+    const confirming = page.confirmDiagnosis({ id: 'message', wrongAnalysis: { diagnosisId: 'd', knowledgePoint: 'trees' } });
+    page.goalRequestVersion++; page.learningContext = { goalId: 'newer' }; page.isGoalLoading = false;
+    pending.resolve({ ok: true, data: { status: 'created', learningContext: { goalId: 'late' } } });
+    await confirming; assert.equal(page.learningContext.goalId, 'newer');
+  });
+  await check('goal switching serializes mutations and preserves a collapsed summary', async () => {
+    appState.currentUser.userId = 'alice'; appState.chatSessionId = 'goals-chat';
+    const pending = deferred(); let calls = 0;
+    network.manageChatGoal = () => { calls++; return pending.promise; };
+    const page = loadPage('ChatMain'); page.loadGoalHistory = async () => {};
+    const selecting = page.changeGoal('select', 'one'); await page.changeGoal('select', 'two');
+    assert.equal(calls, 1);
+    pending.resolve({ ok: true, data: { status: 'selected', learningContext: { goalId: 'one' } } });
+    await selecting; assert.equal(page.learningContext.goalId, 'one');
+    assert.equal(page.showLearningGoalCard, false); assert.equal(page.isGoalLoading, false);
+  });
+  await check('intent switching clears stale image prompt without adding another', async () => {
+    const page = loadPage('ChatMain'); let pickCount = 0;
+    page.pickImage = async () => { pickCount++; };
+    for (const intent of ['get_suggestion', 'analyze_weakness', 'match_partner', 'query_tasks', 'update_profile', 'analyze_wrong']) {
+      page.voiceMessage = 'old image hint'; page.showGoalSummary = true;
+      page.chooseIntent({ intent, prompt: 'prompt' });
+      assert.equal(page.voiceMessage, ''); assert.equal(page.showGoalSummary, false);
+    }
+    assert.equal(pickCount, 1);
+  });
+  await check('only an explicitly started learning reply displays a goal summary', async () => {
+    const page = loadPage('ChatMain');
+    network.chat = async () => ({ reply: 'start', intent: 'get_suggestion', learningContext: { goalId: 'one' } });
+    page.inputText = 'start practice'; await page.sendMessage();
+    assert.equal(page.showGoalSummary, true);
+    network.chat = async () => ({ reply: 'profile', intent: 'update_profile' });
+    page.inputText = 'view profile'; await page.sendMessage();
+    assert.equal(page.showGoalSummary, false);
   });
   console.log(`${passed} request recovery checks passed (actual controller methods; device UI not exercised).`);
 })().catch(error => { console.error(error); process.exit(1); });

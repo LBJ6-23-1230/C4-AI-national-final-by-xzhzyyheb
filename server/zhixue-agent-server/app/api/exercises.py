@@ -275,10 +275,11 @@ def get_exercise_set(set_id: str):
 
 def _material_set(set_id, point, count):
 	from app.services import grounded_exercises as grounding
+	from app.agent.knowledge import valid_knowledge_term
 	owner = resolve_user_id(None)
 	kb_id = request.args.get("kbId", "").strip()
 	document_id = request.args.get("documentId", "").strip()
-	if not point or not kb_id or len(point) > 200 or len(kb_id) > 200 or len(document_id) > 200 or count > 6:
+	if not point or not valid_knowledge_term(point) or not kb_id or len(point) > 200 or len(kb_id) > 200 or len(document_id) > 200 or count > 6:
 		return jsonify({"errorCode": "BAD_REQUEST", "message": "资料题需指定知识点和资料库，题数为1至6", "details": None}), 400
 	with PROFILE_LOCK, _repository.transaction():
 		sources, failure = grounding.retrieve(_repository, owner, point, kb_id, document_id)
@@ -296,7 +297,7 @@ def _material_set(set_id, point, count):
 			items = grounding.generate(point, count, sources)
 	if not items:
 		return jsonify(dict(response, generationFailed=True, failureReason="GENERATION_FAILED",
-			message="资料题生成失败或来源校验未通过，请重试；也可以主动切换通用知识练习。"))
+			message="未生成合格的知识练习题。资料需包含定义、原理或例题，不能只提供“掌握/熟悉”等考纲要求；请补充正文，或切换通用知识练习。"))
 	with PROFILE_LOCK, _repository.transaction():
 		if not grounding.sources_current(_repository, owner, sources):
 			return jsonify(dict(response, generationFailed=True, failureReason="SOURCE_CHANGED",
@@ -383,7 +384,7 @@ def submit_exercises(set_id: str):
 		refs = (current or {}).get("state", {}).get("inputRefs", {})
 		profile = repository.get("profiles", user_id) or {}
 		plan = repository.get("plans", refs.get("planId", "")) or {}
-		return (not current or current.get("status") == "completed"
+		return (not current or current.get("userEnded") or current.get("status") == "completed"
 			or current.get("stateVersion") != data["goalStateVersion"]
 			or refs.get("profileVersion", 0) != profile.get("profileVersion", 0)
 			or refs.get("planVersion", 0) != plan.get("version", 0)
@@ -402,6 +403,9 @@ def submit_exercises(set_id: str):
 	# Unknown/private generated IDs must never expose answers via the review path.
 	if any(key not in questions_by_id for key in submitted_answers):
 		return jsonify({"errorCode": "NOT_FOUND", "message": "题目不存在或不属于当前账号", "details": None}), 404
+	from app.services.exercise_quality import is_subject_question
+	if any(not is_subject_question(questions_by_id[key]) for key in submitted_answers):
+		return jsonify({"errorCode": "CONFLICT", "message": "这组旧题只考查考纲要求，不能用于测评，请返回重新生成知识练习题", "details": None}), 409
 	if goal:
 		target = goal["state"]["coordination"].get("knowledgePointId", "")
 		allowed = {target, _resolve_knowledge_point_id(target)}
@@ -452,6 +456,8 @@ def submit_exercises(set_id: str):
 		response = {
 			"userId": user_id,
 			"submissionId": result_id,
+			"reviewStatus": "pending" if pending_review is not None else "completed" if llm_review_ids else
+				("basic" if all(questions_by_id[k].get("source") == "materials" for k in submitted_answers) else "unconfigured" if not exercise_gen.generation_available() else "failed"),
 			"assessment": assessment.to_dict(),
 			"masteryUpdate": {"knowledgePointId": report_point, "oldScore": report_old,
 				"newScore": report_new},
@@ -560,3 +566,12 @@ def submit_exercises(set_id: str):
 		for job in post_commit:
 			review_jobs.attach(*job)
 		return response
+
+
+@exercises_api.get("/api/v1/exercise-submissions/<path:submission_id>")
+def get_submission_review(submission_id):
+    owner = resolve_user_id(request.args.get("userId"))
+    record = _repository.get("submissions", submission_id) if _repository else None
+    if not record or record.get("response", {}).get("userId") != owner:
+        return jsonify({"errorCode": "NOT_FOUND", "message": "交卷记录不存在"}), 404
+    return jsonify(record["response"])

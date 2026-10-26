@@ -167,10 +167,10 @@ def test_llm_judges_empty_evidence_instead_of_hardcoded_reply(monkeypatch):
 
 def test_image_without_llm_does_not_claim_multimodal_recognition(client):
     body = client.post("/api/agent/chat",
-                       json={"image": "ZmFrZS1pbWFnZQ=="}).get_json()
+                       json={"image": _PNG_16X16}).get_json()
 
     assert body["intent"] == "analyze_wrong"
-    assert "未接入多模态识别" in body["reply"]
+    assert "图片已接收" in body["reply"] and body["attachmentReceipt"]["status"] == "failed"
 
 
 # --------------------------------------------------------------- 多模态通路可达性
@@ -192,6 +192,7 @@ def test_image_routes_to_multimodal_handler_when_llm_ready(monkeypatch):
         # 否则前端拿不到它去请求对应题集（"拍错题 → 针对性地练"这条闭环接不上）。
         return json.dumps({
             "reply": "已识别：二叉树后序遍历",
+            "readable": True, "answerVisible": True, "questionText": "已知二叉树，写出它的后序遍历序列。",
             "knowledgePoint": "二叉树后序遍历",
             "wrongType": "顺序记反",
         }, ensure_ascii=False)
@@ -301,7 +302,7 @@ def test_confirmed_course_tasks_link_to_task_page(monkeypatch):
         "tasks": [{"taskname": "递归与图算法共同学习", "deadline": "2026-09-30"}],
     }]}
     with chat_llm._PENDING_PROFILE_LOCK:
-        chat_llm._PENDING_PROFILE_UPDATES[owner] = updates
+        chat_llm._PENDING_PROFILE_UPDATES[(owner, None)] = updates
 
     result = chat_llm.chat("确认更新", user_id=owner)
 

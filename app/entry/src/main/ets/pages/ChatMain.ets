@@ -76,12 +76,18 @@ struct ChatMain {
    * 用户得知道自己这次建号到底"带了什么数据进来"。
    */
   @State welcomeNotice: string = '';
+  @State diagnosisEditedId: string = '';
+  @State diagnosisEditedPoint: string = '';
+  @State goalHistory: LearningContext[] = [];
+  @State showGoalHistory: boolean = false;
+  @State showGoalTechnical: boolean = false;
   @State learningContext: LearningContext | null = null;
   /**
    * 目标卡只属于触发它的那一轮学习对话，不是整场聊天的常驻页脚。
    * 普通问答发出时先隐藏；只有本轮学习类回复确实返回 learningContext 才重新显示。
    */
   @State showLearningGoalCard: boolean = false;
+  @State showGoalSummary: boolean = false;
   @State goalMessage: string = '';
   @State isGoalLoading: boolean = false;
   private goalRequestVersion: number = 0;
@@ -502,6 +508,7 @@ struct ChatMain {
       .alignItems(HorizontalAlign.Start)
       Blank()
       Row({ space: 8 }) {
+        Button('目标').fontSize(13).height(34).onClick(() => { this.showGoalHistory = !this.showGoalHistory; void this.loadGoalHistory(); })
         Button('工具')
           .fontSize(13)
           .fontColor('#475569')
@@ -537,10 +544,7 @@ struct ChatMain {
             .borderRadius(8)
             .height(34)
             .padding({ left: 14, right: 14 })
-            .onClick(() => {
-              this.selectedIntent = item.intent;
-              this.inputText = item.prompt;
-            })
+            .onClick(() => { this.chooseIntent(item); })
         }, (item: IntentChip) => item.intent)
       }
       .padding({ left: 16, right: 16, top: 10, bottom: 10 })
@@ -548,6 +552,17 @@ struct ChatMain {
     .scrollable(ScrollDirection.Horizontal)
     .scrollBar(BarState.Off)
     .backgroundColor('#FFFFFF')
+  }
+
+  private chooseIntent(item: IntentChip): void {
+    this.voiceMessage = '';
+    this.showGoalSummary = false;
+    this.selectedIntent = item.intent;
+    this.inputText = item.prompt;
+    if (item.intent === 'analyze_wrong' && this.pendingImage.length === 0) {
+      this.inputText = '';
+      void this.pickImage();
+    }
   }
 
   @Builder
@@ -565,15 +580,66 @@ struct ChatMain {
           this.MessageBubble(item)
         }
       }, (item: ChatMessage) => item.id)
-      if (this.learningContext !== null && this.showLearningGoalCard) {
+      if (this.learningContext !== null && this.showGoalSummary) {
         ListItem() {
-          this.LearningGoalCard(this.learningContext)
+          if (this.showLearningGoalCard) this.LearningGoalCard(this.learningContext)
+          else {
+            Row({ space: 8 }) {
+              Text(`当前目标：${this.learningContext.knowledgePointName || '待选择知识点'} · ${this.learningContext.status === 'ended' ? '已结束' : this.learningContext.status === 'completed' ? '测评流程已完成' : '学习进行中'}`)
+                .fontSize(13).fontColor('#2563EB').layoutWeight(1)
+              Button('展开').height(30).fontSize(12).onClick(() => this.showLearningGoalCard = true)
+            }.width('94%').padding(12).backgroundColor('#EFF6FF').borderRadius(12).margin({ left: 12, bottom: 8 })
+          }
+        }
+      }
+      if (this.showGoalHistory) {
+        ListItem() {
+          Column({ space: 8 }) {
+            Text('本会话学习目标历史').fontSize(16).fontWeight(FontWeight.Bold)
+            if (this.goalHistory.length === 0) Text('尚无已确认的学习目标').fontSize(13)
+            ForEach(this.goalHistory, (goal: LearningContext) => {
+              Button(`${goal.needsConfirmation ? '旧目标待重新确认' : (goal.knowledgePointName || '待补充')} · ${goal.status === 'ended' ? '已结束' : goal.status === 'completed' ? '已完成测评' : '查看目标'}`)
+                .fontSize(12).onClick(() => { void this.changeGoal('select', goal.goalId); })
+            }, (goal: LearningContext) => goal.goalId)
+          }.width('94%').padding(14).backgroundColor('#FFFFFF').borderRadius(12)
         }
       }
     }
     .layoutWeight(1)
     .padding({ top: 8, bottom: 8 })
     .backgroundColor('#F3F6FA')
+  }
+
+  private async loadGoalHistory(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const chatId: string = appState.chatSessionId;
+    const result = await AgentApiClient.getChatGoalHistory(chatId);
+    if (owner === appState.currentUser.userId && chatId === appState.chatSessionId && result.ok) this.goalHistory = result.data.goals;
+  }
+  private async changeGoal(action: string, goalId: string): Promise<void> {
+    if (this.isGoalLoading) return;
+    this.isGoalLoading = true;
+    const version: number = ++this.goalRequestVersion;
+    const owner: string = appState.currentUser.userId;
+    const chatId: string = appState.chatSessionId;
+    const result = await AgentApiClient.manageChatGoal(chatId, { action: action, goalId: goalId });
+    if (owner !== appState.currentUser.userId || chatId !== appState.chatSessionId || version !== this.goalRequestVersion) return;
+    this.isGoalLoading = false;
+    if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = false; void this.loadGoalHistory(); }
+    else this.goalMessage = (result as ApiFailure).error.message;
+  }
+  private async confirmDiagnosis(message: ChatMessage): Promise<void> {
+    if (this.isGoalLoading) return;
+    const owner: string = appState.currentUser.userId;
+    const chatId: string = appState.chatSessionId;
+    this.isGoalLoading = true;
+    const version: number = ++this.goalRequestVersion;
+    const result = await AgentApiClient.manageChatGoal(chatId, { action: 'start', diagnosisId: message.wrongAnalysis?.diagnosisId,
+      knowledgePoint: this.diagnosisEditedId === message.id ? this.diagnosisEditedPoint : message.wrongAnalysis?.knowledgePoint });
+    if (owner !== appState.currentUser.userId || chatId !== appState.chatSessionId || version !== this.goalRequestVersion) return;
+    this.isGoalLoading = false;
+    if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = true; this.goalMessage = ''; void this.loadGoalHistory(); }
+    else this.goalMessage = (result as ApiFailure).error.message;
   }
 
   private async refreshLearningContext(): Promise<void> {
@@ -589,6 +655,7 @@ struct ChatMain {
       chatId !== appState.chatSessionId) return;
     if (response.ok) {
       this.learningContext = response.data;
+      this.showGoalSummary = false;
       return;
     }
     const failure: ApiFailure = response as ApiFailure;
@@ -597,6 +664,7 @@ struct ChatMain {
     if (failure.error.statusCode === 404) {
       this.learningContext = null;
       this.showLearningGoalCard = false;
+      this.showGoalSummary = false;
       this.goalMessage = '';
       return;
     }
@@ -647,6 +715,7 @@ struct ChatMain {
       this.goalMessage = '服务未返回本目标上下文，请刷新后继续。';
       return;
     }
+    this.showGoalSummary = true;
     this.learningContext = updated;
     if (updated.status === 'tool_failed') {
       this.goalMessage = updated.nextAction;
@@ -670,31 +739,35 @@ struct ChatMain {
   private LearningGoalCard(context: LearningContext) {
     Column({ space: 10 }) {
       Row() {
-        Text('本轮学习目标').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1D4ED8').layoutWeight(1)
+        Text('练习与测评').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1D4ED8').layoutWeight(1)
         Button('收起').fontSize(12).height(28).fontColor('#2563EB')
           .backgroundColor('#EFF6FF').borderRadius(8)
           .onClick(() => { this.showLearningGoalCard = false; })
       }.width('100%')
-      Text(context.goal).fontSize(14).fontColor('#1F2937').lineHeight(21).width('100%')
-      Text(`当前负责：${this.roleLabel(context.currentAgent)} · ${context.status === 'completed' ? '本轮已完成' :
-        context.status === 'tool_failed' ? '执行失败，可重试' : context.waitingFor === 'knowledge_points' ? '等待补充知识点' : context.waitingFor === 'available_time' ? '等待调整时间' : '等待学习与反馈'}`)
-        .fontSize(12).fontColor('#475467').width('100%')
-      if (context.knowledgePointId.length > 0) {
-        Text(`本轮知识点：${context.knowledgePointName || context.knowledgePointId}`).fontSize(13).fontColor('#2563EB').width('100%')
-        Text(context.sourceMode === 'materials' ? '本轮将依据相关上传资料出题，可查看原文。' :
-          '本轮使用通用知识或题库；指定文档的资料练习可从资料库进入。').fontSize(12).fontColor('#64748B').lineHeight(19).width('100%')
+      Button('结束当前目标').fontSize(12).height(30).onClick(() => { void this.changeGoal('end', context.goalId); })
+      Text(context.knowledgePointName.length > 0 ? `练习内容：${context.knowledgePointName}` : '请先选择要练习的知识点')
+        .fontSize(15).fontWeight(FontWeight.Medium).fontColor('#1F2937').width('100%')
+      Text(context.status === 'ended' ? '你已结束这项练习，历史记录仍可查看。' :
+        context.status === 'completed' ? '本次测评已完成，可查看结果和后续安排。' :
+        context.waitingFor === 'knowledge_points' ? '还没有可用题目。请导入包含知识正文的资料，并确认知识点。' :
+        context.waitingFor === 'available_time' ? '请先设置可用学习时间，再安排练习。' :
+        context.status === 'tool_failed' ? '这次未能准备好练习，请重试。' : '下一步：打开练习，作答并提交后查看解析和测评结果。')
+        .fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
+      if (context.knowledgePointName.length > 0 && context.waitingFor !== 'knowledge_points') {
+        Text(context.sourceMode === 'materials' ? '题目依据：相关上传资料，可在练习中查看原文。' : '题目依据：通用知识题库或模型生成题。')
+          .fontSize(12).fontColor('#64748B').width('100%')
       }
-      Text(context.nextAction).fontSize(13).fontColor('#344054').lineHeight(20).width('100%')
-      Text(context.assessmentStatus === 'assessed' ? `本知识点已有测评记录（累计 ${context.assessedQuestionCount} 道计入记录的题目），仍供学习安排参考。` :
-        '本知识点尚无已保存的测评证据，需要练习后再判断掌握情况。').fontSize(12).fontColor('#64748B').lineHeight(19).width('100%')
-      ForEach(context.handoffs.slice(-4), (item: LearningHandoff) => {
-        Text(`${this.roleLabel(item.sender)} → ${this.roleLabel(item.receiver)}：${item.status === 'completed' ? '已完成' : item.status === 'tool_failed' ? '执行失败' : '等待补充'}`)
-          .fontSize(11).fontColor('#64748B').width('100%').lineHeight(18)
-      }, (item: LearningHandoff) => item.agentTaskId)
-      Text('调度依据：已保存的画像、计划与输入状态；当前由规则秘书执行。').fontSize(11).fontColor('#64748B').width('100%')
+      Button(this.showGoalTechnical ? '收起进度详情 ↑' : '查看进度详情 ↓').fontSize(12).height(30)
+        .onClick(() => this.showGoalTechnical = !this.showGoalTechnical)
+      if (this.showGoalTechnical) {
+        Text(context.assessmentStatus === 'assessed' ? `已保存 ${context.assessedQuestionCount} 道题的测评记录。` : '尚未提交测评，暂不能据此判断掌握情况。')
+          .fontSize(12).fontColor('#64748B').width('100%')
+        Text(context.nextAction).fontSize(12).fontColor('#64748B').lineHeight(18).width('100%')
+      }
       if (this.goalMessage.length > 0) Text(this.goalMessage).fontSize(12).fontColor('#B42318')
       Button(this.isGoalLoading ? '正在继续…' : context.action.label).width('100%').height(40)
-        .enabled(!this.isGoalLoading).onClick(() => this.continueLearningGoal(context))
+        .enabled(!this.isGoalLoading && context.status !== 'ended' && !context.needsConfirmation).onClick(() => this.continueLearningGoal(context))
+      if (this.showGoalTechnical) {
       Row({ space: 8 }) {
         Button('查看调度轨迹').fontSize(12).height(32)
           .onClick(() => router.pushUrl({ url: 'pages/AgentTrace', params: { traceId: context.traceId } }))
@@ -702,6 +775,7 @@ struct ChatMain {
           Button('评估与重排轨迹').fontSize(12).height(32)
             .onClick(() => router.pushUrl({ url: 'pages/AgentTrace', params: { traceId: context.assessmentTraceId } }))
         }
+      }
       }
     }.width('92%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
       .border({ width: 1, color: '#BFDBFE' }).margin({ left: 16, top: 10, bottom: 14 })
@@ -806,6 +880,16 @@ struct ChatMain {
             .borderRadius(10)
         }
 
+        if (message.attachmentStatus !== undefined) Text(message.attachmentStatus).fontSize(12).fontColor('#64748B')
+        if (message.wrongAnalysis?.questionText) {
+          Text('识别题干（请核对）').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+          Text(message.wrongAnalysis.questionText).fontSize(13).fontColor('#475467').lineHeight(20)
+          TextInput({ text: this.diagnosisEditedId === message.id ? this.diagnosisEditedPoint : (message.wrongAnalysis.knowledgePoint ?? ''), placeholder: '核对或修改知识点' })
+            .onChange((v: string) => { this.diagnosisEditedId = message.id; this.diagnosisEditedPoint = v; })
+          Button('确认题干无误，建立本题学习目标').fontSize(12).height(36).enabled(!this.isGoalLoading)
+            .onClick(() => { void this.confirmDiagnosis(message); })
+          if (this.learningContext !== null) Text('新题将建立独立目标；原目标保留在“目标”历史中。').fontSize(11).fontColor('#64748B')
+        }
         if (message.card !== undefined) {
           this.CardView(message.card)
         }
@@ -1067,6 +1151,7 @@ struct ChatMain {
     this.chatRequestVersion++;
     this.learningContext = null;
     this.showLearningGoalCard = false;
+    this.showGoalSummary = false;
     this.goalMessage = '';
     this.isGoalLoading = false;
     // 原缺陷：这里写成 `this.messages = [WELCOME_MESSAGE]`，数组长度变成 1，
@@ -1173,6 +1258,7 @@ struct ChatMain {
     // 新问题开始时不把上一轮目标卡继续钉在消息底部；若本轮仍是学习协作，
     // 服务端回复中的 learningContext 会在下面重新触发显示。
     this.showLearningGoalCard = false;
+    this.showGoalSummary = false;
     // 气泡里显示的是**相册 URI**（`Image` 组件要 URI）。
     const bubbleImage: string | undefined = this.pendingImage.length > 0 ? this.pendingImage : undefined;
     // ⚠️ 发给后端的必须是 **base64**，不是 URI。
@@ -1231,13 +1317,16 @@ struct ChatMain {
       const response = await AgentBridge.callAgent(text, imageForAgent, historyBeforeSend);
       if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
         chatId !== appState.chatSessionId) return;
-      if (response.learningContext !== undefined) {
+      this.showGoalSummary = response.learningContext !== undefined;
+      if (response.intent === 'analyze_wrong') this.learningContext = null;
+      if (response.learningContext !== undefined && response.intent !== 'analyze_wrong') {
         this.goalRequestVersion++;
         this.isGoalLoading = false;
         this.learningContext = response.learningContext;
       }
-      this.showLearningGoalCard = response.learningContext !== undefined && this.isLearningIntent(response.intent);
+      this.showLearningGoalCard = false;
       this.messages = this.messages.filter((item: ChatMessage) => item.id !== loadingMessage.id);
+      this.voiceMessage = '';
       let replyText: string = response.reply;
       if (response.profileUpdates !== undefined) {
         const applied: string[] = appState.applyChatProfileUpdates(response.profileUpdates);
@@ -1245,20 +1334,13 @@ struct ChatMain {
           replyText += `\n\n已在对话中完成：${applied.join('、')}。`;
         }
       }
-      // 目标协作是可选能力：`coordinateLearning=true` 已经随请求发出，
-      // 但**旧版服务不会回 learningContext**。这种情况下界面只剩通用卡片，
-      // 用户会顺着卡片走到"没有计划"的页面，却不知道为什么没有目标卡。
-      // 这里如实说明，并给出可执行的确认动作 —— 不生成假目标来掩盖版本不一致。
-      if (response.learningContext === undefined && this.isLearningIntent(response.intent) &&
-        !AgentApiClient.getConfig().useFixture) {
-        replyText += '\n\n（本次服务端没有返回学习目标。若你期望看到「当前学习目标」卡片与下一步入口，'
-          + '请确认后端已用本仓库当前代码重新启动；旧服务不返回该字段，系统也不会用演示数据补一个目标。）';
-      }
       const agentMessage: ChatMessage = {
         id: `agent-${Date.now()}`,
         role: 'agent',
         text: replyText,
-        card: response.learningContext !== undefined ? undefined : response.card,
+        wrongAnalysis: response.wrongAnalysis,
+        attachmentStatus: response.attachmentStatus,
+        card: response.learningContext !== undefined || response.intent === 'analyze_wrong' ? undefined : response.card,
         llmUsed: response.llmUsed,
         sourceLabel: response.profileUpdates !== undefined ? '系统已执行' : undefined,
         time: this.formatTime(),

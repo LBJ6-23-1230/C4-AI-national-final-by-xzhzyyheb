@@ -4,6 +4,7 @@ import { ApiDisplayFormatter } from '../utils/ApiDisplayFormatter';
 @Component
 export struct PlanDiffCard {
   @Prop value: PlanDiff;
+  @State expanded: boolean = false;
 
   private changeLabel(change: PlanTaskChange): string {
     if (change.change === undefined || change.change.trim().length === 0) {
@@ -30,7 +31,7 @@ export struct PlanDiffCard {
       Row() {
         Column({ space: 3 }) {
           Text('学习计划已更新').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
-          Text(`Plan V${this.value.oldVersion} → V${this.value.newVersion}`)
+          Text(`计划版本 ${this.value.oldVersion} → ${this.value.newVersion}`)
             .fontSize(13).fontColor('#2563EB').fontWeight(FontWeight.Medium)
         }.alignItems(HorizontalAlign.Start)
         Blank()
@@ -38,13 +39,16 @@ export struct PlanDiffCard {
           .padding({ left: 8, right: 8, top: 4, bottom: 4 }).backgroundColor('#EFF6FF').borderRadius(9)
       }.width('100%')
 
+      Button(this.expanded ? '收起调整详情 ↑' : '展开调整详情 ↓').height(30).fontSize(12)
+        .onClick(() => this.expanded = !this.expanded)
+      if (this.expanded) {
       Text(this.value.adjustmentReason.length > 0 ? this.value.adjustmentReason : 'Agent 已根据本次评估更新学习计划。')
         .fontSize(13).fontColor('#475467').lineHeight(19).width('100%')
 
       if (this.value.changedTasks.length > 0) {
         ForEach(this.value.changedTasks, (change: PlanTaskChange) => {
           Column({ space: 6 }) {
-            Text(ApiDisplayFormatter.knowledgePoint(change.knowledgePointId ?? change.taskId))
+            Text(change.knowledgePointName ?? ApiDisplayFormatter.knowledgePoint(change.knowledgePointId ?? change.taskId))
               .fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
             Row() {
               Text(this.changeLabel(change)).fontSize(13)
@@ -64,6 +68,7 @@ export struct PlanDiffCard {
       if (this.value.triggerEvidence.length > 0) {
         Text(`触发证据：${this.value.triggerEvidence.join('、')}`)
           .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
+      }
       }
     }.width('100%').padding(14).backgroundColor('#FFFFFF')
       .border({ width: 1, color: '#BFDBFE' }).borderRadius(14)

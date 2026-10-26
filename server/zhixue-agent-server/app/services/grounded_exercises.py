@@ -8,6 +8,7 @@ import json
 import uuid
 
 from app.agent import chat_llm, exercise_gen, knowledge
+from app.services.exercise_quality import is_subject_question, has_subject_content
 
 
 def content_hash(text):
@@ -27,7 +28,7 @@ def retrieve(repository, owner, point, kb_id, document_id=""):
                   and c.get("documentId") in documents
                   and documents[c["documentId"]].get("status") == "ready"
                   and (not document_id or c.get("documentId") == document_id)
-                  and len(c.get("text", "").strip()) >= 20]
+                  and has_subject_content(c.get("text", ""))]
     # No semantic network dependency. Require the requested term in the actual
     # text/heading, not merely a loose vocabulary tag or common two-char prefix.
     terms = [point]
@@ -75,12 +76,13 @@ def public_sources(sources):
 
 
 def generate(point, count, sources):
-    if not exercise_gen.generation_available():
+    if not knowledge.valid_knowledge_term(point) or not exercise_gen.generation_available():
         return []
     wanted = min(count, exercise_gen.MAX_GENERATE_COUNT)
     context = [{"sourceId": s["chunkId"], "fileName": s["fileName"],
                 "headingPath": s["headingPath"], "text": s["text"]} for s in sources]
     prompt = (f"针对知识点 {point} 仅依据下面的资料出 {wanted} 道单项选择题。"
+              "必须考查概念、推导、算法执行或应用。禁止考资料的掌握程度、熟悉/了解等级、是否必考或考纲要求。只有考纲表而无学科正文则返回空exercises。"
               "每题四个互不相同的选项，answer 必须严格为 A/B/C/D，explanation 解释答案。"
               "每题 sourceIds 引用真实 sourceId；supportingQuote 必须为所引资料中连续的原文"
               "（8至400字），足以支持判断。材料不足就返回空 exercises，禁止编造出处。"

@@ -14,6 +14,11 @@ import { ApiFailure } from '../api/ApiResult';
 @Entry
 @Component
 struct ExercisePractice {
+  @State waitSeconds: number = 0;
+  private reviewTimer: number = -1;
+  private reviewPollCount: number = 0;
+  private waitTimer: number = -1;
+  private waitStartedAt: number = 0;
   @State isLoading: boolean = true;
   @State isSubmitting: boolean = false;
   @State submissionUnconfirmed: boolean = false;
@@ -65,6 +70,50 @@ struct ExercisePractice {
   private observedResetVersion: number = DemoSnapshot.getResetVersion();
   /** 首帧的 `onPageShow` 与 `aboutToAppear` 是同一次进入，不重复请求。 */
   private hasShownOnce: boolean = false;
+
+  private reviewSourceLabel(item: ExerciseReview): string {
+    if (item.explanationSource === 'materials') return '资料原文解析';
+    if (item.explanationSource === 'llm') return 'AI 详细解析';
+    const status: string = this.result?.reviewStatus ?? 'basic';
+    if (status === 'pending') return '基础解析 · AI 生成中';
+    if (status === 'unconfigured') return '基础解析 · 模型未配置';
+    if (status === 'failed') return '基础解析 · AI 增强失败';
+    return '基础解析';
+  }
+  private scheduleReviewRefresh(): void {
+    if (this.reviewTimer !== -1 || this.result?.reviewStatus !== 'pending' || this.reviewPollCount >= 20) return;
+    this.reviewTimer = setTimeout(() => {
+      this.reviewTimer = -1;
+      void this.refreshReview();
+    }, 3000);
+  }
+  private async refreshReview(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const id: string = this.result?.submissionId ?? '';
+    if (this.isDisposed || !this.isPageActive || id.length === 0) return;
+    this.reviewPollCount++;
+    const response = await AgentApiClient.getSubmissionReview(id);
+    if (this.isDisposed || !this.isPageActive || owner !== appState.currentUser.userId || id !== this.result?.submissionId) return;
+    if (response.ok) this.result = response.data;
+    this.scheduleReviewRefresh();
+  }
+  private startWait(): void {
+    this.stopWait();
+    this.waitStartedAt = Date.now();
+    this.waitSeconds = 0;
+    this.waitTimer = setInterval(() => { this.waitSeconds = Math.floor((Date.now() - this.waitStartedAt) / 1000); }, 1000);
+  }
+  private stopWait(): void {
+    if (this.waitTimer !== -1) clearInterval(this.waitTimer);
+    this.waitTimer = -1;
+    if (this.waitStartedAt > 0) this.waitSeconds = Math.floor((Date.now() - this.waitStartedAt) / 1000);
+  }
+  private leaveWaiting(): void {
+    this.requestVersion++;
+    this.stopWait();
+    this.isLoading = false;
+    router.back();
+  }
 
   aboutToAppear(): void {
     this.isDisposed = false;
@@ -197,6 +246,7 @@ struct ExercisePractice {
 
   onPageShow(): void {
     this.isPageActive = true;
+    this.scheduleReviewRefresh();
     if (this.consumeDemoReset()) return;
     if (!this.hasShownOnce) {
       this.hasShownOnce = true;
@@ -228,6 +278,9 @@ struct ExercisePractice {
   }
 
   aboutToDisappear(): void {
+    this.stopWait();
+    if (this.reviewTimer !== -1) clearTimeout(this.reviewTimer);
+    this.reviewTimer = -1;
     this.isDisposed = true;
     this.isPageActive = false;
     this.requestVersion++;
@@ -259,6 +312,7 @@ struct ExercisePractice {
     const currentRequestVersion: number = ++this.requestVersion;
     const owner: string = appState.currentUser.userId;
     this.isLoading = true;
+    this.startWait();
     this.errorMessage = '';
     this.warningMessage = '';
     const data: ExerciseSetResponse | null =
@@ -277,8 +331,10 @@ struct ExercisePractice {
         generate: this.practiceFromRoute
       });
     if (this.isDisposed || currentRequestVersion !== this.requestVersion || owner !== appState.currentUser.userId) {
+      if (currentRequestVersion === this.requestVersion) this.stopWait();
       return;
     }
+    this.stopWait();
     // ⚠️ 用户**主动要一组新题**（forceRefresh）却没拿到新题时，必须清空上一轮的题与作答。
     // 两条路径都会落到这里：
     //   1. `data === null` —— 请求彻底失败；
@@ -451,6 +507,8 @@ struct ExercisePractice {
     this.submissionUnconfirmed = false;
     this.warningMessage = this.viewModel.getWarningMessage();
     this.result = submissionResult;
+    this.reviewPollCount = 0;
+    this.scheduleReviewRefresh();
     this.wrongBookFlags = submissionResult.review.map((item: ExerciseReview): boolean => item.inWrongBook);
     this.showReview = false;
     this.scrollToTop();
@@ -528,6 +586,10 @@ struct ExercisePractice {
   @Builder
   ReviewPanel(value: ExerciseSubmissionResult) {
     Column({ space: 16 }) {
+      if (value.reviewStatus === 'pending') {
+        Text('基础解析已可查看，AI 详细解析仍在后台生成。').fontSize(13).fontColor('#64748B')
+        Button('刷新解析状态').height(34).fontSize(12).onClick(() => { this.reviewPollCount = 0; void this.refreshReview(); })
+      }
       Row() {
         Text('逐题解析').fontSize(23).fontWeight(FontWeight.Bold).fontColor('#111827')
         Blank()
@@ -568,7 +630,7 @@ struct ExercisePractice {
             .fontSize(13).fontColor('#475467').width('100%')
           Column({ space: 6 }) {
             Text(value.review[index].explanationSource === 'materials' ? '资料题解析（模型生成，可查看原文核对）' :
-              (value.review[index].explanationSource === 'llm' ? 'AI 详细解析' : '详细解析（离线兜底）'))
+              this.reviewSourceLabel(value.review[index]))
               .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB').width('100%')
             Text(value.review[index].explanation).fontSize(14).fontColor('#344054').lineHeight(22).width('100%')
           }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(10)
@@ -781,7 +843,12 @@ struct ExercisePractice {
             } else if (this.showPicker) {
               this.KnowledgePointPicker()
             } else if (this.isLoading) {
-              LoadingProgress().width(36).height(36).margin({ top: 40 })
+              Column({ space: 12 }) {
+                LoadingProgress().width(36).height(36)
+                Text(`正在请求练习，已等待 ${this.waitSeconds} 秒`).fontSize(15).fontColor('#475467')
+                Text('题库未覆盖时需要现场生成，通常需要数十秒。请求完成后将显示结果；失败可重试。').fontSize(13).fontColor('#64748B')
+                Button('退出等待').onClick(() => this.leaveWaiting())
+              }.width('100%').padding(28)
             } else if (this.result !== null && this.showReview) {
               this.ReviewPanel(this.result)
             } else if (this.result !== null) {
@@ -789,7 +856,7 @@ struct ExercisePractice {
             } else if (this.exercises.length === 0) {
               Column({ space: 14 }) {
                 Text('暂无可用练习题').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#111827')
-                Text(this.errorMessage || '题库可能正在更新，请稍后重试。')
+                Text((this.errorMessage || '暂未取得题目，请稍后重试。') + `（本次等待 ${this.waitSeconds} 秒）`)
                   .fontSize(14).fontColor('#667085').lineHeight(21).textAlign(TextAlign.Center)
                 Button('重新加载')
                   .height(44).fontSize(15).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)

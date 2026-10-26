@@ -714,7 +714,7 @@ export class AppState {
   }
 
   public getUrgentDDLs(): HomeworkDDL[] {
-    return this.homeworkDDLs.filter((ddl: HomeworkDDL) => ddl.daysLeft <= 7);
+    return this.homeworkDDLs.filter((ddl: HomeworkDDL) => ddl.daysLeft <= 7 && !this.isTaskCompleted(ddl.id, 'pending'));
   }
 
   /**
@@ -730,7 +730,7 @@ export class AppState {
    * 文案说「紧急 / 临近」才用 `getUrgentDDLs()`（7 天内）。
    */
   public getPendingDDLs(): HomeworkDDL[] {
-    return this.homeworkDDLs;
+    return this.homeworkDDLs.filter((ddl: HomeworkDDL): boolean => !this.isTaskCompleted(ddl.id, 'pending'));
   }
 
   public getDDLsByCourse(courseName: string): HomeworkDDL[] {
