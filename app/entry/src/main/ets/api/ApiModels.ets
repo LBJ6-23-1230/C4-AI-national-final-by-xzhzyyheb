@@ -641,6 +641,7 @@ export interface PartnerMatchFactors {
 /** 候选人完整资料（结构与 mock_candidates.json 一致）。 */
 export interface PartnerCandidateProfile {
   userId: string;
+  avatar?: string;
   basicInfo?: PartnerCandidateBasicInfo;
   learningGoal?: PartnerCandidateGoal;
   time?: PartnerCandidateTime;

@@ -198,6 +198,7 @@ export class AppState {
   public authSource: AuthSource = 'guest';
   /** 当前展示用的昵称（游客态为演示昵称）。 */
   public authNickname: string = ApiDefaults.DEMO_USER_NAME;
+  public authAvatar: string = '';
   /**
    * 登录 / 注册成功后要在首屏如实告知用户的一句话（没有则为空串）。
    *
@@ -310,6 +311,7 @@ export class AppState {
     };
     this.authSource = source;
     this.authNickname = user.nickname;
+    this.authAvatar = user.avatar ?? '';
     this.isSignedIn = source === 'local' || source === 'restored';
 
     // 缺陷修复：原实现只换 `currentUser.userId`，既不清 `ClientCache`
@@ -350,6 +352,7 @@ export class AppState {
     };
     this.authSource = 'guest';
     this.authNickname = ApiDefaults.DEMO_USER_NAME;
+    this.authAvatar = '';
     this.isSignedIn = false;
     // 与 `applyLogin` 对称：回到演示身份同样要让缓存跟着换归属，
     // 否则退出登录后游客会读到刚退出的那个账号的数据。

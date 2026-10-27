@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any
 from werkzeug.security import check_password_hash, generate_password_hash
+from pymupdf import Pixmap
 
 from app.repositories.repository import Repository
 from app.repositories.staged_repository import StagedRepository
@@ -282,6 +283,7 @@ def _public_user(user: dict[str, Any]) -> dict[str, Any]:
     return {
         "userId": user.get("userId"),
         "nickname": user.get("nickname", ""),
+        "avatar": user.get("avatar", ""),
         "grade": user.get("grade", ""),
         "authProvider": user.get("authProvider", "guest"),
         "phoneMasked": mask_phone(user.get("phone", "")),
@@ -442,6 +444,89 @@ def login_by_phone(repository: Repository, phone: Any,
     repository.save(USERS, user_id, user)
     return {"user": _public_user(user), "token": session["token"],
             "expiresAt": session["expiresAt"]}
+
+
+def _avatar_dimensions(raw: bytes) -> tuple[int, int]:
+    import struct
+    if raw.startswith(b"\x89PNG\r\n\x1a\n") and len(raw) >= 24:
+        return struct.unpack(">II", raw[16:24])
+    if not raw.startswith(b"\xff\xd8\xff"):
+        raise ValueError("invalid raster image")
+    offset = 2
+    while offset < len(raw):
+        if raw[offset] != 255:
+            break
+        while offset < len(raw) and raw[offset] == 255:
+            offset += 1
+        marker = raw[offset]
+        offset += 1
+        if marker in (0xD9, 0xDA):
+            break
+        length = int.from_bytes(raw[offset:offset + 2], "big")
+        if length < 2 or offset + length > len(raw):
+            break
+        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+            height, width = struct.unpack(">HH", raw[offset + 3:offset + 7])
+            return width, height
+        offset += length
+    raise ValueError("invalid image dimensions")
+
+
+def normalize_avatar(value: Any) -> str:
+    """Only persist a small decoded raster image, never a client file path or URL."""
+    import base64
+    if value == "":
+        return ""
+    if not isinstance(value, str) or len(value) > 180000:
+        raise AuthError("VALIDATION_ERROR", "头像图片过大，请重新选择", 400)
+    header, separator, encoded = value.partition(",")
+    if not separator or header not in ("data:image/jpeg;base64", "data:image/png;base64"):
+        raise AuthError("VALIDATION_ERROR", "头像需为 JPEG 或 PNG 图片", 400)
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+        if len(raw) > 128 * 1024:
+            raise ValueError("image too large")
+        if not (raw.startswith(b"\x89PNG\r\n\x1a\n") or raw.startswith(b"\xff\xd8\xff")):
+            raise ValueError("invalid raster image")
+        width, height = _avatar_dimensions(raw)
+        if not (1 <= width <= 512 and 1 <= height <= 512):
+            raise ValueError("invalid dimensions")
+        if width != height:
+            raise ValueError("avatar must be square")
+        # Decode once to reject damaged payloads; the client already crops and compresses.
+        pixels = Pixmap(raw)
+        if pixels.width != width or pixels.height != height:
+            raise ValueError("invalid image dimensions")
+    except Exception as error:
+        raise AuthError("VALIDATION_ERROR", "头像无效，请重新选择图片", 400) from error
+    return value
+
+
+def update_account_profile(repository: Repository, user_id: str, data: dict) -> dict:
+    user = repository.get(USERS, user_id)
+    if user is None or user.get("status") != "active":
+        raise AuthError("UNAUTHORIZED", "登录已失效，请重新登录", 401)
+    if not data or set(data) - {"nickname", "avatar"}:
+        raise AuthError("VALIDATION_ERROR", "仅支持修改昵称和头像", 400)
+    updates = {}
+    if "nickname" in data:
+        updates["nickname"] = normalize_nickname(data["nickname"])
+    if "avatar" in data:
+        # An unchanged stored image has already been validated. Decode new images
+        # before taking the auth/write lock so a cold decoder cannot block accounts.
+        updates["avatar"] = data["avatar"] if isinstance(data["avatar"], str) and data["avatar"] == user.get("avatar", "") else normalize_avatar(data["avatar"])
+    return _commit_account_profile(repository, user_id, updates)
+
+
+@atomic_auth
+def _commit_account_profile(repository: Repository, user_id: str, updates: dict) -> dict:
+    user = repository.get(USERS, user_id)
+    if user is None or user.get("status") != "active":
+        raise AuthError("UNAUTHORIZED", "登录已失效，请重新登录", 401)
+    if any(user.get(key, "") != value for key, value in updates.items()):
+        user.update(updates)
+        repository.save(USERS, user_id, user)
+    return {"user": _public_user(user)}
 
 
 @atomic_auth

@@ -1,4 +1,5 @@
 import router from '@ohos.router';
+import { UserAvatar } from '../components/UserAvatar';
 import { common } from '@kit.AbilityKit';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { ApiDefaults } from '../api/ApiDefaults';
@@ -46,6 +47,7 @@ const APP_VERSION_NAME: string = '1.0.0';
 struct Account {
   @State signedIn: boolean = false;
   @State nickname: string = '';
+  @State avatar: string = '';
   @State userId: string = '';
   @State grade: string = '';
   @State sourceLabel: string = '';
@@ -103,6 +105,7 @@ struct Account {
   private refresh(): void {
     this.signedIn = appState.isSignedIn;
     this.nickname = appState.authNickname;
+    this.avatar = appState.authAvatar;
     this.userId = appState.currentUser.userId;
     this.grade = appState.currentUser.basicInfo.grade;
     this.sourceLabel = Account.sourceText(appState.authSource);
@@ -365,11 +368,7 @@ struct Account {
         Column({ space: 16 }) {
           // ---------- 身份卡 ----------
           Row({ space: 14 }) {
-            // 头像：昵称首字符。没有真实头像图，用字母块比放默认灰色人像更清楚。
-            Text(this.avatarText())
-              .fontSize(26).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
-              .width(56).height(56).textAlign(TextAlign.Center)
-              .backgroundColor('#2563EB').borderRadius(28)
+            UserAvatar({ source: this.avatar, nickname: this.nickname, diameter: 56 })
 
             Column({ space: 5 }) {
               Text(this.nickname.length > 0 ? this.nickname : '体验身份')
@@ -389,6 +388,12 @@ struct Account {
           }
           .width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(14)
           .border({ width: 1, color: '#E2E8F0' })
+
+          if (this.signedIn) {
+            Button('编辑头像与昵称').width('100%').height(44).fontSize(14)
+              .fontColor('#2563EB').backgroundColor('#EFF6FF').borderRadius(12)
+              .onClick(() => router.pushUrl({ url: 'pages/EditProfile' }))
+          }
 
           Row({ space: 8 }) {
             Text(this.sourceLabel)

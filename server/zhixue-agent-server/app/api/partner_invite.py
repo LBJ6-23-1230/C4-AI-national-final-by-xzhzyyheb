@@ -99,13 +99,13 @@ def _active_user(user_id: str) -> dict[str, Any] | None:
 	return record
 
 
-def _display_name(user_id: str) -> str:
+def _display_name(user_id: str, fallback: str = "") -> str:
 	record = _active_user(user_id)
 	if record is not None:
 		name = record.get("nickname")
 		if isinstance(name, str) and name.strip():
 			return name.strip()
-	return user_id
+	return fallback or user_id
 
 
 def _public(invitation: dict[str, Any]) -> dict[str, Any]:
@@ -113,9 +113,9 @@ def _public(invitation: dict[str, Any]) -> dict[str, Any]:
 	return {
 		"invitationId": invitation.get("invitationId", ""),
 		"fromUserId": invitation.get("fromUserId", ""),
-		"fromName": invitation.get("fromName", ""),
+		"fromName": _display_name(invitation.get("fromUserId", ""), invitation.get("fromName", "")),
 		"toUserId": invitation.get("toUserId", ""),
-		"toName": invitation.get("toName", ""),
+		"toName": _display_name(invitation.get("toUserId", ""), invitation.get("toName", "")),
 		"message": invitation.get("message", ""),
 		"courseName": invitation.get("courseName", ""),
 		"status": invitation.get("status", PENDING),
@@ -319,7 +319,7 @@ def list_contacts():
 		"userId": me,
 		"contacts": [{
 			"partnerUserId": item.get("partnerUserId", ""),
-			"partnerName": item.get("partnerName", ""),
+			"partnerName": _display_name(item.get("partnerUserId", ""), item.get("partnerName", "")),
 			"pairedAt": item.get("pairedAt", ""),
 		} for item in items],
 	})

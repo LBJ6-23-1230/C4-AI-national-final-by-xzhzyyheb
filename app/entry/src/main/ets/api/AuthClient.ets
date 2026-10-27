@@ -1,4 +1,6 @@
 import { ApiDefaults } from './ApiDefaults';
+import { AuthProfileUpdateRequest } from './AuthModels';
+import { AccountProfileSaver, AccountProfileTransport } from '../services/AccountProfileSaver';
 import { AgentApiClient } from './AgentApiClient';
 import { ApiFailure, ApiResult } from './ApiResult';
 import { AuthResult } from './AuthResult';
@@ -20,6 +22,45 @@ import { AuthUser, ChangePasswordResult, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGT
  * 演示时评委点不进去 = 灾难，这条纪律优先于一切。
  */
 export class AuthClient {
+  static async updateProfile(nickname: string, avatar: string): Promise<AuthResult> {
+    const session: StoredSession | null = AuthStore.getSession();
+    if (session === null) {
+      return { ok: false, user: null, source: 'guest', message: '请先登录后再编辑资料。' };
+    }
+    const invalid: string = AuthClient.validateNickname(nickname);
+    if (invalid.length > 0 || /[\r\n\t]/.test(nickname)) {
+      return { ok: false, user: null, source: 'local', message: invalid || '昵称不能包含换行或制表符。' };
+    }
+    if (AgentApiClient.getConfig().useFixture) {
+      return { ok: false, user: null, source: 'fixture', message: '当前离线，连接服务器后才能保存资料。' };
+    }
+    const request: AuthProfileUpdateRequest = { nickname: nickname.trim(), avatar: avatar };
+    const transport: AccountProfileTransport = {
+      write: () => AgentApiClient.authUpdateProfile(request),
+      read: () => AgentApiClient.authMe(),
+      isCurrent: (): boolean => {
+        const active: StoredSession | null = AuthStore.getSession();
+        return active !== null && active.userId === session.userId && active.token === session.token;
+      }
+    };
+    const result = await AccountProfileSaver.save(request, session.userId, transport);
+    const current: StoredSession | null = AuthStore.getSession();
+    if (current === null || current.userId !== session.userId || current.token !== session.token) {
+      return { ok: false, user: null, source: 'local', message: '账号已切换，请重新进入编辑资料。' };
+    }
+    if (!result.ok) {
+      const failure = result as ApiFailure;
+      const networkFailure: boolean = failure.error.code === 'NETWORK_ERROR' ||
+        [408, 502, 503, 504].indexOf(failure.error.statusCode) >= 0;
+      return { ok: false, user: null, source: 'local', message: networkFailure
+        ? '暂时无法确认保存结果，已保留当前修改，请网络恢复后重试。'
+        : failure.error.statusCode === 401 ? '登录已失效，请重新登录后保存资料。' : AuthClient.describe(result) };
+    }
+    const persisted: boolean = AuthStore.save(result.data.user, current.token, current.expiresAt);
+    return { ok: true, user: result.data.user, source: 'local',
+      message: persisted ? '资料已保存' : '资料已保存到账号，本机缓存写入失败，联网后可重新同步。' };
+  }
+
   // ---------------------------------------------------------------- 一键体验
   /**
    * 游客 / 演示身份进入。不发任何网络请求，使用约定的 demo-user。
@@ -72,6 +113,7 @@ export class AuthClient {
     return {
       userId: session.userId,
       nickname: session.nickname,
+      avatar: session.avatar ?? '',
       grade: session.grade,
       authProvider: session.authProvider,
       createdAt: '',

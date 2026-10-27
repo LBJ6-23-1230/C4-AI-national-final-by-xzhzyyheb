@@ -371,25 +371,26 @@ struct ChatMain {
   @Builder
   private TabBar() {
     Row({ space: 4 }) {
-      this.TabItem('◈', '对话', 0)
-      this.TabItem('▦', '智能体', 1)
-      this.TabItem('▤', '学习', 2)
-      this.TabItem('◉', '我的', 3)
+      this.TabItem($r('app.media.nav_chat'), $r('app.media.nav_chat_selected'), '对话', 0)
+      this.TabItem($r('app.media.nav_agent'), $r('app.media.nav_agent_selected'), '智能体', 1)
+      this.TabItem($r('app.media.nav_study'), $r('app.media.nav_study_selected'), '学习', 2)
+      this.TabItem($r('app.media.nav_profile'), $r('app.media.nav_profile_selected'), '我的', 3)
     }
     .width('100%').padding({ left: 12, right: 12, top: 8, bottom: 10 })
     .backgroundColor('#FFFFFF').border({ width: { top: 1 }, color: '#EAECF0' })
   }
 
   @Builder
-  private TabItem(icon: string, label: string, index: number) {
-    Column({ space: 3 }) {
-      Text(icon).fontSize(19)
-        .fontColor(this.activeTab === index ? '#2563EB' : '#667085')
-      Text(label).fontSize(11)
+  private TabItem(icon: Resource, selectedIcon: Resource, label: string, index: number) {
+    Column({ space: 6 }) {
+      Image(this.activeTab === index ? selectedIcon : icon)
+        .width(22).height(22).objectFit(ImageFit.Contain)
+      Text(label).fontSize(12)
         .fontWeight(this.activeTab === index ? FontWeight.Bold : FontWeight.Medium)
         .fontColor(this.activeTab === index ? '#2563EB' : '#667085')
     }
-    .layoutWeight(1).height(58).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+    .layoutWeight(1).height(62).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+    .accessibilityText(label)
     .backgroundColor(this.activeTab === index ? '#EFF6FF' : '#FFFFFF').borderRadius(12)
     .onClick(() => this.switchTab(index))
   }
@@ -509,13 +510,6 @@ struct ChatMain {
       Blank()
       Row({ space: 8 }) {
         Button('目标').fontSize(13).height(34).onClick(() => { this.showGoalHistory = !this.showGoalHistory; void this.loadGoalHistory(); })
-        Button('工具')
-          .fontSize(13)
-          .fontColor('#475569')
-          .backgroundColor('#F1F5F9')
-          .borderRadius(8)
-          .height(34)
-          .onClick(() => this.openToolbox())
         Button('新对话')
           .fontSize(13)
           .fontColor('#2563EB')
@@ -559,10 +553,7 @@ struct ChatMain {
     this.showGoalSummary = false;
     this.selectedIntent = item.intent;
     this.inputText = item.prompt;
-    if (item.intent === 'analyze_wrong' && this.pendingImage.length === 0) {
-      this.inputText = '';
-      void this.pickImage();
-    }
+    // 错题诊断沿用文字对话入口，图片由用户点击输入栏的相机按钮主动选择。
   }
 
   @Builder
@@ -989,11 +980,6 @@ struct ChatMain {
   private openAction(action: ChatAction): void {
     appState.startChatTask(this.taskContextFor(action.targetPage));
     router.pushUrl({ url: action.targetPage });
-  }
-
-  private openToolbox(): void {
-    appState.startChatTask('浏览全部学习工具');
-    router.pushUrl({ url: 'pages/Index' });
   }
 
   private taskContextFor(targetPage: string): string {

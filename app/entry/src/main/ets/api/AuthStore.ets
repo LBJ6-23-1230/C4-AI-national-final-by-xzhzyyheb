@@ -99,6 +99,7 @@ export class AuthStore {
         token: token,
         expiresAt: store.getSync(AuthStore.KEY_EXPIRES_AT, '') as string,
         nickname: store.getSync(AuthStore.KEY_NICKNAME, '') as string,
+        avatar: store.getSync('avatar', '') as string,
         grade: store.getSync(AuthStore.KEY_GRADE, '') as string,
         authProvider: store.getSync(AuthStore.KEY_PROVIDER, 'local') as AuthProvider,
         savedAt: store.getSync(AuthStore.KEY_SAVED_AT, '') as string
@@ -176,6 +177,7 @@ export class AuthStore {
       token: token,
       expiresAt: expiresAt,
       nickname: user.nickname,
+      avatar: user.avatar ?? '',
       grade: user.grade,
       authProvider: user.authProvider,
       savedAt: new Date().toISOString()
@@ -208,6 +210,7 @@ export class AuthStore {
         store.deleteSync(AuthStore.KEY_TOKEN);
         store.deleteSync(AuthStore.KEY_EXPIRES_AT);
         store.deleteSync(AuthStore.KEY_NICKNAME);
+        store.deleteSync('avatar');
         store.deleteSync(AuthStore.KEY_GRADE);
         store.deleteSync(AuthStore.KEY_PROVIDER);
         store.deleteSync(AuthStore.KEY_SAVED_AT);
@@ -217,6 +220,7 @@ export class AuthStore {
         store.putSync(AuthStore.KEY_TOKEN, AuthStore.encodeToken(session.token));
         store.putSync(AuthStore.KEY_EXPIRES_AT, session.expiresAt);
         store.putSync(AuthStore.KEY_NICKNAME, session.nickname);
+        store.putSync('avatar', session.avatar ?? '');
         store.putSync(AuthStore.KEY_GRADE, session.grade);
         store.putSync(AuthStore.KEY_PROVIDER, session.authProvider);
         store.putSync(AuthStore.KEY_SAVED_AT, session.savedAt);

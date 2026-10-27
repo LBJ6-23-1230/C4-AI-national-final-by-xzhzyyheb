@@ -1,4 +1,5 @@
 import router from '@ohos.router';
+import { UserAvatar } from '../components/UserAvatar';
 import { appState } from '../data/AppState';
 import { PartnerMatch as PartnerMatchType, MatchFactor, UserProfile, LearningPlanTask } from '../models/AgentModels';
 import { LocalAgentService } from '../services/LocalAgentService';
@@ -610,7 +611,8 @@ Text(`${generatedPartner.score}%`).fontSize(28).fontWeight(FontWeight.Bold).font
   @Builder
   OnlineBestCard(item: PartnerRankedCandidate) {
     Column({ space: 10 }) {
-      Row() {
+      Row({ space: 12 }) {
+        UserAvatar({ source: item.candidate.avatar ?? '', nickname: this.candidateName(item), diameter: 48 })
         Column({ space: 4 }) {
           Text(`🏅 ${this.candidateName(item)}`)
             .fontSize(22).fontWeight(FontWeight.Bold).fontColor('#172033')
@@ -664,7 +666,8 @@ Text(`${generatedPartner.score}%`).fontSize(28).fontWeight(FontWeight.Bold).font
 
   @Builder
   OnlineOtherRow(item: PartnerRankedCandidate) {
-    Row() {
+    Row({ space: 10 }) {
+      UserAvatar({ source: item.candidate.avatar ?? '', nickname: this.candidateName(item), diameter: 38 })
       Column({ space: 2 }) {
         Text(this.candidateName(item)).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#172033')
         Text(this.candidateSubtitle(item)).fontSize(12).fontColor('#667085')

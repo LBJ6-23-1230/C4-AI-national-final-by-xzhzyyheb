@@ -1,4 +1,5 @@
 import { GoalActionRequest, GoalActionResponse, GoalHistoryResponse } from './ApiModels';
+import { AuthProfileUpdateRequest } from './AuthModels';
 import { LearningPreferencesRequest, DocumentPointsRequest } from './ApiModels';
 import { http } from '@kit.NetworkKit';
 import { ExerciseSourcesResponse } from './ApiModels';
@@ -373,6 +374,11 @@ export class AgentApiClient {
     return AgentApiClient.request<AuthUserResponse>(http.RequestMethod.GET, '/api/v1/auth/me');
   }
 
+  static async authUpdateProfile(request: AuthProfileUpdateRequest): Promise<ApiResult<AuthUserResponse>> {
+    return AgentApiClient.request<AuthUserResponse>(http.RequestMethod.PUT, '/api/v1/auth/me', request,
+      ApiDefaults.PROFILE_SAVE_READ_TIMEOUT_MS);
+  }
+
   static async authChangePassword(request: AuthChangePasswordRequest): Promise<ApiResult<AuthChangePasswordResponse>> {
     return AgentApiClient.request<AuthChangePasswordResponse>(http.RequestMethod.POST,
       '/api/v1/auth/change-password', request);
@@ -422,6 +428,7 @@ export class AgentApiClient {
         header: header,
         extraData: body === undefined ? undefined : JSON.stringify(body),
         expectDataType: http.HttpDataType.STRING,
+        usingCache: !path.startsWith('/api/v1/auth/'),
         // ⚠️ `connectTimeout` 始终用配置值（连不上要快速失败），
         // 但 `readTimeout` 允许单次调用放宽 —— 见 `readTimeoutMs` 参数。
         connectTimeout: AgentApiClient.config.timeoutMs,

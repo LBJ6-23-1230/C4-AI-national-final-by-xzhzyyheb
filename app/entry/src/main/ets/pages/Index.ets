@@ -1,4 +1,5 @@
 import router from '@ohos.router';
+import { UserAvatar } from '../components/UserAvatar';
 import { appState } from '../data/AppState';
 import { FocusTask, LearningPlanTask, WeeklyLearningPlan } from '../models/AgentModels';
 import { LocalAgentService } from '../services/LocalAgentService';
@@ -28,8 +29,12 @@ struct Index {
   @State courseCount: number = 0;
   @State urgentCount: number = 0;
   @State refreshKey: number = 0;
+  @State profileNickname: string = appState.authNickname;
+  @State profileAvatar: string = appState.authAvatar;
 
   private onLearningDataChanged(): void {
+    this.profileNickname = appState.authNickname;
+    this.profileAvatar = appState.authAvatar;
     this.courseCount = appState.courses.length;
     this.urgentCount = appState.getUrgentDDLs().length;
     this.refreshKey++;
@@ -418,8 +423,8 @@ struct Index {
   AgentCard(item: AgentSpec) {
     Column({ space: 10 }) {
       Row() {
-        Text(item.icon).fontSize(18).fontColor('#2563EB')
-          .width(34).height(34).textAlign(TextAlign.Center)
+        Image(item.icon).objectFit(ImageFit.Contain)
+          .width(34).height(34).padding(6)
           .borderRadius(9).backgroundColor('#EFF6FF')
         Blank()
         Text(item.category).fontSize(10).fontColor('#475467')
@@ -455,10 +460,10 @@ struct Index {
 
   /** 「学习」标签里的一行入口。 */
   @Builder
-  PanelRow(icon: string, title: string, desc: string, target: string) {
+  PanelRow(icon: Resource, title: string, desc: string, target: string) {
     Row({ space: 12 }) {
-      Text(icon).fontSize(15).fontColor('#2563EB')
-        .width(30).height(30).textAlign(TextAlign.Center)
+      Image(icon).objectFit(ImageFit.Contain)
+        .width(30).height(30).padding(5)
         .borderRadius(15).backgroundColor('#EFF6FF')
       Column({ space: 2 }) {
         Text(title).fontSize(14).fontWeight(FontWeight.Medium).fontColor('#1F2937')
@@ -636,10 +641,10 @@ struct Index {
   @Builder
   TabBar() {
     Row({ space: 4 }) {
-      this.TabItem('◈', '对话', 0)
-      this.TabItem('▦', '智能体', 1)
-      this.TabItem('▤', '学习', 2)
-      this.TabItem('◉', '我的', 3)
+      this.TabItem($r('app.media.nav_chat'), $r('app.media.nav_chat_selected'), '对话', 0)
+      this.TabItem($r('app.media.nav_agent'), $r('app.media.nav_agent_selected'), '智能体', 1)
+      this.TabItem($r('app.media.nav_study'), $r('app.media.nav_study_selected'), '学习', 2)
+      this.TabItem($r('app.media.nav_profile'), $r('app.media.nav_profile_selected'), '我的', 3)
     }
     .width('100%').padding({ left: 12, right: 12, top: 8, bottom: 10 })
     .backgroundColor('#FFFFFF').border({ width: { top: 1 }, color: '#EAECF0' })
@@ -650,15 +655,16 @@ struct Index {
    * 高亮状态一律在内部由 `this.activeTab` 推导，不通过参数传入。
    */
   @Builder
-  TabItem(icon: string, label: string, index: number) {
-    Column({ space: 3 }) {
-      Text(icon).fontSize(19)
-        .fontColor(this.activeTab === index ? '#2563EB' : '#667085')
-      Text(label).fontSize(11)
+  TabItem(icon: Resource, selectedIcon: Resource, label: string, index: number) {
+    Column({ space: 6 }) {
+      Image(this.activeTab === index ? selectedIcon : icon)
+        .width(22).height(22).objectFit(ImageFit.Contain)
+      Text(label).fontSize(12)
         .fontWeight(this.activeTab === index ? FontWeight.Bold : FontWeight.Medium)
         .fontColor(this.activeTab === index ? '#2563EB' : '#667085')
     }
-    .layoutWeight(1).height(58).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+    .layoutWeight(1).height(62).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
+    .accessibilityText(label)
     .backgroundColor(this.activeTab === index ? '#EFF6FF' : '#FFFFFF').borderRadius(12)
     .onClick(() => { this.switchTab(index); })
   }
@@ -822,7 +828,7 @@ struct Index {
   /** 身份标签：登录用户显示昵称，游客显示"体验身份"。 */
   private identityLabel(): string {
     if (appState.isSignedIn) {
-      return appState.authNickname.length > 0 ? appState.authNickname : '我的';
+      return this.profileNickname.length > 0 ? this.profileNickname : '我的';
     }
     return '体验身份';
   }
@@ -958,8 +964,8 @@ struct Index {
                   .fontColor(appState.getUrgentDDLs().length > 0 ? '#B45309' : '#10B981')
               }.width('100%').margin({ top: 4 })
 
-              this.PanelRow('◱', '开始专注', '按任务倒计时，结束后自动生成复盘', 'pages/FocusSetup')
-              this.PanelRow('▣', '课程与作业清单', '查看已导入的课程与 DDL', 'pages/CourseImport')
+              this.PanelRow($r('app.media.feature_focus'), '开始专注', '按任务倒计时，结束后自动生成复盘', 'pages/FocusSetup')
+              this.PanelRow($r('app.media.feature_courses'), '课程与作业清单', '查看已导入的课程与 DDL', 'pages/CourseImport')
 
               // 知识库入口：让 Agent 的判断有据可依（引用你自己的课程资料）
               this.PanelCard('我的知识库',
@@ -975,15 +981,19 @@ struct Index {
             if (this.activeTab === 3) {
               Column({ space: 10 }) {
                 Row({ space: 10 }) {
-                  Text(appState.isSignedIn ? '👤' : '👥').fontSize(22)
+                  UserAvatar({ source: this.profileAvatar, nickname: this.profileNickname, diameter: 44 })
+                    .onClick(() => router.pushUrl({ url: appState.isSignedIn ? 'pages/EditProfile' : 'pages/Login' }))
                   Column({ space: 3 }) {
-                    Text(appState.authNickname).fontSize(17).fontWeight(FontWeight.Bold)
+                    Text(this.profileNickname).fontSize(17).fontWeight(FontWeight.Bold)
                       .fontColor('#0F172A').width('100%')
                     Text(appState.isSignedIn ? '独立账号 · 数据归你所有' : '体验身份（演示数据）')
                       .fontSize(11.5).fontColor(appState.isSignedIn ? '#1E6B3A' : '#B45309')
                       .width('100%')
                   }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-                  Text('管理 ›').onClick(() => router.pushUrl({ url: 'pages/Account' })).fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+                    .onClick(() => router.pushUrl({ url: appState.isSignedIn ? 'pages/EditProfile' : 'pages/Login' }))
+                  Text(appState.isSignedIn ? '编辑资料 ›' : '登录 ›')
+                    .onClick(() => router.pushUrl({ url: appState.isSignedIn ? 'pages/EditProfile' : 'pages/Login' }))
+                    .fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
                 }.width('100%')
                 Button('账号与密码管理')
                   .width('100%').height(44).fontSize(14).fontColor('#2563EB')
@@ -1031,13 +1041,13 @@ struct Index {
                 this.StatCard(`${appState.getPendingDDLs().length}`, '待处理作业', 'pages/CourseImport')
               }.width('100%')
 
-              this.PanelRow('◰', '学习复盘', '汇总任务、知识点与下一步建议', 'pages/ReviewSummary')
+              this.PanelRow($r('app.media.feature_review'), '学习复盘', '汇总任务、知识点与下一步建议', 'pages/ReviewSummary')
 
               Row() {
                 Text('我的学习搭子').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#0F172A')
               }.width('100%').margin({ top: 4 })
 
-              this.PanelRow('◑', '搭子与协同', '查看匹配结果与协同学习计划', 'pages/PartnerMatch')
+              this.PanelRow($r('app.media.feature_partner'), '搭子与协同', '查看匹配结果与协同学习计划', 'pages/PartnerMatch')
 
             }
 
@@ -1063,7 +1073,7 @@ struct Index {
 /** 智能体能力的静态描述（常量，不含状态）。 */
 interface AgentSpec {
   key: string;
-  icon: string;
+  icon: Resource;
   name: string;
   category: string;
   /** 一句话职能（比 desc 更短，用于卡片上的粗体副标题）。 */
@@ -1105,7 +1115,7 @@ interface AgentRoute {
  */
 const AGENT_SPECS: AgentSpec[] = [
   {
-    key: 'diagnosis', icon: '◐', name: '诊断智能体', category: '学情诊断',
+    key: 'diagnosis', icon: $r('app.media.feature_diagnosis'), name: '诊断智能体', category: '学情诊断',
     role: '找出你哪里薄弱',
     desc: '读取错题与练习记录，定位知识点短板与错误类型，形成可复核的学情证据。',
     routes: [
@@ -1115,7 +1125,7 @@ const AGENT_SPECS: AgentSpec[] = [
     ready: true
   },
   {
-    key: 'planner', icon: '◈', name: '规划智能体', category: '路径规划',
+    key: 'planner', icon: $r('app.media.feature_planner'), name: '规划智能体', category: '路径规划',
     role: '决定今天先学什么',
     desc: '按五因子（掌握度/错误强度/重要性/紧迫度/先修影响）算出最优任务，并随掌握度变化自动重规划。',
     routes: [
@@ -1125,7 +1135,7 @@ const AGENT_SPECS: AgentSpec[] = [
     ready: true
   },
   {
-    key: 'exercise', icon: '◱', name: '练习智能体', category: '推送练习',
+    key: 'exercise', icon: $r('app.media.feature_exercise'), name: '练习智能体', category: '推送练习',
     role: '按薄弱点推题',
     desc: '按知识点抽取题目并计时专注，提交后由确定性代码判分，掌握度随之更新。',
     routes: [
@@ -1134,7 +1144,7 @@ const AGENT_SPECS: AgentSpec[] = [
     ready: true
   },
   {
-    key: 'assessment', icon: '◰', name: '测评智能体', category: '效果评估',
+    key: 'assessment', icon: $r('app.media.feature_assessment'), name: '测评智能体', category: '效果评估',
     role: '验证学习是否有效',
     desc: '汇总掌握度变化、计划重排与学习证据，输出复盘与下一步建议，形成全过程可信记录。',
     routes: [
@@ -1143,7 +1153,7 @@ const AGENT_SPECS: AgentSpec[] = [
     ready: true
   },
   {
-    key: 'secretary', icon: '◇', name: '秘书智能体', category: '总控编排',
+    key: 'secretary', icon: $r('app.media.feature_secretary'), name: '秘书智能体', category: '总控编排',
     role: '统筹上面四个',
     desc: '判断「下一步该叫哪个智能体」，并在对的时刻主动提醒你。全程留痕、可复核，不含模型思维链。',
     routes: [

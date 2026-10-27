@@ -3,6 +3,7 @@
     "pages/ChatMain",
     "pages/Login",
     "pages/Account",
+    "pages/EditProfile",
     "pages/CourseImport",
     "pages/Index",
     "pages/StudySuggestion",

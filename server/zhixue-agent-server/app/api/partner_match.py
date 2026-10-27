@@ -88,6 +88,7 @@ def _real_candidates(exclude: str) -> list[dict[str, Any]]:
 		slots = profile.get("freeTimeSlots")
 		candidates.append({
 			"userId": user_id,
+			"avatar": record.get("avatar", ""),
 			"basicInfo": {
 				"name": str(record.get("nickname") or user_id),
 				"grade": str(record.get("grade") or ""),
@@ -121,6 +122,7 @@ def _real_user_profile(user_id: str) -> dict[str, Any] | None:
 	slots = profile.get("freeTimeSlots")
 	return {
 		"userId": user_id,
+		"avatar": record.get("avatar", ""),
 		"basicInfo": {
 			"name": str(record.get("nickname") or user_id),
 			"grade": str(record.get("grade") or ""),

@@ -276,7 +276,7 @@ export class ApiResponseValidator {
     if (method === 'POST' && route === '/api/v1/auth/logout') {
       return ApiResponseValidator.hasString(data, 'status');
     }
-    if (method === 'GET' && route === '/api/v1/auth/me') {
+    if ((method === 'GET' || method === 'PUT') && route === '/api/v1/auth/me') {
       return ApiResponseValidator.isAuthUserField(data, 'user');
     }
     if (method === 'DELETE' && route === '/api/v1/auth/account') {

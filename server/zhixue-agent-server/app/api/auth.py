@@ -300,6 +300,19 @@ def me():
     return jsonify({"user": service.get_user(_repository, user["userId"])})
 
 
+@auth_api.put("/api/v1/auth/me")
+def update_me():
+    resolved, failure = _require_user()
+    if failure is not None:
+        return failure
+    user, _token = resolved
+    try:
+        result = service.update_account_profile(_repository, user["userId"], _body())
+    except service.AuthError as error:
+        return _auth_error(error)
+    return jsonify(result)
+
+
 @auth_api.delete("/api/v1/auth/account")
 def delete_account():
     """注销账号：标记停用 + 清空全部会话（合规要求）。"""

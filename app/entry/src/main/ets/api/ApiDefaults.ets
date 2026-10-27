@@ -32,6 +32,8 @@ export class ApiDefaults {
 
   /** 单次请求超时（毫秒）。 */
   static readonly DEFAULT_TIMEOUT_MS: number = 8000;
+  /** Avatar upload and durable account writes need more time than a small GET. */
+  static readonly PROFILE_SAVE_READ_TIMEOUT_MS: number = 20000;
 
   /**
    * **会在服务端等大模型**的接口的读超时下限（毫秒）。

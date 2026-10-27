@@ -14,6 +14,7 @@ export type AuthSource = 'guest' | 'local' | 'restored' | 'fixture';
 export interface AuthUser {
   userId: string;
   nickname: string;
+  avatar?: string;
   grade: string;
   authProvider: AuthProvider;
   createdAt: string;
@@ -181,6 +182,11 @@ export interface AuthUserResponse {
   user: AuthUser;
 }
 
+export interface AuthProfileUpdateRequest {
+  nickname: string;
+  avatar: string;
+}
+
 export interface AuthStatusResponse {
   status: string;
   userId?: string;
@@ -229,6 +235,7 @@ export interface StoredSession {
   token: string;
   expiresAt: string;
   nickname: string;
+  avatar?: string;
   grade: string;
   authProvider: AuthProvider;
   savedAt: string;

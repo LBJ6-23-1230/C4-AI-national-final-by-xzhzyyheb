@@ -1262,6 +1262,65 @@
             "$ref": "#/components/parameters/ContractVersionHeader"
           }
         ]
+      },
+      "put": {
+        "summary": "修改当前账号的昵称与头像",
+        "operationId": "authUpdateProfile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前用户",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "405": {
+            "description": "请求方法不被该路径支持（后端统一返回 JSON 错误体，而非 HTML）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "昵称或头像无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthProfileUpdateRequest"
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/auth/account": {
@@ -5323,6 +5382,11 @@
           "hasPhone": {
             "type": "boolean",
             "description": "是否已绑定手机号"
+          },
+          "avatar": {
+            "type": "string",
+            "maxLength": 180000,
+            "description": "空串表示默认头像；否则为 JPEG/PNG data URI，解码后不超过128KiB，正方形且边长不超过512px。"
           }
         },
         "description": "对外用户视图。绝不包含 token 或第三方 authSubject——手机号等敏感信息不落明文。"
@@ -7238,6 +7302,11 @@
               },
               "accountKind": {
                 "type": "string"
+              },
+              "avatar": {
+                "type": "string",
+                "maxLength": 180000,
+                "description": "空串表示默认头像；否则为 JPEG/PNG data URI，解码后不超过128KiB，正方形且边长不超过512px。"
               }
             }
           },
@@ -7304,6 +7373,23 @@
                 "minimum": 0
               }
             }
+          }
+        }
+      },
+      "AuthProfileUpdateRequest": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": false,
+        "properties": {
+          "nickname": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "avatar": {
+            "type": "string",
+            "maxLength": 180000,
+            "description": "空串表示默认头像；否则为 JPEG/PNG data URI，解码后不超过128KiB，正方形且边长不超过512px。"
           }
         }
       }
