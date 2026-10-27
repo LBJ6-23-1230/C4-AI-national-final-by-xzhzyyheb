@@ -31,3 +31,25 @@ truststore==0.10.5
 typing-inspection==0.4.4
 typing_extensions==4.16.0
 werkzeug==3.1.9
+# PostgreSQL, migrations, private OBS/S3 files and Linux WSGI (2026-10-27).
+SQLAlchemy==2.0.55
+psycopg==3.2.13
+psycopg-binary==3.2.13
+alembic==1.17.2
+greenlet==3.5.6
+Mako==1.4.3
+boto3==1.40.76
+botocore==1.40.76
+jmespath==1.1.0
+s3transfer==0.14.0
+python-dateutil==2.9.0.post0
+six==1.17.0
+urllib3==2.8.0
+esdk-obs-python==3.26.6
+crcmod==1.7
+pycryptodome==4.2.0
+requests==2.34.2
+charset-normalizer==3.5.2
+certifi==2026.10.23
+tzdata==2026.5
+gunicorn==23.0.0; sys_platform != 'win32'

@@ -156,6 +156,7 @@ def configure_chat_repository(repository: JsonRepository) -> None:
     """
     global _repository
     _repository = repository
+    chat_llm.set_history_repository(repository if getattr(repository, "durable_jobs", False) else None)
     chat_llm.set_profile_update_hook(_apply_profile_updates)
 
 

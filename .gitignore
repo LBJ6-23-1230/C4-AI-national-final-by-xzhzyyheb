@@ -11,8 +11,10 @@ venv/
 
 # ---- 环境与密钥（绝不入库 / 绝不进交付 zip）----
 .env
+.env.*
 *.env
 !.env.example
+!.env.*.example
 # 本地签名私钥与证书材料仅留在开发机，交付物使用已签名 HAP。
 zhixue-signing/
 
@@ -90,3 +92,8 @@ _test_*/
 *.sqlite-shm
 node_modules/
 *.tmp
+.runtime-deps/
+.local-postgres/
+data/files/
+deploy/certs/
+deploy/runtime-secrets/

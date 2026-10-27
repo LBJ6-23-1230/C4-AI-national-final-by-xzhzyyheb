@@ -81,6 +81,9 @@ def parse_validator_routes(source: str) -> tuple[set[tuple[str, str]], set[tuple
     # Shared routes may dispatch GET/POST inside the body of the same branch.
     exact.update(("*", route) for route in re.findall(
         r"if\s*\(\s*(?:path|route) === '([^']+)'\s*\)", source))
+    for methods, route in re.findall(
+            r"if\s*\(\s*\(([^()]+)\)\s*&&\s*(?:path|route) === '([^']+)'", source):
+        exact.update((method, route) for method in re.findall(r"method === '([A-Z]+)'", methods))
     return exact, prefix
 
 

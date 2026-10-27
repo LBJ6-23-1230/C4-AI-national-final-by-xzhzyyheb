@@ -362,6 +362,24 @@ DEFAULT_HISTORY_USER = "demo-user"
 #: 每个用户保留的最大对话轮数。
 HISTORY_MAX_ENTRIES = 50
 
+_history_repository = None
+
+
+def set_history_repository(repository):
+    global _history_repository
+    _history_repository = repository
+
+
+def _active_history_repository():
+    # Direct utility calls retain the legacy file contract; HTTP/worker calls use
+    # the application repository and never write a shared history.json.
+    from flask import current_app, has_app_context
+    if has_app_context():
+        repository = current_app.extensions.get("repository")
+        if getattr(repository, "durable_jobs", False):
+            return repository
+    return None
+
 
 def _load_history_store() -> dict[str, list[dict[str, Any]]]:
     """读取整个历史文件，并把旧的扁平数组格式迁成按用户分桶。"""
@@ -398,6 +416,11 @@ def _write_history_store(store: dict[str, list[dict[str, Any]]]) -> None:
 def get_history(user_id: str | None = None) -> list[dict[str, Any]]:
     """读取**指定用户**的对话历史；`user_id` 缺省取演示身份。"""
     key = (user_id or DEFAULT_HISTORY_USER).strip() or DEFAULT_HISTORY_USER
+    repository = _active_history_repository()
+    if repository is not None:
+        from app.services.chat_history import history
+        return [dict(item, bot_response=str(item.get("bot_response") or "").replace("小艺", "小知"))
+                for item in history(repository, key)]
     with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
         # 旧版本已落盘的回复里可能仍有旧称呼，读取时一并迁移展示口径。
         return [dict(item, bot_response=str(item.get("bot_response") or "").replace("小艺", "小知"))
@@ -407,6 +430,11 @@ def get_history(user_id: str | None = None) -> list[dict[str, Any]]:
 def clear_history(user_id: str | None = None) -> None:
     """清空**指定用户**的历史，不动其他用户。"""
     key = (user_id or DEFAULT_HISTORY_USER).strip() or DEFAULT_HISTORY_USER
+    repository = _active_history_repository()
+    if repository is not None:
+        from app.services.chat_history import clear
+        clear(repository, key)
+        return
     with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
         store = _load_history_store()
         if key in store:
@@ -418,6 +446,19 @@ def append_history(user_input: str, bot_response: str,
                    user_id: str | None = None,
                    session_id: str | None = None, question_context: dict | None = None) -> None:
     key = (user_id or DEFAULT_HISTORY_USER).strip() or DEFAULT_HISTORY_USER
+    repository = _active_history_repository()
+    if repository is not None:
+        from app.services.chat_history import append
+        from datetime import datetime, timezone
+        entry = {"user_input": user_input, "bot_response": bot_response,
+                 "timestamp": datetime.now(timezone.utc).isoformat()}
+        if session_id:
+            entry["session_id"] = session_id.strip()[:128]
+        if question_context and question_context.get("questionText"):
+            entry["question_context"] = {k: str(question_context.get(k) or "")[:5000]
+                                          for k in ("questionText", "knowledgePoint")}
+        append(repository, key, entry, HISTORY_MAX_ENTRIES)
+        return
     # 读—改—写必须在**同一把锁**内完成，否则并发 append 会互相覆盖（丢历史）。
     with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
         store = _load_history_store()

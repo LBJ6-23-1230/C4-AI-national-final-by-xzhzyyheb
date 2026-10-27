@@ -59,8 +59,7 @@ def _resolve_user_id(data: dict) -> tuple[str, object]:
 def _list(collection: str, user_id: str) -> list[dict]:
     if _repository is None:
         return []
-    return [item for item in _repository.list(collection)
-            if isinstance(item, dict) and item.get("userId") == user_id]
+    return _repository.query(collection, {"userId": user_id})
 
 
 def _get_owned(collection: str, item_id: str, user_id: str) -> dict | None:
@@ -218,6 +217,7 @@ def delete_knowledge_base(kb_id: str):
     if _repository:
         deletes: list[tuple[str, str]] = []
         for doc in [d for d in _list(DOCS, user_id) if d.get("kbId") == kb_id]:
+            _schedule_original_delete(doc)
             for chunk in [c for c in _list(CHUNKS, user_id)
                           if c.get("documentId") == doc.get("documentId")]:
                 deletes.append((CHUNKS, chunk["chunkId"]))
@@ -266,6 +266,8 @@ def upload_document(kb_id: str):
     content = data.get("contentBase64")
     if not isinstance(content, str) or not content:
         return bad_request("contentBase64 不能为空", {"field": "contentBase64"})
+    if getattr(_repository, "durable_jobs", False):
+        return _queue_document(kb_id, user_id, file_name, content, data)
 
     # 先算 documentId，再解析 —— 因为 chunkId 必须把归属信息（含 documentId）
     # 纳入摘要，否则不同用户/知识库上传同名同内容文件时会撞主键、
@@ -469,6 +471,7 @@ def delete_document(document_id: str):
         return jsonify({"errorCode": "NOT_FOUND", "message": "文档不存在",
                         "details": {"documentId": document_id}}), 404
     if _repository:
+        _schedule_original_delete(record)
         deletes: list[tuple[str, str]] = []
         for chunk in [c for c in _list(CHUNKS, user_id) if c.get("documentId") == document_id]:
             deletes.append((CHUNKS, chunk["chunkId"]))
@@ -490,6 +493,96 @@ def delete_document(document_id: str):
             }))
         _repository.apply_batch(deletes, saves)
     return jsonify({"status": "deleted", "documentId": document_id})
+
+
+def _schedule_original_delete(document):
+    file_id = document.get("fileId")
+    if file_id:
+        original = _repository.get("file_objects", file_id)
+        if original:
+            from app.services.file_storage import schedule_delete
+            schedule_delete(_repository, original)
+
+
+def _queue_document(kb_id, owner, name, content, data):
+    import uuid
+    from app.services.file_storage import storage
+    from app.services.job_queue import enqueue
+    raw, error = knowledge.decode_binary(content)
+    if error:
+        return bad_request(error)
+    store = storage()
+    original = store.put(owner, raw, name)
+    document_id, token = "doc-" + uuid.uuid4().hex, uuid.uuid4().hex
+    stamp = knowledge._now()
+    record = {"documentId": document_id, "kbId": kb_id, "userId": owner, "fileId": original["fileId"],
+              "fileName": name, "mimeType": str(data.get("mimeType") or "")[:100], "sizeBytes": len(raw),
+              "sha256": original["sha256"], "status": "processing", "statusMessage": "已上传，正在处理资料",
+              "charCount": 0, "chunkCount": 0, "knowledgePoints": [], "errorPointCandidates": [],
+              "parseSource": "pending", "tagsConfirmed": False, "extractionVersion": 2,
+              "parseToken": token, "uploadedAt": stamp, "parsedAt": stamp}
+    try:
+        with PROFILE_LOCK, _repository.transaction():
+            kb = _get_owned(KB, kb_id, owner)
+            if not kb:
+                raise ValueError("knowledge base deleted during upload")
+            docs = [d for d in _list(DOCS, owner) if d.get("kbId") == kb_id]
+            if len(docs) >= knowledge.MAX_DOCUMENTS_PER_KB:
+                raise ValueError("document limit reached")
+            _repository.save("file_objects", original["fileId"], dict(original, documentId=document_id))
+            _repository.save(DOCS, document_id, record)
+            _repository.save(KB, kb_id, dict(kb, documentCount=len(docs) + 1, updatedAt=stamp))
+            enqueue(_repository, "parse_document", owner, {"documentId": document_id, "kbId": kb_id,
+                "userId": owner, "parseToken": token, "fileName": name, "file": original,
+                "vocabulary": _vocabulary(owner), "scope": f"{owner}:{kb_id}:{document_id}"}, document_id)
+    except BaseException:
+        try:
+            store.delete(original)
+        except Exception:
+            # A short orphan grace period + inventory audit handles a process
+            # crash between object upload and the database transaction.
+            import logging
+            logging.getLogger("zhixue.files").warning("orphan_file file_id=%s", original["fileId"])
+        raise
+    return jsonify(record), 201
+
+
+def complete_document_job(repository, payload, parsed):
+    """Called inside the job completion transaction; deletion or newer parsing wins."""
+    record = repository.get(DOCS, payload["documentId"])
+    kb = repository.get(KB, payload["kbId"])
+    if (not record or not kb or record.get("parseToken") != payload["parseToken"]
+            or record.get("userId") != payload["userId"]):
+        return
+    updated = dict(record, status=parsed["status"], statusMessage=parsed["statusMessage"],
+        charCount=parsed["charCount"], chunkCount=len(parsed["chunks"]), knowledgePoints=parsed["knowledgePoints"],
+        errorPointCandidates=parsed["errorPointCandidates"], parsedAt=knowledge._now(),
+        parseSource="basic" if parsed["status"] == "ready" else "failed")
+    repository.save(DOCS, record["documentId"], updated)
+    for index, chunk in enumerate(parsed["chunks"], 1):
+        repository.save(CHUNKS, chunk["chunkId"], dict(chunk, index=index, documentId=record["documentId"],
+            kbId=record["kbId"], userId=record["userId"], sha256=record["sha256"], extractionVersion=2))
+    docs = repository.query(DOCS, {"userId": payload["userId"], "kbId": payload["kbId"]})
+    repository.save(KB, kb["kbId"], dict(kb, documentCount=len(docs),
+        chunkCount=sum(int(d.get("chunkCount") or 0) for d in docs),
+        knowledgePoints=list(dict.fromkeys(p for d in docs for p in d.get("knowledgePoints", [])))))
+
+
+@knowledge_api.get("/api/v1/documents/<document_id>/download")
+def download_original(document_id):
+    owner = resolve_user_id(request.args.get("userId"))
+    document = _get_owned(DOCS, document_id, owner)
+    original = _repository.get("file_objects", document.get("fileId", "")) if document else None
+    if not original or original.get("userId") != owner:
+        return jsonify({"errorCode": "NOT_FOUND", "message": "原文件不存在"}), 404
+    from app.services.file_storage import storage
+    store = storage()
+    url = store.download_url(original)
+    if url:
+        return jsonify({"url": url, "expiresIn": 120})
+    from flask import send_file
+    from io import BytesIO
+    return send_file(BytesIO(store.read(original)), as_attachment=True, download_name=original["fileName"])
 
 
 # --------------------------------------------------------------------------- 检索

@@ -77,7 +77,8 @@ def _seed_demo_data(data: dict) -> bool:
     `{"seedDemoData": "false"}`（字符串）被 Python 的真值判断当成"要载入"，
     与调用方的字面意思相反 —— 这类"看起来关着其实开着"的开关是最难查的。
     """
-    return data.get("seedDemoData") is True
+    from app.settings import demo_enabled
+    return demo_enabled() and data.get("seedDemoData") is True
 
 
 def _require_user():

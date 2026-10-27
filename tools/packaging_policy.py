@@ -6,7 +6,8 @@ from pathlib import Path
 
 EXCLUDE_DIRS = {'.git', '.hvigor', '.idea', '.vscode', 'build', 'oh_modules',
                 'node_modules', '__pycache__', '.pytest-tmp', '.pytest_cache',
-                '.cxx', '.local-work', '.packaging', 'deliverables', '.uv-cache'}
+                '.cxx', '.local-work', '.packaging', 'deliverables', '.uv-cache',
+                '.runtime-deps', '.local-postgres', 'runtime-secrets'}
 EXCLUDE_SUFFIXES = ('.pyc', '.pyo', '.bak', '.bak-round0', '.har', '.zip', '.tmp', '.log',
                     '.process.lock', '.sqlite', '.sqlite3', '.db', '-wal', '-shm', '-journal',
                     '.p12', '.pfx', '.pem', '.key', '.p7b', '.cer', '.jks', '.keystore')
@@ -17,7 +18,8 @@ def should_skip(path):
     path = Path(path)
     return (path.name in EXCLUDE_NAMES or
             path.name.startswith(('repository.json.', 'repository.sqlite', 'history.json.')) or
-            (path.name.startswith('.env') and path.name != '.env.example') or
+            (path.name.startswith('.env') and not path.name.endswith('.example')) or
+            any(path.parts[i:i+2] in (('data', 'files'), ('deploy', 'certs')) for i in range(len(path.parts)-1)) or
             path.name.lower().endswith(EXCLUDE_SUFFIXES) or
             any(p in EXCLUDE_DIRS or p.startswith(('.venv', 'pytest-cache-files-', 'pytest-of-'))
                 for p in path.parts))

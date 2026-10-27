@@ -17,6 +17,16 @@ class StagedRepository(Repository):
         self._saves = {}
         self._deletes = set()
         self._committed = False
+        self._purge_users = set()
+
+    def purge_user_data(self, user_id):
+        if hasattr(self.repository, "purge_user_data"):
+            self._purge_users.add(user_id)
+
+    def transaction(self):
+        # Nested business helpers may create another overlay. Keep the backing
+        # transaction open until the outer overlay publishes all its changes.
+        return self.repository.transaction()
 
     def get(self, collection, item_id):
         key = (collection, item_id)
@@ -61,6 +71,9 @@ class StagedRepository(Repository):
     def commit(self):
         if self._committed:
             raise RuntimeError("operation has already committed")
-        self.repository.apply_batch(list(self._deletes), [
-            (collection, item_id, value) for (collection, item_id), value in self._saves.items()])
+        with self.repository.transaction():
+            self.repository.apply_batch(list(self._deletes), [
+                (collection, item_id, value) for (collection, item_id), value in self._saves.items()])
+            for user_id in self._purge_users:
+                self.repository.purge_user_data(user_id)
         self._committed = True

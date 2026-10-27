@@ -38,6 +38,15 @@ struct PartnerMatch {
   @State freeSlotsText: string = '';
   @State preferencesMessage: string = '';
   @State preferencesSaving: boolean = false;
+  private preferencesVersion: number = 0;
+  private pageVersion: number = 0;
+  private matchRequestVersion: number = 0;
+  private preferencesRequestVersion: number = 0;
+  private invitationsRequestVersion: number = 0;
+  private contactsRequestVersion: number = 0;
+  private ownsRequest(owner: string, page: number): boolean {
+    return this.pageActive && owner === appState.currentUser.userId && page === this.pageVersion;
+  }
   private courseOptions(): string[] {
     const options: string[] = ['数据结构', '计算机网络', '操作系统', '高等数学', '线性代数', '概率论与数理统计'];
     this.targetCourses.forEach((course: string) => { if (options.indexOf(course) < 0) options.push(course); });
@@ -48,8 +57,11 @@ struct PartnerMatch {
   }
   private async loadPreferences(): Promise<void> {
     const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.preferencesRequestVersion;
     const result = await AgentApiClient.getProfile(owner);
-    if (!this.pageActive || owner !== appState.currentUser.userId || !result.ok) return;
+    if (!this.ownsRequest(owner, page) || request !== this.preferencesRequestVersion || !result.ok) return;
+    this.preferencesVersion = result.data.profileVersion;
     this.targetCourse = result.data.profile?.targetCourse ?? '';
     this.targetCourses = result.data.profile?.targetCourses ?? (this.targetCourse.length > 0 ? [this.targetCourse] : []);
     this.targetGoal = result.data.profile?.goal ?? '';
@@ -59,18 +71,31 @@ struct PartnerMatch {
     if (this.preferencesSaving) return;
     this.preferencesSaving = true;
     const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.preferencesRequestVersion;
+    const course: string = this.targetCourses[0] ?? '';
+    const goal: string = this.targetGoal;
     const result = await AgentApiClient.saveLearningPreferences(owner, {
-      targetCourse: this.targetCourses[0] ?? '', targetCourses: this.targetCourses, goal: this.targetGoal,
+      expectedProfileVersion: this.preferencesVersion,
+      targetCourse: course, targetCourses: [...this.targetCourses], goal: goal,
       freeTimeSlots: this.freeSlotsText.split(/[、,，;；\n]/).map((v: string): string => v.trim()).filter((v: string): boolean => v.length > 0)
     });
+    if (!this.ownsRequest(owner, page) || request !== this.preferencesRequestVersion) return;
     this.preferencesSaving = false;
-    if (!this.pageActive || owner !== appState.currentUser.userId) return;
     this.preferencesMessage = result.ok ? '学习偏好已同步，正在重新匹配。' : (result as ApiFailure).error.message;
     if (result.ok) {
-      this.targetCourse = this.targetCourses[0] ?? '';
-      appState.currentUser.learningGoal.course = this.targetCourse;
-      appState.currentUser.learningGoal.goal = this.targetGoal;
+      this.preferencesVersion = result.data.profileVersion;
+      this.targetCourse = course;
+      appState.currentUser.learningGoal.course = course;
+      appState.currentUser.learningGoal.goal = goal;
       void this.loadOnlineMatch();
+    } else if ((result as ApiFailure).error.code === 'CONFLICT') {
+      const refreshed = await AgentApiClient.getProfile(owner);
+      if (!this.ownsRequest(owner, page) || request !== this.preferencesRequestVersion) return;
+      if (refreshed.ok) {
+        this.preferencesVersion = refreshed.data.profileVersion;
+        this.preferencesMessage = '画像已更新，已保留你的填写内容，请核对后再次保存。';
+      }
     }
   }
   @Builder
@@ -168,15 +193,19 @@ struct PartnerMatch {
    * 正是本页原先要避免的"把本地结果伪装成在线 Agent 结果"。
    */
   private async loadOnlineMatch(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.matchRequestVersion;
     this.partnerLoading = true;
     this.partnerError = '';
     this.onlineBest = null;
     this.onlineOthers = [];
     try {
       const result = await AgentApiClient.matchPartner({
-        userId: appState.currentUser?.userId,
+        userId: owner,
         user: appState.currentUser as PartnerCandidateProfile
       });
+      if (!this.ownsRequest(owner, page) || request !== this.matchRequestVersion) return;
       // ⚠️ ArkTS 的类型收窄不认 `if (!result.ok)` —— 即使写了显式 `else`，
       // 在 else 分支里访问 `result.error` 仍报
       // 「Property 'error' does not exist on type 'ApiResult<...>'」（实测编译失败）。
@@ -197,9 +226,11 @@ struct PartnerMatch {
         this.partnerError = PartnerMatch.describeFailure<PartnerMatchResponse>(result);
       }
     } catch (error) {
-      this.partnerError = '匹配请求失败，请检查后端服务是否已启动。';
+      if (this.ownsRequest(owner, page) && request === this.matchRequestVersion) {
+        this.partnerError = '匹配请求失败，请检查后端服务是否已启动。';
+      }
     } finally {
-      this.partnerLoading = false;
+      if (this.ownsRequest(owner, page) && request === this.matchRequestVersion) this.partnerLoading = false;
     }
   }
 
@@ -292,6 +323,9 @@ struct PartnerMatch {
    * 对方根本收不到，那正是本工程禁止的"静默假成功"。
    */
   private async confirmOnlinePartner(): Promise<void> {
+    if (this.inviteBusy.length > 0) return;
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
     const partner: PartnerMatchType | null = this.onlineAsPartner();
     if (partner === null || this.onlineBest === null) {
       return;
@@ -309,6 +343,7 @@ struct PartnerMatch {
         courseName: this.invitationCourse,
         message: `一起学习${this.invitationCourse}吧`
       });
+    if (!this.ownsRequest(owner, page)) return;
     this.inviteBusy = '';
 
     if (!result.ok) {
@@ -325,8 +360,11 @@ struct PartnerMatch {
 
   /** 收件箱：只含**待处理**的邀请（处理过的由后端过滤掉）。 */
   private async loadInvitations(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.invitationsRequestVersion;
     const result = await AgentApiClient.listPartnerInvitations('inbox');
-    if (!this.pageActive) {
+    if (!this.ownsRequest(owner, page) || request !== this.invitationsRequestVersion) {
       return;
     }
     if (result.ok) {
@@ -339,7 +377,11 @@ struct PartnerMatch {
 
   /** 接受之后真正"联系起来"的那份名单。 */
   private async loadContacts(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.contactsRequestVersion;
     const result = await AgentApiClient.listPartnerContacts();
+    if (!this.ownsRequest(owner, page) || request !== this.contactsRequestVersion) return;
     if (result.ok) {
       this.contactNames = result.data.contacts.map((item: PartnerContact) => item.partnerName);
     }
@@ -358,6 +400,8 @@ struct PartnerMatch {
       return;
     }
     this.inviteBusy = item.invitationId;
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
     this.inviteError = '';
     let result: ApiResult<PartnerInvitationResponse>;
     if (action === 'accept') {
@@ -367,6 +411,7 @@ struct PartnerMatch {
     } else {
       result = await AgentApiClient.dismissPartnerInvitation(item.invitationId);
     }
+    if (!this.ownsRequest(owner, page)) return;
     this.inviteBusy = '';
     if (!result.ok) {
       this.inviteError = `处理失败：${PartnerMatch.describeFailure<PartnerInvitationResponse>(result)}`;
@@ -380,7 +425,14 @@ struct PartnerMatch {
   }
 
   onPageShow(): void {
+    const returning: boolean = !this.pageActive;
     this.pageActive = true;
+    if (returning && !AgentApiClient.getConfig().useFixture) {
+      void this.loadOnlineMatch();
+      void this.loadPreferences();
+      void this.loadInvitations();
+      void this.loadContacts();
+    }
   }
 
   /**
@@ -391,6 +443,18 @@ struct PartnerMatch {
    */
   onPageHide(): void {
     this.pageActive = false;
+    this.pageVersion++;
+    this.partnerLoading = false;
+    this.preferencesSaving = false;
+    this.inviteBusy = '';
+    this.onlineBest = null;
+    this.onlineOthers = [];
+    this.incomingInvitations = [];
+    this.contactNames = [];
+  }
+
+  aboutToDisappear(): void {
+    this.onPageHide();
   }
 
   private confirmPartner(): void {

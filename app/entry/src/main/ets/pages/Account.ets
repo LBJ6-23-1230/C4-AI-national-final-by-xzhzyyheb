@@ -344,7 +344,7 @@ struct Account {
       }
       if (this.showDeleteConfirm) {
         this.confirmOverlay('注销账号？',
-          '该账号将立即停用，全部登录会话失效，且无法再次登录。此操作不可撤销。',
+          '该账号将立即停用，全部登录会话失效。云端账号的学习记录、聊天和资料将被清除，上传原文件会进入删除队列。此操作不可撤销。',
           '确认注销', '#EF4444',
           (): void => { this.doDeleteAccount(); },
           (): void => { this.showDeleteConfirm = false; })
@@ -594,7 +594,7 @@ struct Account {
               .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
             Text('· 位置仅用于映射学习情境（如"在图书馆"），不上传坐标。')
               .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-            Text('· 学习数据端侧优先计算，仅上传必要的画像与练习结果。')
+            Text('· 账号、学习画像、计划、练习结果、聊天与上传资料会发送至后端保存。AI 功能会将必要的问题、资料片段或图片发送给模型服务处理。')
               .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
             Text('· 可随时返回登录页、退出登录或注销账号，注销后服务端凭据立即失效。')
               .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
@@ -639,6 +639,7 @@ struct Account {
    * 普通成员改了界面不刷新——虽然这里不需要界面反馈，但保持"状态即真相"更不容易出岔子。
    */
   private onAboutVersionTap(): void {
+    if (!ApiDefaults.ALLOW_DEBUG) return;
     const now: number = Date.now();
     const withinWindow: boolean = now - this.aboutLastTapMs <= ABOUT_TAP_WINDOW_MS;
     this.aboutTapCount = withinWindow ? this.aboutTapCount + 1 : 1;

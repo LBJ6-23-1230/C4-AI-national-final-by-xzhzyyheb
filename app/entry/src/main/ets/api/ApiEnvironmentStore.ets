@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { preferences } from '@kit.ArkData';
 import { AgentApiClient, ApiClientConfig } from './AgentApiClient';
+import { ApiDefaults } from './ApiDefaults';
 
 /** Persists the developer-selected API environment across app restarts. */
 export class ApiEnvironmentStore {
@@ -10,6 +11,11 @@ export class ApiEnvironmentStore {
   private static readonly KEY_TIMEOUT_MS: string = 'timeout_ms';
 
   static restore(context: common.UIAbilityContext): boolean {
+    if (!ApiDefaults.ALLOW_DEBUG) {
+      AgentApiClient.configure({ baseUrl: ApiDefaults.DEFAULT_BASE_URL, useFixture: false,
+        timeoutMs: ApiDefaults.DEFAULT_TIMEOUT_MS });
+      return true;
+    }
     try {
       const defaults: ApiClientConfig = AgentApiClient.getConfig();
       const store: preferences.Preferences = preferences.getPreferencesSync(context, {

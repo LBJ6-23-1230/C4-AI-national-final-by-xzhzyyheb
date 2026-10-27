@@ -19,11 +19,11 @@ def retrieve(repository, owner, point, kb_id, document_id=""):
     kb = repository.get("knowledge_bases", kb_id) if repository else None
     if not kb or kb.get("userId") != owner:
         return None, "NOT_FOUND"
-    documents = {d["documentId"]: d for d in repository.list("documents")
+    documents = {d["documentId"]: d for d in repository.query("documents", {"userId": owner, "kbId": kb_id})
                  if d.get("userId") == owner and d.get("kbId") == kb_id}
     if document_id and document_id not in documents:
         return None, "NOT_FOUND"
-    candidates = [c for c in repository.list("chunks")
+    candidates = [c for c in repository.query("chunks", {"userId": owner, "kbId": kb_id})
                   if c.get("userId") == owner and c.get("kbId") == kb_id
                   and c.get("documentId") in documents
                   and documents[c["documentId"]].get("status") == "ready"
@@ -49,7 +49,9 @@ def retrieve(repository, owner, point, kb_id, document_id=""):
                         "headingPath": chunk.get("headingPath", ""),
                         "chunkIndex": chunk.get("index", 0),
                         "contentHash": content_hash(chunk["text"]),
-                        "parsedAt": doc.get("parsedAt", ""), "text": chunk["text"]})
+                        "parsedAt": doc.get("parsedAt", ""), "text": chunk["text"],
+                        "fileSha256": doc.get("sha256", ""),
+                        "extractionVersion": doc.get("extractionVersion", 1)})
     return sources, "" if sources else "INSUFFICIENT_MATERIALS"
 
 

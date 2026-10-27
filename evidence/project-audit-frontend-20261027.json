@@ -1,0 +1,56 @@
+[
+  {
+    "script": "check_login_preferences.js",
+    "exitCode": 0,
+    "output": "PASS AuthStore: account memory, session-only login, encrypted persistent login, logout, opt-out",
+    "error": ""
+  },
+  {
+    "script": "check_release_environment.js",
+    "exitCode": 0,
+    "output": "PASS production API address lock, stale preference isolation, Fixture prohibition and user-facing errors",
+    "error": ""
+  },
+  {
+    "script": "check_page_request_recovery.js",
+    "exitCode": 0,
+    "output": "PASS workflow refresh can be retried after completing while hidden\nPASS switching history while sending unlocks new conversation\nPASS late history request cannot expose previous account records\nPASS history request completes while page is covered\nPASS uncertain submit freezes original answers for an identical retry\nPASS definite server rejection permits corrected answers\nPASS exercise load completes while page is covered\nPASS covered submit keeps one idempotency key and adopts result\nPASS failed covered submission is retryable with original key\nPASS destroyed exercise page ignores its old load\nPASS picker completes while hidden and cannot overwrite a newer flow\nPASS identity change rejects old exercise result\nPASS chat response replaces sending bubble while covered\nPASS destroyed chat persists interrupted message and rejects old response\nPASS new chat invalidates previous response\nPASS out-of-order document responses keep selected library\nPASS switching library invalidates search without clearing newer busy flag\nPASS upload into previous library cannot pollute current documents or tab\nPASS old-account library response cannot enter new account page\nPASS actual API validator accepts focus GET/POST and rejects invalid payloads\nPASS late diagnosis confirmation cannot overwrite a newer goal request\nPASS goal switching serializes mutations and preserves a collapsed summary\nPASS intent switching clears stale image prompt and leaves image selection explicit\nPASS only an explicitly started learning reply displays a goal summary\nPASS late document poll cannot restore a deleted document\nPASS document poll stops after server reports deletion\nPASS partner matching ignores an older response after a newer match\nPASS partner contacts and invites cannot cross an account change\nPASS partner preference conflict refreshes version and permits retry\n29 request recovery checks passed (actual controller methods; device UI not exercised).",
+    "error": ""
+  },
+  {
+    "script": "check_focus_persistence.js",
+    "exitCode": 0,
+    "output": "PASS: real ETS state/store modules cover legacy data, restart, deduplication, write failure, offline queue, sync acknowledgement and account switching.\nPASS: active timer ID, pause facts, elapsed-time cap, unsaved draft, failure rollback and recovery account isolation.\nPASS: real plan ViewModel rejects late results for another account and older plan versions.",
+    "error": "学习记录本地持久化失败\n学习记录本地持久化失败\n学习记录本地持久化失败"
+  },
+  {
+    "script": "check_grounded_exercises.js",
+    "exitCode": 0,
+    "output": "PASS: actual ETS exercise modules enforce material scope, fresh retrieval, explicit failures, async request order and account isolation.\nPASS: actual ETS goal DTO parsing, chat request, explicit submission binding and trace account isolation.",
+    "error": ""
+  },
+  {
+    "script": "check_workflow_request_isolation.js",
+    "exitCode": 0,
+    "output": "PASS late status cannot enter another account cache\nPASS older status cannot overwrite a newer refresh\nPASS old missing-session response cannot delete newer workflow\nPASS workflow start cannot cross an account change\nPASS workflow loop stops after account change\nPASS missing-session rebuild cannot replace a later chosen workflow\n6 actual workflow isolation checks passed.",
+    "error": ""
+  },
+  {
+    "script": "check_parser_rules.js",
+    "exitCode": 0,
+    "output": "====================================================================================\n  闸门：课程表 / 作业 DDL 解析规则\n====================================================================================\n  被测: app\\entry\\src\\main\\ets\\services\\FileParserService.ets\n\n① 日期：支持多种写法（原实现只认 new Date() 能吃的）\n  PASS 2026-10-15\n  PASS 2026/10/15\n  PASS 2026.10.15\n  PASS 2026年10月15日\n  PASS 2026年10月15\n  PASS 含空格 2026 - 10 - 15\n  PASS 10月15日 → 补年份   2026-10-15\n  PASS 已过去的月日 → 补下一年   2027-01-05\n\n② 无效日期必须判为无效（原实现静默变 NaN，优先级悄悄算成\"低\"）\n  PASS 2026-02-30 不存在\n  PASS 13月1日\n  PASS 下周三\n  PASS 空串\n  PASS 未设置 → 未设置\n  PASS 空值 → 未设置\n  PASS 「待定」→ 抛错而非 NaN   第 3 行的考试日期认不出来：「待定」。\n\n③ 表头别名（原实现每字段只认 2–3 个精确词）\n  PASS 科目/考试时间/重要程度/学时/状态\n  PASS 大小写与空格不敏感\n\n④ 分隔符自动识别（教务系统 / Excel 复制出来的常是制表符）\n  PASS 制表符\n  PASS 中文逗号\n\n⑤ 无表头兜底，但认不出的表头不许瞎猜\n  PASS 纯数据两列\n  PASS 表头认不出且不像数据 → 如实报错   CSV 表头缺少课程名称列。\n\n⑥ 原格式回归（改之前能用的，改之后必须还能用）\n  PASS 文档标准 CSV\n  PASS 英文键名表头\n  PASS 引号内含逗号\n  PASS CRLF 换行\n  PASS 缺列回落推断值\n  PASS DDL：标准 CSV\n  PASS DDL：中文日期\n\n⑦ 中文日期能算出正确的剩余天数（原实现是 NaN）\n  PASS 与 ISO 写法结果一致   剩余 14 天\n\n⑧ 交叉校验：闸门里的别名表必须与 .ets 逐字一致（防漂移）\n  PASS COURSE_NAME_ALIASES 与 .ets 一致\n  PASS EXAM_DATE_ALIASES 与 .ets 一致\n  PASS PRIORITY_ALIASES 与 .ets 一致\n  PASS STUDY_HOURS_ALIASES 与 .ets 一致\n  PASS STATUS_ALIASES 与 .ets 一致\n  PASS TITLE_ALIASES 与 .ets 一致\n  PASS DUE_DATE_ALIASES 与 .ets 一致\n  PASS ESTIMATED_MINUTES_ALIASES 与 .ets 一致\n  PASS JSON_COURSE_NAME_KEYS 与 .ets 一致\n  PASS JSON_EXAM_DATE_KEYS 与 .ets 一致\n  PASS JSON_PRIORITY_KEYS 与 .ets 一致\n  PASS JSON_STUDY_HOURS_KEYS 与 .ets 一致\n  PASS JSON_STATUS_KEYS 与 .ets 一致\n  PASS JSON_TITLE_KEYS 与 .ets 一致\n  PASS JSON_DUE_DATE_KEYS 与 .ets 一致\n  PASS JSON_EST_MINUTES_KEYS 与 .ets 一致\n\n====================================================================================\n结论：PASS —— 45 项全部通过（含与 .ets 的别名表交叉校验）",
+    "error": ""
+  },
+  {
+    "script": "test_account_profile_save.cjs",
+    "exitCode": 0,
+    "output": "Account profile save: 11 timeout, recovery, and account-isolation scenarios passed.",
+    "error": ""
+  },
+  {
+    "script": "test_avatar_crop_geometry.cjs",
+    "exitCode": 0,
+    "output": "Avatar crop geometry: 8 landmark/resize checks and 144 boundary scenarios passed.",
+    "error": ""
+  }
+]

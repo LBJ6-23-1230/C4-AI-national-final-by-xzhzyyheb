@@ -11,6 +11,19 @@ from typing import Any
 
 
 class Repository(ABC):
+	def query(self, collection, filters=None, *, limit=None, after=None):
+		"""Compatibility query; SQL backends override this with indexed filtering."""
+		rows = []
+		for item_id in sorted(self.ids(collection)):
+			if after and item_id <= after:
+				continue
+			item = self.get(collection, item_id)
+			if item is not None and all(item.get(k) == v for k, v in (filters or {}).items()):
+				rows.append(item)
+				if limit is not None and len(rows) >= limit:
+					break
+		return rows
+
 	def transaction(self):
 		"""Persistent backends serialize read/decide/write operations here."""
 		raise NotImplementedError

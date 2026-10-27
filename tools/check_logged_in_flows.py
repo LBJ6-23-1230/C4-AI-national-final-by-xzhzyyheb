@@ -158,7 +158,9 @@ check("GET 学习画像（含 profile.userId）",
       "HTTP %s profile.userId=%s" % (st, (r.get("profile") or {}).get("userId")))
 
 st, r = call("GET", "/api/v1/plans/current", token=token)
-check("GET 当前计划", st == 200, "HTTP %s" % st)
+# New accounts deliberately start without an invented example plan.
+check("GET 当前计划（新账号无预置计划）", st == 404 and r.get("errorCode") == "NOT_FOUND",
+      "HTTP %s" % st)
 
 st, r = call("GET", "/api/v1/exercises/set-demo-binary-tree-001", token=token)
 check("GET 题集（登录后）", st == 200 and has(r, "exercises", "arr"),

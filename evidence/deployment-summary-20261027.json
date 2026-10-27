@@ -1,0 +1,51 @@
+{
+  "deployment-final-20261027.xml": {
+    "tests": "730",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "111.209"
+  },
+  "postgresql-final-20261027.xml": {
+    "tests": "32",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "21.660"
+  },
+  "worker-process-recovery-20261027.xml": {
+    "tests": "1",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "9.172"
+  },
+  "harmonyBuild": {
+    "status": "success",
+    "environment": "development",
+    "mode": "debug",
+    "signed": false,
+    "hap": "E:\\C4-AI-national-final-by-xzhzyyheb-main\\C4-AI-national-final-by-xzhzyyheb-main\\app\\entry\\build\\default\\outputs\\default\\entry-default-unsigned.hap",
+    "bytes": 3594577,
+    "sha256": "88bfd23144f1956868763826e0f400515d1ab60c79bdaae91181adcb1c778652",
+    "buildEvidence": [
+      "[2026-10-27T13:52:49.694] [DEBUG] debug-file - No signingConfig found, initRemoteHspCache failed.",
+      "[2026-10-27T13:57:11.025] [DEBUG] debug-file - No signingConfig found, initRemoteHspCache failed.",
+      "[2026-10-27T13:59:29.934] [DEBUG] debug-file - No signingConfig found, initRemoteHspCache failed.",
+      "[2026-10-27T14:00:02.305] [DEBUG] debug-file - No signingConfig found, initRemoteHspCache failed.",
+      "[2026-10-27T14:02:09.809] [DEBUG] debug-file - No signingConfig found, initRemoteHspCache failed.",
+      "[2026-10-27T14:02:33.399] [INFO] debug-file - Finished :entry:default@CompileArkTS... after 17 s 428 ms ",
+      "[2026-10-27T14:02:35.104] [WARN] debug-file - No signingConfig found for product default",
+      "[2026-10-27T14:02:35.086] [INFO] debug-file - Finished :entry:default@PackageHap... after 1 s 375 ms ",
+      "[2026-10-27T14:02:35.117] [INFO] debug-file - Finished :entry:assembleHap... after 1 ms ",
+      "[2026-10-27T14:02:35.142] [INFO] debug-file - BUILD SUCCESSFUL in 27 s 191 ms "
+    ],
+    "sdkWorkaround": "workspace-only SDK copy with DLL dependencies in resource compiler directory; installed SDK unchanged",
+    "limitations": [
+      "not a signed release or store APP package",
+      "no real-device/network acceptance performed",
+      "existing ArkTS deprecation/throw warnings remain"
+    ]
+  },
+  "restore": true
+}

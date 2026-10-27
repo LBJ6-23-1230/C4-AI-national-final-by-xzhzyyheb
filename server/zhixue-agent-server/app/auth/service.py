@@ -309,7 +309,7 @@ def create_session(repository: Repository, user_id: str) -> dict[str, Any]:
 
 def resolve_session(repository: Repository, token: str) -> dict[str, Any] | None:
     """把 token 换成用户；过期或不存在返回 None（不抛异常，便于中间件安全降级）。"""
-    if not token:
+    if not token or token.startswith("sha256:"):
         return None
     session = repository.get(SESSIONS, token)
     if session is None:
@@ -413,7 +413,7 @@ def find_user_by_phone(repository: Repository, phone: Any) -> dict[str, Any] | N
     normalized = normalize_phone(phone, required=False)
     if not normalized:
         return None
-    for user in repository.list(USERS):
+    for user in repository.query(USERS, {"phone": normalized}):
         if not isinstance(user, dict) or user.get("status") != "active":
             continue
         if user.get("phone") == normalized:
@@ -928,6 +928,8 @@ def deactivate_user(repository: Repository, user_id: str) -> bool:
     user["deactivatedAt"] = _iso(_now())
     repository.save(USERS, user_id, user)
     revoke_all_sessions(repository, user_id)
+    if hasattr(repository, "purge_user_data"):
+        repository.purge_user_data(user_id)
     return True
 
 

@@ -50,11 +50,20 @@ export class AgentApiClient {
   }
 
   static configure(config: ApiClientConfig): void {
+    if (!ApiDefaults.ALLOW_DEBUG) {
+      AgentApiClient.config = { baseUrl: ApiDefaults.DEFAULT_BASE_URL, useFixture: false,
+        timeoutMs: ApiDefaults.DEFAULT_TIMEOUT_MS };
+      return;
+    }
     AgentApiClient.config = { baseUrl: AgentApiClient.normalizeBaseUrl(config.baseUrl), useFixture: config.useFixture, timeoutMs: config.timeoutMs };
   }
 
-  static setBaseUrl(baseUrl: string): void { AgentApiClient.config.baseUrl = AgentApiClient.normalizeBaseUrl(baseUrl); }
-  static setUseFixture(useFixture: boolean): void { AgentApiClient.config.useFixture = useFixture; }
+  static setBaseUrl(baseUrl: string): void {
+    if (ApiDefaults.ALLOW_DEBUG) AgentApiClient.config.baseUrl = AgentApiClient.normalizeBaseUrl(baseUrl);
+  }
+  static setUseFixture(useFixture: boolean): void {
+    AgentApiClient.config.useFixture = ApiDefaults.ALLOW_DEMO && useFixture;
+  }
 
   static async createWorkflow(request: WorkflowCreateRequest): Promise<ApiResult<WorkflowResponse>> {
     return AgentApiClient.request<WorkflowResponse>(http.RequestMethod.POST, '/api/v1/workflows', request);
@@ -498,7 +507,9 @@ export class AgentApiClient {
   }
 
   private static httpErrorMessage(statusCode: number): string {
-    if (statusCode === 401 || statusCode === 403) return '服务拒绝访问，请检查鉴权配置。';
+    if (statusCode === 401) return '登录已过期，请返回登录页重新登录。';
+    if (statusCode === 403) return '当前账号没有执行此操作的权限。';
+    if (statusCode === 503) return '服务暂时不可用或正在维护，请稍后重试。';
     if (statusCode === 404) return '未找到对应接口，请检查服务地址和接口版本。';
     if (statusCode === 408) return '服务响应超时，请稍后重试。';
     if (statusCode === 429) return '服务请求过于频繁，请稍后重试。';

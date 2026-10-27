@@ -19,6 +19,10 @@ struct ApiEnvironment {
   private isPageActive: boolean = false;
 
   aboutToAppear(): void {
+    if (!ApiDefaults.ALLOW_DEBUG) {
+      router.back();
+      return;
+    }
     this.isPageActive = true;
     this.syncConfig();
   }
@@ -35,6 +39,7 @@ struct ApiEnvironment {
   }
 
   private applyConfig(baseUrl: string, useFixture: boolean, message: string): void {
+    if (!ApiDefaults.ALLOW_DEBUG) return;
     this.checkRequestVersion++;
     this.isChecking = false;
     const current: ApiClientConfig = AgentApiClient.getConfig();

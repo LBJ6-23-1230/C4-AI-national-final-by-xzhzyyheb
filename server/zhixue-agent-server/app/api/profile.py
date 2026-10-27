@@ -38,6 +38,10 @@ def update_learning_preferences(user_id):
 		profile = _repository.get("profiles", user_id)
 		if profile is None:
 			return jsonify({"errorCode": "NOT_FOUND", "message": "画像不存在"}), 404
+		expected_version = data.get("expectedProfileVersion")
+		if getattr(_repository, "durable_jobs", False) or expected_version is not None:
+			if isinstance(expected_version, bool) or not isinstance(expected_version, int) or expected_version != profile.get("profileVersion", 1):
+				return jsonify({"errorCode": "CONFLICT", "message": "学习画像已变化，请刷新后再保存", "details": {"profileVersion": profile.get("profileVersion", 1)}}), 409
 		profile.update(targetCourse=courses[0], targetCourses=courses, goal=goal.strip(),
 			courseGoals={c: goal.strip() for c in courses}, freeTimeSlots=list(dict.fromkeys(slots)),
 			profileVersion=profile.get("profileVersion", 1) + 1, preferencesConfirmed=True)

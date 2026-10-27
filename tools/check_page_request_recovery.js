@@ -47,7 +47,17 @@ function loadPage(name) {
   const source = fs.readFileSync(file, 'utf8');
   const declaration = /struct (\w+)\s*\{/.exec(source);
   const first = source.indexOf('  aboutToAppear()');
-  const fields = source.slice(declaration.index + declaration[0].length, first)
+  const fieldSource = source.slice(declaration.index + declaration[0].length, first);
+  const fieldMethods = /^  (?:(?:private|async)\s+)*(\w+)\(/gm;
+  const fieldParts = []; let previous = 0, fieldMatch;
+  while ((fieldMatch = fieldMethods.exec(fieldSource))) {
+    fieldParts.push(fieldSource.slice(previous, fieldMatch.index));
+    previous = endOfMethod(fieldSource, fieldSource.indexOf('{', fieldMatch.index));
+    fieldMethods.lastIndex = previous;
+  }
+  fieldParts.push(fieldSource.slice(previous));
+  const fields = fieldParts.join('')
+    .replace(/^\s*@Builder\s*$/gm, '')
     .replace(/^\s*@(?:State|StorageLink\([^\n]+?\)|Watch\([^\n]+?\))\s*/gm, '\n  ')
     .replace(/@Watch\([^)]*\)\s*/g, '');
   const methods = [];
@@ -68,7 +78,7 @@ function loadPage(name) {
     // Scrolling and device services do not participate in request decisions.
     setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, clearInterval: () => {},
     appState, DemoSnapshot: snapshot, AgentApiClient: network,
-    ApiDefaults: { DEMO_USER_ID: 'demo-user' },
+    ApiDefaults: { DEMO_USER_ID: 'demo-user', ALLOW_DEBUG: true, ALLOW_DEMO: true },
     router: { getParams: () => ({ knowledgePointId: 'point' }) },
     Scroller: class {}, Edge: {},
     ExerciseViewModel: class {
@@ -411,7 +421,7 @@ async function check(name, run) {
     await selecting; assert.equal(page.learningContext.goalId, 'one');
     assert.equal(page.showLearningGoalCard, false); assert.equal(page.isGoalLoading, false);
   });
-  await check('intent switching clears stale image prompt without adding another', async () => {
+  await check('intent switching clears stale image prompt and leaves image selection explicit', async () => {
     const page = loadPage('ChatMain'); let pickCount = 0;
     page.pickImage = async () => { pickCount++; };
     for (const intent of ['get_suggestion', 'analyze_weakness', 'match_partner', 'query_tasks', 'update_profile', 'analyze_wrong']) {
@@ -419,7 +429,7 @@ async function check(name, run) {
       page.chooseIntent({ intent, prompt: 'prompt' });
       assert.equal(page.voiceMessage, ''); assert.equal(page.showGoalSummary, false);
     }
-    assert.equal(pickCount, 1);
+    assert.equal(pickCount, 0, 'switching intent must not open the picker without a camera action');
   });
   await check('only an explicitly started learning reply displays a goal summary', async () => {
     const page = loadPage('ChatMain');
@@ -429,6 +439,73 @@ async function check(name, run) {
     network.chat = async () => ({ reply: 'profile', intent: 'update_profile' });
     page.inputText = 'view profile'; await page.sendMessage();
     assert.equal(page.showGoalSummary, false);
+  });
+  await check('late document poll cannot restore a deleted document', async () => {
+    const pending = deferred();
+    network.getKnowledgeDocument = () => pending.promise;
+    const page = loadPage('KnowledgeBase');
+    page.waitFor = async () => {};
+    page.loadKnowledgeBases = async () => {};
+    page.selectedKbId = 'a'; page.documents = [{ ...doc('a', 'deleted'), status: 'processing' }];
+    const polling = page.pollDocument('deleted', 'alice', 0);
+    await Promise.resolve(); await Promise.resolve();
+    await page.finishDelete('document', 'deleted', false);
+    pending.resolve(ok(doc('a', 'deleted'))); await polling;
+    assert.equal(page.documents.length, 0);
+    assert.equal(page.uploadResultVisible, false);
+  });
+  await check('document poll stops after server reports deletion', async () => {
+    let calls = 0;
+    network.getKnowledgeDocument = async () => {
+      calls++; return { ok: false, error: { code: 'NOT_FOUND' } };
+    };
+    const page = loadPage('KnowledgeBase'); page.waitFor = async () => {};
+    page.selectedKbId = 'a'; page.documents = [{ ...doc('a', 'gone'), status: 'processing' }];
+    await page.pollDocument('gone', 'alice', 0);
+    assert.equal(calls, 1);
+  });
+  await check('partner matching ignores an older response after a newer match', async () => {
+    const first = deferred(), second = deferred(); let calls = 0;
+    network.matchPartner = () => (++calls === 1 ? first.promise : second.promise);
+    const page = loadPage('PartnerMatch');
+    const a = page.loadOnlineMatch(), b = page.loadOnlineMatch();
+    const candidate = id => ({ candidate: { userId: id }, sharedCourses: [] });
+    second.resolve(ok({ matchedCandidate: candidate('new'), candidates: [] })); await b;
+    first.resolve(ok({ matchedCandidate: candidate('old'), candidates: [] })); await a;
+    assert.equal(page.onlineBest.candidate.userId, 'new');
+  });
+  await check('partner contacts and invites cannot cross an account change', async () => {
+    const contacts = deferred(), invites = deferred();
+    network.listPartnerContacts = () => contacts.promise;
+    network.listPartnerInvitations = () => invites.promise;
+    const page = loadPage('PartnerMatch');
+    const a = page.loadContacts(), b = page.loadInvitations();
+    appState.currentUser = { userId: 'bob' };
+    contacts.resolve(ok({ contacts: [{ partnerName: 'private' }] }));
+    invites.resolve(ok({ invitations: [{ invitationId: 'private' }] }));
+    await Promise.all([a, b]);
+    assert.equal(page.contactNames.length, 0);
+    assert.equal(page.incomingInvitations.length, 0);
+  });
+  await check('partner preference conflict refreshes version and permits retry', async () => {
+    const page = loadPage('PartnerMatch');
+    appState.currentUser.learningGoal = {};
+    page.loadOnlineMatch = async () => {};
+    page.targetCourses = ['edited']; page.targetGoal = 'draft';
+    network.getProfile = async () => ok({ profileVersion: 7, profile: { targetCourses: ['server'] } });
+    let expected;
+    network.saveLearningPreferences = async (_, request) => {
+      expected = request.expectedProfileVersion;
+      return { ok: false, error: { code: 'CONFLICT', message: 'refresh' } };
+    };
+    await page.savePreferences();
+    assert.equal(page.targetGoal, 'draft', 'conflict must retain the unsaved form');
+    network.saveLearningPreferences = async (_, request) => {
+      expected = request.expectedProfileVersion;
+      return ok({ profileVersion: 8 });
+    };
+    await page.savePreferences();
+    assert.equal(expected, 7);
   });
   console.log(`${passed} request recovery checks passed (actual controller methods; device UI not exercised).`);
 })().catch(error => { console.error(error); process.exit(1); });

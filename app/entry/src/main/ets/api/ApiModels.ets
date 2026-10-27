@@ -13,7 +13,7 @@ export type PlanTaskStatus = 'pending' | 'in_progress' | 'completed';
  * `failed` 是**真实可达**的状态（如 PDF 第一期不支持、编码错误），
  * 界面必须展示失败原因，不能假装成功。
  */
-export type KnowledgeDocumentStatus = 'ready' | 'failed';
+export type KnowledgeDocumentStatus = 'ready' | 'failed' | 'processing';
 
 /** 知识库（按课程组织）。`userId` 表明它是个人资料，必须按用户隔离。 */
 export interface KnowledgeBase {
@@ -760,6 +760,7 @@ export interface PartnerContactListResponse {
 }
 
 export interface LearningPreferencesRequest {
+  expectedProfileVersion?: number;
   targetCourses?: string[];
   targetCourse: string;
   goal: string;

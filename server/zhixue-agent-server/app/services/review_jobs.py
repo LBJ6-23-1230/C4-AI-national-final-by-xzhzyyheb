@@ -70,6 +70,27 @@ def prepare(questions, answers, keys):
         return fallback, set(), None
 
 
+def apply_result(repository, submission_id, expected, wrong_snapshots, explanations, ids):
+    """Conditional enrichment only; never repeats scoring or revives deleted rows."""
+    updated = deepcopy(expected)
+    owner = expected["response"]["userId"]
+    changed = []
+    for row in updated["response"]["review"]:
+        key = row["exerciseId"]
+        if row.get("explanationSource") == "fallback" and key in ids and explanations.get(key):
+            row.update(explanation=explanations[key], explanationSource="llm")
+            changed.append(key)
+    updated["response"]["reviewStatus"] = "completed" if changed else "failed"
+    if not repository.compare_and_save("submissions", submission_id, expected, updated):
+        return False
+    for key in changed:
+        previous = wrong_snapshots.get(key)
+        if previous and previous.get("userId") == owner:
+            repository.compare_and_save("wrong_book", f"{owner}:{key}", previous,
+                                        dict(previous, explanation=explanations[key]))
+    return True
+
+
 def attach(future, repository, submission_id, expected, wrong_snapshots):
     """Register only after commit. Never access Flask globals in a callback."""
     expected = deepcopy(expected)

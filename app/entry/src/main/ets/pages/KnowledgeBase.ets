@@ -102,6 +102,8 @@ struct KnowledgeBasePage {
   private documentRequestVersion: number = 0;
   private searchRequestVersion: number = 0;
   private detailRequestVersion: number = 0;
+  private pollVersion: number = 0;
+  private pollingDocuments: string[] = [];
   private uploadHintTimer: number = -1;
   private deleteHintTimer: number = -1;
 
@@ -143,6 +145,8 @@ struct KnowledgeBasePage {
   aboutToDisappear(): void {
     this.isActive = false;
     this.pageVersion++;
+    this.pollVersion++;
+    this.pollingDocuments = [];
     this.stopUploadHint();
     this.stopDeleteHint();
   }
@@ -168,6 +172,8 @@ struct KnowledgeBasePage {
     this.documentRequestVersion++;
     this.searchRequestVersion++;
     this.detailRequestVersion++;
+    this.pollVersion++;
+    this.pollingDocuments = [];
     this.documents = [];
     this.hits = [];
     this.retrievalMode = '';
@@ -220,6 +226,9 @@ struct KnowledgeBasePage {
     }
     const detail = result.data;
     this.documents = detail.documents ?? [];
+    this.documents.forEach((doc: KnowledgeDocument) => {
+      if (doc.status === 'processing') void this.pollDocument(doc.documentId, owner, page);
+    });
     const refreshed: KnowledgeBase[] = [];
     for (let index: number = 0; index < this.knowledgeBases.length; index++) {
       const item: KnowledgeBase = this.knowledgeBases[index];
@@ -369,6 +378,11 @@ struct KnowledgeBasePage {
 
   private async finishDelete(targetType: string, targetId: string,
     recoveredAfterTimeout: boolean): Promise<void> {
+    this.pollVersion++;
+    this.pollingDocuments = [];
+    if (targetType === 'document') {
+      this.documents = this.documents.filter((doc: KnowledgeDocument): boolean => doc.documentId !== targetId);
+    }
     this.isDeleting = false;
     this.stopDeleteHint();
     this.deleteConfirmVisible = false;
@@ -523,7 +537,10 @@ struct KnowledgeBasePage {
       this.documentRequestVersion++;
       this.documents = [doc, ...this.documents.filter((item: KnowledgeDocument): boolean => item.documentId !== doc.documentId)];
     }
-    if (doc.status === 'failed') {
+    if (doc.status === 'processing') {
+      this.showMessage(`「${doc.fileName}」已上传，后台正在解析。处理完成后会自动刷新；离开页面不会中断处理。`, false);
+      if (doc.kbId === this.selectedKbId) void this.pollDocument(doc.documentId, owner, page);
+    } else if (doc.status === 'failed') {
       // 失败态照实展示 —— 不假装成功
       this.showMessage(`「${doc.fileName}」解析失败：${doc.statusMessage ?? '未知原因'}`, true);
     } else {
@@ -536,6 +553,35 @@ struct KnowledgeBasePage {
     this.uploadResultVisible = true;
     await this.loadKnowledgeBases();
     if (this.ownsRequest(owner, page) && this.selectedKbId === doc.kbId) this.activeTab = 'documents';
+  }
+
+  private async pollDocument(documentId: string, owner: string, page: number): Promise<void> {
+    if (this.pollingDocuments.indexOf(documentId) >= 0) return;
+    const version: number = this.pollVersion;
+    const kbId: string = this.selectedKbId;
+    this.pollingDocuments.push(documentId);
+    try {
+      for (let attempt: number = 0; attempt < 30; attempt++) {
+        await this.waitFor(2000);
+        if (!this.ownsRequest(owner, page) || version !== this.pollVersion || kbId !== this.selectedKbId) return;
+        const result = await AgentApiClient.getKnowledgeDocument(documentId);
+        if (!this.ownsRequest(owner, page) || version !== this.pollVersion || kbId !== this.selectedKbId) return;
+        if (!result.ok) {
+          const code: string = (result as ApiFailure).error.code;
+          if (code === 'NOT_FOUND' || code === 'UNAUTHORIZED' || code === 'FORBIDDEN') return;
+          continue;
+        }
+        if (result.data.status !== 'processing') {
+          await this.showUploadSuccess(result.data, false);
+          return;
+        }
+      }
+      if (this.ownsRequest(owner, page) && version === this.pollVersion) this.showMessage('资料仍在后台处理，请稍后刷新资料列表查看结果。', false);
+    } finally {
+      if (version === this.pollVersion) {
+        this.pollingDocuments = this.pollingDocuments.filter((id: string): boolean => id !== documentId);
+      }
+    }
   }
 
   private fileNameFromUri(uri: string): string {
@@ -972,9 +1018,9 @@ struct KnowledgeBasePage {
             Text(doc.fileName).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#0F172A')
               .layoutWeight(1).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
             // 状态标签：失败必须显眼
-            Text(doc.status === 'ready' ? '基础解析完成' : '解析失败')
+            Text(doc.status === 'ready' ? '基础解析完成' : doc.status === 'processing' ? '后台处理中' : '解析失败')
               .fontSize(11).fontColor('#FFFFFF')
-              .backgroundColor(doc.status === 'ready' ? '#10B981' : '#DC2626')
+              .backgroundColor(doc.status === 'ready' ? '#10B981' : doc.status === 'processing' ? '#2563EB' : '#DC2626')
               .padding({ left: 8, right: 8, top: 3, bottom: 3 }).borderRadius(8)
             Text('正文 ›').fontSize(12).fontColor('#2563EB')
               .padding({ left: 6, right: 6, top: 3, bottom: 3 })

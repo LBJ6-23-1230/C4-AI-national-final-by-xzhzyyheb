@@ -2,6 +2,9 @@ import os
 import logging
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False, encoding="utf-8-sig")
+
 from flask import Flask, g, request
 from flask_cors import CORS
 
@@ -73,7 +76,7 @@ def _cors_origins() -> list[str]:
 #: 切换方式：
 #:   `ZHIXUE_DB=sqlite`          → 用 `<数据目录>/repository.sqlite`
 #:   `ZHIXUE_DB=sqlite:<path>`   → 用指定的 sqlite 文件
-VALID_DB_BACKENDS = ("json", "sqlite")
+VALID_DB_BACKENDS = ("json", "sqlite", "postgresql")
 
 
 def _build_repository(path: Path):
@@ -86,6 +89,11 @@ def _build_repository(path: Path):
         raise ValueError(
             f"ZHIXUE_DB 取值非法: {spec!r}；可选 {VALID_DB_BACKENDS}（可写成 sqlite:<path>）")
 
+    if backend == "postgresql":
+        from app.repositories.postgresql_repository import PostgreSQLRepository
+        if not os.getenv("DATABASE_URL"):
+            raise RuntimeError("DATABASE_URL is required for PostgreSQL")
+        return PostgreSQLRepository(os.environ["DATABASE_URL"])
     if backend == "sqlite":
         from app.repositories.sqlite_repository import SQLiteRepository
 
@@ -121,6 +129,9 @@ def _report_repository_state(path: Path, repository) -> None:
 
 
 def create_app(repository_path: str | Path | None = None) -> Flask:
+    from app.settings import load_environment, validate_config, demo_enabled, production
+    load_environment()
+    validate_config()
     event_logger = logging.getLogger("zhixue")
     event_logger.setLevel(logging.INFO)
     if not event_logger.handlers:
@@ -142,10 +153,20 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
     path = Path(repository_path) if repository_path else Path(__file__).resolve().parents[1] / "data" / "repository.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     repository = _build_repository(path)
+    app.extensions["repository"] = repository
+    app.config["DEMO_ENABLED"] = demo_enabled()
+    if getattr(repository, "durable_jobs", False):
+        from sqlalchemy.exc import DBAPIError, TimeoutError as DatabaseTimeout
+        def database_unavailable(error):
+            event_logger.warning("database_request_failed request_id=%s", getattr(g, "request_id", ""))
+            return {"errorCode": "SERVICE_UNAVAILABLE", "message": "服务暂时不可用，请稍后重试", "details": None}, 503
+        app.register_error_handler(DBAPIError, database_unavailable)
+        app.register_error_handler(DatabaseTimeout, database_unavailable)
     if not os.getenv("ZHIXUE_QUIET"):
         _report_repository_state(path, repository)
     configure_demo_repository(repository)
-    ensure_demo_data()
+    if demo_enabled():
+        ensure_demo_data()
     configure_workflows_repository(repository)
     configure_auth_repository(repository)
     configure_knowledge_repository(repository)
@@ -194,6 +215,14 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
             if user is not None:
                 g.current_user = user
                 g.auth_token = token
+        if not demo_enabled() and request.path.startswith("/api/"):
+            public = {"/api/agent/health", "/api/v1/auth/status", "/api/v1/auth/register",
+                      "/api/v1/auth/login", "/api/v1/auth/phone/login", "/api/v1/auth/login-or-register",
+                      "/api/v1/auth/send-code", "/api/v1/auth/verify-code", "/api/v1/auth/login-with-huawei"}
+            if "/demo/" in request.path or request.path.startswith("/api/v1/experiments"):
+                return {"errorCode": "NOT_FOUND", "message": "resource not found", "details": None}, 404
+            if not g.current_user and request.path not in public:
+                return {"errorCode": "UNAUTHORIZED", "message": "请先登录", "details": None}, 401
 
     @app.before_request
     def require_contract_version():
@@ -218,6 +247,29 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
     def health_check():
         return {"status": "ok"}
 
+    @app.get("/ready")
+    def readiness_check():
+        try:
+            if hasattr(repository, "check_ready"):
+                repository.check_ready()
+            else:
+                repository.ids("users")
+            return {"status": "ready"}
+        except Exception:
+            return {"status": "unavailable"}, 503
+
+    @app.before_request
+    def start_request_trace():
+        import uuid
+        g.request_id = uuid.uuid4().hex
+
+    @app.after_request
+    def attach_request_trace(response):
+        response.headers["X-Request-ID"] = getattr(g, "request_id", "")
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     @app.get("/")
     def service_index():
         """根路径自描述，方便评委直接打开浏览器确认服务确实在跑。"""
@@ -235,8 +287,8 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
                 "model": chat_llm.llm_model(),
             },
             "auth": {
-                "mode": "bearer-or-demo",
-                "guestUserId": auth_service.DEMO_USER_ID,
+                "mode": "bearer-or-demo" if demo_enabled() else "bearer",
+                "guestUserId": auth_service.DEMO_USER_ID if demo_enabled() else None,
                 "note": "游客仅访问 demo-user；真实用户数据需要有效会话",
             },
         }

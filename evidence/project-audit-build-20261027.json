@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-27",
+  "build": "success",
+  "mode": "debug",
+  "environment": "development",
+  "apiUrl": "http://10.0.2.2:5000",
+  "signed": false,
+  "artifact": "app\\entry\\build\\default\\outputs\\default\\entry-default-unsigned.hap",
+  "bytes": 3605866,
+  "sha256": "6ea76675338264cedf54a518e87e0bd5e98228a36fdf71cf2a65c8f42ba7cf14",
+  "log": "evidence/project-audit-build-20261027.log",
+  "limitations": [
+    "device UI not exercised",
+    "no Docker/Linux runtime available",
+    "no live cloud or model credentials used"
+  ]
+}

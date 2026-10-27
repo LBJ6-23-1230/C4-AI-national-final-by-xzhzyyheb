@@ -67,12 +67,14 @@ export class AuthClient {
    * 演示主链（mastery 42 / Plan V1 [30,30] / √√√→66.67→58）完全不受影响。
    */
   static continueAsGuest(): AuthResult {
+    if (!ApiDefaults.ALLOW_DEMO) return { ok: false, user: null, source: 'guest', message: '请登录后使用。' };
     AuthStore.clear();
     return { ok: true, user: AuthClient.guestUser(), source: 'guest', message: '' };
   }
 
   /** 离线 Fixture 模式：与游客身份一致，但明确标注数据来源为本地。 */
   static continueOffline(useFixture: boolean): AuthResult {
+    if (!ApiDefaults.ALLOW_DEMO) return { ok: false, user: null, source: 'guest', message: '当前版本需要连接服务并登录。' };
     AuthStore.clear();
     const message: string = useFixture
       ? '已进入离线演示模式，全部数据由本机 Fixture 提供，判分规则与后端一致。'

@@ -1,0 +1,55 @@
+name: zhixue
+x-runtime: &runtime
+  image: ${APP_IMAGE:?set an immutable APP_IMAGE tag}
+  env_file: .env.production
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=256m,mode=1777
+    - /srv/zhixue/data:size=16m,uid=10001,gid=10001
+  volumes:
+    - ./deploy/runtime-secrets:/run/secrets:ro
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '5'
+services:
+  api:
+    <<: *runtime
+    expose: ['8000']
+    stop_grace_period: 75s
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)"]
+      interval: 20s
+      timeout: 6s
+      retries: 3
+      start_period: 20s
+  worker:
+    <<: *runtime
+    env_file: [.env.production, .env.worker]
+    command: [python, worker.py]
+    stop_grace_period: 120s
+  migrate:
+    <<: *runtime
+    restart: 'no'
+    profiles: [tools]
+    env_file: [.env.production, .env.migration]
+    command: [alembic, upgrade, head]
+  gateway:
+    image: nginx:1.28.0-alpine
+    restart: unless-stopped
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '5'}

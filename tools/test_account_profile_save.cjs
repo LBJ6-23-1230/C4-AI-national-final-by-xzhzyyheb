@@ -2,8 +2,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const ts = require(path.join(process.env.DEVECO_HOME || 'D:/develop/DevEco Studio',
-  'tools/ohpm/node_modules/typescript'));
+const ts = require(process.argv[2] || path.join(process.env.DEVECO_HOME || 'D:/DevEco/DevEco Studio',
+  'tools/hvigor/hvigor/node_modules/typescript'));
 const base = path.join(__dirname, '../app/entry/src/main/ets');
 function load(filename) {
   const full = path.resolve(base, filename);

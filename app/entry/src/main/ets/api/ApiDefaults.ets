@@ -20,9 +20,13 @@
  * 真机联调查本机 IP：`ipconfig`（Windows）取"无线局域网适配器"的 IPv4 地址，
  * 并确认 Windows 防火墙放行 5000 端口入站。
  */
+import { BuildEnvironment } from './BuildEnvironment';
+
 export class ApiDefaults {
+  static readonly ALLOW_DEBUG: boolean = BuildEnvironment.ALLOW_DEBUG;
+  static readonly ALLOW_DEMO: boolean = BuildEnvironment.ALLOW_DEMO;
   /** 默认后端地址。改这一处即可全局生效。 */
-  static readonly DEFAULT_BASE_URL: string = 'http://10.0.2.2:5000';
+  static readonly DEFAULT_BASE_URL: string = BuildEnvironment.API_URL;
 
   /** 本机回环地址，桌面预览 / 浏览器调试用。 */
   static readonly LOCALHOST_BASE_URL: string = 'http://127.0.0.1:5000';

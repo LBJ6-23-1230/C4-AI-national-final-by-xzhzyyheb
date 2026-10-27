@@ -3938,6 +3938,29 @@
           }
         }
       }
+    },
+    "/api/v1/documents/{documentId}/download": {
+      "get": {
+        "summary": "鉴权后获取私有原文件的短期下载地址",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OBS/S3 临时下载地址，有效期 120 秒；本地测试存储返回附件流"
+          },
+          "404": {
+            "description": "原文件不存在或无权访问"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5616,7 +5639,8 @@
             "type": "string",
             "enum": [
               "ready",
-              "failed"
+              "failed",
+              "processing"
             ]
           },
           "statusMessage": {
@@ -5661,6 +5685,15 @@
           },
           "extractionVersion": {
             "type": "integer"
+          },
+          "fileId": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "parseToken": {
+            "type": "string"
           }
         }
       },
@@ -7121,6 +7154,11 @@
               "type": "string",
               "maxLength": 80
             }
+          },
+          "expectedProfileVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "云端 PostgreSQL 保存学习偏好必须提供读取时的 profileVersion，过期返回 409。"
           }
         },
         "anyOf": [

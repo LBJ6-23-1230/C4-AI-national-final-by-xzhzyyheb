@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "timeUTC": "2026-10-27T05:56:06.711538+00:00",
+  "schema": "rehearsal_4d4d535f83c5",
+  "restoreDatabase": "zhixue_test_restore_4d4d535f83c5",
+  "dryRun": {
+    "ok": true,
+    "applied": false,
+    "pending": 8,
+    "counts": {
+      "users": 1,
+      "profiles": 1,
+      "knowledge_bases": 1,
+      "documents": 1,
+      "chunks": 1,
+      "submissions": 1,
+      "chat_messages": 1,
+      "chat_sessions": 1
+    },
+    "sha256": "93086ef7085abe437f716535611f61c2f893151d6d4f67621a49ea72282ae286"
+  },
+  "import": {
+    "ok": true,
+    "applied": true,
+    "pending": 8,
+    "counts": {
+      "users": 1,
+      "profiles": 1,
+      "knowledge_bases": 1,
+      "documents": 1,
+      "chunks": 1,
+      "submissions": 1,
+      "chat_messages": 1,
+      "chat_sessions": 1
+    },
+    "sha256": "93086ef7085abe437f716535611f61c2f893151d6d4f67621a49ea72282ae286"
+  },
+  "restoreVerification": {
+    "ok": true,
+    "applied": false,
+    "pending": 0,
+    "counts": {
+      "users": 1,
+      "profiles": 1,
+      "knowledge_bases": 1,
+      "documents": 1,
+      "chunks": 1,
+      "submissions": 1,
+      "chat_messages": 1,
+      "chat_sessions": 1
+    },
+    "sha256": "93086ef7085abe437f716535611f61c2f893151d6d4f67621a49ea72282ae286"
+  },
+  "scope": "synthetic records, local PostgreSQL; no cloud/PITR or real file-object restore"
+}

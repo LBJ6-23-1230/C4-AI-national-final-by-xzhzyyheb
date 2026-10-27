@@ -1,0 +1,13 @@
+{
+  "contractMirrorFiles": 16,
+  "differences": [],
+  "staticGates": [
+    "check_frontend_validator_coverage.py",
+    "check_identity_isolation.py",
+    "check_result_labels.py",
+    "check_validator_query_string.py"
+  ],
+  "staticGatesPassed": true,
+  "deployShellSyntaxPassed": true,
+  "exportFixtureChecksPassed": true
+}

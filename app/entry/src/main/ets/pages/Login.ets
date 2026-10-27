@@ -177,6 +177,7 @@ struct Login {
 
   /** 一键体验：不发网络请求，直接以 demo-user 进入。评审永远点这个。 */
   private enterAsGuest(): void {
+    if (!ApiDefaults.ALLOW_DEMO) return;
     const result: AuthResult = AuthClient.continueAsGuest();
     appState.applyLogin(result.user, 'guest');
     this.goHome();
@@ -187,6 +188,7 @@ struct Login {
    * 这是"无网络也能演示"的逃生口——评委面前绝不能出现进不去的页面。
    */
   private enterOffline(): void {
+    if (!ApiDefaults.ALLOW_DEMO) return;
     AgentApiClient.setUseFixture(true);
     // ⚠️ 必须持久化：`setUseFixture()` 只改**内存**里的 `config.useFixture`。
     //
@@ -740,6 +742,7 @@ struct Login {
             .margin({ top: 8 })
 
           // ---------- 演示 / 离线逃生口（评审必用，务必保留） ----------
+          if (ApiDefaults.ALLOW_DEMO) {
           Button('跳过登录，用演示身份进入 →')
             .width('100%').height(46).fontSize(14).fontWeight(FontWeight.Medium)
             .fontColor('#2563EB').backgroundColor('#FFFFFF')
@@ -756,6 +759,7 @@ struct Login {
             .onClick(() => this.enterOffline())
           Text('离线演示：全部数据由本机提供，判分规则与后端一致。')
             .fontSize(11).fontColor('#94A3B8').width('100%')
+          }
 
           Blank().height(28)
 
