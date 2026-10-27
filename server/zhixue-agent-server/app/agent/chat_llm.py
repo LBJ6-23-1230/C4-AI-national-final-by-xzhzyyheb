@@ -438,47 +438,63 @@ def clear_history(user_id: str | None = None) -> None:
     with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
         store = _load_history_store()
         if key in store:
+            from flask import current_app, has_app_context
+            from app.services.chat_attachments import release
+            if has_app_context():
+                release(current_app.extensions["repository"], store[key])
             store[key] = []
             _write_history_store(store)
 
 
 def append_history(user_input: str, bot_response: str,
                    user_id: str | None = None,
-                   session_id: str | None = None, question_context: dict | None = None) -> None:
+                   session_id: str | None = None, question_context: dict | None = None,
+                   image_base64: str | None = None) -> None:
+    from datetime import datetime, timezone
+    from flask import current_app, has_app_context
+    from app.services import chat_attachments
     key = (user_id or DEFAULT_HISTORY_USER).strip() or DEFAULT_HISTORY_USER
     repository = _active_history_repository()
-    if repository is not None:
-        from app.services.chat_history import append
-        from datetime import datetime, timezone
-        entry = {"user_input": user_input, "bot_response": bot_response,
-                 "timestamp": datetime.now(timezone.utc).isoformat()}
-        if session_id:
-            entry["session_id"] = session_id.strip()[:128]
-        if question_context and question_context.get("questionText"):
-            entry["question_context"] = {k: str(question_context.get(k) or "")[:5000]
-                                          for k in ("questionText", "knowledgePoint")}
-        append(repository, key, entry, HISTORY_MAX_ENTRIES)
-        return
-    # 读—改—写必须在**同一把锁**内完成，否则并发 append 会互相覆盖（丢历史）。
-    with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
-        store = _load_history_store()
-        bucket = store.get(key, [])
-        entry = {
-            "user_input": user_input,
-            "bot_response": bot_response,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-        }
-        # 新客户端为一场完整对话的所有轮次传同一个 id。旧客户端不传时保持
-        # 兼容，由历史接口按连续时间为旧记录补一个稳定分组 id。
-        clean_session_id = (session_id or "").strip()
-        if clean_session_id:
-            entry["session_id"] = clean_session_id[:128]
-        if question_context and question_context.get("questionText"):
-            entry["question_context"] = {k: str(question_context.get(k) or "")[:5000]
-                                         for k in ("questionText", "knowledgePoint")}
-        bucket.append(entry)
-        store[key] = bucket[-HISTORY_MAX_ENTRIES:]
-        _write_history_store(store)
+    attachment_repository = repository or (current_app.extensions["repository"] if has_app_context() else None)
+    entry = {"user_input": user_input, "bot_response": bot_response,
+             "timestamp": datetime.now(timezone.utc).isoformat()}
+    if session_id:
+        entry["session_id"] = session_id.strip()[:128]
+    if question_context and question_context.get("questionText"):
+        entry["question_context"] = {k: str(question_context.get(k) or "")[:5000]
+                                     for k in ("questionText", "knowledgePoint")}
+    original = None
+    saved = False
+    try:
+        if image_base64 and attachment_repository is not None:
+            original, preview = chat_attachments.prepare(attachment_repository, key, image_base64)
+            entry.update(image_preview=preview, image_file_id=original["fileId"])
+        if repository is not None:
+            from app.services.chat_history import append
+            with repository.transaction():
+                user = repository.get("users", key)
+                if user and user.get("status") == "deactivated":
+                    return
+                if original:
+                    repository.save("file_objects", original["fileId"], original)
+                saved = append(repository, key, entry, HISTORY_MAX_ENTRIES)
+            return
+        with _HISTORY_LOCK, exclusive_file_lock(_history_path().with_suffix(".process.lock")):
+            store = _load_history_store()
+            bucket = store.get(key, [])
+            if original:
+                attachment_repository.save("file_objects", original["fileId"], original)
+            bucket.append(entry)
+            store[key] = bucket[-HISTORY_MAX_ENTRIES:]
+            _write_history_store(store)
+            saved = True
+            chat_attachments.release(attachment_repository, bucket[:-HISTORY_MAX_ENTRIES])
+    finally:
+        if original and not saved:
+            from app.services.file_storage import storage
+            storage().delete(original)
+            if attachment_repository is not None:
+                attachment_repository.delete("file_objects", original["fileId"])
 
 
 def _format_history(num_entries: int = 10, user_id: str | None = None) -> str:
@@ -1379,10 +1395,8 @@ def _chat_in_session(message: str, image_base64: str | None = None,
     reply = reply.replace("小艺", "小知")
 
     if message:
-        try:
-            append_history(original_message, reply, user_id, session_id, question_context=wrong_analysis)
-        except OSError:
-            pass
+        append_history(original_message or message, reply, user_id, session_id,
+                       question_context=wrong_analysis, image_base64=image_base64)
 
     result_card = _build_profile_update_card(profile_updates) or build_card(intent)
     return {

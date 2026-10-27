@@ -95,5 +95,6 @@ node_modules/
 .runtime-deps/
 .local-postgres/
 data/files/
+server/zhixue-agent-server/data/files/
 deploy/certs/
 deploy/runtime-secrets/

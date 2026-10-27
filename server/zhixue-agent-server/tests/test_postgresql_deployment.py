@@ -23,6 +23,29 @@ from app.repositories.pg_schema import tables
 from app.services import job_queue
 
 
+def test_chat_images_persist_and_are_deleted_by_worker(pg, monkeypatch):
+    from app.agent import chat_llm
+    from app.services.file_storage import storage
+    monkeypatch.setattr(chat_llm, 'llm_ready', lambda: False)
+    monkeypatch.setattr(chat_llm, 'detect_intent', lambda *args, **kwargs: ('analyze_wrong', False))
+    app, repository = pg
+    client = app.test_client()
+    image = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR4nGO4o6FBEmIY1TCqYfhqAAAyBCwQhvh37QAAAABJRU5ErkJggg=='
+    assert client.post('/api/agent/chat', json={'image': image, 'sessionId': 'pg-image'}).status_code == 200
+    row = client.get('/api/agent/history').get_json()['history'][-1]
+    original = repository.get('file_objects', row['image_file_id'])
+    assert row['image_preview'].startswith('data:image/jpeg;base64,')
+    assert storage().read(original) == base64.b64decode(image)
+    assert client.get('/api/agent/images/' + row['image_file_id']).status_code == 200
+    repository.close()
+    assert client.get('/api/agent/history').get_json()['history'][-1]['image_file_id'] == row['image_file_id']
+    assert client.delete('/api/agent/history').status_code == 200
+    assert client.get('/api/agent/images/' + row['image_file_id']).status_code == 404
+    assert job_queue.run_once(repository)
+    assert repository.get('file_objects', row['image_file_id']) is None
+    assert not storage()._path(original['objectKey']).exists()
+
+
 @pytest.fixture
 def pg(monkeypatch, tmp_path):
     url = os.getenv("ZHIXUE_TEST_DATABASE_URL")

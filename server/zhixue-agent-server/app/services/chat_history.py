@@ -12,7 +12,7 @@ def append(repository, owner, entry, maximum=50):
     with repository.transaction():
         user = repository.get("users", owner)
         if user and user.get("status") == "deactivated":
-            return
+            return False
         session = repository.get("chat_sessions", owner) or {"userId": owner, "sequence": 0}
         sequence = session["sequence"] + 1
         row = {"userId": owner, "sequence": sequence, "sessionId": entry.get("session_id", ""),
@@ -22,11 +22,18 @@ def append(repository, owner, entry, maximum=50):
         repository.save("chat_messages", key, row)
         repository.save("chat_sessions", owner, dict(session, sequence=sequence))
         rows = sorted(repository.query("chat_messages", {"userId": owner}), key=lambda r: r["sequence"])
-        for old in rows[:-maximum]:
+        expired = rows[:-maximum]
+        from app.services.chat_attachments import release
+        release(repository, [old["entry"] for old in expired])
+        for old in expired:
             repository.delete("chat_messages", old["messageId"])
+        return True
 
 
 def clear(repository, owner):
     with repository.transaction():
-        for row in repository.query("chat_messages", {"userId": owner}):
+        rows = repository.query("chat_messages", {"userId": owner})
+        from app.services.chat_attachments import release
+        release(repository, [row["entry"] for row in rows])
+        for row in rows:
             repository.delete("chat_messages", row["messageId"])

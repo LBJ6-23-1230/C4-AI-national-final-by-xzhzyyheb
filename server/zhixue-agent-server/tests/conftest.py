@@ -55,7 +55,8 @@ def isolate_repository_backend(monkeypatch):
 	SQLite 后端由 `tests/test_sqlite_backend.py` 用**显式子进程**覆盖，
 	那里会主动带上 `ZHIXUE_DB=sqlite`，因此不会漏测。
 	"""
-	monkeypatch.delenv("ZHIXUE_DB", raising=False)
+	# An absent variable would be reloaded from the developer's .env by create_app.
+	monkeypatch.setenv("ZHIXUE_DB", "json")
 
 
 @pytest.fixture(autouse=True)

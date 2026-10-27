@@ -438,6 +438,21 @@ def chat_history():
                     "userId": _chat_identity()})
 
 
+@chat_api.get("/api/agent/images/<file_id>")
+def chat_original_image(file_id):
+    owner = _chat_identity()
+    original = _repository.get("file_objects", file_id) if _repository else None
+    if (not original or original.get("userId") != owner
+            or original.get("purpose") != "chat_image" or original.get("status") != "uploaded"):
+        return jsonify({"errorCode": "NOT_FOUND", "message": "图片不存在或已删除"}), 404
+    from app.services.file_storage import storage
+    import base64
+    encoded = base64.b64encode(storage().read(original)).decode("ascii")
+    response = jsonify({"image": f"data:{chat_llm._image_mime_type(encoded)};base64,{encoded}"})
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
 @chat_api.delete("/api/agent/history")
 def chat_history_clear():
     """只清空**当前身份**的历史，不再波及其他用户。"""

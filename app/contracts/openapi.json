@@ -2597,7 +2597,27 @@
                     "history": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "type": "object",
+                        "properties": {
+                          "user_input": {
+                            "type": "string"
+                          },
+                          "bot_response": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string"
+                          },
+                          "session_id": {
+                            "type": "string"
+                          },
+                          "image_file_id": {
+                            "type": "string"
+                          },
+                          "image_preview": {
+                            "type": "string"
+                          }
+                        }
                       }
                     }
                   }
@@ -3958,6 +3978,45 @@
           },
           "404": {
             "description": "原文件不存在或无权访问"
+          }
+        }
+      }
+    },
+    "/api/agent/images/{fileId}": {
+      "get": {
+        "summary": "读取当前账号的聊天原图",
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前身份拥有的原图；禁止缓存",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "image"
+                  ],
+                  "properties": {
+                    "image": {
+                      "type": "string",
+                      "description": "data:image/...;base64,..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "图片不存在、已删除或不属于当前账号"
           }
         }
       }

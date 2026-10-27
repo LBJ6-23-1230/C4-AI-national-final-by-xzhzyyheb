@@ -93,12 +93,39 @@ export class AgentBridge {
         const sessionId: string = AgentBridge.stringField(row, 'session_id');
         if (userInput.length > 0 && botResponse.length > 0) {
           records.push({ userInput: userInput, botResponse: botResponse,
-            timestamp: timestamp, sessionId: sessionId });
+            timestamp: timestamp, sessionId: sessionId,
+            image: AgentBridge.stringField(row, 'image_preview'),
+            imageFileId: AgentBridge.stringField(row, 'image_file_id') });
         }
       }
       return records.reverse();
     } catch (error) {
       return [];
+    } finally {
+      requestInstance.destroy();
+    }
+  }
+
+  static async loadChatImage(fileId: string): Promise<string> {
+    const config: ApiClientConfig = AgentApiClient.getConfig();
+    const requestInstance: http.HttpRequest = http.createHttp();
+    try {
+      const header: Record<string, string> = { 'Accept': 'application/json',
+        'X-API-Contract-Version': API_CONTRACT_VERSION };
+      const token: string = AuthStore.getToken();
+      if (token.length > 0) header['Authorization'] = `Bearer ${token}`;
+      const response: http.HttpResponse = await requestInstance.request(
+        `${config.baseUrl}/api/agent/images/${encodeURIComponent(fileId)}?userId=${encodeURIComponent(appState.currentUser.userId)}`, {
+          method: http.RequestMethod.GET, header: header,
+          expectDataType: http.HttpDataType.STRING,
+          connectTimeout: config.timeoutMs, readTimeout: config.timeoutMs
+        });
+      if (response.responseCode !== 200) return '';
+      const body: Record<string, Object> = JSON.parse(response.result as string) as Record<string, Object>;
+      const image: string = AgentBridge.stringField(body, 'image');
+      return image.startsWith('data:image/') ? image : '';
+    } catch (error) {
+      return '';
     } finally {
       requestInstance.destroy();
     }

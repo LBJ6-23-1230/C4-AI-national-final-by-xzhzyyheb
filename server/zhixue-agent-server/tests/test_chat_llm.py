@@ -25,7 +25,7 @@ _PNG_16X16 = (
 @pytest.fixture(autouse=True)
 def _no_llm(monkeypatch):
     """默认在"无 Key"环境下测试，保证结果确定可复现。"""
-    monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "")
 
 
 @pytest.fixture

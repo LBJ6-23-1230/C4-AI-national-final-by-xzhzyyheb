@@ -711,16 +711,28 @@ struct KnowledgeBasePage {
 
   /** 头部那行"共 N 个片段"的文案：**是否被截断由后端标注**，前端只负责照实写出来。 */
   private chunkSummary(): string {
-    if (this.detailTruncated) {
-      return `共 ${this.detailChunkTotal} 个片段 · 内容较多，仅显示前 ${this.detailChunks.length} 段`;
-    }
-    return `共 ${this.detailChunkTotal} 个片段`;
+    return this.detailTruncated ? '正文较长，当前仅展示部分内容' : '正文预览 · 按章节与页码阅读';
   }
 
-  /** 单段的小标题：序号 + 标题路径（标题路径就是"引用来源"）。 */
+  private readingSections(): KnowledgeDocumentChunk[] {
+    const sections: KnowledgeDocumentChunk[] = [];
+    for (let i: number = 0; i < this.detailChunks.length; i++) {
+      const chunk: KnowledgeDocumentChunk = this.detailChunks[i];
+      const previous: KnowledgeDocumentChunk | undefined = sections.length > 0 ? sections[sections.length - 1] : undefined;
+      if (previous !== undefined && previous.headingPath === chunk.headingPath) {
+        let overlap: number = Math.min(80, previous.text.length, chunk.text.length);
+        while (overlap > 0 && previous.text.slice(-overlap) !== chunk.text.slice(0, overlap)) overlap--;
+        previous.text += (overlap > 0 ? '' : '\n\n') + chunk.text.slice(overlap);
+      } else {
+        sections.push({ chunkId: chunk.chunkId, index: chunk.index, headingPath: chunk.headingPath,
+          text: chunk.text, knowledgePoints: chunk.knowledgePoints });
+      }
+    }
+    return sections;
+  }
+
   private chunkTitle(chunk: KnowledgeDocumentChunk): string {
-    const path: string = chunk.headingPath ?? '';
-    return path.length > 0 ? `第 ${chunk.index} 段 · § ${path}` : `第 ${chunk.index} 段`;
+    return chunk.headingPath || '正文';
   }
 
   /** 没有切片时的说明：失败文档要带上后端给的原因，不含糊成"内容为空"。 */
@@ -1173,7 +1185,7 @@ struct KnowledgeBasePage {
                   Text(item.excerpt || '此名称由用户修订，尚无可直接对应的原文短语。').fontSize(12).fontColor('#64748B').lineHeight(18)
                 }.width('100%').padding(10).backgroundColor('#EFF6FF').borderRadius(10)
               }, (item: KnowledgePointEvidence) => item.name)
-              ForEach(this.detailChunks, (chunk: KnowledgeDocumentChunk) => {
+              ForEach(this.readingSections(), (chunk: KnowledgeDocumentChunk) => {
                 Column({ space: 5 }) {
                   Text(this.chunkTitle(chunk))
                     .fontSize(11).fontColor('#166534').width('100%').lineHeight(17)
@@ -1183,8 +1195,7 @@ struct KnowledgeBasePage {
                       .fontSize(11).fontColor('#64748B').width('100%')
                   }
                 }
-                .width('100%').padding(10).borderRadius(10).backgroundColor('#F8FAFC')
-                .border({ width: 1, color: '#E2E8F0' })
+                .width('100%').padding({ top: 8, bottom: 12 })
               }, (chunk: KnowledgeDocumentChunk) => chunk.chunkId)
             }.width('100%')
           }

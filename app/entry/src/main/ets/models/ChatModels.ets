@@ -34,6 +34,7 @@ export interface ChatHandoff {
 }
 
 export interface ChatMessage {
+  imageFileId?: string;
   wrongAnalysis?: WrongAnalysis;
   attachmentStatus?: string;
   id: string;
@@ -56,6 +57,8 @@ export interface AgentHistoryItem {
 
 /** 服务端持久化的一轮历史会话。退出再登录后仍可按账号读取。 */
 export interface ChatHistoryRecord {
+  image?: string;
+  imageFileId?: string;
   userInput: string;
   botResponse: string;
   timestamp: string;

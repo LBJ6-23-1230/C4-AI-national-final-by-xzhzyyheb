@@ -54,6 +54,9 @@ struct ChatMain {
   @State messages: ChatMessage[] = [];
   @State inputText: string = '';
   @State pendingImage: string = '';
+  @State previewImage: string = '';
+  @State previewNotice: string = '';
+  private imageRequestVersion: number = 0;
   @State selectedIntent: string = 'get_suggestion';
   /** 当前标签：对话页自身固定为 0，仅用于驱动底部标签栏高亮。 */
   @State activeTab: number = 0;
@@ -144,6 +147,7 @@ struct ChatMain {
   }
 
   aboutToDisappear(): void {
+    this.closeImagePreview();
     this.historyRequestVersion++;
     // A destroyed page cannot consume the response. Persist a retryable message
     // rather than an endless sending placeholder, only for the original owner.
@@ -184,6 +188,7 @@ struct ChatMain {
   }
 
   onPageHide(): void {
+    this.closeImagePreview();
     this.isPageActive = false;
     this.goalRequestVersion++;
     // Keep a same-session chat request alive while a pushed page covers it.
@@ -247,6 +252,15 @@ struct ChatMain {
             .onClick(() => this.showHistory = false)
           this.HistoryDrawer()
         }
+        if (this.previewImage.length > 0) {
+          Column({ space: 12 }) {
+            Row() {
+              Text(this.previewNotice).fontSize(13).fontColor('#FFFFFF').layoutWeight(1)
+              Button('关闭').onClick(() => this.closeImagePreview())
+            }.width('100%').padding(16)
+            Image(this.previewImage).width('100%').layoutWeight(1).objectFit(ImageFit.Contain)
+          }.width('100%').height('100%').backgroundColor('#F2111827')
+        }
       }
     }
     .width('100%')
@@ -308,7 +322,8 @@ struct ChatMain {
       const time: string = record.timestamp.length >= 16
         ? record.timestamp.substring(11, 16) : this.formatTime();
       restored.push({ id: `history-user-${index}-${record.timestamp}`, role: 'user',
-        text: record.userInput, time: time, status: 'done' });
+        text: record.userInput, image: record.image, imageFileId: record.imageFileId,
+        time: time, status: 'done' });
       restored.push({ id: `history-agent-${index}-${record.timestamp}`, role: 'agent',
         text: record.botResponse, time: time, status: 'done' });
     }
@@ -825,6 +840,26 @@ struct ChatMain {
     .padding({ left: 20, right: 20, top: 28, bottom: 18 })
   }
 
+  private closeImagePreview(): void {
+    this.imageRequestVersion++;
+    this.previewImage = '';
+    this.previewNotice = '';
+  }
+
+  private async openImagePreview(message: ChatMessage): Promise<void> {
+    const version: number = ++this.imageRequestVersion;
+    const owner: string = appState.currentUser.userId;
+    this.previewImage = message.image ?? '';
+    this.previewNotice = '';
+    const fileId: string = message.imageFileId ?? '';
+    if (fileId.length === 0) return;
+    this.previewNotice = '正在加载原图…';
+    const original: string = await AgentBridge.loadChatImage(fileId);
+    if (!this.isPageActive || owner !== appState.currentUser.userId || version !== this.imageRequestVersion) return;
+    if (original.length > 0) this.previewImage = original;
+    this.previewNotice = original.length > 0 ? '' : '原图暂时无法加载，当前显示缩略图';
+  }
+
   @Builder
   private MessageBubble(message: ChatMessage) {
     Row() {
@@ -840,6 +875,7 @@ struct ChatMain {
             .objectFit(ImageFit.Cover)
             .borderRadius(8)
             .backgroundColor('#E2E8F0')
+            .onClick(() => { void this.openImagePreview(message); })
         }
 
         if (message.status === 'sending') {

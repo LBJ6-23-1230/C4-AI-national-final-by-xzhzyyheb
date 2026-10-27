@@ -36,6 +36,7 @@ MAX_FILE_BYTES = 8 * 1024 * 1024          # 单文件 8MB
 MAX_DOCUMENTS_PER_KB = 50                 # 单库文档数上限
 MAX_CHUNK_CHARS = 800                     # 单片最大字符数
 CHUNK_OVERLAP_CHARS = 80                  # 相邻片重叠，避免答案被切断
+MIN_CHUNK_CHARS = 200                    # 合并同一小节内过短的正文
 MAX_CHUNKS_PER_DOC = 400                  # 防止超大文件把仓库撑爆
 # 文档详情**单次回传**的切片条数上限。
 #
@@ -406,13 +407,23 @@ def split_into_chunks(text: str) -> list[dict[str, Any]]:
         if not buffer:
             return
         paragraph = "\n".join(buffer).strip()
+        paragraph = re.sub(r"(?<=[\u4e00-\u9fff])\n(?=[\u4e00-\u9fff])", "", paragraph)
         buffer.clear()
         if not paragraph:
             return
         for piece in _split_long_paragraph(paragraph):
             if len(chunks) >= MAX_CHUNKS_PER_DOC:
                 return
-            chunks.append({"text": piece, "headingPath": heading_path()})
+            path = heading_path()
+            if (chunks and chunks[-1]["headingPath"] == path
+                    and len(chunks[-1]["text"]) < MIN_CHUNK_CHARS
+                    and len(chunks[-1]["text"]) + len(piece) + 2 <= MAX_CHUNK_CHARS):
+                previous = chunks[-1]["text"]
+                # PDF extraction can insert a blank line inside a word: 稳 / 定性.
+                separator = "\n\n" if previous[-1] in "。！？!?；;：:" else ""
+                chunks[-1]["text"] = previous + separator + piece
+            else:
+                chunks.append({"text": piece, "headingPath": path})
 
     for line in text.splitlines():
         chapter = _CHAPTER_RE.match(line)
@@ -440,16 +451,23 @@ def _split_long_paragraph(paragraph: str) -> list[str]:
         return [paragraph]
 
     pieces: list[str] = []
-    current = ""
-    for char in paragraph:
-        current += char
-        if len(current) >= MAX_CHUNK_CHARS:
-            pieces.append(current.strip())
-            # 保留尾部作为下一片的开头，避免答案正好被切断
-            current = current[-CHUNK_OVERLAP_CHARS:]
-    tail = current.strip()
+    start = 0
+    while len(paragraph) - start > MAX_CHUNK_CHARS:
+        end = start + MAX_CHUNK_CHARS
+        boundaries = [start + m.end() for m in re.finditer(r"[。！？!?；;]\s*|\n", paragraph[start:end])]
+        useful = [position for position in boundaries if position - start >= MAX_CHUNK_CHARS // 2]
+        if useful:
+            end = useful[-1]
+        pieces.append(paragraph[start:end].strip())
+        # Overlap complete sentences when available, so the next chunk starts at a boundary.
+        overlap = [position for position in boundaries if end - CHUNK_OVERLAP_CHARS <= position < end]
+        start = overlap[-1] if overlap else (end if useful else end - CHUNK_OVERLAP_CHARS)
+    tail = paragraph[start:].strip()
     if tail:
-        pieces.append(tail)
+        if pieces and len(tail) < MIN_CHUNK_CHARS and len(pieces[-1]) + len(tail) <= MAX_CHUNK_CHARS:
+            pieces[-1] += tail
+        else:
+            pieces.append(tail)
     return [piece for piece in pieces if piece]
 
 

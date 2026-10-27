@@ -94,7 +94,7 @@ function loadPage(name) {
       getErrorMessage() { return 'offline'; }
     }, VoiceInputService: class { async dispose() {} },
     ClientCache: { getWorkflow: () => ({ sessionId: 'workflow' }), getWorkflowStatus: () => null },
-    AgentBridge: { callAgent: (...args) => network.chat(...args), loadHistory: () => network.history() }
+    AgentBridge: { callAgent: (...args) => network.chat(...args), loadHistory: () => network.history(), loadChatImage: (...args) => network.chatImage(...args) }
   });
   vm.runInContext(compiled.outputText, context, { filename: file });
   return new context.Page();
@@ -506,6 +506,39 @@ async function check(name, run) {
     };
     await page.savePreferences();
     assert.equal(expected, 7);
+  });
+  await check('restored history keeps its image preview and original identifier', async () => {
+    const page = loadPage('ChatMain');
+    page.refreshLearningContext = () => {};
+    page.restoreHistory({ sessionId: 'photos', turns: [{ userInput: 'question', botResponse: 'answer',
+      timestamp: '2026-10-27T10:00:00', image: 'data:image/jpeg;base64,preview', imageFileId: 'photo-1' }] });
+    assert.equal(page.messages[0].image, 'data:image/jpeg;base64,preview');
+    assert.equal(page.messages[0].imageFileId, 'photo-1');
+  });
+  await check('closing image preview rejects a late original response', async () => {
+    const pending = deferred(); network.chatImage = () => pending.promise;
+    const page = loadPage('ChatMain'); page.isPageActive = true;
+    const request = page.openImagePreview({ image: 'preview', imageFileId: 'photo-1' });
+    page.closeImagePreview(); pending.resolve('private-original'); await request;
+    assert.equal(page.previewImage, '');
+  });
+  await check('old account cannot populate an open image preview', async () => {
+    const pending = deferred(); network.chatImage = () => pending.promise;
+    const page = loadPage('ChatMain'); page.isPageActive = true;
+    const request = page.openImagePreview({ image: 'preview', imageFileId: 'photo-1' });
+    appState.currentUser = { userId: 'bob' }; page.onPageHide();
+    pending.resolve('alice-original'); await request;
+    assert.equal(page.previewImage, '');
+  });
+  await check('document reading joins adjacent fragments without repeating overlap', async () => {
+    const page = loadPage('KnowledgeBase');
+    page.detailChunks = [{ chunkId: '1', index: 1, headingPath: 'page 1', text: 'definition and complete sentence.', knowledgePoints: [] },
+      { chunkId: '2', index: 2, headingPath: 'page 1', text: 'complete sentence. next definition.', knowledgePoints: [] },
+      { chunkId: '3', index: 3, headingPath: 'page 2', text: 'another page', knowledgePoints: [] }];
+    const sections = page.readingSections();
+    assert.equal(sections.length, 2);
+    assert.equal(sections[0].text, 'definition and complete sentence. next definition.');
+    assert.equal(page.detailChunks[0].text, 'definition and complete sentence.');
   });
   console.log(`${passed} request recovery checks passed (actual controller methods; device UI not exercised).`);
 })().catch(error => { console.error(error); process.exit(1); });
