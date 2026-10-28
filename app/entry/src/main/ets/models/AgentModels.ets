@@ -190,6 +190,9 @@ export interface StudySuggestion {
 }
 
 export interface WrongAnalysisResult {
+  questionNumber?: string;
+  questionText?: string;
+  recognitionStatus?: string;
   course: string;
   knowledge: string[];
   wrongType: string;

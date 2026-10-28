@@ -340,19 +340,7 @@ export class AgentBridge {
 
     // `wrongAnalysis` 是可选字段：缺失 / 结构不对都只意味着"没识别出知识点"，
     // 不该让整条回复失败（老后端也没有这个字段）。
-    let wrongAnalysis: WrongAnalysis | undefined = undefined;
-    const rawWrong: Object | undefined = data['wrongAnalysis'] as Object | undefined;
-    if (rawWrong !== undefined && rawWrong !== null && typeof rawWrong === 'object'
-      && !Array.isArray(rawWrong)) {
-      const record: Record<string, Object> = rawWrong as Record<string, Object>;
-      const point: string = AgentBridge.stringField(record, 'knowledgePoint');
-      const wrongType: string = AgentBridge.stringField(record, 'wrongType');
-      if (point.length > 0 || wrongType.length > 0) {
-        wrongAnalysis = { knowledgePoint: point, wrongType: wrongType,
-          diagnosisId: AgentBridge.stringField(record, 'diagnosisId'), questionText: AgentBridge.stringField(record, 'questionText'),
-          recognitionStatus: AgentBridge.stringField(record, 'recognitionStatus') };
-      }
-    }
+    const wrongAnalysis: WrongAnalysis | undefined = AgentBridge.parseWrongAnalysis(data['wrongAnalysis']);
 
     const profileUpdates: ChatProfileUpdates | undefined = AgentBridge.parseProfileUpdates(data);
     const learningContext: LearningContext | undefined = AgentBridge.parseLearningContext(data['learningContext']);
@@ -361,6 +349,33 @@ export class AgentBridge {
       profileUpdates: profileUpdates, wrongAnalysis: wrongAnalysis, learningContext: learningContext,
       attachmentStatus: data['attachmentReceipt'] !== undefined && typeof data['attachmentReceipt'] === 'object'
         ? AgentBridge.stringField(data['attachmentReceipt'] as Record<string, Object>, 'message') : undefined };
+  }
+
+  private static parseWrongAnalysis(raw: Object | undefined, includeQuestions: boolean = true): WrongAnalysis | undefined {
+    if (raw === undefined || raw === null || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+    const record: Record<string, Object> = raw as Record<string, Object>;
+    const questions: WrongAnalysis[] = [];
+    const rawQuestions: Object | undefined = record['questions'];
+    if (includeQuestions && Array.isArray(rawQuestions)) {
+      (rawQuestions as Object[]).forEach((item: Object) => {
+        const question: WrongAnalysis | undefined = AgentBridge.parseWrongAnalysis(item, false);
+        if (question !== undefined) questions.push(question);
+      });
+    }
+    if (questions.length === 0 && AgentBridge.stringField(record, 'questionText').length === 0
+      && AgentBridge.stringField(record, 'knowledgePoint').length === 0
+      && AgentBridge.stringField(record, 'recognitionStatus').length === 0
+      && AgentBridge.stringField(record, 'wrongType').length === 0) return undefined;
+    return { knowledgePoint: AgentBridge.stringField(record, 'knowledgePoint'),
+      wrongType: AgentBridge.stringField(record, 'wrongType'),
+      diagnosisId: AgentBridge.stringField(record, 'diagnosisId'),
+      questionText: AgentBridge.stringField(record, 'questionText'),
+      questionNumber: AgentBridge.stringField(record, 'questionNumber'),
+      reply: AgentBridge.stringField(record, 'reply'),
+      recognitionStatus: AgentBridge.stringField(record, 'recognitionStatus'),
+      complete: record['complete'] === true,
+      questionCount: typeof record['questionCount'] === 'number' ? record['questionCount'] as number : questions.length,
+      questions: includeQuestions && Array.isArray(rawQuestions) ? questions : undefined };
   }
 
   private static parseLearningContext(raw: Object | undefined): LearningContext | undefined {

@@ -27,6 +27,8 @@ struct WrongQuestion {
   @State isSampleImage: boolean = false;
   @State selectedImageName: string = '';
   @State isAnalyzing: boolean = false;
+  @State analysisResults: WrongAnalysisResult[] = [];
+  @State selectedQuestionIndex: number = 0;
   @State analysisResult: WrongAnalysisResult | null = null;
   @State showAnalysis: boolean = false;
   @State reviewAdded: boolean = false;
@@ -45,7 +47,10 @@ struct WrongQuestion {
       }
     }
     if (appState.latestWrongAnalysis !== null) {
+      this.analysisResults = appState.latestWrongAnalyses;
       this.analysisResult = appState.latestWrongAnalysis;
+      const selected: number = this.analysisResults.indexOf(this.analysisResult);
+      this.selectedQuestionIndex = selected >= 0 ? selected : 0;
       this.showAnalysis = true;
       // reviewAdded 只表示"本次真的新增了"（见 addToTomorrowPlan）：
       // 重开页面时即使该知识点早已在复习计划里，也不置为 true，
@@ -128,9 +133,12 @@ struct WrongQuestion {
     this.isAnalyzing = true;
     this.showAnalysis = false;
     this.analysisResult = null;
+    this.analysisResults = [];
+    this.selectedQuestionIndex = 0;
     this.reviewAdded = false;
     this.analysisMessage = '';
     appState.latestWrongAnalysis = null;
+    appState.latestWrongAnalyses = [];
     setTimeout(() => {
       if (!this.isPageActive || requestVersion !== this.analysisRequestVersion) {
         return;
@@ -163,9 +171,12 @@ struct WrongQuestion {
     this.isAnalyzing = true;
     this.showAnalysis = false;
     this.analysisResult = null;
+    this.analysisResults = [];
+    this.selectedQuestionIndex = 0;
     this.reviewAdded = false;
     this.analysisMessage = '';
     appState.latestWrongAnalysis = null;
+    appState.latestWrongAnalyses = [];
 
     const encoded: string = await ImageEncoder.toBase64(imageUri);
     if (!this.isPageActive || requestVersion !== this.analysisRequestVersion) {
@@ -192,9 +203,12 @@ struct WrongQuestion {
     this.isAnalyzing = true;
     this.showAnalysis = false;
     this.analysisResult = null;
+    this.analysisResults = [];
+    this.selectedQuestionIndex = 0;
     this.reviewAdded = false;
     this.analysisMessage = '';
     appState.latestWrongAnalysis = null;
+    appState.latestWrongAnalyses = [];
 
     const context: common.UIAbilityContext =
       this.getUIContext().getHostContext() as common.UIAbilityContext;
@@ -221,32 +235,32 @@ struct WrongQuestion {
     // 调用方刚刚 ++ 过，这里读到的就是本次请求的版本号；用于丢弃过期响应
     const requestVersion: number = this.analysisRequestVersion;
     try {
-      const response: AgentResponse = await AgentBridge.callAgent('帮我分析这道错题', encoded, []);
+      const response: AgentResponse = await AgentBridge.callAgent('请识别并逐题分析这张图片中的全部题目，保留题号和所有小问', encoded, []);
       if (!this.isPageActive || requestVersion !== this.analysisRequestVersion) {
         return;
       }
       const analysis: WrongAnalysis | undefined = response.wrongAnalysis;
-      const point: string = analysis !== undefined && analysis.knowledgePoint !== undefined
-        ? analysis.knowledgePoint.trim() : '';
-      const wrongType: string = analysis !== undefined && analysis.wrongType !== undefined
-        ? analysis.wrongType.trim() : '';
-      const result: WrongAnalysisResult = {
-        course: '',
-        // ⚠️ 识别不出知识点时**留空**，不编一个 —— 前端据此如实回落
-        // （练习页会退回默认题集），而不是拿假知识点去出题。
-        knowledge: point.length > 0 ? [point] : [],
-        wrongType: wrongType,
-        reason: response.reply,
-        suggestions: [],
-        tags: [],
-        imageUri: imageUri
-      };
-      this.analysisResult = result;
-      this.showAnalysis = true;
+      const questions: WrongAnalysis[] = analysis !== undefined && analysis.questions !== undefined
+        ? analysis.questions : (analysis !== undefined ? [analysis] : []);
+      this.analysisResults = questions.map((question: WrongAnalysis): WrongAnalysisResult => {
+        const point: string = (question.knowledgePoint ?? '').trim();
+        return { course: '', knowledge: point.length > 0 ? [point] : [],
+          wrongType: question.wrongType ?? '', reason: question.reply || response.reply,
+          suggestions: [], tags: [], imageUri: imageUri,
+          questionNumber: question.questionNumber ?? '', questionText: question.questionText ?? '',
+          recognitionStatus: question.recognitionStatus ?? '' };
+      });
       this.isAnalyzing = false;
-      appState.latestWrongAnalysis = result;
-      if (point.length === 0) {
-        this.analysisMessage = '已给出分析，但没能确定具体知识点 —— 可以手动进专项练习。';
+      appState.latestWrongAnalyses = this.analysisResults;
+      if (this.analysisResults.length > 0) {
+        this.selectQuestion(0);
+        this.showAnalysis = true;
+      } else {
+        this.analysisMessage = response.reply || '图片已接收，但识别未完成，请重试。';
+        return;
+      }
+      if (analysis !== undefined && analysis.recognitionStatus !== 'recognized') {
+        this.analysisMessage = '部分题目尚未识别或解析完整，请核对题数，并补拍不清晰的题目或重试。';
       }
     } catch (error) {
       if (!this.isPageActive || requestVersion !== this.analysisRequestVersion) {
@@ -256,6 +270,14 @@ struct WrongQuestion {
       this.analysisMessage = error instanceof Error
         ? error.message : '错题分析失败，请重试。';
     }
+  }
+
+  private selectQuestion(index: number): void {
+    if (index < 0 || index >= this.analysisResults.length) return;
+    this.selectedQuestionIndex = index;
+    this.analysisResult = this.analysisResults[index];
+    this.reviewAdded = false;
+    appState.latestWrongAnalysis = this.analysisResult;
   }
 
   /**
@@ -334,7 +356,7 @@ struct WrongQuestion {
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor('#172033')
-Text('✅ 分析完成')
+Text(result.recognitionStatus === 'unreadable' || result.recognitionStatus === 'partial' ? '待补充' : '✅ 分析完成')
           .fontSize(12)
           .fontColor('#2563EB')
           .fontWeight(FontWeight.Bold)
@@ -345,6 +367,10 @@ Text('✅ 分析完成')
       .width('100%')
 
       Divider().color('#EFF6FF')
+
+      if (result.questionText !== undefined && result.questionText.length > 0) {
+        Text(result.questionText).fontSize(14).fontColor('#344054').lineHeight(21).width('100%')
+      }
 
       if (result.course.trim().length > 0) {
       Row({ space: 8 }) {
@@ -360,7 +386,7 @@ Text('✅ 分析完成')
 
       Row({ space: 8 }) {
         Text('错误类型').fontSize(13).fontColor('#667085').width(60)
-        Text(result.wrongType).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#DC2626')
+        Text(result.wrongType || '未确认个人错因').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#DC2626')
           .backgroundColor('#FEF2F2').borderRadius(6).padding({ left: 6, right: 6, top: 2, bottom: 2 })
       }.width('100%')
 
@@ -434,6 +460,8 @@ Text('✅ 分析完成')
           this.hasPhoto = false;
           this.showAnalysis = false;
           this.analysisResult = null;
+          this.analysisResults = [];
+          this.selectedQuestionIndex = 0;
           this.selectedImageUri = '';
           this.isSampleImage = false;
           this.selectedImageName = '';
@@ -549,7 +577,7 @@ Text('✅ 分析完成')
           if (this.isAnalyzing) {
             Column({ space: 10 }) {
               LoadingProgress().width(40).height(40).color('#2563EB')
-              Text('Agent 正在分析错题...').fontSize(14).fontColor('#667085')
+              Text('正在识别整页题目并逐题分析...').fontSize(14).fontColor('#667085')
             }
             .width('100%').padding(24).backgroundColor('#FFFFFF').borderRadius(16).border({ width: 1, color: '#EFF6FF' })
           }
@@ -561,11 +589,25 @@ Text('✅ 分析完成')
 
           /* 分析结果 */
           if (this.showAnalysis && this.analysisResult !== null) {
+            Text(`本页返回 ${this.analysisResults.length || 1} 道题，可逐题查看和练习`)
+              .fontSize(14).fontColor('#2563EB').width('100%')
+            if (this.analysisResults.length > 1) {
+              Flex({ wrap: FlexWrap.Wrap }) {
+                ForEach(this.analysisResults, (item: WrongAnalysisResult, index: number) => {
+                  Button(`第${item.questionNumber || (index + 1).toString()}题`)
+                    .fontSize(13).margin({ right: 8, bottom: 8 })
+                    .backgroundColor(this.selectedQuestionIndex === index ? '#2563EB' : '#EFF6FF')
+                    .fontColor(this.selectedQuestionIndex === index ? '#FFFFFF' : '#2563EB')
+                    .onClick(() => { this.selectQuestion(index); })
+                }, (item: WrongAnalysisResult, index: number) => index.toString())
+              }.width('100%')
+            }
             this.AnalysisCard(this.analysisResult)
           }
 
           /* 导航选项 */
-          if (this.showAnalysis && !this.isAnalyzing) {
+          if (this.showAnalysis && !this.isAnalyzing && this.analysisResult !== null
+            && this.analysisResult.knowledge.length > 0) {
             this.NavButtons()
           }
         }

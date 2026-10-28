@@ -186,7 +186,7 @@ def test_image_routes_to_multimodal_handler_when_llm_ready(monkeypatch):
 
     calls: list[dict] = []
 
-    def _fake_with_image(system_prompt, user_prompt, image_base64, response_json=False):
+    def _fake_with_image(system_prompt, user_prompt, image_base64, response_json=False, cache_scope=""):
         calls.append({"image": image_base64, "user_prompt": user_prompt})
         # 图片分支现在要 **JSON**：答复文本照旧，但知识点必须**结构化**带出去，
         # 否则前端拿不到它去请求对应题集（"拍错题 → 针对性地练"这条闭环接不上）。

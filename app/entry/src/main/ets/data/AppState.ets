@@ -224,6 +224,7 @@ export class AppState {
 
   /* ========== 理解层/行动层结果 ========== */
   public latestSuggestion: StudySuggestion | null = null;
+  public latestWrongAnalyses: WrongAnalysisResult[] = [];
   public latestWrongAnalysis: WrongAnalysisResult | null = null;
   public latestPartner: PartnerMatch | null = null;
   public latestReview: LearningReview | null = null;
@@ -1011,6 +1012,7 @@ export class AppState {
   public clearCurrentWrongQuestionDraft(): void {
     this.selectedImageUri = '';
     this.latestWrongAnalysis = null;
+    this.latestWrongAnalyses = [];
   }
 
   public beginFocusRuntime(task: FocusTask): boolean {
@@ -1289,6 +1291,7 @@ export class AppState {
   public resetSession(): void {
     this.latestSuggestion = null;
     this.latestWrongAnalysis = null;
+    this.latestWrongAnalyses = [];
     this.latestPartner = null;
     this.latestReview = null;
     this.optimalTask = null;

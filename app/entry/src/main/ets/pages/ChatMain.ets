@@ -2,7 +2,7 @@ import router from '@ohos.router';
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { appState } from '../data/AppState';
-import { ChatAction, ChatCard, ChatHandoff, ChatHistoryRecord, ChatHistorySession, ChatMessage, IntentChip } from '../models/ChatModels';
+import { ChatAction, ChatCard, ChatHandoff, ChatHistoryRecord, ChatHistorySession, ChatMessage, IntentChip, WrongAnalysis } from '../models/ChatModels';
 import { AgentBridge } from '../services/AgentBridge';
 import { ImageEncoder } from '../utils/ImageEncoder';
 import { ClientCache } from '../cache/ClientCache';
@@ -634,14 +634,16 @@ struct ChatMain {
     if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = false; void this.loadGoalHistory(); }
     else this.goalMessage = (result as ApiFailure).error.message;
   }
-  private async confirmDiagnosis(message: ChatMessage): Promise<void> {
+  private async confirmDiagnosis(message: ChatMessage, selected?: WrongAnalysis): Promise<void> {
+    const question: WrongAnalysis | undefined = selected ?? message.wrongAnalysis;
+    const editId: string = selected !== undefined ? (selected.diagnosisId || message.id) : message.id;
     if (this.isGoalLoading) return;
     const owner: string = appState.currentUser.userId;
     const chatId: string = appState.chatSessionId;
     this.isGoalLoading = true;
     const version: number = ++this.goalRequestVersion;
-    const result = await AgentApiClient.manageChatGoal(chatId, { action: 'start', diagnosisId: message.wrongAnalysis?.diagnosisId,
-      knowledgePoint: this.diagnosisEditedId === message.id ? this.diagnosisEditedPoint : message.wrongAnalysis?.knowledgePoint });
+    const result = await AgentApiClient.manageChatGoal(chatId, { action: 'start', diagnosisId: question?.diagnosisId,
+      knowledgePoint: this.diagnosisEditedId === editId ? this.diagnosisEditedPoint : question?.knowledgePoint });
     if (owner !== appState.currentUser.userId || chatId !== appState.chatSessionId || version !== this.goalRequestVersion) return;
     this.isGoalLoading = false;
     if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = true; this.goalMessage = ''; void this.loadGoalHistory(); }
@@ -908,7 +910,18 @@ struct ChatMain {
         }
 
         if (message.attachmentStatus !== undefined) Text(message.attachmentStatus).fontSize(12).fontColor('#64748B')
-        if (message.wrongAnalysis?.questionText) {
+        if (message.wrongAnalysis?.questions !== undefined && message.wrongAnalysis.questions.length > 1) {
+          ForEach(message.wrongAnalysis.questions, (question: WrongAnalysis, index: number) => {
+            if (question.diagnosisId && question.knowledgePoint) {
+              Text(`第${question.questionNumber || (index + 1).toString()}题 · ${question.knowledgePoint}`)
+                .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+              TextInput({ text: this.diagnosisEditedId === question.diagnosisId ? this.diagnosisEditedPoint : (question.knowledgePoint ?? ''), placeholder: '核对或修改本题知识点' })
+                .onChange((v: string) => { this.diagnosisEditedId = question.diagnosisId ?? message.id; this.diagnosisEditedPoint = v; })
+              Button('确认本题，建立学习目标').fontSize(12).height(36).enabled(!this.isGoalLoading)
+                .onClick(() => { void this.confirmDiagnosis(message, question); })
+            }
+          }, (question: WrongAnalysis, index: number) => index.toString())
+        } else if (message.wrongAnalysis?.questionText) {
           Text('识别题干（请核对）').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB')
           Text(message.wrongAnalysis.questionText).fontSize(13).fontColor('#475467').lineHeight(20)
           TextInput({ text: this.diagnosisEditedId === message.id ? this.diagnosisEditedPoint : (message.wrongAnalysis.knowledgePoint ?? ''), placeholder: '核对或修改知识点' })

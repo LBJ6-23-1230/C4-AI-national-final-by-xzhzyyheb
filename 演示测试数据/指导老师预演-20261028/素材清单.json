@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-28",
+  "fictional": true,
+  "files": [
+    {
+      "file": "00-明日展示路线与讲稿.md",
+      "bytes": 7167,
+      "sha256": "4a747ce095ea3576b5d7aaf9d0e4dcf7d3ed3e6e667f897451641e4241f8d364"
+    },
+    {
+      "file": "00-评委追问与现场验收.md",
+      "bytes": 5830,
+      "sha256": "3dd827de67bff5e61f8a0d016800a9f398269990256869b437388fd62d145b74"
+    },
+    {
+      "file": "01-图片\\01_A_schedule.png",
+      "bytes": 161480,
+      "sha256": "358d77fff5a07a96dea6d23acfaf253a3a7871c8c8bc6ded0f675ced7a06af66"
+    },
+    {
+      "file": "01-图片\\01_B_schedule.png",
+      "bytes": 160794,
+      "sha256": "a62299affb44ee16052253d654fdfdfce51665e095539d1cfc00e82c6c65be74"
+    },
+    {
+      "file": "01-图片\\02_A_DDL_preview.png",
+      "bytes": 148934,
+      "sha256": "c02b4e97ce7f47bd5f0c0415aa7b03f0c8755f6a3ebedcfe7717e19e74c52023"
+    },
+    {
+      "file": "01-图片\\03_binary_tree_question.png",
+      "bytes": 106221,
+      "sha256": "2dafd07eda9ad9b7d2f503f562a15b0e989c8238c1970220d003b6deda3c0e5e"
+    },
+    {
+      "file": "02-课程与DDL\\01_A_courses.csv",
+      "bytes": 225,
+      "sha256": "f5abfeaff747d4907d6edfb90ddd39dab2584e7ec405ab1b8256fbbc3c525353"
+    },
+    {
+      "file": "02-课程与DDL\\01_B_courses.csv",
+      "bytes": 222,
+      "sha256": "a3340e6eff7c38f21e21bd8b9a02904a5ab91389fc7c21caafb5c46b4ffb8ce6"
+    },
+    {
+      "file": "02-课程与DDL\\02_A_courses.json",
+      "bytes": 560,
+      "sha256": "ccb3837e5236979d67f270298d460f2a20ce591a5c596c17097491a9a8e1c54c"
+    },
+    {
+      "file": "02-课程与DDL\\02_B_courses.json",
+      "bytes": 557,
+      "sha256": "1ce62ee4df1d80b42f1b85cad29e630cfcdaad98cefa23521c35eb47af20bc22"
+    },
+    {
+      "file": "02-课程与DDL\\03_A_DDL.csv",
+      "bytes": 300,
+      "sha256": "51387912c3dd7a44619a411805b70f9c03ee68a62b2ad1999de549690b89f406"
+    },
+    {
+      "file": "02-课程与DDL\\03_B_DDL.csv",
+      "bytes": 246,
+      "sha256": "cae90b25f6557a670dbae6d92782b20de1dfb72830eba8ea401df690f37ffc5c"
+    },
+    {
+      "file": "02-课程与DDL\\04_A_DDL.json",
+      "bytes": 765,
+      "sha256": "e56c363d44c7388009c039dab38437aba5a7b94c65ebf21e4d539dc4210ee10b"
+    },
+    {
+      "file": "02-课程与DDL\\04_B_DDL.json",
+      "bytes": 584,
+      "sha256": "4fb8982297cea721b5fcda9769c2676f318d01edc73d8c591de03f85f30842eb"
+    },
+    {
+      "file": "03-上传讲义\\05_binary_tree_notes.txt",
+      "bytes": 3139,
+      "sha256": "10a9249d8ba1ad28af0a8d8a2660ae156c821da6dd56e831c30be651b3549555"
+    },
+    {
+      "file": "03-上传讲义\\06_TCP_notes.txt",
+      "bytes": 1536,
+      "sha256": "160c8ccb47e128b197535b58fb3011a19592cd5ded18e72eaebf4c3196389d31"
+    },
+    {
+      "file": "先看这里.txt",
+      "bytes": 1889,
+      "sha256": "65fd0af16c6649b2c816662a623d56a3f570b1db849f9e2ac6b3e3e7eb9fe900"
+    },
+    {
+      "file": "导入格式预检.json",
+      "bytes": 250,
+      "sha256": "81568d6366e6b0f70fe6cb631b119f8a02f650896cf6fbef03755955aa791a84"
+    },
+    {
+      "file": "导入模拟器.ps1",
+      "bytes": 4268,
+      "sha256": "28b9db464749407f581139b04a3c526f7013633909017ccc0b67bfc78e4065e4"
+    },
+    {
+      "file": "讲义处理预检.json",
+      "bytes": 711,
+      "sha256": "9e795aa0d6aa0d883f82f489f54cac0e966ef9e6518e7f8f2aa416451dd2b8ea"
+    }
+  ]
+}

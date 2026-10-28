@@ -401,14 +401,23 @@ def agent_chat():
         payload["wrongAnalysis"] = wrong_analysis
         if image:
             receipt["status"] = wrong_analysis.get("recognitionStatus", "failed")
-            receipt["message"] = "图片已接收，识别完成待核对" if receipt["status"] == "recognized" else "图片已接收，但本次识别未完成"
-        if _repository and wrong_analysis.get("questionText") and wrong_analysis.get("knowledgePoint") and session_id:
+            receipt["message"] = {"recognized": "图片已接收，识别完成待核对",
+                                  "partial": "图片已接收，部分题目尚未识别完整，请核对题数",
+                                  "unreadable": "图片已接收，但题目不清晰，请补拍"}.get(
+                                      receipt["status"], "图片已接收，但本次识别未完成")
+        questions = wrong_analysis.get("questions") or [wrong_analysis]
+        if _repository and session_id:
             import uuid
-            diagnosis_id = "diagnosis-" + uuid.uuid4().hex
-            _repository.save("chat_diagnoses", diagnosis_id, {"diagnosisId": diagnosis_id, "userId": _identity,
-                "chatSessionId": session_id, "knowledgePoint": wrong_analysis["knowledgePoint"],
-                "questionText": wrong_analysis["questionText"], "attachmentId": receipt.get("attachmentId", "")})
-            payload["wrongAnalysis"]["diagnosisId"] = diagnosis_id
+            for question in questions:
+                if not question.get("questionText") or not question.get("knowledgePoint"):
+                    continue
+                diagnosis_id = "diagnosis-" + uuid.uuid4().hex
+                _repository.save("chat_diagnoses", diagnosis_id, {"diagnosisId": diagnosis_id, "userId": _identity,
+                    "chatSessionId": session_id, "knowledgePoint": question["knowledgePoint"],
+                    "questionText": question["questionText"], "attachmentId": receipt.get("attachmentId", "")})
+                question["diagnosisId"] = diagnosis_id
+            if questions and questions[0].get("diagnosisId"):
+                payload["wrongAnalysis"]["diagnosisId"] = questions[0]["diagnosisId"]
     if image and receipt["status"] == "received":
         receipt.update(status="failed", message="图片已接收，但识图服务未完成，请重试或粘贴题干")
     if session_id:

@@ -540,5 +540,70 @@ async function check(name, run) {
     assert.equal(sections[0].text, 'definition and complete sentence. next definition.');
     assert.equal(page.detailChunks[0].text, 'definition and complete sentence.');
   });
+  await check('whole-page diagnosis keeps every question and changes practice selection', async () => {
+    network.chat = async () => ({ reply: '整页结果', wrongAnalysis: { recognitionStatus: 'recognized',
+      questions: [1, 2, 3].map(n => ({ questionNumber: String(n), questionText: `题目${n}`,
+        knowledgePoint: `知识点${n}`, reply: `解析${n}`, recognitionStatus: 'recognized' })) } });
+    const page = loadPage('WrongQuestion'); page.isPageActive = true;
+    await page.runOnlineAnalysis('image', 'photo');
+    assert.equal(page.analysisResults.length, 3);
+    page.selectQuestion(2);
+    assert.equal(page.analysisResult.reason, '解析3');
+    assert.equal(page.analysisResult.knowledge[0], '知识点3');
+    assert.equal(appState.latestWrongAnalysis.questionNumber, '3');
+    appState.selectedImageUri = '';
+    const restored = loadPage('WrongQuestion'); restored.aboutToAppear();
+    assert.equal(restored.analysisResults.length, 3);
+    assert.equal(restored.selectedQuestionIndex, 2);
+  });
+  await check('late page diagnosis cannot overwrite a newly selected image', async () => {
+    const old = deferred(), current = deferred(); let count = 0;
+    network.chat = () => (++count === 1 ? old.promise : current.promise);
+    const page = loadPage('WrongQuestion'); page.isPageActive = true;
+    const first = page.runOnlineAnalysis('old', 'old-photo');
+    page.analysisRequestVersion++;
+    const second = page.runOnlineAnalysis('new', 'new-photo');
+    current.resolve({ reply: 'new', wrongAnalysis: { knowledgePoint: 'new-point', recognitionStatus: 'recognized' } });
+    await second;
+    old.resolve({ reply: 'old', wrongAnalysis: { knowledgePoint: 'old-point', recognitionStatus: 'recognized' } });
+    await first;
+    assert.equal(page.analysisResult.knowledge[0], 'new-point');
+    assert.equal(page.analysisResult.imageUri, 'new-photo');
+  });
+  await check('chat confirmation uses the selected page question diagnosis', async () => {
+    let sent;
+    network.manageChatGoal = async (id, payload) => { sent = payload; return ok({ learningContext: null }); };
+    const page = loadPage('ChatMain'); page.loadGoalHistory = () => {};
+    page.diagnosisEditedId = 'diagnosis-3'; page.diagnosisEditedPoint = '第三题修订知识点';
+    await page.confirmDiagnosis({ id: 'message', wrongAnalysis: { diagnosisId: 'diagnosis-1', knowledgePoint: '第一题' } },
+      { diagnosisId: 'diagnosis-3', knowledgePoint: '第三题' });
+    assert.equal(sent.diagnosisId, 'diagnosis-3');
+    assert.equal(sent.knowledgePoint, '第三题修订知识点');
+  });
+  await check('empty page recognition cannot create a phantom question', async () => {
+    network.chat = async () => ({ reply: '未识别到题目', wrongAnalysis: { recognitionStatus: 'unreadable', questions: [] } });
+    const page = loadPage('WrongQuestion'); page.isPageActive = true;
+    await page.runOnlineAnalysis('image', 'photo');
+    assert.equal(page.analysisResults.length, 0);
+    assert.equal(page.showAnalysis, false);
+    assert.equal(page.analysisMessage, '未识别到题目');
+  });
+  await check('actual response parser preserves all diagnoses and legacy single-question results', async () => {
+    const source = fs.readFileSync(path.join(root, 'services/AgentBridge.ets'), 'utf8')
+      .replace(/^import[^\n]+\n/gm, '').replace('export class AgentBridge', 'class AgentBridge');
+    const code = ts.transpileModule(source + '\nglobalThis.Bridge = AgentBridge;', {
+      compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText;
+    const context = vm.createContext({ console, ApiDefaults: { LLM_BOUND_READ_TIMEOUT_MS: 40000 } });
+    vm.runInContext(code, context);
+    const parse = wrongAnalysis => context.Bridge.parseResponse({ reply: '整页解析', intent: 'analyze_wrong', card: null, wrongAnalysis });
+    const response = parse({ recognitionStatus: 'recognized', questionCount: 2, complete: true,
+      questions: [1, 2].map(n => ({ questionNumber: String(n), questionText: `题${n}`, diagnosisId: `d${n}`, reply: `解析${n}` })) });
+    assert.equal(response.wrongAnalysis.questions.length, 2);
+    assert.equal(response.wrongAnalysis.questions[1].diagnosisId, 'd2');
+    assert.equal(response.wrongAnalysis.questions[1].reply, '解析2');
+    assert.equal(parse({ knowledgePoint: 'legacy' }).wrongAnalysis.knowledgePoint, 'legacy');
+    assert.equal(parse({}).wrongAnalysis, undefined);
+    assert.equal(parse({ recognitionStatus: 'unreadable', questions: [] }).wrongAnalysis.questions.length, 0);
+  });
   console.log(`${passed} request recovery checks passed (actual controller methods; device UI not exercised).`);
 })().catch(error => { console.error(error); process.exit(1); });

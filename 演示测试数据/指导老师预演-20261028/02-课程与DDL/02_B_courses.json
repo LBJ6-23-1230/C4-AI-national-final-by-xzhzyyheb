@@ -1,0 +1,25 @@
+{
+  "courses": [
+    {
+      "courseName": "数据结构",
+      "examDate": "2026-11-09",
+      "priority": "高",
+      "studyHours": 3,
+      "status": "二叉树基础待测评"
+    },
+    {
+      "courseName": "计算机网络",
+      "examDate": "2026-11-11",
+      "priority": "中",
+      "studyHours": 1,
+      "status": "TCP基础待练习"
+    },
+    {
+      "courseName": "线性代数",
+      "examDate": "2026-11-12",
+      "priority": "中",
+      "studyHours": 1,
+      "status": "矩阵运算待复习"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "status": "failed",
+  "errorType": "TimeoutError",
+  "httpStatus": null,
+  "note": "错误正文未输出，避免敏感配置进入日志。"
+}

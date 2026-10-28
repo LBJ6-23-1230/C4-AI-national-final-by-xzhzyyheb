@@ -1,0 +1,6 @@
+{
+  "check": "models_endpoint",
+  "httpStatus": 200,
+  "elapsedSeconds": 0.19,
+  "configuredVisionModelListed": true
+}

@@ -161,6 +161,11 @@ export interface ChatProfileUpdates {
 
 /** 错题分析的结构化结果（后端 `wrongAnalysis`）。 */
 export interface WrongAnalysis {
+  questionNumber?: string;
+  reply?: string;
+  complete?: boolean;
+  questionCount?: number;
+  questions?: WrongAnalysis[];
   diagnosisId?: string;
   questionText?: string;
   recognitionStatus?: string;

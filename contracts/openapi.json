@@ -4203,9 +4203,45 @@
               },
               "recognitionStatus": {
                 "type": "string"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "knowledgePoint": {
+                      "type": "string"
+                    },
+                    "wrongType": {
+                      "type": "string"
+                    },
+                    "diagnosisId": {
+                      "type": "string"
+                    },
+                    "questionText": {
+                      "type": "string"
+                    },
+                    "recognitionStatus": {
+                      "type": "string"
+                    },
+                    "questionNumber": {
+                      "type": "string"
+                    },
+                    "reply": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "questionCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "complete": {
+                "type": "boolean"
               }
             },
-            "description": "仅 analyze_wrong 意图下可能非空：错题分析识别出的**结构化**知识点。前端据此把「拍一道错题」接到「针对这个知识点练」——知识点若只存在于自然语言答复里，程序无法使用。识别不出时不下发该字段，前端如实回落，不编造知识点。"
+            "description": "整页按阅读顺序返回 questions，每题独立题干、解析、知识点及诊断 ID。questionCount 为范围内题数，complete 表示全部识别解析完成；recognitionStatus 可为 recognized/partial/unreadable。顶层单题字段兼容旧客户端，取第一题。"
           },
           "learningContext": {
             "$ref": "#/components/schemas/LearningContext"
@@ -7270,6 +7306,7 @@
               "received",
               "invalid",
               "recognized",
+              "partial",
               "unreadable",
               "failed"
             ]

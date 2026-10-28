@@ -69,4 +69,4 @@ def test_multi_question_prompt_scopes_output_before_token_limit(monkeypatch):
         return answer()
     monkeypatch.setattr(chat_llm, '_call_llm_with_image', vision)
     chat_llm._handle_analyze_wrong('分析整页', {}, 'image', 'owner')
-    assert '默认第1道' in prompts[0] and '不得逐字转录整页' in prompts[0]
+    assert '识别图片中全部题目' in prompts[0] and 'questionCount' in prompts[0]

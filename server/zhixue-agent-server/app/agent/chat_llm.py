@@ -308,7 +308,7 @@ def _image_mime_type(image_base64: str) -> str:
 
 
 def _call_llm_with_image(system_prompt: str, user_prompt: str, image_base64: str,
-                         response_json: bool = False) -> str:
+                         response_json: bool = False, cache_scope: str = "") -> str:
     """Qwen-VL 多模态调用：错题拍照识别链路。"""
     model = llm_vl_model()
     image_url = (
@@ -326,16 +326,35 @@ def _call_llm_with_image(system_prompt: str, user_prompt: str, image_base64: str
             ]},
         ],
         "temperature": 0.1,
-        "max_tokens": 1200,
+        "max_tokens": 12000,
     }
     if response_json:
         kwargs["response_format"] = {"type": "json_object"}
     kwargs.update(_thinking_kwargs())
-    from app.services import llm_runtime
-    response = llm_runtime.request("vision", kwargs, budget=llm_timeout_seconds())
-    if getattr(response.choices[0], "finish_reason", None) == "length":
-        raise ValueError("vision_output_truncated")
-    return response.choices[0].message.content or ""
+    from app.services import llm_runtime, vision_cache
+    from app.services.vision_diagnosis import normalize
+    import hashlib
+
+    def invoke():
+        response = llm_runtime.request("vision", kwargs, budget=llm_timeout_seconds())
+        if getattr(response.choices[0], "finish_reason", None) == "length":
+            raise ValueError("vision_output_truncated")
+        return response.choices[0].message.content or ""
+
+    def cacheable(raw):
+        try:
+            parsed = extract_json(raw)
+            return isinstance(parsed, dict) and "questions" in parsed and normalize(parsed)[1]["complete"]
+        except (ValueError, TypeError):
+            return False
+
+    # Calls without an explicit identity skip reuse. Include configuration so a
+    # new instruction, model, key or thinking mode cannot reuse an old answer.
+    if not cache_scope:
+        return invoke()
+    key = hashlib.sha256(json.dumps([cache_scope, llm_runtime.fingerprint(), kwargs],
+                                   ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    return vision_cache.resolve(key, invoke, cacheable, llm_timeout_seconds())
 
 
 # --------------------------------------------------------------------------- 对话历史
@@ -460,9 +479,17 @@ def append_history(user_input: str, bot_response: str,
              "timestamp": datetime.now(timezone.utc).isoformat()}
     if session_id:
         entry["session_id"] = session_id.strip()[:128]
-    if question_context and question_context.get("questionText"):
+    if question_context and (question_context.get("questionText") or
+                             any(q.get("questionText") for q in question_context.get("questions", []))):
         entry["question_context"] = {k: str(question_context.get(k) or "")[:5000]
                                      for k in ("questionText", "knowledgePoint")}
+        if len(question_context.get("questions", [])) > 1:
+            # Preserve every question for numbered follow-ups, including common
+            # material. Never silently substitute the first question on a page.
+            entry["question_context"]["questionText"] = "\n\n".join(
+                f"第{q['questionNumber']}题：{q['questionText']}" for q in question_context["questions"])
+            entry["question_context"]["knowledgePoint"] = "、".join(
+                dict.fromkeys(q["knowledgePoint"] for q in question_context["questions"] if q["knowledgePoint"]))
     original = None
     saved = False
     try:
@@ -1148,50 +1175,36 @@ def _handle_update_profile(message: str, data: dict[str, Any],
 
 
 def _handle_analyze_wrong(message: str, data: dict[str, Any], image_base64: str | None,
-                          user_id: str | None = None) -> str:
+                          user_id: str | None = None) -> tuple[str, dict[str, Any]]:
     if image_base64:
-        # 走 Qwen-VL 多模态：现场拍照 → 真实识别知识点与错误类型。
-        #
-        # ⚠️ 改成**要 JSON**（原来只回一段自然语言）。原因：自然语言答复里
-        # 的知识点没法被程序使用 —— 而"拍一道错题 → 针对这个知识点练"这条闭环
-        # 需要把知识点**结构化地带出去**（前端拿它去请求对应题集 / 现场出题）。
-        # 答复文本仍然照常返回（放在 `reply` 里），只是多带两个字段。
         system_prompt = (
-            "你是解题助手小知。先给正确答案和解析，再在有明确用户作答时分析错因。"
+            "你是解题助手小知。识别图片中全部题目，按从上到下、从左到右的阅读顺序逐题输出。"
+            "先清点独立题目数量，再逐题解答，最后检查是否遗漏题号、选项或小问。"
+            "未指定题号时必须处理全部题目，不能随机选题或默认只答第1题。"
+            "用户明确要求只做某题时仅处理指定题，questionCount也仅统计指定范围。"
+            "同一大题的小问保留在该题内，共用材料和图形条件要带入相关题目，跳过页眉页脚。"
+            "每题先给正确答案和必要推导，再在有明确用户作答时分析错因。"
             "无用户作答也必须独立解题，不得要求用户先提供标准答案。"
             "手写勾叉、红笔订正可能是批改，不能直接当作用户的原答案。"
-            "图片有多道题时，只处理用户指定的一道；未指定默认第1道。"
-            "不得逐字转录整页、页眉或其他题。开头说明本次处理第几题，其他题可按题号重新上传或裁剪。"
-            "questionText仅含该题题干和完整选项，reply先写答案，再简要解释各选项。"
-            "questionText控制在500字内，reply控制在300字内；较长题可压缩表述但保留解题条件。"
-            "不能认清关键条件才readable=false。只输出完整JSON，不用代码块。"
+            "questionText保留完整解题条件和选项；reply只写该题答案、必要推导和建议，不重复题干或寒暄。"
+            "不为缩短输出而省略解题步骤、条件或题目。难以辨认的题仍保留条目，readable=false，不能编造。"
+            "questionNumber保留原题号，无题号时按阅读顺序编号。"
+            "questionCount为所见独立题目总数，questions必须逐一对应；全部输出才complete=true。"
+            "只输出完整JSON，不用代码块。"
         )
         user_prompt = (
             "本次附件已接收，图片见image_url。\n"
             f"本次要求：{message}\n"
-            '输出JSON：{"readable":true,"answerVisible":false,"questionText":"选中题目的完整题干和选项",'
-            '"reply":"本次解答第N题。答案：…；解析：…",'
+            '输出JSON：{"questionCount":题数,"complete":true,"questions":['
+            '{"questionNumber":"原题号","readable":true,"answerVisible":false,'
+            '"questionText":"完整题干和选项","reply":"答案：…；解析：…",'
             '"knowledgePoint":"本题知识点",'
-            '"wrongType":"只有用户原作答明确且错误时填写，否则为空"}'
+            '"wrongType":"只有用户原作答明确且错误时填写，否则为空"}]}'
         )
-        raw = _call_llm_with_image(system_prompt, user_prompt, image_base64, response_json=True)
-        parsed = extract_json(raw)
-        if not parsed:
-            raise ValueError("vision_invalid_structure")
-        question = str(parsed.get("questionText") or "").strip()[:5000]
-        point = str(parsed.get("knowledgePoint") or "").strip()[:60]
-        readable = parsed.get("readable") is True and len(question) >= 6
-        if not readable:
-            return ("图片已接收，但未能识别出完整题干。请上传更清晰的图片或粘贴题目文字；本次没有生成知识点或错因结论。",
-                    {"recognitionStatus": "unreadable", "questionText": "", "knowledgePoint": ""})
-        reply = str(parsed.get("reply") or "请核对下方识别题干，确认无误后可开展针对性练习。信心不足时请修改知识点。").strip()
-        if re.search(r"(?:没有|未).{0,8}(?:上传|提供|收到).{0,8}(?:图片|题目)|未提供具体错题", reply):
-            reply = "图片已接收并读取题干，请先核对识别内容。未提供用户答案时，只能讲解题目，不能判断个人错因。"
-        answer_visible = parsed.get("answerVisible") is True
-        if not answer_visible and re.search(r"你(?:的)?(?:答案|作答|解法|思路)(?:是|存在|有|出现了|出现)?(?:错误|有误)|你错在", reply):
-            reply = "已读取题干，但未看到可核验的用户答案或解题过程，暂不能判断个人错因。请核对题干后再补充作答。"
-        return reply, {"knowledgePoint": point, "wrongType": str(parsed.get("wrongType") or "")[:80] if answer_visible else "",
-                       "questionText": question, "recognitionStatus": "recognized"}
+        raw = _call_llm_with_image(system_prompt, user_prompt, image_base64,
+                                   response_json=True, cache_scope=user_id or "")
+        from app.services.vision_diagnosis import normalize
+        return normalize(extract_json(raw))
 
     raw = _call_llm(_load_prompt("AnalyzeWrongPrompt.txt"), _context_prompt(message, data, user_id),
                     temperature=0.1, max_tokens=1200, response_json=True)

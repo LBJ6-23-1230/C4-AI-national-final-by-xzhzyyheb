@@ -1,0 +1,32 @@
+{
+  "ddls": [
+    {
+      "courseName": "数据结构",
+      "title": "二叉树遍历实验报告",
+      "dueDate": "2026-10-29",
+      "priority": "高",
+      "estimatedMinutes": 45
+    },
+    {
+      "courseName": "计算机网络",
+      "title": "TCP三次握手实验",
+      "dueDate": "2026-10-30",
+      "priority": "高",
+      "estimatedMinutes": 60
+    },
+    {
+      "courseName": "操作系统",
+      "title": "进程调度比较题",
+      "dueDate": "2026-11-02",
+      "priority": "中",
+      "estimatedMinutes": 40
+    },
+    {
+      "courseName": "数据结构",
+      "title": "图的广度优先遍历练习",
+      "dueDate": "2026-11-04",
+      "priority": "中",
+      "estimatedMinutes": 30
+    }
+  ]
+}
