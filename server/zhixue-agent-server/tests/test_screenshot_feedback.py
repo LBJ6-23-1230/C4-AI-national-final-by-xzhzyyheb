@@ -131,7 +131,7 @@ def test_partial_course_overlap_and_scoped_invitation(setup):
         assert response.status_code == 200
     best = client.post('/api/v1/agent/partner-match', headers=users[0][1], json={}).get_json()['matchedCandidate']
     assert best['sharedCourses'] == ['数据结构'] and best['courseMatch'] == 'partial'
-    assert best['factors']['goal'] == 20 and best['score'] == 65
+    assert best['factors']['goal'] == 20 and best['score'] == 55
     response = client.post('/api/v1/agent/partner-invitations', headers=users[0][1],
         json={'toUserId': users[1][0], 'courseName': '计算机网络'})
     assert response.status_code == 400

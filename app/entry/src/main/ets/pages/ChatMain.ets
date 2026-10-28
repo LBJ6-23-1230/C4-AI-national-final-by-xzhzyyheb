@@ -1,3 +1,5 @@
+import { PartnerInboxButton } from '../components/PartnerInboxButton';
+import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
@@ -48,6 +50,8 @@ const INTENT_CHIPS: IntentChip[] = [
   { intent: 'update_profile', label: '更新学习画像', prompt: '我要更新学习画像：我的学习目标或掌握情况有变化' },
 ];
 
+interface DiagnosisEdit { id: string; point: string; }
+
 @Entry
 @Component
 struct ChatMain {
@@ -82,6 +86,64 @@ struct ChatMain {
   @State diagnosisEditedId: string = '';
   @State diagnosisEditedPoint: string = '';
   @State goalHistory: LearningContext[] = [];
+  @State diagnosisEdits: DiagnosisEdit[] = [];
+  @State bookSelectedIds: string[] = [];
+  @State bookSavedIds: string[] = [];
+  @State bookSavingIds: string[] = [];
+  @State diagnosisNoticeId: string = '';
+  @State diagnosisNotice: string = '';
+  @State startingDiagnosisId: string = '';
+  private diagnosisKey(message: ChatMessage, question: WrongAnalysis): string { return question.diagnosisId || message.id; }
+  private diagnosisPoint(message: ChatMessage, question: WrongAnalysis): string {
+    const edit: DiagnosisEdit | undefined = this.diagnosisEdits.find((entry: DiagnosisEdit) => entry.id === this.diagnosisKey(message, question));
+    return edit ? edit.point : (question.knowledgePoint || '');
+  }
+  private async saveDiagnosisToBook(message: ChatMessage, question: WrongAnalysis): Promise<void> {
+    const key: string = this.diagnosisKey(message, question);
+    if (this.bookSavedIds.indexOf(key) >= 0 || this.bookSavingIds.indexOf(key) >= 0 || this.bookSelectedIds.indexOf(key) < 0) return;
+    if (!question.questionText?.trim()) { this.diagnosisNoticeId = key; this.diagnosisNotice = '题干识别不完整，请补拍清晰题目后再加入。'; return; }
+    const owner: string = appState.currentUser.userId;
+    this.bookSavingIds = this.bookSavingIds.concat([key]);
+    const result = await AgentApiClient.saveScannedQuestion({ stem: question.questionText || '', courseName: '',
+      knowledgePointName: this.diagnosisPoint(message, question), explanation: question.reply || message.wrongAnalysis?.reply || '' });
+    if (!this.isPageActive || owner !== appState.currentUser.userId) return;
+    this.bookSavingIds = this.bookSavingIds.filter((id: string) => id !== key);
+    this.diagnosisNoticeId = key;
+    if (result.ok) { this.bookSavedIds = this.bookSavedIds.concat([key]); this.diagnosisNotice = '已加入错题本，按题目内容自动分类。'; }
+    else this.diagnosisNotice = '加入失败：' + (result as ApiFailure).error.message;
+  }
+  @Builder
+  DiagnosisQuestion(message: ChatMessage, question: WrongAnalysis, index: number) {
+    Column({ space: 10 }) {
+      Text(`第${question.questionNumber || (index + 1).toString()}题`).fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054')
+      if (question.questionText) { Text(question.questionText).fontSize(14).fontColor('#475467').maxLines(4).width('100%') }
+      TextInput({ text: this.diagnosisPoint(message, question), placeholder: '核对知识点' }).height(38).fontSize(13)
+        .onChange((value: string) => {
+          const key: string = this.diagnosisKey(message, question);
+          this.diagnosisEdits = this.diagnosisEdits.filter((entry: DiagnosisEdit) => entry.id !== key).concat([{ id: key, point: value }]);
+        })
+      Row({ space: 8 }) {
+        Checkbox().select(this.bookSelectedIds.indexOf(this.diagnosisKey(message, question)) >= 0)
+          .enabled(this.bookSavedIds.indexOf(this.diagnosisKey(message, question)) < 0)
+          .onChange((selected: boolean) => {
+            const key: string = this.diagnosisKey(message, question);
+            this.bookSelectedIds = selected ? this.bookSelectedIds.concat([key]) : this.bookSelectedIds.filter((id: string) => id !== key);
+          })
+        Text(this.bookSavedIds.indexOf(this.diagnosisKey(message, question)) >= 0 ? '已加入错题本' : '加入错题本（可选）').fontSize(13).fontColor('#667085')
+      }.width('100%')
+      Row({ space: 12 }) {
+        Button(this.startingDiagnosisId === this.diagnosisKey(message, question) && this.isGoalLoading ? '准备中…' : '开始练习', { type: ButtonType.Normal })
+          .height(36).fontSize(13).backgroundColor('#2563EB').fontColor('#FFFFFF').borderRadius(8).enabled(!this.isGoalLoading && !!question.diagnosisId && !!this.diagnosisPoint(message, question).trim())
+          .onClick(() => this.confirmDiagnosis(message, question))
+        if (this.bookSelectedIds.indexOf(this.diagnosisKey(message, question)) >= 0 && this.bookSavedIds.indexOf(this.diagnosisKey(message, question)) < 0) {
+          Text(this.bookSavingIds.indexOf(this.diagnosisKey(message, question)) >= 0 ? '加入中…' : '确认加入').fontSize(13).fontColor('#2563EB')
+            .onClick(() => this.saveDiagnosisToBook(message, question))
+        }
+      }.width('100%')
+      if (this.diagnosisNoticeId === this.diagnosisKey(message, question)) { Text(this.diagnosisNotice).fontSize(12).fontColor('#667085').width('100%') }
+    }.width('100%').padding(12).backgroundColor('#F9FAFB').borderRadius(10).alignItems(HorizontalAlign.Start)
+  }
+  @State inboxRefreshVersion: number = 0;
   @State showGoalHistory: boolean = false;
   @State showGoalTechnical: boolean = false;
   @State learningContext: LearningContext | null = null;
@@ -176,6 +238,7 @@ struct ChatMain {
    * "等待补充知识点 / 等待作答"，看起来像操作没生效，只能手工再点一次。
    */
   onPageShow(): void {
+    this.inboxRefreshVersion++;
     this.isPageActive = true;
     if (!this.hasShownOnce) {
       this.hasShownOnce = true;
@@ -235,9 +298,7 @@ struct ChatMain {
         Column() {
           this.Header()
           FocusRecoveryCard()
-          if (this.workflowTitle.length > 0 || this.workflowMessage.length > 0) {
-            this.WorkflowStatusBar()
-          }
+
           this.IntentBar()
           this.MessageList()
           this.InputBar()
@@ -246,6 +307,27 @@ struct ChatMain {
         .width('100%')
         .height('100%')
         .backgroundColor('#F3F6FA')
+        if (this.showGoalHistory) {
+          Column() {
+            PageHeader({ title: '学习记录', detail: '当前对话', onBack: () => this.showGoalHistory = false })
+            Scroll() {
+              Column({ space: 12 }) {
+                if (!this.goalHistory.length) { Text('还没有学习任务记录').fontSize(14).fontColor('#98A2B3').padding(20) }
+                ForEach(this.goalHistory, (goal: LearningContext) => {
+                  Row() {
+                    Column({ space: 6 }) {
+                      Text(goal.knowledgePointName || '待确认的练习').fontSize(16).fontColor('#344054')
+                      Text(goal.status === 'completed' ? '本次练习已完成 · 查看记录' : goal.status === 'ended' ? '已结束' : '学习进行中')
+                        .fontSize(12).fontColor('#98A2B3')
+                    }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+                    Text('›').fontSize(22).fontColor('#98A2B3')
+                  }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(12)
+                    .onClick(() => { this.showGoalHistory = false; void this.changeGoal('select', goal.goalId); })
+                }, (goal: LearningContext) => goal.goalId)
+              }.width('100%').padding(16).alignItems(HorizontalAlign.Start)
+            }.align(Alignment.TopStart).layoutWeight(1).width('100%')
+          }.width('100%').height('100%').backgroundColor('#F5F6F8')
+        }
         if (this.showHistory) {
           Row() {}
             .width('100%').height('100%').backgroundColor('#66000000')
@@ -523,8 +605,9 @@ struct ChatMain {
       }
       .alignItems(HorizontalAlign.Start)
       Blank()
-      Row({ space: 8 }) {
-        Button('目标').fontSize(13).height(34).onClick(() => { this.showGoalHistory = !this.showGoalHistory; void this.loadGoalHistory(); })
+      Row({ space: 4 }) {
+        PartnerInboxButton({ refreshVersion: this.inboxRefreshVersion })
+        Button('学习记录').fontSize(13).height(34).backgroundColor('#F2F4F7').fontColor('#475467').borderRadius(8).onClick(() => { this.showGoalHistory = !this.showGoalHistory; void this.loadGoalHistory(); })
         Button('新对话')
           .fontSize(13)
           .fontColor('#2563EB')
@@ -586,7 +669,7 @@ struct ChatMain {
           this.MessageBubble(item)
         }
       }, (item: ChatMessage) => item.id)
-      if (this.learningContext !== null && this.showGoalSummary) {
+      if (this.learningContext !== null && this.showGoalSummary && ((this.learningContext.status !== 'completed' && this.learningContext.status !== 'ended') || this.showLearningGoalCard)) {
         ListItem() {
           if (this.showLearningGoalCard) this.LearningGoalCard(this.learningContext)
           else {
@@ -596,18 +679,6 @@ struct ChatMain {
               Button('展开').height(30).fontSize(12).onClick(() => this.showLearningGoalCard = true)
             }.width('94%').padding(12).backgroundColor('#EFF6FF').borderRadius(12).margin({ left: 12, bottom: 8 })
           }
-        }
-      }
-      if (this.showGoalHistory) {
-        ListItem() {
-          Column({ space: 8 }) {
-            Text('本会话学习目标历史').fontSize(16).fontWeight(FontWeight.Bold)
-            if (this.goalHistory.length === 0) Text('尚无已确认的学习目标').fontSize(13)
-            ForEach(this.goalHistory, (goal: LearningContext) => {
-              Button(`${goal.needsConfirmation ? '旧目标待重新确认' : (goal.knowledgePointName || '待补充')} · ${goal.status === 'ended' ? '已结束' : goal.status === 'completed' ? '已完成测评' : '查看目标'}`)
-                .fontSize(12).onClick(() => { void this.changeGoal('select', goal.goalId); })
-            }, (goal: LearningContext) => goal.goalId)
-          }.width('94%').padding(14).backgroundColor('#FFFFFF').borderRadius(12)
         }
       }
     }
@@ -631,23 +702,32 @@ struct ChatMain {
     const result = await AgentApiClient.manageChatGoal(chatId, { action: action, goalId: goalId });
     if (owner !== appState.currentUser.userId || chatId !== appState.chatSessionId || version !== this.goalRequestVersion) return;
     this.isGoalLoading = false;
-    if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = false; void this.loadGoalHistory(); }
+    if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = action === 'select'; void this.loadGoalHistory(); }
     else this.goalMessage = (result as ApiFailure).error.message;
   }
   private async confirmDiagnosis(message: ChatMessage, selected?: WrongAnalysis): Promise<void> {
     const question: WrongAnalysis | undefined = selected ?? message.wrongAnalysis;
     const editId: string = selected !== undefined ? (selected.diagnosisId || message.id) : message.id;
+    this.startingDiagnosisId = editId;
+    this.diagnosisNoticeId = editId;
+    this.diagnosisNotice = '正在为这道题准备练习…';
     if (this.isGoalLoading) return;
     const owner: string = appState.currentUser.userId;
     const chatId: string = appState.chatSessionId;
     this.isGoalLoading = true;
     const version: number = ++this.goalRequestVersion;
     const result = await AgentApiClient.manageChatGoal(chatId, { action: 'start', diagnosisId: question?.diagnosisId,
-      knowledgePoint: this.diagnosisEditedId === editId ? this.diagnosisEditedPoint : question?.knowledgePoint });
+      knowledgePoint: question ? this.diagnosisPoint(message, question) : '' });
     if (owner !== appState.currentUser.userId || chatId !== appState.chatSessionId || version !== this.goalRequestVersion) return;
     this.isGoalLoading = false;
-    if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = true; this.goalMessage = ''; void this.loadGoalHistory(); }
-    else this.goalMessage = (result as ApiFailure).error.message;
+    if (result.ok) {
+      this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null;
+      this.showLearningGoalCard = true; this.goalMessage = ''; void this.loadGoalHistory();
+      if (this.learningContext !== null) {
+        await this.continueLearningGoal(this.learningContext);
+        if (this.isPageActive) { this.diagnosisNoticeId = editId; this.diagnosisNotice = this.goalMessage || '练习已准备，可在下方任务卡继续。'; this.messageScroller.scrollEdge(Edge.Bottom); }
+      }
+    } else { this.goalMessage = (result as ApiFailure).error.message; this.diagnosisNotice = this.goalMessage; }
   }
 
   private async refreshLearningContext(): Promise<void> {
@@ -747,12 +827,15 @@ struct ChatMain {
   private LearningGoalCard(context: LearningContext) {
     Column({ space: 10 }) {
       Row() {
-        Text('练习与测评').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1D4ED8').layoutWeight(1)
+        Text(context.status === 'completed' ? '本次练习已完成' : '当前学习任务').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1D4ED8').layoutWeight(1)
         Button('收起').fontSize(12).height(28).fontColor('#2563EB')
           .backgroundColor('#EFF6FF').borderRadius(8)
           .onClick(() => { this.showLearningGoalCard = false; })
       }.width('100%')
-      Button('结束当前目标').fontSize(12).height(30).onClick(() => { void this.changeGoal('end', context.goalId); })
+
+      if (context.status !== 'completed' && context.status !== 'ended') {
+      Button('结束本次任务').fontSize(12).height(30).fontColor('#667085').backgroundColor('#F2F4F7').onClick(() => { void this.changeGoal('end', context.goalId); })
+      }
       Text(context.knowledgePointName.length > 0 ? `练习内容：${context.knowledgePointName}` : '请先选择要练习的知识点')
         .fontSize(15).fontWeight(FontWeight.Medium).fontColor('#1F2937').width('100%')
       Text(context.status === 'ended' ? '你已结束这项练习，历史记录仍可查看。' :
@@ -911,24 +994,12 @@ struct ChatMain {
 
         if (message.attachmentStatus !== undefined) Text(message.attachmentStatus).fontSize(12).fontColor('#64748B')
         if (message.wrongAnalysis?.questions !== undefined && message.wrongAnalysis.questions.length > 1) {
+          Text('只识别分析，不会自动加入错题本。可逐题选择收藏或开始练习。').fontSize(12).fontColor('#98A2B3')
           ForEach(message.wrongAnalysis.questions, (question: WrongAnalysis, index: number) => {
-            if (question.diagnosisId && question.knowledgePoint) {
-              Text(`第${question.questionNumber || (index + 1).toString()}题 · ${question.knowledgePoint}`)
-                .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-              TextInput({ text: this.diagnosisEditedId === question.diagnosisId ? this.diagnosisEditedPoint : (question.knowledgePoint ?? ''), placeholder: '核对或修改本题知识点' })
-                .onChange((v: string) => { this.diagnosisEditedId = question.diagnosisId ?? message.id; this.diagnosisEditedPoint = v; })
-              Button('确认本题，建立学习目标').fontSize(12).height(36).enabled(!this.isGoalLoading)
-                .onClick(() => { void this.confirmDiagnosis(message, question); })
-            }
-          }, (question: WrongAnalysis, index: number) => index.toString())
+            this.DiagnosisQuestion(message, question, index)
+          }, (question: WrongAnalysis, index: number) => question.diagnosisId || `${message.id}-${index}`)
         } else if (message.wrongAnalysis?.questionText) {
-          Text('识别题干（请核对）').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-          Text(message.wrongAnalysis.questionText).fontSize(13).fontColor('#475467').lineHeight(20)
-          TextInput({ text: this.diagnosisEditedId === message.id ? this.diagnosisEditedPoint : (message.wrongAnalysis.knowledgePoint ?? ''), placeholder: '核对或修改知识点' })
-            .onChange((v: string) => { this.diagnosisEditedId = message.id; this.diagnosisEditedPoint = v; })
-          Button('确认题干无误，建立本题学习目标').fontSize(12).height(36).enabled(!this.isGoalLoading)
-            .onClick(() => { void this.confirmDiagnosis(message); })
-          if (this.learningContext !== null) Text('新题将建立独立目标；原目标保留在“目标”历史中。').fontSize(11).fontColor('#64748B')
+          this.DiagnosisQuestion(message, message.wrongAnalysis, 0)
         }
         if (message.card !== undefined) {
           this.CardView(message.card)

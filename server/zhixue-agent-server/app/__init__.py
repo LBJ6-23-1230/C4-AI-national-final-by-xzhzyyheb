@@ -196,6 +196,10 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
     app.register_blueprint(knowledge_api)
     app.register_blueprint(schedule_import_api)
     app.register_blueprint(wrong_book_api)
+    from app.api.learning_upgrade import learning_upgrade_api
+    app.register_blueprint(learning_upgrade_api)
+    from app.api.partner_inbox import partner_inbox_api
+    app.register_blueprint(partner_inbox_api)
     app.register_blueprint(focus_api)
 
     @app.before_request

@@ -222,6 +222,28 @@ def get_exercise_set(set_id: str):
 		return jsonify({"errorCode": "BAD_REQUEST", "message": "sourceMode must be general or materials", "details": None}), 400
 	if source_mode == "materials":
 		return _material_set(set_id, raw_point, count)
+	course = (request.args.get("courseName") or "").strip()
+	if course:
+		owner = resolve_user_id(None)
+		profile = _repository.get("profiles", owner) if _repository else None
+		from app.services.subject_classification import normalized_mastery
+		point = next((p for p in normalized_mastery(profile or {})
+			if p.get("knowledgePointId") == raw_point and p.get("sourceCourse", "待分类") == course), None)
+		if point is None:
+			return jsonify({"errorCode": "COURSE_POINT_MISMATCH", "message": "课程与知识点不匹配，请重新选择"}), 400
+		from app.api.wrong_book import _course_for
+		bank = [q for q in _EXERCISE_BANK if q.get("knowledgePointId") == raw_point and _course_for(owner, q) == course]
+		exercises = select_exercises(bank, raw_point, difficulty, count, excluded_ids) if bank else []
+		if not exercises and request.args.get("generate") in ("1", "true", "yes"):
+			exercises = _generate_and_store(course + "：" + point["knowledgePointName"], min(count, 10), excluded_ids)
+			for exercise in exercises:
+				exercise.update(knowledgePointId=raw_point, knowledgePointName=point["knowledgePointName"])
+				stored = _repository.get("exercises", exercise["exerciseId"])
+				if stored:
+					stored.update(knowledgePointId=raw_point, knowledgePointName=point["knowledgePointName"], courseName=course)
+					_repository.save("exercises", exercise["exerciseId"], stored)
+		return jsonify({"setId": set_id, "exercises": exercises, "courseName": course,
+			"generationFailed": not bool(exercises), "message": "本课程暂未生成可用题目，请补充资料或重试" if not exercises else ""})
 	# `generate=1` 才允许现场出题 —— **默认行为一个字节都不变**，
 	# 演示基线那条路径（不带参数）永远不会触发模型调用。
 	generate_requested = (request.args.get("generate") or "").strip().lower() in ("1", "true", "yes")

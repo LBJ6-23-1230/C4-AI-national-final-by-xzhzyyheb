@@ -1,3 +1,6 @@
+import { PartnerInbox, PartnerSummary, PartnerReadRequest, PartnerReadResult } from './LearningUpgradeModels';
+import { CourseSettings, CourseSettingRequest } from './LearningUpgradeModels';
+import { PartnerMessages, PartnerMessageRequest, PartnerMessageResult, ScannedQuestionRequest, SavedScannedQuestion, LearningReview, ReviewRequest, ReviewTasks, ReviewTaskRequest } from './LearningUpgradeModels';
 import { AuthSelectAccountRequest } from './AuthModels';
 import { GoalActionRequest, GoalActionResponse, GoalHistoryResponse } from './ApiModels';
 import { AuthProfileUpdateRequest } from './AuthModels';
@@ -41,6 +44,45 @@ interface KnowledgePointImportRequest {
  * 默认地址集中定义在 `ApiDefaults.DEFAULT_BASE_URL`，页面里不得再各写一份 IP。
  */
 export class AgentApiClient {
+  static async partnerInbox(offset: number = 0): Promise<ApiResult<PartnerInbox>> {
+    return AgentApiClient.request<PartnerInbox>(http.RequestMethod.GET, `/api/v1/partner-conversations?offset=${offset}`);
+  }
+  static async partnerSummary(partner: string): Promise<ApiResult<PartnerSummary>> {
+    return AgentApiClient.request<PartnerSummary>(http.RequestMethod.GET, `/api/v1/partners/${encodeURIComponent(partner)}/summary`);
+  }
+  static async markPartnerRead(partner: string, body: PartnerReadRequest): Promise<ApiResult<PartnerReadResult>> {
+    return AgentApiClient.request<PartnerReadResult>(http.RequestMethod.POST, `/api/v1/partners/${encodeURIComponent(partner)}/read`, body);
+  }
+
+  static async courseSettings(): Promise<ApiResult<CourseSettings>> {
+    return AgentApiClient.request<CourseSettings>(http.RequestMethod.GET, '/api/v1/learning-course-settings');
+  }
+  static async saveCourseSettings(body: CourseSettingRequest): Promise<ApiResult<CourseSettings>> {
+    return AgentApiClient.request<CourseSettings>(http.RequestMethod.POST, '/api/v1/learning-course-settings', body);
+  }
+
+  static async partnerMessages(partner: string, cursor: string): Promise<ApiResult<PartnerMessages>> {
+    return AgentApiClient.request<PartnerMessages>(http.RequestMethod.GET, `/api/v1/partners/${encodeURIComponent(partner)}/messages?after=${encodeURIComponent(cursor)}`);
+  }
+  static async sendPartnerMessage(partner: string, body: PartnerMessageRequest): Promise<ApiResult<PartnerMessageResult>> {
+    return AgentApiClient.request<PartnerMessageResult>(http.RequestMethod.POST, `/api/v1/partners/${encodeURIComponent(partner)}/messages`, body);
+  }
+  static async saveScannedQuestion(body: ScannedQuestionRequest): Promise<ApiResult<SavedScannedQuestion>> {
+    return AgentApiClient.request<SavedScannedQuestion>(http.RequestMethod.POST, '/api/v1/wrong-book/scanned', body);
+  }
+  static async learningReview(body: ReviewRequest): Promise<ApiResult<LearningReview>> {
+    return AgentApiClient.request<LearningReview>(http.RequestMethod.POST, '/api/v1/learning-reviews', body, ApiDefaults.LLM_BOUND_READ_TIMEOUT_MS);
+  }
+  static async acceptLearningReview(id: string): Promise<ApiResult<ReviewTasks>> {
+    return AgentApiClient.request<ReviewTasks>(http.RequestMethod.POST, `/api/v1/learning-reviews/${encodeURIComponent(id)}/accept`);
+  }
+  static async reviewTasks(): Promise<ApiResult<ReviewTasks>> {
+    return AgentApiClient.request<ReviewTasks>(http.RequestMethod.GET, '/api/v1/learning-review-tasks');
+  }
+  static async completeReviewTask(body: ReviewTaskRequest): Promise<ApiResult<ReviewTasks>> {
+    return AgentApiClient.request<ReviewTasks>(http.RequestMethod.POST, '/api/v1/learning-review-tasks/complete', body);
+  }
+
   static async syncAssignments(request: AssignmentSyncRequest): Promise<ApiResult<LearningPlan>> {
     return AgentApiClient.request<LearningPlan>(http.RequestMethod.POST,
       '/api/v1/plans/current/assignments', request);
@@ -153,6 +195,7 @@ export class AgentApiClient {
       if (query.sourceMode !== undefined) parameters.push(`sourceMode=${encodeURIComponent(query.sourceMode)}`);
       if (query.kbId !== undefined) parameters.push(`kbId=${encodeURIComponent(query.kbId)}`);
       if (query.documentId !== undefined) parameters.push(`documentId=${encodeURIComponent(query.documentId)}`);
+      if (query.courseName) parameters.push(`courseName=${encodeURIComponent(query.courseName)}`);
       if (query.knowledgePointId !== undefined && query.knowledgePointId.trim().length > 0) {
         parameters.push(`knowledgePointId=${encodeURIComponent(query.knowledgePointId)}`);
       }
@@ -447,7 +490,7 @@ export class AgentApiClient {
         header: header,
         extraData: body === undefined ? undefined : JSON.stringify(body),
         expectDataType: http.HttpDataType.STRING,
-        usingCache: !path.startsWith('/api/v1/auth/'),
+        usingCache: false,
         // ⚠️ `connectTimeout` 始终用配置值（连不上要快速失败），
         // 但 `readTimeout` 允许单次调用放宽 —— 见 `readTimeoutMs` 参数。
         connectTimeout: AgentApiClient.config.timeoutMs,
@@ -486,7 +529,11 @@ export class AgentApiClient {
 
   private static normalizeBaseUrl(baseUrl: string): string {
     const trimmed: string = baseUrl.trim();
-    return trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    const normalized: string = trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    // A corrupted persisted debug address must not silently turn every API call into a 404.
+    // Accept localhost, emulator host aliases and normal LAN hosts with an explicit port.
+    return /^https?:\/\/[^\s/:]+(?::\d+)$/.test(normalized) || /^https?:\/\/\[[^\]]+\](?::\d+)$/.test(normalized)
+      ? normalized : ApiDefaults.DEFAULT_BASE_URL;
   }
 
   static parseServerError(payload: string, statusCode: number): ApiFailure {

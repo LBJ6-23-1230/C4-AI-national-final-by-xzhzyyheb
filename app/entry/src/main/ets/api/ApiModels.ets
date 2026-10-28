@@ -185,6 +185,8 @@ export interface KnowledgeMastery {
 }
 
 export interface MasteryHistory {
+  knowledgePointId?: string;
+  questionCount?: number;
   oldScore: number;
   newScore: number;
   evidenceIds: string[];
@@ -468,6 +470,7 @@ export interface ExerciseSetResponse {
 }
 
 export interface ExerciseQuery {
+  courseName?: string;
   sourceMode?: string;
   kbId?: string;
   documentId?: string;
@@ -575,6 +578,7 @@ export interface ExerciseReview {
 }
 
 export interface WrongBookItem extends Exercise {
+  knowledgeGroup?: string;
   courseName: string;
   explanation: string;
   correctCount: number;

@@ -204,9 +204,9 @@ def test_partner_basic_match_and_stability_factors_are_independent():
 	no_basic_no_time = score_partner(user, {"basicInfo": {}, "time": {}})
 
 	assert same_all["factors"]["basicMatch"] == 10
-	assert same_all["factors"]["stability"] == 10
+	assert same_all["factors"]["stability"] == 0
 	assert same_grade["factors"]["basicMatch"] == 5
-	assert same_grade["factors"]["stability"] == 5
+	assert same_grade["factors"]["stability"] == 0
 	assert no_basic_no_time["factors"]["basicMatch"] == 0
 	assert no_basic_no_time["factors"]["stability"] == 0
 

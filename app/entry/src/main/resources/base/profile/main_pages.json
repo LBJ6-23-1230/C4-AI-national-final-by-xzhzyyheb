@@ -20,6 +20,11 @@
     "pages/FocusResult",
     "pages/LearningHistory",
     "pages/KnowledgeBase",
-    "pages/WrongBook"
+    "pages/WrongBook",
+    "pages/PartnerChat",
+    "pages/LearningReview",
+    "pages/LearningSetup",
+    "pages/PartnerInbox",
+    "pages/PartnerDetail"
   ]
 }

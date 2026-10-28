@@ -57,7 +57,8 @@ def _course_for(user_id: str, question: dict) -> str:
 					return course
 	if point_id.startswith(("binary-tree", "graph-", "algorithm-", "recursion-")):
 		return "数据结构"
-	return str(question.get("courseName") or question.get("knowledgePointName") or "其他").strip() or "其他"
+	from app.services.subject_classification import subject
+	return subject(question.get("courseName"), question.get("knowledgePointName"), question.get("stem"), profile)
 
 
 def _public(record: dict) -> dict:
@@ -117,7 +118,11 @@ def list_wrong_book():
 		if isinstance(item, dict) and item.get("userId") == user_id]
 	items.sort(key=lambda item: (str(item.get("courseName")), str(item.get("addedAt"))), reverse=True)
 	courses: dict[str, list[dict]] = {}
+	from app.services.subject_classification import subject, topic_group
+	profile = _repository.get("profiles", user_id) if _repository else {}
 	for item in items:
+		item["courseName"] = subject(item.get("courseName"), item.get("knowledgePointName"), item.get("stem"), profile)
+		item["knowledgeGroup"] = topic_group(item.get("knowledgePointName"))
 		courses.setdefault(str(item.get("courseName") or "其他"), []).append(item)
 	return jsonify({"userId": user_id, "total": len(items),
 		"courses": [{"courseName": name, "items": rows} for name, rows in courses.items()]})
@@ -156,6 +161,8 @@ def practice_wrong_book(exercise_id: str):
 	record = _repository.get("wrong_book", _key(user_id, exercise_id)) if _repository else None
 	if record is None:
 		return jsonify({"errorCode": "NOT_FOUND", "message": "wrong-book item not found", "details": None}), 404
+	if not record.get("answerKey"):
+		return jsonify({"errorCode": "ANSWER_UNCONFIRMED", "message": "本题答案尚未确认，请先核对解析或练习同类题"}), 409
 	answer = str(data.get("answer") or "").strip().upper()
 	correct = answer == str(record.get("answerKey") or "").upper()
 	removed = False

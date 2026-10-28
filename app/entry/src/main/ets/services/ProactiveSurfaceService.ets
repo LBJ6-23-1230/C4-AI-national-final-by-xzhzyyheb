@@ -25,7 +25,7 @@ export class ProactiveSurfaceService {
       appState.currentUser.userId,
       highPriorityCourse !== null ? highPriorityCourse.exam.daysLeft : undefined,
       false,
-      appState.activeFocusTask !== null && appState.focusResultDraft === null,
+      appState.focusRuntime !== null && appState.focusRuntime.ownerId === appState.currentUser.userId && appState.focusRuntime.finishedAt === undefined && appState.focusResultDraft === null,
       lastStudyAt
     );
     const result = await AgentApiClient.getProactiveDecision(request);

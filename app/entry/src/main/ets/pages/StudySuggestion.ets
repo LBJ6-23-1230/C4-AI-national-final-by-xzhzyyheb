@@ -199,20 +199,12 @@ struct StudySuggestion {
       Text(this.errorMessage.length > 0 ? this.errorMessage
         : '这个账号还没有学习计划，计划由 Agent 按你的真实课程与练习记录生成。')
         .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
-      Text('下面三种方式都会真实写入知识点并生成一份属于你的计划，不会预置示例数据：')
+      Text('第 1 步：导入课程并确认目标与 DDL；第 2 步：补充讲义或错题；第 3 步：诊断后开始学习。')
         .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-      Button('导入课程，生成计划').width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold)
+      Button('开始建立学习档案 →').width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold)
         .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(14)
         .onClick(() => this.openCourseImport())
-      Button('上传讲义资料').width('100%').height(44).fontSize(14)
-        .fontColor('#2563EB').backgroundColor('#FFFFFF')
-        .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
-        .onClick(() => this.openKnowledgeBase())
-      Button('去对话建立学习目标').width('100%').height(44).fontSize(14)
-        .fontColor('#2563EB').backgroundColor('#FFFFFF')
-        .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
-        .onClick(() => this.openChatGoal())
-      Text('导入完成后回到本页或对话页，计划会自动出现；这里不会用演示数据"填满"页面。')
+      Text('完成基础信息后，在课程导入页面继续补充知识库资料。')
         .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
     }.width('100%').padding(20).backgroundColor('#FFFFFF').borderRadius(16)
   }
@@ -284,7 +276,8 @@ struct StudySuggestion {
           Blank()
           Text('学习建议').fontSize(13).fontColor('#2563EB').fontWeight(FontWeight.Bold)
         }.width('100%').padding({ left: 20, right: 20, top: 14, bottom: 14 }).backgroundColor('#FFFFFF')
-        Scroll() {
+        Button('阶段复盘与考前建议').onClick(() => router.pushUrl({ url: 'pages/LearningReview' }))
+      Scroll() {
           Column({ space: 16 }) {
             Text('今日学习建议').fontSize(26).fontWeight(FontWeight.Bold).fontColor('#172033').width('100%')
             Text('任务、时长和判断依据均来自当前 Agent 计划，前端不重新计算优先级。')

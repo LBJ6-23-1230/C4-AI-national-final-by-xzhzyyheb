@@ -1,3 +1,4 @@
+import { CourseReviewReminder } from '../components/CourseReviewReminder';
 import router from '@ohos.router';
 import { UserAvatar } from '../components/UserAvatar';
 import { appState } from '../data/AppState';
@@ -168,7 +169,7 @@ struct Index {
     // 通知投递由 `ProactiveSurfaceService`（App 进后台时）负责。
     const state = await this.proactiveViewModel.load(
       appState.currentUser.userId, daysLeft, false,
-      appState.activeFocusTask !== null && appState.focusResultDraft === null,
+      appState.focusRuntime !== null && appState.focusRuntime.ownerId === appState.currentUser.userId && appState.focusRuntime.finishedAt === undefined && appState.focusResultDraft === null,
       lastStudyAt);
     if (!this.isPageActive || requestVersion !== this.proactiveRequestVersion) return;
     this.proactiveDecision = state.decision;
@@ -508,11 +509,11 @@ struct Index {
         Text('这是 Agent 当前计划中的下一项未完成任务。')
           .fontSize(12.5).fontColor('#475467').lineHeight(19).width('100%')
       } else {
-        Text('先做一组快速诊断').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
+        Text(appState.courses.length === 0 && appState.homeworkDDLs.length === 0 ? '先建立课程与学习目标' : '先做一组快速诊断').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
         Text(this.proactiveMessage.length > 0 ? this.proactiveMessage : '用一组练习确定当前薄弱点，再生成下一步计划。')
           .fontSize(12.5).fontColor('#475467').lineHeight(19).width('100%')
       }
-      Button(this.isActionReady() ? '开始当前任务' : '开始诊断')
+      Button(this.isActionReady() ? '开始当前任务' : (appState.courses.length === 0 && appState.homeworkDDLs.length === 0 ? '开始建立学习档案' : '开始诊断'))
         .width('100%').height(46).fontSize(14).fontWeight(FontWeight.Bold)
         .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
         .onClick(() => this.onPrimaryAction())
@@ -757,6 +758,10 @@ struct Index {
 
   /** 主按钮分派：走的都是既有逻辑（写 focusTask 再跳专注设置页），只是收口到一处。 */
   private onPrimaryAction(): void {
+    if (appState.courses.length === 0 && appState.homeworkDDLs.length === 0 && appState.latestWrongAnalysis === null && this.currentAgentTask() === null) {
+      router.pushUrl({ url: 'pages/CourseImport' });
+      return;
+    }
     if (this.hasProactiveTask() && this.proactiveDecision!.action.type === 'focus') {
       this.startProactiveTask();
       return;
@@ -949,11 +954,14 @@ struct Index {
                   .backgroundColor('#EFF6FF').borderRadius(16)
                   .onClick(() => router.pushUrl({ url: 'pages/WrongBook' }))
               }.width('100%')
-              this.PrimaryActionCard()
+              CourseReviewReminder()
+              if (appState.focusRuntime !== null && appState.focusRuntime.ownerId === appState.currentUser.userId && appState.focusRuntime.finishedAt === undefined) {
+                this.PanelRow($r('app.media.feature_focus'), '继续专注', '返回正在进行的计时任务', 'pages/FocusTimer')
+              }
               if (this.agentPlanMessage.length > 0) {
                 this.PlanLoadNotice()
               }
-              this.PanelCard('上传作业与 DDL',
+              this.PanelCard('第 1 步：课程、目标与 DDL',
                 '导入 CSV/JSON 课程表与作业截止时间。导入后，全部智能体的分析自动切换为你的真实数据。',
                 '去上传 / 导入数据', 'pages/CourseImport')
 
@@ -968,10 +976,8 @@ struct Index {
               this.PanelRow($r('app.media.feature_courses'), '课程与作业清单', '查看已导入的课程与 DDL', 'pages/CourseImport')
 
               // 知识库入口：让 Agent 的判断有据可依（引用你自己的课程资料）
-              this.PanelCard('我的知识库',
-                '上传课程讲义、题库或笔记（TXT / Markdown / CSV / JSON）。' +
-                'Agent 会从中提取知识点与易错点，回答时标注资料来源与章节。',
-                '进入我的知识库', 'pages/KnowledgeBase')
+              this.PanelCard('我的知识库', '上传、补充和管理课程讲义、笔记与资料。', '进入我的知识库', 'pages/KnowledgeBase')
+              this.PanelCard('阶段复盘与考前建议', '结合本课程学习记录，生成可执行的复习行动。', '查看阶段建议', 'pages/LearningReview')
               this.PanelCard('我的错题本',
                 '答错题自动收录并按课程整理；也可手动加入做过的题。每题累计答对 3 次后自动移出。',
                 '进入错题本刷题', 'pages/WrongBook')

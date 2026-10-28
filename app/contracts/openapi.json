@@ -780,6 +780,15 @@
               "type": "string"
             },
             "description": "Optional owned document in the selected KB."
+          },
+          {
+            "name": "courseName",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "description": "知识点所属课程；必须与当前用户画像中的知识点匹配"
           }
         ],
         "responses": {
@@ -4133,6 +4142,499 @@
           },
           "401": {
             "description": "Invalid, expired or used selection; invalid account or password"
+          }
+        }
+      }
+    },
+    "/api/v1/partners/{partner}/messages": {
+      "get": {
+        "summary": "读取搭子消息",
+        "operationId": "get_api_v1_partners_partner_messages",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerMessages"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          }
+        },
+        "parameters": [
+          {
+            "name": "partner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "上一页返回的游标；每页最多10条，按hasMore继续拉取"
+          }
+        ]
+      },
+      "post": {
+        "summary": "发送搭子消息",
+        "operationId": "post_api_v1_partners_partner_messages",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerMessageResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          },
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerMessageResult"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "partner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerMessageRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wrong-book/scanned": {
+      "post": {
+        "summary": "逐题保存拍照识别题",
+        "operationId": "post_api_v1_wrong_book_scanned",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedScannedQuestion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          },
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedScannedQuestion"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScannedQuestionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learning-reviews": {
+      "post": {
+        "summary": "生成分科学习复盘",
+        "operationId": "post_api_v1_learning_reviews",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningReview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearningReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learning-reviews/{review_id}/accept": {
+      "post": {
+        "summary": "确认复盘行动",
+        "operationId": "post_api_v1_learning_reviews_review_id_accept",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTasks"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          }
+        },
+        "parameters": [
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/learning-review-tasks": {
+      "get": {
+        "summary": "读取复盘行动",
+        "operationId": "get_api_v1_learning_review_tasks",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTasks"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          }
+        }
+      }
+    },
+    "/api/v1/learning-review-tasks/complete": {
+      "post": {
+        "summary": "记录行动完成",
+        "operationId": "post_api_v1_learning_review_tasks_complete",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTasks"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewTaskRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learning-course-settings": {
+      "get": {
+        "summary": "读取课程目标与考试日期",
+        "operationId": "get_api_v1_learning_course_settings",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          }
+        }
+      },
+      "post": {
+        "summary": "保存课程目标与考试日期",
+        "operationId": "post_api_v1_learning_course_settings",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "数据不存在或无权访问"
+          },
+          "409": {
+            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseSettingRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/partner-conversations": {
+      "get": {
+        "summary": "搭子会话与未读数",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerInbox"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "会话不存在或无访问权限"
+          }
+        },
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "每页最多30个会话；totalUnread包含全部有效会话"
+          }
+        ]
+      }
+    },
+    "/api/v1/partners/{partner}/summary": {
+      "get": {
+        "summary": "搭子关系与共同学习资料",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "会话不存在或无访问权限"
+          }
+        },
+        "parameters": [
+          {
+            "name": "partner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/partners/{partner}/read": {
+      "post": {
+        "summary": "标记已读至已收到的消息",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerReadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数无效"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "会话不存在或无访问权限"
+          }
+        },
+        "parameters": [
+          {
+            "name": "partner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerReadRequest"
+              }
+            }
           }
         }
       }
@@ -7752,6 +8254,433 @@
             "description": "Required for password login; must match the selected account."
           }
         }
+      },
+      "PartnerMessage": {
+        "type": "object",
+        "required": [
+          "messageId",
+          "senderId",
+          "text",
+          "image",
+          "createdAt",
+          "clientId"
+        ],
+        "properties": {
+          "messageId": {
+            "type": "string"
+          },
+          "senderId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string"
+          }
+        }
+      },
+      "ReviewTask": {
+        "type": "object",
+        "required": [
+          "taskId",
+          "title",
+          "courseName",
+          "knowledgePointId",
+          "status"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "knowledgePointId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "actionType": {
+            "type": "string",
+            "enum": [
+              "practice",
+              "settings"
+            ]
+          }
+        }
+      },
+      "CourseSetting": {
+        "type": "object",
+        "required": [
+          "courseName",
+          "goal",
+          "examDate",
+          "reviewDue"
+        ],
+        "properties": {
+          "courseName": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "examDate": {
+            "type": "string"
+          },
+          "reviewDue": {
+            "type": "boolean"
+          },
+          "daysUntilExam": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "PartnerMessageRequest": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "image": {
+            "type": "string",
+            "maxLength": 3000000
+          }
+        },
+        "required": [
+          "clientId"
+        ]
+      },
+      "PartnerMessages": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerMessage"
+            }
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "messages",
+          "cursor",
+          "hasMore"
+        ]
+      },
+      "PartnerMessageResult": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "$ref": "#/components/schemas/PartnerMessage"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "ScannedQuestionRequest": {
+        "type": "object",
+        "properties": {
+          "stem": {
+            "type": "string",
+            "maxLength": 12000
+          },
+          "courseName": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "knowledgePointName": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 20000
+          }
+        },
+        "required": [
+          "stem"
+        ]
+      },
+      "SavedScannedQuestion": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "object",
+            "description": "错题本记录，不包含用于判分的答案键"
+          }
+        },
+        "required": [
+          "item"
+        ]
+      },
+      "LearningReviewRequest": {
+        "type": "object",
+        "properties": {
+          "courseName": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "courseName"
+        ]
+      },
+      "LearningReview": {
+        "type": "object",
+        "properties": {
+          "reviewId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "model",
+              "rules"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "object",
+            "description": "生成时使用的课程画像、测评证据、历史和考试日期快照"
+          }
+        },
+        "required": [
+          "reviewId",
+          "userId",
+          "courseName",
+          "summary",
+          "actions",
+          "source",
+          "createdAt",
+          "snapshot"
+        ]
+      },
+      "ReviewTasks": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewTask"
+            }
+          }
+        },
+        "required": [
+          "tasks"
+        ]
+      },
+      "ReviewTaskRequest": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "taskId"
+        ]
+      },
+      "CourseSettings": {
+        "type": "object",
+        "properties": {
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseSetting"
+            }
+          }
+        },
+        "required": [
+          "courses"
+        ]
+      },
+      "CourseSettingRequest": {
+        "type": "object",
+        "properties": {
+          "courseName": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "goal": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "examDate": {
+            "type": "string",
+            "description": "YYYY-MM-DD；空字符串清除考试日期"
+          }
+        },
+        "required": [
+          "courseName"
+        ]
+      },
+      "PartnerConversation": {
+        "type": "object",
+        "properties": {
+          "partnerUserId": {
+            "type": "string"
+          },
+          "partnerName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "pairedAt": {
+            "type": "string"
+          },
+          "pairedDays": {
+            "type": "integer"
+          },
+          "sharedCourses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sharedKnowledgePoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sharedStudyMinutes": {
+            "type": "integer",
+            "nullable": true
+          },
+          "lastMessage": {
+            "type": "string"
+          },
+          "lastMessageId": {
+            "type": "string"
+          },
+          "lastMessageAt": {
+            "type": "string"
+          },
+          "unreadCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "partnerUserId",
+          "partnerName",
+          "avatar",
+          "pairedAt",
+          "pairedDays",
+          "sharedCourses",
+          "sharedKnowledgePoints",
+          "sharedStudyMinutes",
+          "lastMessage",
+          "lastMessageId",
+          "lastMessageAt",
+          "unreadCount"
+        ]
+      },
+      "PartnerInbox": {
+        "type": "object",
+        "properties": {
+          "conversations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerConversation"
+            }
+          },
+          "totalUnread": {
+            "type": "integer"
+          },
+          "nextOffset": {
+            "type": "integer"
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "conversations",
+          "totalUnread",
+          "nextOffset",
+          "hasMore"
+        ]
+      },
+      "PartnerSummary": {
+        "type": "object",
+        "properties": {
+          "conversation": {
+            "$ref": "#/components/schemas/PartnerConversation"
+          }
+        },
+        "required": [
+          "conversation"
+        ]
+      },
+      "PartnerReadRequest": {
+        "type": "object",
+        "properties": {
+          "lastReadMessageId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          }
+        },
+        "required": [
+          "lastReadMessageId"
+        ]
+      },
+      "PartnerReadResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "lastReadMessageId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "lastReadMessageId"
+        ]
       }
     },
     "responses": {

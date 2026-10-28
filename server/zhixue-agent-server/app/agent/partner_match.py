@@ -80,8 +80,13 @@ def score_partner(user: dict[str, Any], candidate: dict[str, Any]) -> dict[str, 
 	basic_score = 10 if (user_info.get("grade") and user_info.get("major") and
 		user_info.get("grade") == candidate_info.get("grade") and user_info.get("major") == candidate_info.get("major")) else 5 if user_info.get("grade") and user_info.get("grade") == candidate_info.get("grade") else 0
 	ranges = _time_ranges(_dict(candidate.get("time")).get("freeTime"))
-	stability_score = 10 if len(ranges) == 1 else 5 if ranges else 0
+	# Availability alone is not evidence of reliable collaboration.
+	verified = _dict(candidate.get("collaboration"))
+	completed = verified.get("completedTogether", 0)
+	stability_score = min(10, max(0, int(completed))) if isinstance(completed, int) and not isinstance(completed, bool) else 0
 	total = goal_score + time_score + complement_score + basic_score + stability_score
+	if left and not shared:
+		total = 0  # A shared course is required for a course-specific learning partner.
 	return {"candidate": candidate, "score": total, "sharedCourses": shared,
 		"courseMatch": "full" if shared and left == right else "partial" if shared else "none",
 		"goalMatch": "same" if same_goal else "unconfirmed" if not user_goal.get("goal") or not candidate_goal.get("goal") else "different",
@@ -92,7 +97,7 @@ def score_partner(user: dict[str, Any], candidate: dict[str, Any]) -> dict[str, 
 
 
 def match_partners(user: dict[str, Any], candidates: list[dict[str, Any]]) -> dict[str, Any]:
-	ranked = sorted((score_partner(user, item) for item in candidates),
+	ranked = sorted((score_partner(user, item) for item in candidates if not user.get("userId") or item.get("userId") != user.get("userId")),
 		key=lambda item: item["score"], reverse=True)
 	best = ranked[0] if ranked and ranked[0]["score"] > 0 else None
 	return {"userId": user.get("userId", "demo-user"), "matchedCandidate": best,

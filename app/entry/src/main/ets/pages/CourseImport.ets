@@ -693,6 +693,10 @@ struct CourseImport {
   build() {
     Stack() {
     Column() {
+      if (this.courseList.length > 0) {
+        Button('下一步：确认目标与考试日期 →').width('94%').margin(10)
+          .onClick(() => router.pushUrl({ url: 'pages/LearningSetup' }))
+      }
       // 顶部导航
       Row() {
         Text('← 返回').fontSize(14).fontColor('#2563EB').fontWeight(FontWeight.Medium)

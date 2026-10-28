@@ -1,3 +1,5 @@
+import { Evidence, MasteryHistory } from '../api/ApiModels';
+import { LearningEvidence } from '../utils/LearningEvidence';
 import router from '@ohos.router';
 import { AIFloatButton } from '../components/AIFloatButton';
 import { Exercise, ExerciseAnswer, ExerciseReview, ExerciseSetResponse, ExerciseSubmission, ExerciseSubmissionResult, KnowledgeMastery, PointMasteryUpdate } from '../api/ApiModels';
@@ -56,6 +58,9 @@ struct ExercisePractice {
   @State showPicker: boolean = false;
   @State pickerLoading: boolean = false;
   @State pickerErrorMessage: string = '';
+  @State pickerEvidence: Evidence[] = [];
+  @State pickerHistory: MasteryHistory[] = [];
+  private pickerAssessed(item: KnowledgeMastery): boolean { return LearningEvidence.assessed(item, this.pickerEvidence, this.pickerHistory); }
   @State pickerOptions: KnowledgeMastery[] = [];
   private profileViewModel: ProfileViewModel = new ProfileViewModel();
   private viewModel: ExerciseViewModel = new ExerciseViewModel();
@@ -116,6 +121,8 @@ struct ExercisePractice {
   }
 
   aboutToAppear(): void {
+    const initial = router.getParams() as Record<string, Object>;
+    if (initial && typeof initial['courseName'] === 'string') this.selectedCourse = initial['courseName'] as string;
     this.isDisposed = false;
     this.isPageActive = true;
     this.readRouteParams();
@@ -133,6 +140,21 @@ struct ExercisePractice {
    * 本页因此回落到写死的 `binary-tree-postorder` —— 于是画像上最薄弱的
    * 明明是别的知识点，用户拿到的却永远是二叉树那三道题。
    */
+  @State selectedCourse: string = '';
+
+  private pickerCourses(): string[] {
+    const names: string[] = [];
+    this.pickerOptions.forEach((p: KnowledgeMastery) => {
+      const name: string = p.sourceCourse || '待分类';
+      if (names.indexOf(name) < 0) names.push(name);
+    });
+    return names;
+  }
+
+  private coursePoints(): KnowledgeMastery[] {
+    return this.pickerOptions.filter((p: KnowledgeMastery) => (p.sourceCourse || '待分类') === this.selectedCourse);
+  }
+
   private startFlow(): void {
     if (this.practiceFromRoute) {
       this.loadExercises();
@@ -162,12 +184,16 @@ struct ExercisePractice {
     const sorted: KnowledgeMastery[] = state.mastery.slice();
     sorted.sort((left: KnowledgeMastery, right: KnowledgeMastery): number =>
       left.masteryScore - right.masteryScore);
+    this.pickerEvidence = state.evidence;
+    this.pickerHistory = state.history;
     this.pickerOptions = sorted;
+    if (this.pickerCourses().indexOf(this.selectedCourse) < 0) this.selectedCourse = this.pickerCourses()[0] || '';
     this.showPicker = true;
   }
 
   /** 选定知识点后开练。知识点由用户显式指定 → 允许题库覆盖不到时由服务端现场出题。 */
   private chooseKnowledgePoint(point: KnowledgeMastery): void {
+    this.selectedCourse = point.sourceCourse || '待分类';
     this.practiceKnowledgePoint = point.knowledgePointId;
     this.practiceFromRoute = true;
     this.showPicker = false;
@@ -317,6 +343,7 @@ struct ExercisePractice {
     this.warningMessage = '';
     const data: ExerciseSetResponse | null =
       await this.viewModel.load(DemoSnapshot.EXERCISE_SET_ID, forceRefresh, {
+        courseName: this.selectedCourse || undefined,
         knowledgePointId: this.practiceKnowledgePoint,
         count: DemoSnapshot.EXERCISE_COUNT,
         sourceMode: this.sourceMode,
@@ -664,10 +691,7 @@ struct ExercisePractice {
           .padding(12).backgroundColor('#FFFBEB').borderRadius(10)
       }
 
-      if (value.traceId !== undefined) {
-        Text(`本次评估已生成可追溯记录：${value.traceId}`)
-          .fontSize(12).fontColor('#0F766E').lineHeight(18).width('100%').padding(12).backgroundColor('#ECFDF5').borderRadius(10)
-      }
+
 
       Row({ space: 12 }) {
         Column({ space: 4 }) {
@@ -677,7 +701,7 @@ struct ExercisePractice {
         Column({ space: 4 }) {
           Text(`${value.assessment.oldMastery} → ${value.assessment.suggestedNewMastery}`)
             .fontSize(22).fontWeight(FontWeight.Bold).fontColor('#0F766E')
-          Text('主要练习知识点的掌握度估计').fontSize(12).fontColor('#667085').textAlign(TextAlign.Center)
+          Text(value.assessment.oldMastery === value.assessment.suggestedNewMastery ? '累计掌握度暂未变化，建议继续巩固' : '主要练习知识点的掌握度估计').fontSize(12).fontColor('#667085').textAlign(TextAlign.Center)
         }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor('#ECFDF5').borderRadius(14)
       }.width('100%')
 
@@ -703,6 +727,7 @@ struct ExercisePractice {
           .fontSize(14).fontColor('#475467')
       }.width('100%').padding(13).backgroundColor('#FFFBEB').borderRadius(12)
 
+
       Text(`薄弱知识点：${this.weakPointText(value)}`).fontSize(14).fontColor('#475467')
 
       Button('查看题目与逐题解析')
@@ -711,7 +736,8 @@ struct ExercisePractice {
         .onClick(() => { this.showReview = true; this.scrollToTop(); })
 
       if (value.needReplan && value.planDiff !== undefined) {
-        PlanDiffCard({ value: value.planDiff })
+        Text('已根据本次结果调整复习安排 · 查看原因 ›').fontSize(13).fontColor('#667085')
+          .onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
       }
 
       // ★ 核心闭环收口。
@@ -729,7 +755,7 @@ struct ExercisePractice {
         primaryText: this.learningGoalId.length > 0 ? '返回对话查看本目标结果' : '再练一组同类题',
         secondaryText: '看更新后的知识画像',
         secondaryTarget: 'pages/StudyTags',
-        showAgentTraceLink: true,
+        showAgentTraceLink: false,
         onPrimary: (): void => { if (this.learningGoalId.length > 0) router.back(); else this.restartPractice(); }
       })
 
@@ -767,6 +793,14 @@ struct ExercisePractice {
           .padding(12).backgroundColor('#FFFBEB').borderRadius(10)
       }
 
+      Flex({ wrap: FlexWrap.Wrap }) {
+        ForEach(this.pickerCourses(), (course: string) => {
+          Button(course).fontSize(14).margin(4)
+            .backgroundColor(course === this.selectedCourse ? '#2563EB' : '#EFF6FF')
+            .fontColor(course === this.selectedCourse ? '#FFFFFF' : '#2563EB')
+            .onClick(() => this.selectedCourse = course)
+        }, (course: string) => course)
+      }.width('100%')
       if (this.pickerOptions.length === 0) {
         Column({ space: 12 }) {
           Text('还没有可练的知识点').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
@@ -791,21 +825,21 @@ struct ExercisePractice {
           }
         }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
       } else {
-        ForEach(this.pickerOptions, (item: KnowledgeMastery, index: number) => {
+        ForEach(this.coursePoints(), (item: KnowledgeMastery, index: number) => {
           Column({ space: 8 }) {
             Row({ space: 8 }) {
               Text(item.knowledgePointName)
                 .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937').layoutWeight(1)
-              if (index === 0) {
+              if (index === 0 && this.pickerAssessed(item)) {
                 Text('最薄弱').fontSize(11).fontColor('#B45309').backgroundColor('#FEF3C7')
                   .borderRadius(8).padding({ left: 8, right: 8, top: 3, bottom: 3 })
               }
-              Text(`${item.masteryScore}`).fontSize(20).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-              Text(' / 100').fontSize(11).fontColor('#64748B').margin({ top: 6 })
+              Text(this.pickerAssessed(item) ? `${item.masteryScore}` : '尚无练习记录').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+              Text(this.pickerAssessed(item) ? ' / 100' : '').fontSize(11).fontColor('#64748B').margin({ top: 6 })
             }.width('100%').alignItems(VerticalAlign.Top)
-            Progress({ value: item.masteryScore, total: 100, type: ProgressType.Linear })
-              .color('#2563EB').backgroundColor('#DBEAFE').height(8).borderRadius(8)
-            Text('开始专项练习 →').fontSize(13).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+            if (this.pickerAssessed(item)) { Progress({ value: item.masteryScore, total: 100, type: ProgressType.Linear })
+              .color('#2563EB').backgroundColor('#DBEAFE').height(8).borderRadius(8) }
+            Text(this.pickerAssessed(item) ? '开始专项练习 →' : '点击开始诊断，完成后会生成掌握度').fontSize(12).fontSize(13).fontWeight(FontWeight.Medium).fontColor('#2563EB')
           }
           .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
           .border({ width: 1, color: index === 0 ? '#BFDBFE' : '#E2E8F0' })

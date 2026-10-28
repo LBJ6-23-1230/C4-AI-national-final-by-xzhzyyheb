@@ -59,7 +59,8 @@ def get_profile(user_id: str):
 	if profile is None:
 		return jsonify({"errorCode": "NOT_FOUND", "message": "profile not found", "details": {"userId": user_id}}), 404
 	from app.services.course_names import profile_courses
-	profile = dict(profile, targetCourses=profile_courses(profile))
+	from app.services.subject_classification import normalized_mastery
+	profile = dict(profile, targetCourses=profile_courses(profile), mastery=normalized_mastery(profile))
 	return jsonify({"profileVersion": profile.get("profileVersion", 1),
 		"profile": profile, "mastery": profile.get("mastery", []),
 		"history": profile.get("history", []), "evidence": profile.get("evidence", [])})

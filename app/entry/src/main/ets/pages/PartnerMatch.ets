@@ -160,6 +160,7 @@ struct PartnerMatch {
    */
   @State incomingInvitations: PartnerInvitation[] = [];
   /** 接受之后真正"联系起来"的搭子名（服务端双向登记）。 */
+  @State contacts: PartnerContact[] = [];
   @State contactNames: string[] = [];
   /** 正在处理的邀请 id（同时用来禁用按钮，避免连点重复处理）。 */
   @State inviteBusy: string = '';
@@ -383,6 +384,7 @@ struct PartnerMatch {
     const result = await AgentApiClient.listPartnerContacts();
     if (!this.ownsRequest(owner, page) || request !== this.contactsRequestVersion) return;
     if (result.ok) {
+      this.contacts = result.data.contacts;
       this.contactNames = result.data.contacts.map((item: PartnerContact) => item.partnerName);
     }
   }
@@ -795,6 +797,13 @@ Text(`${generatedPartner.score}%`).fontSize(28).fontWeight(FontWeight.Bold).font
                 .width('100%').padding(12).backgroundColor('#FEF2F2')
                 .border({ width: 1, color: '#FECACA' }).borderRadius(10)
             }
+            ForEach(this.contacts, (contact: PartnerContact) => {
+              Column({ space: 8 }) {
+                Text(contact.partnerName).fontSize(17).fontWeight(FontWeight.Bold)
+                Text('结伴于 ' + new Date(contact.pairedAt).toLocaleDateString() + ' · 已结伴 ' + Math.max(0, Math.floor((Date.now() - new Date(contact.pairedAt).getTime()) / 86400000)) + ' 天').fontSize(13).fontColor('#64748B')
+                Button('与搭子聊天 →').onClick(() => router.pushUrl({ url: 'pages/PartnerChat', params: { partnerId: contact.partnerUserId, partnerName: contact.partnerName } }))
+              }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
+            }, (contact: PartnerContact) => contact.partnerUserId)
             if (this.contactNames.length > 0) {
               Text(`已建立学习搭子：${this.contactNames.join('、')}`)
                 .fontSize(12).fontColor('#0F766E').width('100%').padding(12)

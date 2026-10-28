@@ -25,6 +25,19 @@ export class ApiResponseValidator {
     const data: Record<string, Object> = payload as Record<string, Object>;
     // 一律用去查询串的路径做匹配，避免 `?a=b` 让精确比较失效。
     const route: string = ApiResponseValidator.basePath(path);
+    if (route === '/api/v1/learning-course-settings') return ApiResponseValidator.hasArray(data, 'courses');
+    if (route === '/api/v1/partner-conversations') return ApiResponseValidator.hasArray(data, 'conversations') && ApiResponseValidator.hasNumber(data, 'totalUnread');
+    if (route.endsWith('/summary') && route.indexOf('/api/v1/partners/') === 0) return ApiResponseValidator.isRecordField(data, 'conversation');
+    if (route.endsWith('/read') && route.indexOf('/api/v1/partners/') === 0) return ApiResponseValidator.hasString(data, 'lastReadMessageId');
+    if (method === 'GET' && route.indexOf('/api/v1/partners/') === 0) {
+      return ApiResponseValidator.hasArray(data, 'messages') && ApiResponseValidator.hasString(data, 'cursor') && ApiResponseValidator.hasBoolean(data, 'hasMore');
+    }
+    if (method === 'POST' && route.indexOf('/api/v1/partners/') === 0) return ApiResponseValidator.isRecordField(data, 'message');
+    if (route === '/api/v1/wrong-book/scanned') return ApiResponseValidator.isRecordField(data, 'item');
+    if (route === '/api/v1/learning-reviews') return ApiResponseValidator.hasString(data, 'reviewId') && ApiResponseValidator.hasString(data, 'summary') && ApiResponseValidator.hasArray(data, 'actions');
+    if (route === '/api/v1/learning-review-tasks') return ApiResponseValidator.hasArray(data, 'tasks');
+    if (route === '/api/v1/learning-review-tasks/complete') return ApiResponseValidator.hasArray(data, 'tasks');
+    if (method === 'POST' && route.indexOf('/api/v1/learning-reviews/') === 0) return ApiResponseValidator.hasArray(data, 'tasks');
     if (method === 'POST' && route === '/api/v1/plans/current/assignments') {
       return ApiResponseValidator.isPlan(data);
     }

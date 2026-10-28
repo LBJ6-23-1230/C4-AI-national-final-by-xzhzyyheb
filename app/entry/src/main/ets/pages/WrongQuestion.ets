@@ -15,6 +15,25 @@ import { ImageEncoder } from '../utils/ImageEncoder';
 @Entry
 @Component
 struct WrongQuestion {
+  @State savedQuestions: number[] = [];
+  @State selectedForBook: number[] = [];
+  @State savingQuestion: boolean = false;
+  @State saveStem: string = '';
+  @State saveCourse: string = '';
+  @State savePoint: string = '';
+  private async saveQuestion(): Promise<void> {
+    if (this.analysisResult === null || this.savingQuestion) return;
+    this.savingQuestion = true;
+    const index: number = this.selectedQuestionIndex;
+    const version: number = this.analysisRequestVersion;
+    const owner: string = appState.currentUser.userId;
+    const result = await AgentApiClient.saveScannedQuestion({ stem: this.saveStem,
+      courseName: this.saveCourse, knowledgePointName: this.savePoint, explanation: this.analysisResult.reason });
+    if (!this.isPageActive || version !== this.analysisRequestVersion || owner !== appState.currentUser.userId) return;
+    this.savingQuestion = false;
+    if (result.ok) { this.savedQuestions = this.savedQuestions.concat([index]); this.analysisMessage = '已保存到错题本，不计作答错记录。'; }
+    else this.analysisMessage = '保存失败，请检查题干是否识别完整后重试。';
+  }
   @State hasPhoto: boolean = false;
   @State selectedImageUri: string = '';
   //: 当前这张图是不是「内置示例错题」。
@@ -51,6 +70,7 @@ struct WrongQuestion {
       this.analysisResult = appState.latestWrongAnalysis;
       const selected: number = this.analysisResults.indexOf(this.analysisResult);
       this.selectedQuestionIndex = selected >= 0 ? selected : 0;
+      this.selectQuestion(this.selectedQuestionIndex);
       this.showAnalysis = true;
       // reviewAdded 只表示"本次真的新增了"（见 addToTomorrowPlan）：
       // 重开页面时即使该知识点早已在复习计划里，也不置为 true，
@@ -134,6 +154,9 @@ struct WrongQuestion {
     this.showAnalysis = false;
     this.analysisResult = null;
     this.analysisResults = [];
+    this.savedQuestions = [];
+    this.selectedForBook = [];
+    this.savingQuestion = false;
     this.selectedQuestionIndex = 0;
     this.reviewAdded = false;
     this.analysisMessage = '';
@@ -172,6 +195,9 @@ struct WrongQuestion {
     this.showAnalysis = false;
     this.analysisResult = null;
     this.analysisResults = [];
+    this.savedQuestions = [];
+    this.selectedForBook = [];
+    this.savingQuestion = false;
     this.selectedQuestionIndex = 0;
     this.reviewAdded = false;
     this.analysisMessage = '';
@@ -204,6 +230,9 @@ struct WrongQuestion {
     this.showAnalysis = false;
     this.analysisResult = null;
     this.analysisResults = [];
+    this.savedQuestions = [];
+    this.selectedForBook = [];
+    this.savingQuestion = false;
     this.selectedQuestionIndex = 0;
     this.reviewAdded = false;
     this.analysisMessage = '';
@@ -275,6 +304,9 @@ struct WrongQuestion {
   private selectQuestion(index: number): void {
     if (index < 0 || index >= this.analysisResults.length) return;
     this.selectedQuestionIndex = index;
+    this.saveStem = this.analysisResults[index].questionText || '';
+    this.saveCourse = this.analysisResults[index].course;
+    this.savePoint = this.analysisResults[index].knowledge.join('、');
     this.analysisResult = this.analysisResults[index];
     this.reviewAdded = false;
     appState.latestWrongAnalysis = this.analysisResult;
@@ -461,6 +493,9 @@ Text(result.recognitionStatus === 'unreadable' || result.recognitionStatus === '
           this.showAnalysis = false;
           this.analysisResult = null;
           this.analysisResults = [];
+    this.savedQuestions = [];
+    this.selectedForBook = [];
+    this.savingQuestion = false;
           this.selectedQuestionIndex = 0;
           this.selectedImageUri = '';
           this.isSampleImage = false;
@@ -603,6 +638,24 @@ Text(result.recognitionStatus === 'unreadable' || result.recognitionStatus === '
               }.width('100%')
             }
             this.AnalysisCard(this.analysisResult)
+            Row({ space: 10 }) {
+              Checkbox().select(this.selectedForBook.indexOf(this.selectedQuestionIndex) >= 0).onChange((selected: boolean) => {
+                this.selectedForBook = selected ? this.selectedForBook.concat([this.selectedQuestionIndex]) : this.selectedForBook.filter((index: number) => index !== this.selectedQuestionIndex);
+              })
+              Text('将本题加入错题本').fontSize(15).fontColor('#475467')
+            }.width('100%').padding({ top: 12, bottom: 12 })
+            Text('只分析不会自动收藏，已做对的题不必勾选。').fontSize(12).fontColor('#98A2B3')
+            if (this.selectedForBook.indexOf(this.selectedQuestionIndex) >= 0) {
+            TextArea({ text: this.saveStem, placeholder: '核对或补充本题题干后保存' }).height(100).onChange((v: string) => this.saveStem = v)
+            TextInput({ placeholder: '课程自动识别，可手动修正', text: this.saveCourse })
+              .onChange((value: string) => this.saveCourse = value)
+            TextInput({ placeholder: '确认知识点', text: this.savePoint })
+              .onChange((value: string) => this.savePoint = value)
+            Button(this.savedQuestions.indexOf(this.selectedQuestionIndex) >= 0 ? '本题已加入错题本' : (this.savingQuestion ? '保存中…' : '将本题加入错题本'))
+              .width('100%').backgroundColor('#344054').fontColor('#FFFFFF').borderRadius(10).enabled(!this.savingQuestion && this.savedQuestions.indexOf(this.selectedQuestionIndex) < 0)
+              .onClick(() => this.saveQuestion())
+            }
+            Text('查看错题本 ›').fontSize(13).fontColor('#667085').padding(10).onClick(() => router.pushUrl({ url: 'pages/WrongBook' }))
           }
 
           /* 导航选项 */
