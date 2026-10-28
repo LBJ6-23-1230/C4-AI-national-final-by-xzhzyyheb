@@ -310,6 +310,13 @@ def verify_agent_health():
 
 @chat_api.post("/api/agent/chat")
 def agent_chat():
+    if request.accept_mimetypes.best == "text/event-stream":
+        from app.services.chat_progress import stream_response
+        return stream_response(_agent_chat)
+    return _agent_chat()
+
+
+def _agent_chat():
     """统一对话接口。
 
     request::
@@ -435,6 +442,9 @@ def agent_chat():
         learning_request = is_learning_request(message)
         # Diagnosis requests need a confirmed question, never an unrelated profile fallback.
         if not image and result["intent"] != "analyze_wrong" and learning_request:
+            from app.services.chat_progress import emit
+            emit("coordination", "回复已生成，正在同步学习计划", payload.get("reply", "")
+                 if result["intent"] in ("get_suggestion", "analyze_weakness", "query_tasks") else "")
             payload["learningContext"] = ensure_chat_context(_repository, _identity, session_id, message)
     logging.getLogger("zhixue.llm").info(json.dumps({
         "request_type": "chat_pipeline", "intent": result["intent"],

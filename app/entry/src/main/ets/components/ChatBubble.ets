@@ -11,6 +11,11 @@ export struct ChatBubble {
     if (this.message.status !== 'sending') return;
     this.waitStartedAt = Date.now();
     this.waitTimer = setInterval(() => {
+      if (this.message.status !== 'sending') {
+        clearInterval(this.waitTimer);
+        this.waitTimer = -1;
+        return;
+      }
       this.waitSeconds = Math.floor((Date.now() - this.waitStartedAt) / 1000);
     }, 1000);
   }
@@ -41,10 +46,13 @@ export struct ChatBubble {
         }
 
         if (this.message.status === 'sending') {
+          if (this.message.text.length > 0) {
+            Text(this.message.text).fontSize(15).lineHeight(22).fontColor('#1F2933')
+              .padding(12).backgroundColor('#FFFFFF').borderRadius(8)
+          }
           Row({ space: 5 }) {
             LoadingProgress().width(18).height(18).color('#8E99A8')
-            Text(this.waitSeconds < 10 ? `正在等待回复 · ${this.waitSeconds}秒` :
-              `仍在等待回复 · ${this.waitSeconds}秒，请稍候`)
+            Text(`${this.message.progressText || '正在等待回复'} · ${this.waitSeconds}秒`)
               .fontSize(12)
               .fontColor('#64748B')
           }

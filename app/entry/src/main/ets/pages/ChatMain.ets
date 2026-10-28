@@ -1349,7 +1349,14 @@ struct ChatMain {
     this.scrollToLatestMessage();
 
     try {
-      const response = await AgentBridge.callAgent(text, imageForAgent, historyBeforeSend);
+      const response = await AgentBridge.callAgent(text, imageForAgent, historyBeforeSend, (progress) => {
+        if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
+          chatId !== appState.chatSessionId) return;
+        this.messages = this.messages.map((item: ChatMessage): ChatMessage => item.id === loadingMessage.id ? {
+          id: item.id, role: item.role, text: progress.reply || item.text,
+          time: item.time, status: 'sending', progressText: progress.message
+        } : item);
+      });
       if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
         chatId !== appState.chatSessionId) return;
       this.showGoalSummary = response.learningContext !== undefined;

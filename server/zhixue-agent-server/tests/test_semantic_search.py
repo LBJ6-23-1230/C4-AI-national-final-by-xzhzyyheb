@@ -108,7 +108,7 @@ def test_encode_splits_dashscope_requests_at_ten_and_preserves_order(monkeypatch
                         for i, text in reversed(list(enumerate(batch)))])
     monkeypatch.setattr(llm_runtime, "request", request)
     vectors = semantic.encode([f"t{i}" for i in range(25)])
-    assert [len(batch) for batch in batches] == [10, 10, 5]
+    assert sorted(len(batch) for batch in batches) == [5, 10, 10]
     assert vectors == [[float(i)] for i in range(25)]
 
 
@@ -122,7 +122,8 @@ def test_encode_fails_honestly_when_one_batch_is_truncated(monkeypatch):
         return NS(data=[])
     monkeypatch.setattr(llm_runtime, "request", request)
     assert semantic.encode([f"t{i}" for i in range(12)]) is None
-    assert len(calls) == 1
+    # Both batches may already be in flight when the first invalid result arrives.
+    assert 1 <= len(calls) <= 2
 
 
 # ===========================================================================

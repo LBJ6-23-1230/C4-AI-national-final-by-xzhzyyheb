@@ -49,6 +49,12 @@
                 "schema": {
                   "$ref": "#/components/schemas/LegacyChatResponse"
                 }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "SSE events: progress {stage,message,reply}; result contains LegacyChatResponse; error {status,body}. Only result may trigger client updates. Heartbeats are comments."
               }
             }
           },
@@ -86,7 +92,7 @@
             }
           }
         },
-        "description": "Opt-in coordination resumes one durable goal per effective owner and chat session. Rule-based Secretary dispatch uses existing specialist agents and the shared assessment/planning service. llmUsed describes chat generation separately from dispatch decisionSource. Conversation alone does not establish mastery."
+        "description": "Existing application/json contract is unchanged. Opt in with Accept: text/event-stream for advisory progress and a single terminal result/error. Never replay an accepted POST after interruption. See contracts/chat-stream.md."
       }
     },
     "/api/v1/experiments/snapshot": {

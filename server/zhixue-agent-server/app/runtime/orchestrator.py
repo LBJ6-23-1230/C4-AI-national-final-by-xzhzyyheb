@@ -56,6 +56,13 @@ def fallback_decision(state: Mapping[str, Any]) -> WorkflowDecision:
 
 def decide_next_step(state: Mapping[str, Any], model_decider: Callable[[Mapping[str, Any]], Any] | None = None) -> WorkflowDecision:
 	"""Accept only a valid structured model decision; otherwise use the fallback."""
+	# The model cannot change the outcome when exactly one action is legal AND
+	# the existing fallback agrees. Preserve ambiguous states and their priorities.
+	fallback = fallback_decision(state)
+	actions = [step for step in _VALID_STEPS if _is_actionable(step, state)]
+	if actions == [fallback.step]:
+		logger.info('{"event":"workflow_decision","source":"deterministic","reason":"single_action"}')
+		return fallback
 	if model_decider is not None:
 		try:
 			result = model_decider(state)

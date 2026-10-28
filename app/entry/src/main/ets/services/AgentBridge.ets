@@ -7,6 +7,8 @@ import { ApiDefaults } from '../api/ApiDefaults';
 import { AuthStore } from '../api/AuthStore';
 import { LearningContext } from '../api/ApiModels';
 import { ApiResponseValidator } from '../api/ApiResponseValidator';
+import { util } from '@kit.ArkTS';
+import { ChatEventParser, ChatProgress } from './ChatEventParser';
 
 interface IntentRule {
   intent: ChatIntent;
@@ -200,7 +202,8 @@ export class AgentBridge {
   static async callAgent(
     message: string,
     image: string | undefined,
-    history: ChatMessage[]
+    history: ChatMessage[],
+    onProgress?: (event: ChatProgress) => void
   ): Promise<AgentResponse> {
     const request: AgentRequest = AgentBridge.buildRequest(message, image, history);
     const imageStr: string = image ?? '';
@@ -212,11 +215,12 @@ export class AgentBridge {
     }
 
     const httpRequestInstance: http.HttpRequest = http.createHttp();
+    let streamDeadline: number = -1;
     try {
       const requestBody: string = AgentBridge.buildRequestBody(request.message, imageStr, request.history);
 
       const header: Record<string, string> = {
-        'Accept': 'application/json',
+        'Accept': onProgress !== undefined ? 'text/event-stream' : 'application/json',
         'Content-Type': 'application/json',
         'X-API-Contract-Version': API_CONTRACT_VERSION
       };
@@ -229,7 +233,8 @@ export class AgentBridge {
       // 读超时取「配置值」与「聊天层下限」的较大者：用户若在「接口环境」里
       // 把超时调得比 40 秒还长，尊重用户的设置；默认的 8 秒则被抬到 40 秒。
       const readTimeoutMs: number = Math.max(apiConfig.timeoutMs,
-        imageStr.length > 0 ? ApiDefaults.VISION_READ_TIMEOUT_MS : CHAT_MIN_READ_TIMEOUT_MS);
+        imageStr.length > 0 ? ApiDefaults.VISION_READ_TIMEOUT_MS :
+          onProgress !== undefined ? ApiDefaults.CHAT_STREAM_READ_TIMEOUT_MS : CHAT_MIN_READ_TIMEOUT_MS);
       const httpRequest: http.HttpRequestOptions = {
         method: http.RequestMethod.POST,
         header: header,
@@ -238,6 +243,42 @@ export class AgentBridge {
         connectTimeout: apiConfig.timeoutMs,
         readTimeout: readTimeoutMs
       };
+      if (onProgress !== undefined) {
+        const parser: ChatEventParser = new ChatEventParser(onProgress);
+        const decoder: util.TextDecoder = util.TextDecoder.create('utf-8');
+        let streamError: string = '';
+        const bodyEnded: Promise<void> = new Promise<void>((resolve) => {
+          httpRequestInstance.on('dataEnd', () => resolve());
+        });
+        httpRequestInstance.on('dataReceive', (bytes: ArrayBuffer) => {
+          if (streamError.length > 0) return;
+          try {
+            parser.feed(decoder.decodeToString(new Uint8Array(bytes), { stream: true }));
+          } catch (error) {
+            streamError = 'INVALID_RESPONSE::服务返回了无法解析的进度数据';
+          }
+        });
+        const completed: Promise<number> = httpRequestInstance.requestInStream(
+          apiConfig.baseUrl + '/api/agent/chat', httpRequest).then(async (status: number): Promise<number> => {
+          await bodyEnded;
+          return status;
+        });
+        const deadline: Promise<number> = new Promise<number>((resolve, reject) => {
+          streamDeadline = setTimeout(() => reject(new Error(
+            'HTTP_ERROR::等待回复超时，尚未收到完整结果，请查看会话记录后再重试')),
+            readTimeoutMs + apiConfig.timeoutMs);
+        });
+        const status: number = await Promise.race([completed, deadline]);
+        if (streamError.length > 0) throw new Error(streamError);
+        parser.feed(decoder.decodeToString(new Uint8Array(0)));
+        try {
+          return AgentBridge.parseResponse(parser.finish(status));
+        } catch (error) {
+          const detail: string = error instanceof Error ? error.message : '';
+          if (AgentBridge.errorCodeOf(detail).length > 0) throw new Error(detail);
+          throw AgentBridge.taggedError(CODE_INVALID_RESPONSE, '服务返回的最终结果不符合接口约定');
+        }
+      }
       const httpResponse: http.HttpResponse =
         await httpRequestInstance.request(apiConfig.baseUrl + '/api/agent/chat', httpRequest);
 
@@ -291,6 +332,7 @@ export class AgentBridge {
       throw new Error('请求超时或连不上后端服务。请确认「接口环境」里的服务地址可访问；'
         + '使用真实大模型时生成较慢，也可能需要重试一次。');
     } finally {
+      if (streamDeadline !== -1) clearTimeout(streamDeadline);
       httpRequestInstance.destroy();
     }
   }

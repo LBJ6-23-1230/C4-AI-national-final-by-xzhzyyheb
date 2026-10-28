@@ -24,6 +24,14 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
+def isolate_embedding_cache():
+    from app.services.embedding_cache import clear
+    clear()
+    yield
+    clear()
+
+
+@pytest.fixture(autouse=True)
 def isolate_external_llm(monkeypatch):
 	"""Keep the test suite deterministic even when the local .env has a real key."""
 	monkeypatch.setenv("DASHSCOPE_API_KEY", "")

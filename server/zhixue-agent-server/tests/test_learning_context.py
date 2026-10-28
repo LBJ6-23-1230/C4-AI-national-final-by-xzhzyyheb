@@ -232,6 +232,13 @@ def test_dispatch_model_never_receives_answer_keys(setup, monkeypatch):
             captured.append(state)
             return None
     monkeypatch.setattr(workflows.QwenAdapter, "from_environment", lambda: Adapter())
+    # Exercise the remaining ambiguous branch: single-action states now skip
+    # dispatch entirely. Keep the privacy assertion non-vacuous with real secrets.
+    original_state = workflows._workflow_state
+    def ambiguous_state(workflow):
+        return dict(original_state(workflow), profile=None, plan=None,
+                    answerKeys={"q": "A"}, answers=["A"], exercises=[{"answer": "A"}])
+    monkeypatch.setattr(workflows, "_workflow_state", ambiguous_state)
     client = setup[0]
     created = client.post("/api/v1/workflows", json={"goal": "旧入口安全调度"}).get_json()
     client.post(f"/api/v1/workflows/{created['sessionId']}/run", json={})

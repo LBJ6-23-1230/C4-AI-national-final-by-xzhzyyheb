@@ -34,6 +34,7 @@ export interface ChatHandoff {
 }
 
 export interface ChatMessage {
+  progressText?: string;
   imageFileId?: string;
   wrongAnalysis?: WrongAnalysis;
   attachmentStatus?: string;

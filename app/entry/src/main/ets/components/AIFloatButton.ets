@@ -95,7 +95,12 @@ export struct AIFloatButton {
     this.scrollToBottom();
 
     try {
-      const response = await AgentBridge.callAgent(text, undefined, historyBeforeSend);
+      const response = await AgentBridge.callAgent(text, undefined, historyBeforeSend, (progress) => {
+        if (owner !== appState.currentUser.userId || chatId !== appState.chatSessionId || version !== this.requestVersion) return;
+        this.messages = this.messages.map((item: ChatMessage): ChatMessage => item.id === loadingMessage.id ? {
+          id: item.id, role: item.role, text: progress.reply || progress.message, time: item.time, status: 'sending'
+        } : item);
+      });
       if (owner !== appState.currentUser.userId || chatId !== appState.chatSessionId || version !== this.requestVersion) return;
       this.hasLearningGoal = response.learningContext !== undefined;
       // 移除 loading 消息，加入真实回复

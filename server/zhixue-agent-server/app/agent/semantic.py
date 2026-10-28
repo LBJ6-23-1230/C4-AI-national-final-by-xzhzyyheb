@@ -77,27 +77,27 @@ def encode(texts: list[str]) -> list[list[float]] | None:
 
     from app.services import llm_runtime
     deadline = time.monotonic() + llm_runtime.seconds("LLM_EMBED_TIMEOUT_SECONDS", _TIMEOUT_SECONDS)
-    vectors = []
+    from app.services.embedding_cache import cached_encode
+
+    def batch_request(batch):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("embedding_budget")
+        response = llm_runtime.request("embedding", {"model": _embed_model(), "input": batch,
+            "encoding_format": "float"}, budget=remaining, operation="embeddings")
+        rows = sorted(response.data, key=lambda row: row.index)
+        if [row.index for row in rows] != list(range(len(batch))):
+            raise ValueError("embedding_indices")
+        current = [row.embedding for row in rows]
+        if any(not isinstance(v, list) or not v or any(
+                isinstance(n, bool) or not isinstance(n, (float, int)) or not math.isfinite(n)
+                for n in v) for v in current):
+            raise ValueError("embedding_values")
+        return current
+
     try:
-        for offset in range(0, len(cleaned), EMBED_BATCH_SIZE):
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return None
-            batch = cleaned[offset:offset + EMBED_BATCH_SIZE]
-            response = llm_runtime.request("embedding", {"model": _embed_model(), "input": batch,
-                "encoding_format": "float"}, budget=remaining, operation="embeddings")
-            rows = sorted(response.data, key=lambda row: row.index)
-            if [row.index for row in rows] != list(range(len(batch))):
-                return None
-            current = [row.embedding for row in rows]
-            if any(not isinstance(v, list) or not v or any(
-                    isinstance(n, bool) or not isinstance(n, (float, int)) or not math.isfinite(n)
-                    for n in v) for v in current):
-                return None
-            vectors.extend(current)
-        if not vectors or any(len(v) != len(vectors[0]) for v in vectors):
-            return None
-        return vectors
+        return cached_encode(cleaned, llm_runtime.fingerprint() + ":" + _embed_model(),
+                             batch_request, deadline, EMBED_BATCH_SIZE)
     except Exception:
         return None
 

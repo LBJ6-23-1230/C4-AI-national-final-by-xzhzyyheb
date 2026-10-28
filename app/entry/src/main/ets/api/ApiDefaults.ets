@@ -55,6 +55,8 @@ export class ApiDefaults {
   static readonly LLM_BOUND_READ_TIMEOUT_MS: number = 40000;
   /** 整页识题独立预算120秒，额外留出上传和响应时间。 */
   static readonly VISION_READ_TIMEOUT_MS: number = 150000;
+  /** Streaming chat may include classification, reply and learning coordination. */
+  static readonly CHAT_STREAM_READ_TIMEOUT_MS: number = 150000;
 
   /**
    * 文档上传与解析的读超时下限（毫秒）。

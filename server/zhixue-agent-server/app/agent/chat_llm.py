@@ -838,6 +838,8 @@ def detect_intent(message: str, has_image: bool = False) -> tuple[str, bool]:
     if not system_prompt or not llm_ready():
         return keyword_intent(message), False
     try:
+        from app.services.chat_progress import emit
+        emit("intent", "正在理解你的问题")
         raw = _call_llm(
             system_prompt,
             "现在请分析用户输入，直接返回一个纯 JSON 对象，不要加任何 markdown 标记或解释文字：\n"
@@ -1355,6 +1357,8 @@ def _chat_in_session(message: str, image_base64: str | None = None,
     if not message and image_base64:
         message = "帮我分析这道题"
 
+    from app.services.chat_progress import emit
+    emit("context", "正在读取本次分析所需资料")
     data = _user_data(frontend_data, user_context, user_id)
     owner = (user_id or "").strip() or "demo-user"
     with _PENDING_PROFILE_LOCK:
@@ -1383,6 +1387,8 @@ def _chat_in_session(message: str, image_base64: str | None = None,
         reply, profile_updates = _handle_update_profile(message, data, user_id)
     elif llm_used:
         try:
+            emit("analysis", "正在分析学习记录" if intent == "analyze_weakness" else
+                 "正在识别并解析题目" if image_base64 else "正在生成回复")
             if intent == "analyze_wrong":
                 reply, wrong_analysis = _handle_analyze_wrong(message, data, image_base64, user_id)
             elif intent == "update_profile":
@@ -1436,6 +1442,7 @@ def _chat_in_session(message: str, image_base64: str | None = None,
     reply = reply.replace("小艺", "小知")
 
     if message:
+        emit("saving", "正在保存本次结果")
         append_history(original_message or message, reply, user_id, session_id,
                        question_context=wrong_analysis, image_base64=image_base64)
 
