@@ -112,7 +112,8 @@ check("errorCode 枚举不含 LLM_FALLBACK", "LLM_FALLBACK" not in enum, "共 %d
 detail = spec["components"]["schemas"]["KnowledgeBaseDetailResponse"]
 has_docs = any("documents" in (p.get("properties") or {}) for p in detail.get("allOf", []))
 check("KnowledgeBaseDetailResponse 声明了 documents", has_docs)
-check("paths 数量为 39", len(spec["paths"]) == 39, "实际 %d" % len(spec["paths"]))
+check("DDL 同步与加入计划接口已声明", "/api/v1/plans/current/assignments" in spec["paths"])
+check("前后端契约一致", (ROOT / "contracts/openapi.json").read_bytes() == (ROOT / "app/contracts/openapi.json").read_bytes())
 
 print()
 print("=" * 78)

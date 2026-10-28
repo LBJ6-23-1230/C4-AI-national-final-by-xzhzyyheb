@@ -14,6 +14,7 @@ import { ApiResponseValidator } from './ApiResponseValidator';
 import { FocusSession } from '../models/AgentModels';
 import { FocusSaveResponse } from './ApiModels';
 import { PlanBudgetRequest, PlanBudgetResponse } from './ApiModels';
+import { AssignmentSyncRequest } from './ApiModels';
 
 export interface FocusHistoryResponse {
   userId: string;
@@ -39,6 +40,10 @@ interface KnowledgePointImportRequest {
  * 默认地址集中定义在 `ApiDefaults.DEFAULT_BASE_URL`，页面里不得再各写一份 IP。
  */
 export class AgentApiClient {
+  static async syncAssignments(request: AssignmentSyncRequest): Promise<ApiResult<LearningPlan>> {
+    return AgentApiClient.request<LearningPlan>(http.RequestMethod.POST,
+      '/api/v1/plans/current/assignments', request);
+  }
   private static config: ApiClientConfig = {
     baseUrl: ApiDefaults.DEFAULT_BASE_URL,
     useFixture: ApiDefaults.DEFAULT_USE_FIXTURE,
@@ -222,7 +227,7 @@ export class AgentApiClient {
   static async recognizeScheduleImage(
     request: ScheduleRecognitionRequest): Promise<ApiResult<ScheduleRecognitionResponse>> {
     return AgentApiClient.request<ScheduleRecognitionResponse>(http.RequestMethod.POST,
-      '/api/v1/import/schedule-image', request, ApiDefaults.LLM_BOUND_READ_TIMEOUT_MS);
+      '/api/v1/import/schedule-image', request, ApiDefaults.VISION_READ_TIMEOUT_MS);
   }
 
   static async getProactiveDecision(request: ProactiveRequest): Promise<ApiResult<ProactiveResponse>> {

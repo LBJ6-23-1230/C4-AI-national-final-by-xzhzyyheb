@@ -16,6 +16,42 @@ def configure_plans_repository(repository: JsonRepository) -> None:
 	_repository = repository
 
 
+@plans_api.post("/api/v1/plans/current/assignments")
+def sync_assignments():
+	from app.services.assignment_plan import validate_assignments, reconcile
+	from app.tools.profile_merge import PROFILE_LOCK
+	from app.tools.plan_tools import create_plan_history
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+	owner = resolve_user_id(data.get("userId"))
+	rows, selected = data.get("assignments"), data.get("selectedId")
+	try:
+		validate_assignments(rows)
+		if selected is not None and (not isinstance(selected, str) or not any(r["id"] == selected and not r["completed"] for r in rows)):
+			raise ValueError("请选择一项待处理作业")
+	except ValueError as error:
+		return jsonify({"errorCode": "BAD_REQUEST", "message": str(error)}), 400
+	with PROFILE_LOCK, _repository.transaction():
+		previous = next((p for p in _repository.list("plans") if plan_belongs_to(p, owner)), None)
+		if previous is None and not rows:
+			return jsonify({"errorCode": "NOT_FOUND", "message": "current plan not found"}), 404
+		profile = _repository.get("profiles", owner) or {}
+		base = previous or {"planId": f"plan-ddl-{owner}", "userId": owner, "version": 0,
+			"generatedFromProfileVersion": profile.get("profileVersion", 1), "tasks": [], "unscheduledTasks": []}
+		try:
+			plan = reconcile(base, rows, selected)
+		except ValueError as error:
+			return jsonify({"errorCode": "BAD_REQUEST", "message": str(error)}), 400
+		if plan != previous:
+			_repository.save("plans", plan["planId"], plan)
+			if previous:
+				history = create_plan_history(previous, plan, plan.get("reason", "作业同步"), [])
+				history.update(planId=plan["planId"], adjustmentReason=plan.get("reason", "作业同步"), triggerEvidence=[])
+				_repository.save("plan_histories", f"{plan['planId']}:v{plan['version']}", history)
+	return jsonify(plan)
+
+
 @plans_api.post("/api/v1/plans/current/availability")
 def update_available_minutes():
 	from app.agents.planner import PlannerAgent
@@ -53,7 +89,8 @@ def update_available_minutes():
 		if course:
 			profile = _repository.get("profiles", owner) or {}
 			pool = [r for r in profile.get("mastery", []) if r.get("sourceCourse") == course]
-			if not pool:
+			assignments = [t for t in plan.get("tasks", []) + plan.get("unscheduledTasks", []) if t.get("source") == "ddl" and t.get("status") != "completed"]
+			if not pool and not any(t.get("sourceCourse") == course for t in assignments):
 				return jsonify({"errorCode": "BAD_REQUEST", "message": "该课程暂无候选知识点，请先导入课程或资料"}), 400
 			completed = [t for t in plan.get("tasks", []) + plan.get("unscheduledTasks", []) if t.get("status") == "completed"]
 			done = {t["knowledgePointId"] for t in completed}
@@ -64,9 +101,10 @@ def update_available_minutes():
 			tasks = [dict(old_tasks.get(r["knowledgePointId"], {}), taskId=old_tasks.get(r["knowledgePointId"], {}).get("taskId", f"task-{r['knowledgePointId']}"),
 				knowledgePointId=r["knowledgePointId"], knowledgePointName=r["knowledgePointName"], sourceCourse=course,
 				durationMinutes=min(30, minutes // max(1, len(selected))), status="pending") for r in selected]
-			plan_for_budget = dict(plan, tasks=completed + tasks, unscheduledTasks=[], targetCourse=course,
+			assignments.sort(key=lambda t: (t.get("sourceCourse") != course, t.get("dueDate", ""), t["taskId"]))
+			plan_for_budget = dict(plan, tasks=completed + assignments + tasks, unscheduledTasks=[], targetCourse=course,
 				candidatePool=[r for r in profile.get("mastery", []) if r["knowledgePointId"] not in done | {x["knowledgePointId"] for x in selected}])
-		elif "candidatePool" in plan:
+		elif "candidatePool" in plan and not any(t.get("source") == "ddl" for t in plan.get("tasks", []) + plan.get("unscheduledTasks", [])):
 			return jsonify({"errorCode": "BAD_REQUEST", "message": "请先选择本次主攻课程，再安排学习时长"}), 400
 		else:
 			plan_for_budget = plan
@@ -148,6 +186,11 @@ def get_current_plan():
 	if not plans:
 		return jsonify({"errorCode": "NOT_FOUND", "message": "current plan not found", "details": {"userId": user_id}}), 404
 	plan = dict(plans[0])
+	# Assignment recommendations use their actual deadlines and estimates, not
+	# inferred mastery scores for a made-up knowledge point.
+	if plan.get("tasks") and plan["tasks"][0].get("source") == "ddl":
+		plan["factors"] = []
+		return jsonify(plan)
 	# Upgrade discovery-generated backlog on first read; completed tasks remain intact.
 	if user_id != "demo-user" and "candidatePool" not in plan and (
 		str(plan.get("planId", "")).startswith("plan-import-") or
@@ -160,7 +203,9 @@ def get_current_plan():
 				profile = _repository.get("profiles", user_id) or {}
 				completed = [t for t in plan.get("tasks", []) + plan.get("unscheduledTasks", []) if t.get("status") == "completed"]
 				done = {t["knowledgePointId"] for t in completed}
-				plan.update(tasks=completed, unscheduledTasks=[], candidatePool=[r for r in profile.get("mastery", []) if r.get("knowledgePointId") not in done],
+				ddl_tasks = [t for t in plan.get("tasks", []) if t.get("source") == "ddl" and t.get("status") != "completed"]
+				ddl_deferred = [t for t in plan.get("unscheduledTasks", []) if t.get("source") == "ddl" and t.get("status") != "completed"]
+				plan.update(tasks=completed + ddl_tasks, unscheduledTasks=ddl_deferred, candidatePool=[r for r in profile.get("mastery", []) if r.get("knowledgePointId") not in done],
 					version=plan.get("version", 1) + 1, reason="历史自动积压任务已转为候选知识点；请选择本次课程与时长，完成记录已保留")
 				plan.pop("budgetSummary", None)
 				from app.tools.plan_tools import create_plan_history

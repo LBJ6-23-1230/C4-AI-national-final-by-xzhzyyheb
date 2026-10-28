@@ -228,7 +228,8 @@ export class AgentBridge {
       }
       // 读超时取「配置值」与「聊天层下限」的较大者：用户若在「接口环境」里
       // 把超时调得比 40 秒还长，尊重用户的设置；默认的 8 秒则被抬到 40 秒。
-      const readTimeoutMs: number = Math.max(apiConfig.timeoutMs, CHAT_MIN_READ_TIMEOUT_MS);
+      const readTimeoutMs: number = Math.max(apiConfig.timeoutMs,
+        imageStr.length > 0 ? ApiDefaults.VISION_READ_TIMEOUT_MS : CHAT_MIN_READ_TIMEOUT_MS);
       const httpRequest: http.HttpRequestOptions = {
         method: http.RequestMethod.POST,
         header: header,

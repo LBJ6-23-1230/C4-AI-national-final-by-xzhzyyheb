@@ -2,6 +2,9 @@ import { AgentApiClient } from '../api/AgentApiClient';
 import { LearningPlan, PlanBudgetRequest, PlanBudgetResponse } from '../api/ApiModels';
 import { ApiFailure, ApiResult, apiFailure } from '../api/ApiResult';
 import { ClientCache } from '../cache/ClientCache';
+import { appState } from '../data/AppState';
+import { HomeworkDDL } from '../models/AgentModels';
+import { AssignmentSnapshot, AssignmentSyncRequest } from '../api/ApiModels';
 
 /**
  * 计划读取结果的**种类**。
@@ -27,6 +30,22 @@ export interface PlanViewState {
 
 /** Reads the current plan from the contract API without creating plan data locally. */
 export class PlanViewModel {
+  async syncAssignments(selectedId?: string): Promise<ApiResult<LearningPlan>> {
+    const owner: string = ClientCache.currentOwnerUserId();
+    const assignments: AssignmentSnapshot[] = appState.homeworkDDLs.map((ddl: HomeworkDDL): AssignmentSnapshot => ({
+      id: ddl.id, title: ddl.title, courseName: ddl.courseName, dueDate: ddl.dueDate,
+      estimatedMinutes: ddl.estimatedMinutes, priority: ddl.priority,
+      completed: appState.isTaskCompleted(ddl.id, 'pending')
+    }));
+    const request: AssignmentSyncRequest = { assignments: assignments, selectedId: selectedId };
+    const result = await AgentApiClient.syncAssignments(request);
+    if (ClientCache.currentOwnerUserId() !== owner) {
+      return apiFailure('IDENTITY_CHANGED', '账号已切换，请重新打开计划。', false, 'network');
+    }
+    if (result.ok) ClientCache.cacheCurrentPlan(result.data);
+    return result;
+  }
+
   async updateBudget(request: PlanBudgetRequest): Promise<ApiResult<PlanBudgetResponse>> {
     const owner: string = ClientCache.currentOwnerUserId();
     const result = await AgentApiClient.updatePlanBudget(request);
@@ -46,10 +65,16 @@ export class PlanViewModel {
   async load(forceRefresh: boolean = false): Promise<PlanViewState> {
     const owner: string = ClientCache.currentOwnerUserId();
     const cached: LearningPlan | null = ClientCache.getCurrentPlan();
-    if (!forceRefresh && cached !== null) {
+    if (!forceRefresh && cached !== null && AgentApiClient.getConfig().useFixture) {
       return { plan: cached, kind: 'ok', errorMessage: '', isCached: true };
     }
 
+    if (!AgentApiClient.getConfig().useFixture) {
+      const sync = await this.syncAssignments();
+      if (!sync.ok && (sync as ApiFailure).error.statusCode !== 404) {
+        return { plan: null, kind: 'error', errorMessage: `作业同步失败：${(sync as ApiFailure).error.message}`, isCached: false };
+      }
+    }
     const result = await AgentApiClient.getCurrentPlan();
     if (ClientCache.currentOwnerUserId() !== owner) {
       return { plan: null, kind: 'identity_changed', errorMessage: '账号已切换，请重新打开计划。', isCached: false };

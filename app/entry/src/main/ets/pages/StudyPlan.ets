@@ -102,6 +102,9 @@ struct StudyPlan {
 
   private courseChoices(): string[] {
     const choices: string[] = appState.courses.map((c: CourseInfo): string => c.courseName);
+    appState.homeworkDDLs.forEach((ddl: HomeworkDDL) => {
+      if (choices.indexOf(ddl.courseName) < 0) choices.push(ddl.courseName);
+    });
     (this.apiPlan?.candidatePool ?? []).forEach((point: KnowledgeMastery) => {
       const name: string = point.sourceCourse ?? '';
       if (name.length > 0 && choices.indexOf(name) < 0) choices.push(name);

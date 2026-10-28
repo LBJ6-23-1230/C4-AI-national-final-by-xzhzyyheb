@@ -11,6 +11,7 @@ import { AgentApiClient } from '../api/AgentApiClient';
 import { ScheduleRecognitionResponse } from '../api/ApiModels';
 import { ApiFailure } from '../api/ApiResult';
 import { ImageEncoder } from '../utils/ImageEncoder';
+import { PlanViewModel } from '../viewmodels/PlanViewModel';
 
 @Entry
 @Component
@@ -18,6 +19,7 @@ struct CourseImport {
   @StorageLink('knowledgeSyncMessage') knowledgeSyncMessage: string = '';
   @StorageLink('learningDataRevision') @Watch('onLearningDataChanged') learningDataRevision: number = 0;
   @State ddlFilter: string = 'all';
+  @State addingAssignment: boolean = false;
   @State ddlDetailId: string = '';
   @State activeTab: string = 'courses';
 
@@ -216,6 +218,22 @@ struct CourseImport {
       ));
     }
     router.pushUrl({ url: 'pages/StudyPlan' });
+  }
+
+  private async addAssignment(ddl: HomeworkDDL): Promise<void> {
+    if (this.addingAssignment || appState.isTaskCompleted(ddl.id, 'pending')) return;
+    this.addingAssignment = true;
+    try {
+      const result = await new PlanViewModel().syncAssignments(ddl.id);
+      if (result.ok) {
+        this.openPlan();
+      } else {
+        this.importMessage = `加入计划失败：${(result as ApiFailure).error.message}`;
+        this.importStatus = 'error';
+      }
+    } finally {
+      this.addingAssignment = false;
+    }
   }
 
   private async pickScheduleImage(): Promise<void> {
@@ -480,7 +498,7 @@ struct CourseImport {
       }.alignItems(HorizontalAlign.Start).margin({ left: 12 }).layoutWeight(1)
 
       Column({ space: 6 }) {
-        Text(appState.isTaskCompleted(ddl.id, 'pending') ? '已完成' : '加入计划').fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Medium).onClick(() => this.openPlan())
+        Text(appState.isTaskCompleted(ddl.id, 'pending') ? '已完成' : (this.addingAssignment ? '正在加入…' : '加入计划')).fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Medium).onClick(() => { void this.addAssignment(ddl); })
         Text(ddl.priority).fontSize(12).fontColor('#FFFFFF').fontWeight(FontWeight.Bold)
           .backgroundColor(ddl.priority === '高' ? '#DC2626' : (ddl.priority === '中' ? '#F59E0B' : '#3B82F6'))
           .borderRadius(10).padding({ left: 10, right: 10, top: 4, bottom: 4 })

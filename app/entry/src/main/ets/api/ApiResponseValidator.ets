@@ -25,6 +25,9 @@ export class ApiResponseValidator {
     const data: Record<string, Object> = payload as Record<string, Object>;
     // 一律用去查询串的路径做匹配，避免 `?a=b` 让精确比较失效。
     const route: string = ApiResponseValidator.basePath(path);
+    if (method === 'POST' && route === '/api/v1/plans/current/assignments') {
+      return ApiResponseValidator.isPlan(data);
+    }
 
     if (method === 'PUT' && route.indexOf('/api/v1/profile/') === 0 && route.endsWith('/preferences')) {
       return ApiResponseValidator.hasNumber(data, 'profileVersion') && ApiResponseValidator.hasArray(data, 'mastery');

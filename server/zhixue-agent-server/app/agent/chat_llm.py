@@ -227,6 +227,11 @@ def llm_timeout_seconds() -> float:
     return seconds("LLM_TIMEOUT_SECONDS", 30)
 
 
+def vision_timeout_seconds() -> float:
+    from app.services.llm_runtime import seconds
+    return seconds("LLM_VISION_TIMEOUT_SECONDS", 120)
+
+
 def llm_max_retries() -> int:
     """SDK 自动重试次数，默认 0。
 
@@ -336,7 +341,7 @@ def _call_llm_with_image(system_prompt: str, user_prompt: str, image_base64: str
     import hashlib
 
     def invoke():
-        response = llm_runtime.request("vision", kwargs, budget=llm_timeout_seconds())
+        response = llm_runtime.request("vision", kwargs, budget=vision_timeout_seconds())
         if getattr(response.choices[0], "finish_reason", None) == "length":
             raise ValueError("vision_output_truncated")
         return response.choices[0].message.content or ""
@@ -354,7 +359,7 @@ def _call_llm_with_image(system_prompt: str, user_prompt: str, image_base64: str
         return invoke()
     key = hashlib.sha256(json.dumps([cache_scope, llm_runtime.fingerprint(), kwargs],
                                    ensure_ascii=False, sort_keys=True).encode()).hexdigest()
-    return vision_cache.resolve(key, invoke, cacheable, llm_timeout_seconds())
+    return vision_cache.resolve(key, invoke, cacheable, vision_timeout_seconds())
 
 
 # --------------------------------------------------------------------------- 对话历史
@@ -1343,6 +1348,7 @@ def _chat_in_session(message: str, image_base64: str | None = None,
     reply = ""
     profile_updates: dict[str, Any] = {}
     wrong_analysis: dict[str, Any] = {}
+    image_timed_out = False
     llm_attempted = llm_used  # 模型的意图判定是否真的成功（后续据此决定能否说"调用失败"）
     owner = (user_id or "").strip() or "demo-user"
     with _PENDING_PROFILE_LOCK:
@@ -1370,6 +1376,7 @@ def _chat_in_session(message: str, image_base64: str | None = None,
                     reply = handler(message, data, user_id)
         except Exception as error:  # noqa: BLE001
             print(f"[chat] 子 Agent 调用失败，退回本地规则: {error}")
+            image_timed_out = bool(image_base64) and isinstance(error, TimeoutError)
             llm_used = False
             llm_attempted = False
             reply = ""
@@ -1385,6 +1392,8 @@ def _chat_in_session(message: str, image_base64: str | None = None,
             reply = _LOCAL_REPLY.get(intent, _LOCAL_REPLY["unknown"])
         if image_base64:
             reply = ("图片已接收，但本次识图未成功。请重试或粘贴完整题干；模型未配置或不可用时无法识图。")
+            if image_timed_out:
+                reply = "图片已接收，但整页识题超时，本次未取得完整解析。请重试，或按题裁剪后分批上传；本次结果未保存为成功诊断。"
             llm_attempted = False
         # ⚠️ 只有"模型调用确实失败"才把 llmUsed 置 False。
         # `unknown` 是模型**依 prompt 正确返回**的兜底意图（prompt 第 84/127 行），

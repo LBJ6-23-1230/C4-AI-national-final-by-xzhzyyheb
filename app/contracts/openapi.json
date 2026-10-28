@@ -4020,6 +4020,65 @@
           }
         }
       }
+    },
+    "/api/v1/plans/current/assignments": {
+      "post": {
+        "summary": "Synchronize account assignments and optionally schedule one assignment",
+        "operationId": "syncPlanAssignments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersionHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentSyncRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "当前计划",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "description": "请求方法不被该路径支持（后端统一返回 JSON 错误体，而非 HTML）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid assignment snapshot or selected assignment."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4685,6 +4744,15 @@
             "type": "string"
           },
           "deferredReason": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "sourceCourse": {
+            "type": "string"
+          },
+          "dueDate": {
             "type": "string"
           }
         }
@@ -7524,6 +7592,68 @@
             "type": "string",
             "maxLength": 180000,
             "description": "空串表示默认头像；否则为 JPEG/PNG data URI，解码后不超过128KiB，正方形且边长不超过512px。"
+          }
+        }
+      },
+      "AssignmentSnapshot": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "courseName",
+          "dueDate",
+          "estimatedMinutes",
+          "completed"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "courseName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "estimatedMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440
+          },
+          "priority": {
+            "type": "string"
+          },
+          "completed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AssignmentSyncRequest": {
+        "type": "object",
+        "required": [
+          "assignments"
+        ],
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "maxItems": 300,
+            "items": {
+              "$ref": "#/components/schemas/AssignmentSnapshot"
+            }
+          },
+          "selectedId": {
+            "type": "string",
+            "description": "Explicitly add one pending assignment to the scheduled plan."
           }
         }
       }

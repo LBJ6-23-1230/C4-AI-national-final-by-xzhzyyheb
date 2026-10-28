@@ -53,6 +53,8 @@ export class ApiDefaults {
    * 两个调用点都引用它，不再各写一份数字。
    */
   static readonly LLM_BOUND_READ_TIMEOUT_MS: number = 40000;
+  /** 整页识题独立预算120秒，额外留出上传和响应时间。 */
+  static readonly VISION_READ_TIMEOUT_MS: number = 150000;
 
   /**
    * 文档上传与解析的读超时下限（毫秒）。

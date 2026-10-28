@@ -372,6 +372,24 @@ export interface PlanTask {
   status: PlanTaskStatus;
   priority?: string;
   deferredReason?: string;
+  source?: string;
+  sourceCourse?: string;
+  dueDate?: string;
+}
+
+export interface AssignmentSnapshot {
+  id: string;
+  title: string;
+  courseName: string;
+  dueDate: string;
+  estimatedMinutes: number;
+  priority: string;
+  completed: boolean;
+}
+
+export interface AssignmentSyncRequest {
+  assignments: AssignmentSnapshot[];
+  selectedId?: string;
 }
 
 export interface PlanBudgetRequest {

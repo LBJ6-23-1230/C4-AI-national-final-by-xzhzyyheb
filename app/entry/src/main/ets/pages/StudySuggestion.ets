@@ -118,6 +118,24 @@ struct StudySuggestion {
     return this.plan.unscheduledTasks.length;
   }
 
+  private pendingAssignments(): PlanTask[] {
+    return (this.plan?.unscheduledTasks ?? []).filter((task: PlanTask): boolean =>
+      task.source === 'ddl' && !this.isTaskDone(task));
+  }
+
+  private async arrangeAssignment(task: PlanTask): Promise<void> {
+    if (this.isLoading) return;
+    this.isLoading = true;
+    const result = await this.planViewModel.syncAssignments(task.taskId);
+    this.isLoading = false;
+    if (!this.isPageActive) return;
+    if (result.ok) {
+      await this.loadSuggestion(true);
+    } else {
+      this.errorMessage = '作业加入计划失败，请检查连接后重试。';
+    }
+  }
+
   private factors(): DecisionFactor[] { return this.plan?.factors ?? []; }
   private goBack(): void { appState.leaveChatTask(); router.back(); }
 
@@ -223,16 +241,30 @@ struct StudySuggestion {
   @Builder
   NoTaskBlock() {
     Column({ space: 12 }) {
-      Text(this.allTasksDone() ? '本次计划已全部完成' : '当前计划没有可执行任务')
+      Text(this.pendingAssignments().length > 0 ? `有 ${this.pendingAssignments().length} 项作业待安排`
+        : (this.allTasksDone() ? '本次计划已全部完成' : '当前计划没有可执行任务'))
         .fontSize(19).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
-      Text(this.allTasksDone()
+      Text(this.pendingAssignments().length > 0
+        ? '你的作业 DDL 已同步。选择一项加入本次计划，按该作业预计时长安排；也可以到完整计划里调整可用时间。'
+        : this.allTasksDone()
         ? `计划 V${this.plan?.version ?? 0} 里的 ${this.plan?.tasks.length ?? 0} 项任务都已完成。已完成的任务不会被重新推荐。`
         : '计划里暂时没有待执行任务；若有暂未安排任务，说明当前可用时间装不下它们。')
         .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
       if (this.unscheduledCount() > 0) {
-        Text(`另有 ${this.unscheduledCount()} 项暂未安排，仍在计划里保留。到计划页调整可用时间即可重新排入。`)
+        Text(`另有 ${this.unscheduledCount()} 项待安排，可能尚未设置学习时间，或当前时间不足。`)
           .fontSize(12).fontColor('#92400E').lineHeight(19).width('100%')
           .padding(10).backgroundColor('#FFFBEB').borderRadius(8)
+      }
+      ForEach(this.pendingAssignments(), (task: PlanTask) => {
+        Column({ space: 6 }) {
+          Text(task.knowledgePointName).fontSize(15).fontWeight(FontWeight.Bold).width('100%')
+          Text(`${task.sourceCourse ?? ''} · 截止 ${task.dueDate ?? ''} · 预计 ${task.durationMinutes} 分钟`)
+            .fontSize(12).fontColor('#667085').width('100%')
+          Button('加入本次计划').onClick(() => { void this.arrangeAssignment(task); })
+        }.width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(10)
+      }, (task: PlanTask) => task.taskId)
+      if (this.errorMessage.length > 0) {
+        Text(this.errorMessage).fontSize(12).fontColor('#B45309').width('100%')
       }
       Button('查看完整计划').width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold)
         .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(14)
