@@ -93,9 +93,11 @@ def request(kind, payload, *, budget=None, api_key=None, base_url=None, operatio
     started = time.monotonic()
     deadline = started + budget
     metrics = {"request_type": kind, "model": payload.get("model"), "http_status": None,
-               "tokens": None, "finish_reason": None, "retries": 0, "fallback_reason": None}
+               "tokens": None, "finish_reason": None, "retries": 0, "fallback_reason": None,
+               "queue_ms": None}
 
     def invoke():
+        metrics["queue_ms"] = round((time.monotonic() - started) * 1000, 2)
         cache_timeout = seconds("LLM_EMBED_TIMEOUT_SECONDS", 30) if operation == "embeddings" else budget
         with client(api_key, base_url, timeout=cache_timeout, retries=0) as connection:
             for attempt in range(2):

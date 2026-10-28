@@ -3,6 +3,22 @@ import { ChatCard, ChatMessage } from '../models/ChatModels';
 @Component
 export struct ChatBubble {
   @Prop message: ChatMessage;
+  @State waitSeconds: number = 0;
+  private waitTimer: number = -1;
+  private waitStartedAt: number = 0;
+
+  aboutToAppear(): void {
+    if (this.message.status !== 'sending') return;
+    this.waitStartedAt = Date.now();
+    this.waitTimer = setInterval(() => {
+      this.waitSeconds = Math.floor((Date.now() - this.waitStartedAt) / 1000);
+    }, 1000);
+  }
+
+  aboutToDisappear(): void {
+    if (this.waitTimer !== -1) clearInterval(this.waitTimer);
+    this.waitTimer = -1;
+  }
 
   private isUser(): boolean {
     return this.message.role === 'user';
@@ -26,9 +42,11 @@ export struct ChatBubble {
 
         if (this.message.status === 'sending') {
           Row({ space: 5 }) {
-            Text('').width(6).height(6).borderRadius(3).backgroundColor('#8E99A8')
-            Text('').width(6).height(6).borderRadius(3).backgroundColor('#B3BBC6')
-            Text('').width(6).height(6).borderRadius(3).backgroundColor('#D0D6DE')
+            LoadingProgress().width(18).height(18).color('#8E99A8')
+            Text(this.waitSeconds < 10 ? `正在等待回复 · ${this.waitSeconds}秒` :
+              `仍在等待回复 · ${this.waitSeconds}秒，请稍候`)
+              .fontSize(12)
+              .fontColor('#64748B')
           }
           .padding({ left: 14, right: 14, top: 12, bottom: 12 })
           .backgroundColor('#FFFFFF')

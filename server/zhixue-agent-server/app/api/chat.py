@@ -13,6 +13,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
@@ -354,6 +356,7 @@ def agent_chat():
     if data.get("coordinateLearning") is True and (not isinstance(data.get("sessionId"), str)
             or not session_id or len(data["sessionId"].strip()) > 128):
         return jsonify({"errorCode": "BAD_REQUEST", "message": "目标协作需要1至128字符的稳定聊天sessionId", "details": None}), 400
+    chat_started = time.monotonic()
     result = chat_llm.chat(
         message=message,
         image_base64=image if isinstance(image, str) and image else None,
@@ -422,6 +425,8 @@ def agent_chat():
         receipt.update(status="failed", message="图片已接收，但识图服务未完成，请重试或粘贴题干")
     if session_id:
         payload["sessionId"] = session_id
+    reply_elapsed_ms = round((time.monotonic() - chat_started) * 1000, 2)
+    coordination_started = time.monotonic()
     if data.get("coordinateLearning") is True and _repository and session_id:
         from app.services.learning_context import ensure_chat_context, chat_workflow_id
         from app.services.learning_context import current_chat_workflow
@@ -431,6 +436,12 @@ def agent_chat():
         # Diagnosis requests need a confirmed question, never an unrelated profile fallback.
         if not image and result["intent"] != "analyze_wrong" and learning_request:
             payload["learningContext"] = ensure_chat_context(_repository, _identity, session_id, message)
+    logging.getLogger("zhixue.llm").info(json.dumps({
+        "request_type": "chat_pipeline", "intent": result["intent"],
+        "reply_elapsed_ms": reply_elapsed_ms,
+        "coordination_elapsed_ms": round((time.monotonic() - coordination_started) * 1000, 2),
+        "elapsed_ms": round((time.monotonic() - chat_started) * 1000, 2),
+    }))
     return jsonify(payload)
 
 

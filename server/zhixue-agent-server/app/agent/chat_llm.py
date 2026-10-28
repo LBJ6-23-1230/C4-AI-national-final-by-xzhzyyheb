@@ -802,8 +802,18 @@ def keyword_intent(message: str) -> str:
     return "get_suggestion"
 
 
+# Exact UI commands only: free-form/negated/compound requests still use the model.
+_QUICK_INTENTS = {
+    "今天我应该先学什么": "get_suggestion",
+    "帮我看看我的薄弱知识点": "analyze_weakness",
+    "帮我匹配一个学习搭子": "match_partner",
+    "今天有哪些任务要交": "query_tasks",
+    "我要更新学习画像：我的学习目标或掌握情况有变化": "update_profile",
+}
+
+
 def detect_intent(message: str, has_image: bool = False) -> tuple[str, bool]:
-    """返回 (意图, 是否由 LLM 判定)。LLM 不可用时退回关键词匹配。
+    """返回 (意图, 是否继续调用模型处理)。LLM 不可用时退回本地规则。
 
     `has_image=True` 时**直接判定为 analyze_wrong**，不调用 LLM：
 
@@ -818,6 +828,12 @@ def detect_intent(message: str, has_image: bool = False) -> tuple[str, bool]:
     if has_image:
         return "analyze_wrong", True
 
+    quick_intent = _QUICK_INTENTS.get(message.strip().rstrip("？?！!。"))
+    if quick_intent:
+        # True authorizes the handler call; the final llmUsed flag still reflects
+        # whether that call actually succeeds, including the normal failure path.
+        return quick_intent, llm_ready()
+
     system_prompt = _load_prompt("MainAgentPrompt.txt")
     if not system_prompt or not llm_ready():
         return keyword_intent(message), False
@@ -828,6 +844,7 @@ def detect_intent(message: str, has_image: bool = False) -> tuple[str, bool]:
             f"用户输入：{message}",
             temperature=0,
             max_tokens=100,
+            request_type="intent",
         )
         parsed = extract_json(raw) or {}
         intent = str(parsed.get("intent", "")).strip()
@@ -849,7 +866,7 @@ def _handle_analyze_weakness(message: str, data: dict[str, Any],
              user_id: str | None = None) -> str:
     return _call_llm(
         _load_prompt("AnalyzeWeaknessPrompt.txt"),
-        _context_prompt(message, data, user_id))
+        _context_prompt(message, data, user_id), request_type="weakness")
 
 
 def _handle_get_suggestion(message: str, data: dict[str, Any],
@@ -1339,8 +1356,15 @@ def _chat_in_session(message: str, image_base64: str | None = None,
         message = "帮我分析这道题"
 
     data = _user_data(frontend_data, user_context, user_id)
+    owner = (user_id or "").strip() or "demo-user"
+    with _PENDING_PROFILE_LOCK:
+        has_pending_profile_update = (owner, _CHAT_SESSION.get()) in _PENDING_PROFILE_UPDATES
+    is_profile_confirmation = (has_pending_profile_update and
+                               message in (_PROFILE_CONFIRM_WORDS | _PROFILE_CANCEL_WORDS))
     direct_question = previous_question or bool(re.search(r"[A-D][.、．]|[（(][）)].{0,8}[。.]?\s*$|答案是什么|求解|解答这", message))
-    if not image_base64 and direct_question:
+    if is_profile_confirmation:
+        intent, llm_used = "update_profile", False
+    elif not image_base64 and direct_question:
         intent, llm_used = "analyze_wrong", llm_ready()
     else:
         intent, llm_used = detect_intent(message, has_image=bool(image_base64))
@@ -1350,11 +1374,6 @@ def _chat_in_session(message: str, image_base64: str | None = None,
     wrong_analysis: dict[str, Any] = {}
     image_timed_out = False
     llm_attempted = llm_used  # 模型的意图判定是否真的成功（后续据此决定能否说"调用失败"）
-    owner = (user_id or "").strip() or "demo-user"
-    with _PENDING_PROFILE_LOCK:
-        has_pending_profile_update = (owner, _CHAT_SESSION.get()) in _PENDING_PROFILE_UPDATES
-    is_profile_confirmation = (has_pending_profile_update and
-                               message in (_PROFILE_CONFIRM_WORDS | _PROFILE_CANCEL_WORDS))
     if is_profile_confirmation:
         # “确认更新/取消更新”是确定性事务命令，不能再次依赖模型分类。
         # 否则模型未配置或把短句判成 unknown 时，待确认更新永远无法提交。
