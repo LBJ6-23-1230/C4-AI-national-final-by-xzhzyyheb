@@ -6,7 +6,7 @@ import { ApiEnvironmentStore } from '../api/ApiEnvironmentStore';
 import { AuthStore } from '../api/AuthStore';
 import { AuthClient } from '../api/AuthClient';
 import { AuthResult } from '../api/AuthResult';
-import { GRADE_OPTIONS } from '../api/AuthModels';
+import { AuthUser, GRADE_OPTIONS } from '../api/AuthModels';
 import { appState } from '../data/AppState';
 import { DeviceLayout } from '../utils/DeviceLayout';
 
@@ -78,7 +78,78 @@ struct Login {
   /** 华为账号一键登录进行中。 */
   @State isHuaweiLoggingIn: boolean = false;
 
+  @State choosingAccount: boolean = false;
+  @State accountChoices: AuthUser[] = [];
+  @State selectionMessage: string = '';
+  private selectionToken: string = '';
+  private selectionPassword: string = '';
   private isActive: boolean = false;
+
+  private offerAccounts(result: AuthResult): boolean {
+    if (result.accounts === undefined || result.selectionToken === undefined) return false;
+    this.accountChoices = result.accounts;
+    this.selectionToken = result.selectionToken;
+    this.selectionPassword = this.method === 'code' ? '' : this.password;
+    this.selectionMessage = '';
+    this.choosingAccount = true;
+    return true;
+  }
+
+  private async chooseAccount(user: AuthUser): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    const result: AuthResult = await AuthClient.selectAccount(this.selectionToken, user.userId, this.selectionPassword);
+    this.busy = false;
+    if (!this.isActive) return;
+    if (!result.ok) {
+      this.selectionMessage = result.message;
+      return;
+    }
+    this.choosingAccount = false;
+    this.selectionToken = '';
+    this.selectionPassword = '';
+    this.useOnlineSource();
+    appState.applyLogin(result.user, result.source);
+    router.clear();
+    this.goHome();
+  }
+
+  @Builder
+  AccountChooser() {
+    Column({ space: 12 }) {
+      Text('选择登录账号').fontSize(22).fontWeight(FontWeight.Bold)
+      Text('该手机号绑定了多个账号，请选择本次要使用的账号。').fontSize(14).fontColor('#64748B')
+      Scroll() {
+        Column({ space: 12 }) {
+          ForEach(this.accountChoices, (user: AuthUser) => {
+            Row({ space: 12 }) {
+              if (user.avatar !== undefined && user.avatar.length > 0) {
+                Image(user.avatar).width(48).height(48).borderRadius(24).objectFit(ImageFit.Cover)
+              } else {
+                Text(user.nickname.substring(0, 1)).width(48).height(48).textAlign(TextAlign.Center)
+                  .fontSize(22).fontColor('#2563EB').backgroundColor('#EFF6FF').borderRadius(24)
+              }
+              Column({ space: 5 }) {
+                Text(user.nickname).fontSize(17).fontWeight(FontWeight.Medium)
+                Text('年级：' + (user.grade || '未设置')).fontSize(13).fontColor('#64748B')
+                Text('创建时间：' + new Date(user.createdAt).toLocaleString()).fontSize(12).fontColor('#64748B')
+              }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+              Text('进入 ›').fontColor('#2563EB')
+            }.width('100%').padding(14).backgroundColor('#F8FAFC').borderRadius(12)
+              .onClick(() => { this.chooseAccount(user); })
+          }, (user: AuthUser) => user.userId)
+        }.width('100%')
+      }.layoutWeight(1).width('100%')
+      if (this.selectionMessage.length > 0) {
+        Text(this.selectionMessage).fontColor('#DC2626').fontSize(13)
+        Text('若各账号密码不同，请填写所选账号的密码后重试。').fontSize(12).fontColor('#64748B')
+        TextInput({ placeholder: '所选账号的密码', text: this.selectionPassword })
+          .type(InputType.Password).onChange((value: string) => { this.selectionPassword = value; })
+      }
+      Button('取消').onClick(() => { this.choosingAccount = false; this.selectionToken = ''; })
+    }.padding(24).width('100%').height('100%')
+  }
+
   /** 倒计时定时器句柄；离开页面必须清掉，否则会在已销毁的页面上 setState。 */
   private resendTimer: number = -1;
 
@@ -219,7 +290,7 @@ struct Login {
    *
    * 现在按 `mode` 真正分派：
    *   · 登录 → `AuthClient.loginByPhoneOrNickname()`（手机号优先）
-   *   · 注册 → `AuthClient.loginOrRegister()`（**手机号必填**，已存在则登录）
+   *   · 注册 → `AuthClient.register()`（手机号已存在时拒绝注册）
    *
    * 密码字段参与后端注册与登录校验。
    */
@@ -273,8 +344,7 @@ struct Login {
     let result: AuthResult;
     if (this.mode === 'register') {
       // 真实账号固定从零开始；完整示例只属于“跳过登录”的游客模式。
-      result = await AuthClient.loginOrRegister(this.nickname, this.grade, phone,
-        this.password);
+      result = await AuthClient.register(this.nickname, phone, this.grade, this.password);
     } else if (phone.length > 0) {
       // 登录且填了手机号 → 按手机号登录（唯一、可验证，比昵称可靠）
       result = await AuthClient.loginByPhone(phone, this.password);
@@ -286,6 +356,7 @@ struct Login {
     }
     this.busy = false;
 
+    if (this.offerAccounts(result)) return;
     if (!result.ok) {
       // 登录模式下"查无此账号"是很常见的误操作，直接把用户引到注册标签
       if (this.mode === 'login'
@@ -415,6 +486,7 @@ struct Login {
     }
     this.busy = false;
 
+    if (this.offerAccounts(result)) return;
     if (!result.ok) {
       this.message = result.message;
       this.messageIsError = true;
@@ -780,6 +852,7 @@ struct Login {
       .align(Alignment.Top)
     }
     .width('100%').height('100%').backgroundColor('#FFFFFF')
+    .bindSheet($$this.choosingAccount, this.AccountChooser(), { height: '80%' })
   }
 
   /** 大屏上减少顶部留白（手机竖屏留 56 好看，平板上会显得空）。 */
@@ -812,6 +885,17 @@ struct Login {
         .backgroundColor(this.mode === item.key ? '#FFFFFF' : '#F1F5F9')
         .borderRadius(8)
         .onClick(() => {
+          if (this.busy || this.isHuaweiLoggingIn || this.mode === item.key) return;
+          if (item.key === 'register') {
+            this.phone = '';
+            this.nickname = '';
+            this.password = '';
+            this.grade = '';
+            this.verifyCode = '';
+            this.devCode = '';
+            this.smsDelivered = false;
+            this.stopResendTimer();
+          }
           this.mode = item.key;
           this.message = '';
           this.messageIsError = false;

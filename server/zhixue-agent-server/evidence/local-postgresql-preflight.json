@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "applied": false,
+  "pending": 32,
+  "counts": {
+    "profiles": 2,
+    "plans": 2,
+    "traces": 2,
+    "users": 1,
+    "sessions": 1,
+    "learning_events": 1,
+    "plan_histories": 1,
+    "file_objects": 2,
+    "chat_diagnoses": 12,
+    "chat_messages": 7,
+    "chat_sessions": 1
+  },
+  "sha256": "6579b147f5f194605cd19aa9ae1b33177fbd1ada2c2eeffbd54051bee2876288"
+}

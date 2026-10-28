@@ -251,6 +251,9 @@ export class ApiResponseValidator {
     if (method === 'POST' && route === '/api/v1/auth/register') {
       return ApiResponseValidator.isAuthSession(data);
     }
+    if (method === 'POST' && route === '/api/v1/auth/select-account') {
+      return ApiResponseValidator.isAuthSession(data);
+    }
     if (method === 'POST' && route === '/api/v1/auth/login') {
       return ApiResponseValidator.isAuthSession(data);
     }
@@ -315,6 +318,16 @@ export class ApiResponseValidator {
 
   /** 会话响应：{ user, token, expiresAt }。 */
   private static isAuthSession(data: Record<string, Object>): boolean {
+    if (ApiResponseValidator.hasString(data, 'selectionToken') && ApiResponseValidator.hasArray(data, 'accounts')) {
+      const accounts: Object[] = data['accounts'] as Object[];
+      return accounts.length > 1 && accounts.every((item: Object): boolean => {
+        if (!ApiResponseValidator.isRecord(item)) return false;
+        const user: Record<string, Object> = item as Record<string, Object>;
+        return ApiResponseValidator.hasString(user, 'userId') && ApiResponseValidator.hasString(user, 'nickname') &&
+          ApiResponseValidator.isString(user, 'grade') && ApiResponseValidator.isString(user, 'createdAt') &&
+          ApiResponseValidator.isString(user, 'avatar');
+      });
+    }
     return ApiResponseValidator.isAuthUserField(data, 'user') &&
       ApiResponseValidator.hasString(data, 'token') &&
       ApiResponseValidator.hasString(data, 'expiresAt');

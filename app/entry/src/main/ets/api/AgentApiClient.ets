@@ -1,3 +1,4 @@
+import { AuthSelectAccountRequest } from './AuthModels';
 import { GoalActionRequest, GoalActionResponse, GoalHistoryResponse } from './ApiModels';
 import { AuthProfileUpdateRequest } from './AuthModels';
 import { LearningPreferencesRequest, DocumentPointsRequest } from './ApiModels';
@@ -344,6 +345,10 @@ export class AgentApiClient {
   // ------------------------------------------------------------------ 鉴权
   static async authRegister(request: AuthRegisterRequest): Promise<ApiResult<AuthSessionResponse>> {
     return AgentApiClient.request<AuthSessionResponse>(http.RequestMethod.POST, '/api/v1/auth/register', request);
+  }
+
+  static async authSelectAccount(request: AuthSelectAccountRequest): Promise<ApiResult<AuthSessionResponse>> {
+    return AgentApiClient.request<AuthSessionResponse>(http.RequestMethod.POST, '/api/v1/auth/select-account', request);
   }
 
   static async authLogin(request: AuthLoginRequest): Promise<ApiResult<AuthSessionResponse>> {

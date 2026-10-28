@@ -29,7 +29,7 @@ export interface AuthRegisterRequest {
   password?: string;
   grade?: string;
   /**
-   * 手机号。**注册必填**（唯一身份标识）；后端做格式校验与唯一约束。
+   * 手机号。注册必填，可绑定多个独立账号。
    *
    * ⚠️ 声明为必填（而非 `phone?`）是刻意的：契约里
    * `AuthRegisterRequest.required = [nickname, phone]`，后端 `_PHONE_REQUIRED = True`，
@@ -148,7 +148,7 @@ export const VERIFICATION_CODE_MESSAGES: Record<string, string> = {
 /**
  * 「登录优先，注册兜底」的请求/响应。
  *
- * 这是登录页主按钮应当调用的接口：昵称已存在就登录、不存在才建号，
+ * 这是兼容旧版的合并接口；新版注册入口使用独立注册接口。历史行为为已有账号登录、否则建号，
  * 从而避免"用同一个昵称再点一次又建一个新账号"（此前实测会得到两个 userId）。
  */
 export interface AuthLoginOrRegisterRequest extends AuthSeedDemoDataField {
@@ -163,7 +163,15 @@ export interface AuthLoginOrRegisterResponse extends AuthSessionResponse {
   created: boolean;
 }
 
+export interface AuthSelectAccountRequest {
+  selectionToken: string;
+  accountId: string;
+  password?: string;
+}
+
 export interface AuthSessionResponse {
+  accounts?: AuthUser[];
+  selectionToken?: string;
   user: AuthUser;
   token: string;
   expiresAt: string;

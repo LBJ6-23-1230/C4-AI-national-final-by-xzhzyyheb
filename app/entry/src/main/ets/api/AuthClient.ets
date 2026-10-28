@@ -22,6 +22,13 @@ import { AuthUser, ChangePasswordResult, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGT
  * 演示时评委点不进去 = 灾难，这条纪律优先于一切。
  */
 export class AuthClient {
+  static async selectAccount(selectionToken: string, accountId: string, password: string): Promise<AuthResult> {
+    const result = await AgentApiClient.authSelectAccount({ selectionToken: selectionToken, accountId: accountId, password: password });
+    if (!result.ok) return { ok: false, user: null, source: 'local', message: AuthClient.describe(result) };
+    AuthStore.save(result.data.user, result.data.token, result.data.expiresAt);
+    return { ok: true, user: result.data.user, source: 'local', message: '' };
+  }
+
   static async updateProfile(nickname: string, avatar: string): Promise<AuthResult> {
     const session: StoredSession | null = AuthStore.getSession();
     if (session === null) {
@@ -187,7 +194,7 @@ export class AuthClient {
    *
    * 真实账号固定从零开始；演示数据只属于游客 `demo-user`。
    */
-  static async register(nickname: string, phone: string, grade?: string): Promise<AuthResult> {
+  static async register(nickname: string, phone: string, grade?: string, password?: string): Promise<AuthResult> {
     if (AgentApiClient.getConfig().useFixture) {
       return AuthClient.offlineUnavailable();
     }
@@ -199,6 +206,7 @@ export class AuthClient {
     const result = await AgentApiClient.authRegister({
       nickname: nickname.trim(),
       phone: phone.trim(),
+      password: password,
       grade: grade !== undefined && grade.length > 0 ? grade : undefined,
       seedDemoData: false
     });
@@ -206,6 +214,10 @@ export class AuthClient {
       return { ok: false, user: null, source: 'local', message: AuthClient.describe(result) };
     }
 
+    if (result.data.accounts !== undefined && result.data.selectionToken !== undefined) {
+      return { ok: false, user: null, source: 'local', message: '请选择要登录的账号',
+        accounts: result.data.accounts, selectionToken: result.data.selectionToken };
+    }
     AuthStore.save(result.data.user, result.data.token, result.data.expiresAt);
     const seeded: boolean = result.data.demoDataSeeded === true;
     return {
@@ -220,7 +232,7 @@ export class AuthClient {
   }
 
   /**
-   * **登录优先，注册兜底** —— 登录页主按钮应当调这个。
+   * 兼容旧版的登录或注册入口；新版注册页必须使用 register() 独立建号。
    *
    * 修复的问题：此前"登录"与"注册"两个标签实际都只调 `register()`，
    * 于是用同一个昵称再点一次会**又建一个新账号**（实测两次注册「张三」
@@ -252,6 +264,10 @@ export class AuthClient {
       return { ok: false, user: null, source: 'local', message: AuthClient.describe(result) };
     }
 
+    if (result.data.accounts !== undefined && result.data.selectionToken !== undefined) {
+      return { ok: false, user: null, source: 'local', message: '请选择要登录的账号',
+        accounts: result.data.accounts, selectionToken: result.data.selectionToken };
+    }
     AuthStore.save(result.data.user, result.data.token, result.data.expiresAt);
     const created: boolean = result.data.created === true;
     // ⚠️ 只有"确实建了号"才可能载入演示数据：服务端对已有账号的登录
@@ -290,6 +306,10 @@ export class AuthClient {
     });
     if (!result.ok) {
       return { ok: false, user: null, source: 'local', message: AuthClient.describe(result) };
+    }
+    if (result.data.accounts !== undefined && result.data.selectionToken !== undefined) {
+      return { ok: false, user: null, source: 'local', message: '请选择要登录的账号',
+        accounts: result.data.accounts, selectionToken: result.data.selectionToken };
     }
     AuthStore.save(result.data.user, result.data.token, result.data.expiresAt);
     return {
@@ -383,6 +403,10 @@ export class AuthClient {
     if (!result.ok) {
       return { ok: false, user: null, source: 'local', message: AuthClient.describe(result) };
     }
+    if (result.data.accounts !== undefined && result.data.selectionToken !== undefined) {
+      return { ok: false, user: null, source: 'local', message: '请选择要登录的账号',
+        accounts: result.data.accounts, selectionToken: result.data.selectionToken };
+    }
     AuthStore.save(result.data.user, result.data.token, result.data.expiresAt);
     const created: boolean = result.data.created === true;
     const seeded: boolean = created && result.data.demoDataSeeded === true;
@@ -452,6 +476,10 @@ export class AuthClient {
       return { ok: false, user: null, source: 'local', message: AuthClient.describe(result) };
     }
 
+    if (result.data.accounts !== undefined && result.data.selectionToken !== undefined) {
+      return { ok: false, user: null, source: 'local', message: '请选择要登录的账号',
+        accounts: result.data.accounts, selectionToken: result.data.selectionToken };
+    }
     AuthStore.save(result.data.user, result.data.token, result.data.expiresAt);
     return {
       ok: true,
@@ -495,6 +523,10 @@ export class AuthClient {
     }
 
     const result = await AgentApiClient.authMe();
+    const active: StoredSession | null = AuthStore.getSession();
+    if (active === null || active.token !== session.token || active.userId !== session.userId) {
+      return { ok: false, user: null, source: 'guest', message: '账号已切换，请重新登录。' };
+    }
     if (result.ok) {
       // 用服务端返回的权威信息刷新本地缓存（昵称/年级可能被后续功能修改）
       AuthStore.save(result.data.user, session.token, session.expiresAt);

@@ -324,3 +324,15 @@ def delete_account():
     if not service.deactivate_user(_repository, user["userId"]):
         return _error("NOT_FOUND", "账号不存在", 404)
     return jsonify({"status": "deactivated", "userId": user["userId"]})
+
+
+@auth_api.post("/api/v1/auth/select-account")
+def select_account():
+    if _repository is None:
+        return _error("INTERNAL_ERROR", "auth repository is not configured", 500)
+    data = _body()
+    try:
+        return jsonify(service.select_account(_repository, data.get("selectionToken"),
+                                              data.get("accountId"), data.get("password")))
+    except service.AuthError as error:
+        return _auth_error(error)

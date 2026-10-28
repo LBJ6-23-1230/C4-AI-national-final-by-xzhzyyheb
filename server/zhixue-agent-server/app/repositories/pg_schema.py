@@ -8,7 +8,7 @@ from sqlalchemy import (MetaData, Table, Column, Text, Integer, DateTime, Index,
                         CheckConstraint, UniqueConstraint, ForeignKeyConstraint, func)
 from sqlalchemy.dialects.postgresql import JSONB
 
-REVISION = "20261027_01"
+REVISION = "20261028_02"
 metadata = MetaData()
 COLLECTIONS = {
     "users": "users", "sessions": "auth_sessions",
@@ -35,7 +35,7 @@ def domain_table(name, compatibility=False):
                 Column("value", JSONB, nullable=False),
                 CheckConstraint("version >= 0", name=f"ck_{name}_version")]
     if name == "users":
-        columns += [Column("phone", Text, unique=True), Column("nickname_normalized", Text)]
+        columns += [Column("phone", Text), Column("nickname_normalized", Text)]
     if name in {"documents", "document_chunks"}:
         columns += [Column("kb_id", Text), Column("document_id", Text)]
     if name == "submissions":
@@ -58,6 +58,7 @@ def domain_table(name, compatibility=False):
         Index("ix_chunks_document", table.c.user_id, table.c.document_id)
     if name == "users":
         Index("ix_users_nickname", table.c.nickname_normalized)
+        Index("ix_users_phone", table.c.phone)
     if name == "jobs":
         Index("ix_jobs_claim", table.c.status, table.c.run_after, table.c.locked_until)
     return table

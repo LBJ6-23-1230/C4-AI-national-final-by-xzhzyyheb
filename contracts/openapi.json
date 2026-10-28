@@ -1159,7 +1159,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthSessionResponse"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthSessionResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AuthAccountChoices"
+                    }
+                  ]
                 }
               }
             }
@@ -1397,7 +1404,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthLoginOrRegisterResponse"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthLoginOrRegisterResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AuthAccountChoices"
+                    }
+                  ]
                 }
               }
             }
@@ -2288,7 +2302,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthLoginOrRegisterResponse"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthLoginOrRegisterResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AuthAccountChoices"
+                    }
+                  ]
                 }
               }
             }
@@ -4085,6 +4106,36 @@
           }
         }
       }
+    },
+    "/api/v1/auth/select-account": {
+      "post": {
+        "summary": "Select a verified phone account and issue its session",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthSelectAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Selected account session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid, expired or used selection; invalid account or password"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5492,7 +5543,7 @@
           },
           "phone": {
             "type": "string",
-            "description": "手机号。注册必填；生产登录应先调用 send-code + verify-code。当前 /auth/login 的免验证码手机号登录保留给演示与单机环境。"
+            "description": "Required phone number; may be bound to multiple independent accounts."
           },
           "password": {
             "type": "string",
@@ -7660,6 +7711,45 @@
           "selectedId": {
             "type": "string",
             "description": "Explicitly add one pending assignment to the scheduled plan."
+          }
+        }
+      },
+      "AuthAccountChoices": {
+        "type": "object",
+        "required": [
+          "accounts",
+          "selectionToken"
+        ],
+        "properties": {
+          "accounts": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "$ref": "#/components/schemas/AuthUser"
+            }
+          },
+          "selectionToken": {
+            "type": "string",
+            "description": "Single-use selection challenge, valid for five minutes. Not an authenticated session."
+          }
+        }
+      },
+      "AuthSelectAccountRequest": {
+        "type": "object",
+        "required": [
+          "selectionToken",
+          "accountId"
+        ],
+        "properties": {
+          "selectionToken": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "description": "Required for password login; must match the selected account."
           }
         }
       }

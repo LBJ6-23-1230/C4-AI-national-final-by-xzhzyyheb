@@ -61,8 +61,8 @@ def test_register_accepts_common_phone_formats(tmp_path):
     assert logged.get_json()["user"]["userId"] == created.get_json()["user"]["userId"]
 
 
-def test_register_rejects_duplicate_phone(tmp_path):
-    """手机号唯一：同号重复注册 409，不悄悄建第二个账号。"""
+def test_register_allows_multiple_accounts_per_phone(tmp_path):
+    """同一手机号允许创建多个独立账号。"""
     client = create_app(tmp_path / "dup.json").test_client()
     phone = _phone()
     assert client.post("/api/v1/auth/register",
@@ -72,9 +72,8 @@ def test_register_rejects_duplicate_phone(tmp_path):
     duplicate = client.post("/api/v1/auth/register",
                             json={"nickname": "第二个", "phone": phone}, headers=H)
 
-    assert duplicate.status_code == 409
-    assert duplicate.get_json()["errorCode"] == "CONFLICT"
-
+    assert duplicate.status_code == 201
+    assert duplicate.get_json()["user"]["nickname"] == "第二个"
 
 def test_phone_is_persisted_normalized_and_masked(tmp_path):
     """落库的是归一化号码；回传的是脱敏号码。"""

@@ -290,8 +290,8 @@ def test_register_requires_phone(tmp_path):
     assert malformed.status_code == 400
 
 
-def test_register_rejects_duplicate_phone(tmp_path):
-    """手机号唯一：同号重复注册必须 409，而不是悄悄建第二个账号。"""
+def test_register_allows_multiple_accounts_per_phone(tmp_path):
+    """同一手机号允许创建多个独立账号。"""
     client = create_app(tmp_path / "dup-phone.json").test_client()
     phone = _phone()
     _register(client, "第一个", phone=phone)
@@ -299,9 +299,8 @@ def test_register_rejects_duplicate_phone(tmp_path):
     response = client.post("/api/v1/auth/register",
                            json={"nickname": "第二个", "phone": phone})
 
-    assert response.status_code == 409
-    assert response.get_json()["errorCode"] == "CONFLICT"
-
+    assert response.status_code == 201
+    assert response.get_json()["user"]["nickname"] == "第二个"
 
 def test_register_response_never_leaks_full_phone(tmp_path):
     """响应只回脱敏手机号，完整号码不回传。"""
@@ -407,3 +406,19 @@ def test_login_or_register_response_shape_matches_contract(tmp_path):
     # 绝不能泄漏凭据字段
     assert "authSubject" not in body["user"]
 
+
+def test_logout_then_register_new_account_does_not_reuse_identity(tmp_path):
+    client = create_app(tmp_path / 'switch.json').test_client()
+    first = _register(client, '旧账号').get_json()
+    old_headers = {'Authorization': 'Bearer ' + first['token']}
+    assert client.post('/api/v1/auth/logout', headers=old_headers).status_code == 200
+    second_response = _register(client, '新账号')
+    assert second_response.status_code == 201
+    second = second_response.get_json()
+    assert second['user']['userId'] != first['user']['userId']
+    assert second['token'] != first['token']
+    assert client.get('/api/v1/auth/me', headers=old_headers).status_code == 401
+    current = client.get('/api/v1/auth/me', headers={
+        'Authorization': 'Bearer ' + second['token']}).get_json()
+    assert current['user']['userId'] == second['user']['userId']
+    assert current['user']['nickname'] == '新账号'

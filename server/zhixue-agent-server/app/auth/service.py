@@ -6,7 +6,7 @@
 1. 本地账号可设置密码；只保存 Werkzeug 生成的加盐哈希，明文不落库、不回传。
 2. **`demo-user` 是保留的游客身份**。未登录 / 「一键体验」/ 离线 Fixture 全部使用它，
    因此**演示主链的数值与行为完全不受登录功能影响**（`demo/reset` 依然只作用于 demo-user）。
-3. 手机号规范化后用于账号唯一性检查，公开响应只提供脱敏手机号。
+3. 手机号规范化后可绑定多个独立账号，公开响应只提供脱敏手机号。
    数据库及备份应按包含个人信息的运行数据管理，不随源码交付。
 4. 全部函数只接收 `Repository`，便于把 `JsonRepository` 换成 `SqliteRepository`
    （`app/repositories/sqlite_repository.py` 已实现同一套协议，`create_app` 改一行即可）。
@@ -60,12 +60,12 @@ _PASSWORD_MAX = 72
 
 #: 注册时是否强制要求手机号。
 #:
-#: 设为 `True` 的理由：手机号是**唯一身份标识**，昵称不是。
+#: 设为 `True` 的理由：手机号可绑定多个账号，userId 是唯一身份标识。
 #: 没有手机号时，"登录"只能退化成"按昵称查账号"，而昵称可以重复、
 #: 也可以被任何人猜到 —— 既无法保证唯一性，也无法证明身份。
 #:
 #: 设为 `False` 可退回纯昵称流程（本地演示 / 无短信服务的场合）。
-#: 无论取值如何，**手机号一旦提供就必须格式合法且唯一**。
+#: 无论取值如何，**手机号一旦提供就必须格式合法**。
 _PHONE_REQUIRED = True
 
 
@@ -399,26 +399,49 @@ def login_by_nickname(repository: Repository, nickname: Any,
             "expiresAt": session["expiresAt"]}
 
 
-def find_user_by_phone(repository: Repository, phone: Any) -> dict[str, Any] | None:
-    """按手机号查账号。
-
-    与昵称不同，**手机号是唯一的** —— 所以这里返回单个用户或 None，
-    并且在注册时保证唯一。这是手机号登录比昵称登录可靠的根本原因。
-
-    ⚠️ 必须走 `normalize_phone()` 做**同一套归一化**。
-    这里曾经只做 `re.sub(r"[^\\d]", ...)`，漏掉了 `+86` 前缀剥离，
-    于是 `+86 139-0000-0001` 查不到已存的 `13900000001`
-    ——**注册用归一化、查询用另一套规则，是最隐蔽的一类不一致**。
-    """
+def find_users_by_phone(repository: Repository, phone: Any) -> list[dict[str, Any]]:
     normalized = normalize_phone(phone, required=False)
     if not normalized:
-        return None
-    for user in repository.query(USERS, {"phone": normalized}):
-        if not isinstance(user, dict) or user.get("status") != "active":
-            continue
-        if user.get("phone") == normalized:
-            return user
-    return None
+        return []
+    return sorted([u for u in repository.query(USERS, {"phone": normalized})
+                   if isinstance(u, dict) and u.get("status") == "active" and u.get("phone") == normalized],
+                  key=lambda u: (u.get("createdAt", ""), u["userId"]))
+
+
+def find_user_by_phone(repository: Repository, phone: Any) -> dict[str, Any] | None:
+    users = find_users_by_phone(repository, phone)
+    return users[0] if users else None
+
+
+def _account_choices(repository: Repository, users: list[dict], *, sms: bool = False) -> dict:
+    token = secrets.token_urlsafe(32)
+    repository.save("account_choices", hashlib.sha256(token.encode()).hexdigest(), {
+        "userIds": [u["userId"] for u in users], "sms": sms,
+        "expiresAt": _iso(_now() + timedelta(minutes=5)), "used": False})
+    return {"accounts": [_public_user(u) for u in users], "selectionToken": token}
+
+
+@atomic_auth
+def select_account(repository: Repository, token: Any, account_id: Any, password: Any = None) -> dict:
+    if not isinstance(token, str) or not token:
+        raise AuthError("UNAUTHORIZED", "请重新验证手机号", 401)
+    key = hashlib.sha256(token.encode()).hexdigest()
+    choice = repository.get("account_choices", key)
+    if not choice or choice.get("used") or _parse_optional_time(choice.get("expiresAt")) <= _now():
+        raise AuthError("UNAUTHORIZED", "账号选择已过期，请重新登录", 401)
+    if account_id not in choice["userIds"]:
+        raise AuthError("UNAUTHORIZED", "请选择该手机号绑定的账号", 401)
+    user = repository.get(USERS, account_id)
+    if not user or user.get("status") != "active":
+        raise AuthError("UNAUTHORIZED", "账号已注销，请重新登录", 401)
+    if not choice["sms"]:
+        _verify_password(user, password)
+    choice["used"] = True
+    repository.save("account_choices", key, choice)
+    session = create_session(repository, account_id)
+    user["lastLoginAt"] = _iso(_now())
+    repository.save(USERS, account_id, user)
+    return {"user": _public_user(user), "token": session["token"], "expiresAt": session["expiresAt"]}
 
 
 @atomic_auth
@@ -433,9 +456,22 @@ def login_by_phone(repository: Repository, phone: Any,
     完整验证码链路（含限流、锁定、哈希存储）见
     `docs/11-用户登录体系方案.md` §5.2。
     """
-    user = find_user_by_phone(repository, phone)
+    users = find_users_by_phone(repository, phone)
+    user = users[0] if users else None
     if user is None:
         raise AuthError("UNAUTHORIZED", "该手机号还没有账号，请先注册", 401)
+    if len(users) > 1:
+        if verify_secret:
+            valid = False
+            for candidate in users:
+                try:
+                    _verify_password(candidate, password)
+                    valid = True
+                except AuthError:
+                    pass
+            if not valid:
+                raise AuthError("UNAUTHORIZED", "手机号或密码不正确", 401)
+        return _account_choices(repository, users, sms=not verify_secret)
     if verify_secret:
         _verify_password(user, password)
     user_id = user["userId"]
@@ -763,8 +799,7 @@ def register_user(repository: Repository, nickname: Any, grade: Any = None,
                   phone: Any = None, password: Any = None) -> dict[str, Any]:
     """创建账号：昵称 + 年级 + 手机号 + 可选密码 → userId + token。
 
-    **手机号唯一**：同一个手机号重复注册会返回 409 `CONFLICT`，
-    而不是悄悄建第二个账号 —— 这正是手机号作为身份标识的价值。
+    同一手机号可以创建多个独立账号；手机号登录时通过选择凭据确认具体账号。
 
     昵称**有意允许重复**（`_new_user_id()` 保证 userId 唯一即可）。
     但调用方若要避免"用户以为在登录、实际在新建账号"，应先走
@@ -774,14 +809,6 @@ def register_user(repository: Repository, nickname: Any, grade: Any = None,
     clean_grade = normalize_grade(grade)
     clean_phone = normalize_phone(phone, required=_PHONE_REQUIRED)
     clean_password = normalize_password(password, required=False)
-
-    if clean_phone:
-        existing = find_user_by_phone(repository, clean_phone)
-        if existing is not None:
-            raise AuthError(
-                "CONFLICT",
-                f"该手机号已注册（{mask_phone(clean_phone)}），请直接登录",
-                409)
 
     user_id = _new_user_id()
     while repository.get(USERS, user_id) is not None:  # 概率极低，防御性处理
