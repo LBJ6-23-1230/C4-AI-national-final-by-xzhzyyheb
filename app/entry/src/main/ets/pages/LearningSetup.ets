@@ -17,15 +17,27 @@ struct LearningSetup {
   @State busy: boolean = false;
   private owner: string = '';
   private active: boolean = false;
-  aboutToAppear(): void { this.active = true; this.owner = appState.currentUser.userId; const params = router.getParams() as Record<string, string>; this.addingCourse = params['newCourse'] === 'true'; void this.load(); }
+  private initialCourseName: string = '';
+  aboutToAppear(): void {
+    this.active = true;
+    this.owner = appState.currentUser.userId;
+    // 从课程页点“下一步”时可以不带参数；router.getParams() 此时可能为空。
+    const params = router.getParams() as Record<string, string>;
+    this.addingCourse = false;
+    this.initialCourseName = '';
+    if (params !== undefined && params !== null) {
+      this.addingCourse = params['newCourse'] === 'true';
+      this.initialCourseName = params['courseName'] || '';
+    }
+    void this.load();
+  }
   aboutToDisappear(): void { this.active = false; }
   private async load(): Promise<void> {
     const result = await AgentApiClient.courseSettings();
     if (!this.active || this.owner !== appState.currentUser.userId) return;
     if (result.ok) {
       this.settings = result.data.courses;
-      const params = router.getParams() as Record<string, string>;
-      const chosen: CourseSetting | undefined = this.settings.find((item: CourseSetting) => item.courseName === params['courseName']);
+      const chosen: CourseSetting | undefined = this.settings.find((item: CourseSetting) => item.courseName === this.initialCourseName);
       if (!this.addingCourse && this.settings.length) this.select(chosen || this.settings[0]);
     } else this.message = '读取失败，请返回重试。';
   }

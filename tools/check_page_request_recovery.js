@@ -79,7 +79,12 @@ function loadPage(name) {
     setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, clearInterval: () => {},
     appState, DemoSnapshot: snapshot, AgentApiClient: network,
     ApiDefaults: { DEMO_USER_ID: 'demo-user', ALLOW_DEBUG: true, ALLOW_DEMO: true },
-    router: { getParams: () => ({ knowledgePointId: 'point' }) },
+    router: {
+      getParams: () => Object.hasOwn(network, 'routeParams') ? network.routeParams : ({ knowledgePointId: 'point' }),
+      pushUrl: route => { network.lastRoute = route; },
+      back: () => { network.backCalls = (network.backCalls || 0) + 1; }
+    },
+    LearningEvidence: { assessed: point => point.assessed === true },
     Scroller: class {}, Edge: {},
     ExerciseViewModel: class {
       load(...args) { return network.load(...args); }
@@ -604,6 +609,61 @@ async function check(name, run) {
     assert.equal(parse({ knowledgePoint: 'legacy' }).wrongAnalysis.knowledgePoint, 'legacy');
     assert.equal(parse({}).wrongAnalysis, undefined);
     assert.equal(parse({ recognitionStatus: 'unreadable', questions: [] }).wrongAnalysis.questions.length, 0);
+  });
+  await check('course next step accepts null, undefined and empty route parameters', async () => {
+    const course = { courseName: '数据结构', goal: '期末 85 分', examDate: '2026-11-10' };
+    network.courseSettings = async () => ok({ courses: [course] });
+    for (const params of [null, undefined, {}]) {
+      network.routeParams = params;
+      const page = loadPage('LearningSetup');
+      assert.doesNotThrow(() => page.aboutToAppear());
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(page.course, course.courseName);
+      assert.equal(page.goal, course.goal);
+      assert.equal(page.exam, course.examDate);
+      assert.equal(page.addingCourse, false);
+    }
+    delete network.routeParams;
+  });
+  await check('course setup keeps named-course and new-course navigation', async () => {
+    const courses = [
+      { courseName: '数据结构', goal: '85 分', examDate: '2026-11-10' },
+      { courseName: '操作系统', goal: '90 分', examDate: '2026-11-12' }
+    ];
+    network.courseSettings = async () => ok({ courses });
+    network.routeParams = { courseName: '操作系统' };
+    const named = loadPage('LearningSetup');
+    named.aboutToAppear();
+    network.routeParams = null; // Loading must use the parameters from page entry.
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(named.course, '操作系统');
+    assert.equal(named.exam, '2026-11-12');
+    network.routeParams = { newCourse: 'true' };
+    const adding = loadPage('LearningSetup');
+    adding.aboutToAppear();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(adding.addingCourse, true);
+    assert.equal(adding.course, '');
+    delete network.routeParams;
+  });
+  await check('portrait practice opens the weakest assessed point in the selected course', async () => {
+    const page = loadPage('StudyTags');
+    page.mastery = [
+      { knowledgePointId: 'unassessed', masteryScore: 0, assessed: false },
+      { knowledgePointId: 'strong', masteryScore: 80, assessed: true },
+      { knowledgePointId: 'weak', knowledgePointName: '线性表与链表', masteryScore: 20, assessed: true },
+      { knowledgePointId: 'a-tied', knowledgePointName: '栈', masteryScore: 20, assessed: true }
+    ];
+    assert.equal(page.hasAssessment(), true);
+    page.openRecommendedPractice();
+    assert.equal(network.lastRoute.url, 'pages/ExercisePractice');
+    assert.equal(network.lastRoute.params.knowledgePointId, 'weak');
+    assert.ok(page.weaknessSummary().includes('线性表与链表'));
+    page.mastery = [{ knowledgePointId: 'new', masteryScore: 0, assessed: false }];
+    assert.equal(page.hasAssessment(), false);
+    page.openRecommendedPractice();
+    assert.equal(network.lastRoute.url, 'pages/ExercisePractice');
+    assert.equal(network.lastRoute.params, undefined);
   });
   console.log(`${passed} request recovery checks passed (actual controller methods; device UI not exercised).`);
 })().catch(error => { console.error(error); process.exit(1); });

@@ -1,3 +1,4 @@
+import { ActionButton } from '../components/ActionButton';
 import { LearningEvidence } from '../utils/LearningEvidence';
 import router from '@ohos.router';
 import { common } from '@kit.AbilityKit';
@@ -10,7 +11,6 @@ import { ProfileViewModel } from '../viewmodels/ProfileViewModel';
 import { WorkflowViewModel } from '../viewmodels/WorkflowViewModel';
 import { WorkflowSessionStore } from '../cache/WorkflowSessionStore';
 import { ApiDisplayFormatter } from '../utils/ApiDisplayFormatter';
-import { FollowUpCard } from '../components/FollowUpCard';
 
 @Entry
 @Component
@@ -38,6 +38,7 @@ struct StudyTags {
   @State showAllMastery: boolean = false;
   @State showHistory: boolean = false;
   @State showAllHistory: boolean = false;
+  @State showMoreActions: boolean = false;
   @State chartDims: string[] = [];
   @State chartCurrent: number[] = [];
   @State chartTarget: number[] = [];
@@ -62,7 +63,22 @@ struct StudyTags {
       }
     }
     return `当前最薄弱的是「${weakest.knowledgePointName}」，掌握度 ${weakest.masteryScore}。`
-      + '专项练习是拉高它最快的路径。';
+      + '先围绕这个知识点练习，再根据结果调整计划。';
+  }
+
+  private hasAssessment(): boolean {
+    return this.mastery.some((point: KnowledgeMastery) => this.assessed(point));
+  }
+
+  private openRecommendedPractice(): void {
+    const points: KnowledgeMastery[] = this.mastery.filter((point: KnowledgeMastery) => this.assessed(point))
+      .sort((left: KnowledgeMastery, right: KnowledgeMastery): number =>
+        left.masteryScore - right.masteryScore);
+    if (points.length > 0) {
+      router.pushUrl({ url: 'pages/ExercisePractice', params: { knowledgePointId: points[0].knowledgePointId } });
+    } else {
+      router.pushUrl({ url: 'pages/ExercisePractice' });
+    }
   }
   private viewModel: ProfileViewModel = new ProfileViewModel();
   private workflowViewModel: WorkflowViewModel = new WorkflowViewModel();
@@ -363,6 +379,11 @@ struct StudyTags {
             .fontSize(14).fontColor('#64748B').fontWeight(FontWeight.Medium)
             .onClick(() => { router.back(); })
           Blank()
+          Button(this.isLoading ? '刷新中…' : '刷新', { type: ButtonType.Normal })
+            .height(40).padding({ left: 12, right: 12 }).fontSize(13).fontColor('#64748B')
+            .backgroundColor(Color.Transparent).borderRadius(8)
+            .enabled(!this.isLoading && !this.isStartingWorkflow)
+            .onClick(() => { void this.loadProfile(true); })
           Text(`知识画像 V${this.profileVersion}`)
             .fontSize(13).fontColor('#2563EB').fontWeight(FontWeight.Bold)
             .backgroundColor('#EFF6FF').borderRadius(16)
@@ -581,42 +602,41 @@ struct StudyTags {
                 .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
               }
 
-              // ★ 画像是"诊断"，不是终点。
-              // 重构前这一页只给「刷新画像」和「开始诊断练习」，看完雷达图就没了下文；
-              // 用户知道了自己哪里弱，却拿不到一个"现在就去补"的动作。
-              FollowUpCard({
-                title: '接下来',
-                reason: this.weaknessSummary(),
-                primaryText: '按薄弱点开始专项练习',
-                primaryTarget: 'pages/ExercisePractice',
-                secondaryText: '看 Agent 如何重排计划',
-                secondaryTarget: 'pages/StudyPlan'
-              })
+              if (this.mastery.length > 0) {
+                Column({ space: 12 }) {
+                  Text('建议下一步').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
+                  Text(this.weaknessSummary()).fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
+                  Button(this.hasAssessment() ? '开始专项练习' : '开始诊断练习', { type: ButtonType.Normal })
+                    .width('100%').height(48).fontSize(15).fontWeight(FontWeight.Bold)
+                    .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+                    .enabled(!this.isStartingWorkflow)
+                    .onClick(() => this.openRecommendedPractice())
+                  Button('查看学习计划 →', { type: ButtonType.Normal })
+                    .width('100%').height(40).fontSize(14).fontColor('#2563EB')
+                    .backgroundColor(Color.Transparent).borderRadius(8)
+                    .enabled(!this.isStartingWorkflow)
+                    .onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+                }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(18)
+                  .border({ width: 1, color: '#BFDBFE' })
+              }
 
-              Button('刷新画像')
-                .fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
-                .border({ width: 1, color: '#BFDBFE' }).height(44).borderRadius(12).width('100%')
-                .enabled(!this.isLoading && !this.isStartingWorkflow)
-                .onClick(() => { this.loadProfile(true); })
+              Column({ space: 10 }) {
+                Button(this.showMoreActions ? '收起更多操作 ↑' : '更多操作 ↓', { type: ButtonType.Normal })
+                  .width('100%').height(44).fontSize(13).fontColor('#64748B')
+                  .backgroundColor(Color.Transparent).borderRadius(8)
+                  .onClick(() => { this.showMoreActions = !this.showMoreActions; })
+                if (this.showMoreActions) {
+                  Text('需要重新评估整体学情时，可重新诊断并更新计划。')
+                    .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
+                  ActionButton({ label: this.isStartingWorkflow ? '正在启动诊断…' : '重新诊断并更新计划', available: !this.isStartingWorkflow, onAction: () => { void this.startDiagnosis(); } })
+                }
+              }.width('100%')
 
               if (this.workflowErrorMessage.length > 0) {
                 Text(this.workflowErrorMessage).fontSize(13).fontColor('#B45309').lineHeight(19)
                   .width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(10)
               }
 
-              Button(this.isStartingWorkflow ? '正在启动 Agent 会话…' : '启动 Agent 诊断会话')
-                .fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF').backgroundColor('#2563EB')
-                .height(46).borderRadius(12).width('100%').enabled(!this.isStartingWorkflow)
-                .onClick(() => this.startDiagnosis())
-
-              Button('💬 问知学Mate')
-                .fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
-                .border({ width: 1, color: '#BFDBFE' })
-                .height(44).borderRadius(12).width('100%')
-                .onClick(() => {
-                  appState.setChatPrompt('帮我分析知识画像中的掌握度和学习证据');
-                  router.pushUrl({ url: 'pages/ChatMain' });
-                })
             }
           }
           .width('100%').padding({ left: 16, right: 16, top: 16, bottom: 96 })

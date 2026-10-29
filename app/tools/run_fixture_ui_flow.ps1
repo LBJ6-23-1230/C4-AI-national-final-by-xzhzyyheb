@@ -145,7 +145,7 @@ $null = Assert-Page 'pages/StudyTags'
 Assert-VisibleText '知识画像 V1'
 Assert-VisibleText '42 / 100'
 
-Click-Text '按薄弱点开始专项练习'
+Click-Text '开始专项练习'
 $null = Assert-Page 'pages/ExercisePractice'
 Click-Text 'A. 根-左-右'
 Click-Text 'B. 左-根-右'
