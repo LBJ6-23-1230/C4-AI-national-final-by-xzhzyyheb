@@ -104,7 +104,7 @@ struct ChatMain {
     if (!question.questionText?.trim()) { this.diagnosisNoticeId = key; this.diagnosisNotice = '题干识别不完整，请补拍清晰题目后再加入。'; return; }
     const owner: string = appState.currentUser.userId;
     this.bookSavingIds = this.bookSavingIds.concat([key]);
-    const result = await AgentApiClient.saveScannedQuestion({ stem: question.questionText || '', courseName: '',
+    const result = await AgentApiClient.saveScannedQuestion({ stem: question.questionText || '', courseName: question.courseName || '',
       knowledgePointName: this.diagnosisPoint(message, question), explanation: question.reply || message.wrongAnalysis?.reply || '' });
     if (!this.isPageActive || owner !== appState.currentUser.userId) return;
     this.bookSavingIds = this.bookSavingIds.filter((id: string) => id !== key);
@@ -116,6 +116,7 @@ struct ChatMain {
   DiagnosisQuestion(message: ChatMessage, question: WrongAnalysis, index: number) {
     Column({ space: 10 }) {
       Text(`第${question.questionNumber || (index + 1).toString()}题`).fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054')
+      if (question.courseName) { Text(`建议科目：${question.courseName} · 保存后可在错题本调整`).fontSize(12).fontColor('#667085').width('100%') }
       if (question.questionText) { Text(question.questionText).fontSize(14).fontColor('#475467').maxLines(4).width('100%') }
       TextInput({ text: this.diagnosisPoint(message, question), placeholder: '核对知识点' }).height(38).fontSize(13)
         .onChange((value: string) => {
@@ -309,9 +310,10 @@ struct ChatMain {
         .backgroundColor('#F3F6FA')
         if (this.showGoalHistory) {
           Column() {
-            PageHeader({ title: '学习记录', detail: '当前对话', onBack: () => this.showGoalHistory = false })
+            PageHeader({ title: '学习任务记录', detail: '当前对话', onBack: () => this.showGoalHistory = false })
             Scroll() {
               Column({ space: 12 }) {
+                Text('查看当前对话中建立的学习任务及完成状态，点击一项可恢复任务或查看结果。专注时长请到“我的”查看。').fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
                 if (!this.goalHistory.length) { Text('还没有学习任务记录').fontSize(14).fontColor('#98A2B3').padding(20) }
                 ForEach(this.goalHistory, (goal: LearningContext) => {
                   Row() {
@@ -586,7 +588,8 @@ struct ChatMain {
 
   @Builder
   private Header() {
-    Row() {
+    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
+      Row() {
       Button('☰')
         .fontSize(20).fontColor('#334155').backgroundColor('#F1F5F9')
         .width(38).height(38).borderRadius(10).margin({ right: 10 })
@@ -604,10 +607,10 @@ struct ChatMain {
         }
       }
       .alignItems(HorizontalAlign.Start)
-      Blank()
+      }.margin({ bottom: 6 })
       Row({ space: 4 }) {
         PartnerInboxButton({ refreshVersion: this.inboxRefreshVersion })
-        Button('学习记录').fontSize(13).height(34).backgroundColor('#F2F4F7').fontColor('#475467').borderRadius(8).onClick(() => { this.showGoalHistory = !this.showGoalHistory; void this.loadGoalHistory(); })
+        Button('任务记录').fontSize(13).height(34).backgroundColor('#F2F4F7').fontColor('#475467').borderRadius(8).onClick(() => { this.showGoalHistory = !this.showGoalHistory; void this.loadGoalHistory(); })
         Button('新对话')
           .fontSize(13)
           .fontColor('#2563EB')
@@ -1405,7 +1408,8 @@ struct ChatMain {
       role: 'agent',
       text: '',
       time: this.formatTime(),
-      status: 'sending'
+      status: 'sending',
+      progressText: imageForAgent ? '正在上传图片，识别结果会在这里显示…' : '正在发送…'
     };
 
     // 原缺陷：调用 callAgent 时直接把 this.messages 递过去，而它**已经含本条 userMessage**

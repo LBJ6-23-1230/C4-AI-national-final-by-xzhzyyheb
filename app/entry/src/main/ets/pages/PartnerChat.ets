@@ -217,7 +217,7 @@ struct PartnerChat {
         }
         Scroll() {
           Row({ space: 8 }) {
-            ForEach(['一起专注 25 分钟吧！', '今天的学习任务完成了吗？', '加油，我们一起攻克这个知识点！'], (text: string) => {
+            ForEach(['一起专注一会吧', '今天的学习任务完成了吗？', '加油，我们一起攻克这个知识点！'], (text: string) => {
               Text(text).fontSize(12).fontColor('#667085').padding(9).backgroundColor('#FFFFFF').borderRadius(8)
                 .onClick(() => this.draft = this.draft + (this.draft ? '\n' : '') + text)
             }, (text: string) => text)
@@ -226,9 +226,9 @@ struct PartnerChat {
         Row({ space: 8 }) {
           Image($r('app.media.ic_chat_mic')).width(40).height(40).padding(8).opacity(this.listening ? 0.45 : 1)
             .accessibilityText(this.listening ? '停止语音输入' : '语音输入').onClick(() => this.toggleVoice())
+          Image($r('app.media.ic_chat_photo')).width(40).height(40).padding(8).accessibilityText('选择图片').onClick(() => this.pickImage())
           TextInput({ text: this.draft, placeholder: this.listening ? '正在听，请说话…' : '发送消息' })
             .layoutWeight(1).height(42).backgroundColor('#FFFFFF').borderRadius(8).maxLength(3000).onChange((value: string) => this.draft = value)
-          Image($r('app.media.ic_chat_photo')).width(40).height(40).padding(8).accessibilityText('选择图片').onClick(() => this.pickImage())
           if (this.draft.trim() || this.imageUri) {
             Button(this.sending ? '发送中' : '发送', { type: ButtonType.Normal }).height(38).borderRadius(8)
               .backgroundColor('#2563EB').fontColor('#FFFFFF').fontSize(14).enabled(!this.sending).onClick(() => this.send())

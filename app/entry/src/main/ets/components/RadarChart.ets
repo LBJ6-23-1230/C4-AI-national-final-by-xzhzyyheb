@@ -19,11 +19,11 @@ export class RadarData {
 
 @Component
 export struct RadarChart {
-  @Prop dimensions: string[] = [];
-  @Prop current: number[] = [];
-  @Prop target: number[] = [];
-  @Prop weakIndices: number[] = [];
-  @Prop strengthIndices: number[] = [];
+  @Prop @Watch('drawChart') dimensions: string[] = [];
+  @Prop @Watch('drawChart') current: number[] = [];
+  @Prop @Watch('drawChart') target: number[] = [];
+  @Prop @Watch('drawChart') weakIndices: number[] = [];
+  @Prop @Watch('drawChart') strengthIndices: number[] = [];
   @State canvasWidth: number = 420;
   @State canvasHeight: number = 420;
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
@@ -31,16 +31,23 @@ export struct RadarChart {
 
   build() {
     Canvas(this.ctx)
-      .width(this.canvasWidth)
+      .width('100%').constraintSize({ maxWidth: 480 })
       .height(this.canvasHeight)
       .onReady(() => this.drawChart())
+      .onAreaChange((_old: Area, area: Area) => {
+        const width: number = Number(area.width);
+        if (width > 0 && width !== this.canvasWidth) {
+          this.canvasWidth = width; this.canvasHeight = Math.min(380, width);
+          this.drawChart();
+        }
+      })
   }
 
   private drawChart(): void {
     const ctx: CanvasRenderingContext2D = this.ctx;
     const cx: number = this.canvasWidth / 2;
     const cy: number = this.canvasHeight / 2;
-    const radius: number = Math.min(cx, cy) * 0.30;
+    const radius: number = Math.min(cx, cy) * 0.55;
     const dims: string[] = this.dimensions;
     const n: number = dims.length > 0 ? dims.length : 5;
     const levels: number = 5;
@@ -80,7 +87,7 @@ export struct RadarChart {
       ctx.beginPath();
       for (let i: number = 0; i < n; i++) {
         const angle: number = (Math.PI * 2 / n) * i - Math.PI / 2;
-        const val: number = Math.max(0.05, Math.min(1, (this.target[i] || 70) / 100));
+        const val: number = Math.max(0, Math.min(1, (this.target[i] ?? 0) / 100));
         const r: number = radius * val;
         if (i === 0) { ctx.moveTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
         else { ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
@@ -98,7 +105,7 @@ export struct RadarChart {
       ctx.beginPath();
       for (let i: number = 0; i < n; i++) {
         const angle: number = (Math.PI * 2 / n) * i - Math.PI / 2;
-        const val: number = Math.max(0.02, Math.min(1, (this.current[i] || 50) / 100));
+        const val: number = Math.max(0, Math.min(1, (this.current[i] ?? 0) / 100));
         const r: number = radius * val;
         if (i === 0) { ctx.moveTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
         else { ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
@@ -118,18 +125,18 @@ export struct RadarChart {
 
     for (let i: number = 0; i < n; i++) {
       const angle: number = (Math.PI * 2 / n) * i - Math.PI / 2;
-      const labelR: number = radius + 68;
+      const labelR: number = radius + 25;
       const labelX: number = cx + labelR * Math.cos(angle);
       const labelY: number = cy + labelR * Math.sin(angle);
 
       // 维度标签
       const label: string = dims[i] || '';
       ctx.fillStyle = '#334155';
-      ctx.fillText(label, labelX, labelY);
+      ctx.fillText(label.length > 7 ? label.substring(0, 6) + '…' : label, labelX, labelY, 88);
 
       // 数据点
-      const curVal: number = this.current.length === n ? (this.current[i] || 50) : 50;
-      const pointVal: number = Math.max(0.02, Math.min(1, curVal / 100));
+      const curVal: number = this.current.length === n ? (this.current[i] ?? 0) : 50;
+      const pointVal: number = Math.max(0, Math.min(1, curVal / 100));
       const pointR: number = radius * pointVal;
       const pointX: number = cx + pointR * Math.cos(angle);
       const pointY: number = cy + pointR * Math.sin(angle);

@@ -352,12 +352,19 @@ struct StudyPlan {
             } else if (this.apiPlan !== null) {
               Column({ space: 8 }) {
                 Text('本次学习安排').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
-                ForEach(this.courseChoices(), (course: string) => {
-                  Button(course === this.selectedCourse ? `✓ ${course}` : course).fontSize(13).height(32)
-                    .onClick(() => { this.selectedCourse = course; this.pendingBudget = null; })
-                }, (course: string) => course)
+                Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+                  ForEach(this.courseChoices(), (course: string) => {
+                    Button(course === this.selectedCourse ? `✓ ${course}` : course, { type: ButtonType.Normal })
+                      .fontSize(14).constraintSize({ minHeight: 44, maxWidth: '100%' })
+                      .padding({ left: 16, right: 16, top: 12, bottom: 12 }).margin({ right: 8, bottom: 8 })
+                      .fontColor(course === this.selectedCourse ? '#FFFFFF' : '#2563EB')
+                      .backgroundColor(course === this.selectedCourse ? '#2563EB' : '#FFFFFF')
+                      .border({ width: 1, color: '#BFDBFE' }).borderRadius(12).enabled(!this.budgetSaving)
+                      .onClick(() => { this.selectedCourse = course; this.pendingBudget = null; })
+                  }, (course: string) => course)
+                }.width('100%')
                 TextInput({ text: this.selectedCourse, placeholder: '先选主攻课程（与课程/资料名称一致）' })
-                  .onChange((v: string) => { this.selectedCourse = v; this.pendingBudget = null; })
+                  .enabled(!this.budgetSaving).onChange((v: string) => { this.selectedCourse = v.trim(); this.pendingBudget = null; })
                 Text('按课程和时长安排最多3项任务，其余知识点保留在候选池。课程作业另行安排。')
                   .fontSize(12).fontColor('#667085').width('100%')
                 Row({ space: 8 }) {
@@ -368,7 +375,6 @@ struct StudyPlan {
                       if (this.budgetText.trim().length === 0) this.budgetMessage = '请输入可用分钟数。';
                       else void this.applyBudget(Number(this.budgetText));
                     })
-                  Button('30分钟').enabled(!this.budgetSaving).onClick(() => { void this.applyBudget(30); })
                 }.width('100%')
                 if (this.apiPlan.budgetSummary !== undefined) {
                   Text(`可用${this.apiPlan.budgetSummary.availableMinutes}分钟，已安排${this.apiPlan.budgetSummary.scheduledMinutes}分钟，未安排${this.apiPlan.budgetSummary.unscheduledMinutes}分钟`)
@@ -379,7 +385,7 @@ struct StudyPlan {
               if (this.budgetDiff !== null) PlanDiffCard({ value: this.budgetDiff })
               if (this.apiPlan.reason !== undefined) {
                 Column({ space: 6 }) {
-                  Text(this.showReason ? '本次计划依据 ↑' : '本次计划依据 ↓').onClick(() => this.showReason = !this.showReason).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+                  Text(this.showReason ? '本次计划依据 ↑' : '本次计划依据 ↓').width('100%').padding({ top: 8, bottom: 8 }).onClick(() => this.showReason = !this.showReason).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937')
                   if (this.showReason) {
                   Text(this.apiPlan.reason).fontSize(13).fontColor('#475467').lineHeight(20)
                   Text(`基于画像版本 ${this.apiPlan.generatedFromProfileVersion} 生成`).fontSize(12).fontColor('#667085')
@@ -421,13 +427,24 @@ struct StudyPlan {
                 }
               }
               if (this.apiPlan.candidatePool !== undefined) {
-                Text(`候选知识点 ${this.apiPlan.candidatePool.length} 项 ${this.showCandidates ? '↑' : '↓'}`)
-                  .fontSize(15).fontColor('#475467').onClick(() => this.showCandidates = !this.showCandidates)
-                if (this.showCandidates) {
-                  ForEach(this.apiPlan.candidatePool, (point: KnowledgeMastery) => {
-                    Text(point.knowledgePointName).fontSize(13).fontColor('#64748B')
-                  }, (point: KnowledgeMastery) => point.knowledgePointId)
-                }
+                Column({ space: 10 }) {
+                  Text(`候选知识点 ${this.apiPlan.candidatePool.length} 项 ${this.showCandidates ? '↑' : '↓'}`)
+                    .width('100%').padding({ top: 8, bottom: 8 })
+                    .fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+                    .onClick(() => this.showCandidates = !this.showCandidates)
+                  if (this.showCandidates) {
+                    if (this.apiPlan.candidatePool.length === 0) {
+                      Text('暂无候选知识点，导入课程资料后可在这里查看。').fontSize(13).fontColor('#667085')
+                    }
+                    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+                      ForEach(this.apiPlan.candidatePool, (point: KnowledgeMastery) => {
+                        Text(point.knowledgePointName).fontSize(13).fontColor('#344054')
+                          .constraintSize({ maxWidth: '100%' }).padding(10).margin({ right: 8, bottom: 8 })
+                          .backgroundColor('#FFFFFF').border({ width: 1, color: '#BFDBFE' }).borderRadius(10)
+                      }, (point: KnowledgeMastery) => point.knowledgePointId)
+                    }.width('100%')
+                  }
+                }.width('100%').alignItems(HorizontalAlign.Start).padding(16).backgroundColor('#EFF6FF').borderRadius(16)
               }
             } else {
               Column({ space: 10 }) {

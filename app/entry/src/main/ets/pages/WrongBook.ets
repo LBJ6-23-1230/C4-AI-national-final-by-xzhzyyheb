@@ -1,3 +1,7 @@
+import { appState } from '../data/AppState';
+import { CourseInfo } from '../models/AgentModels';
+import { ApiFailure } from '../api/ApiResult';
+import { ActionButton } from '../components/ActionButton';
 import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { ClientCache } from '../cache/ClientCache';
@@ -7,6 +11,58 @@ import { WrongBookAttemptResponse, WrongBookCourse, WrongBookItem, WrongBookResp
 @Entry
 @Component
 struct WrongBook {
+  @State assigningIds: string[] = [];
+  @State assignmentCourse: string = '';
+  @State assignmentMessage: string = '';
+  @State assignmentSaving: boolean = false;
+  private assignmentChoices(): string[] {
+    const names: string[] = this.courses.map((c: WrongBookCourse) => c.courseName);
+    appState.courses.forEach((c: CourseInfo) => { if (names.indexOf(c.courseName) < 0) names.push(c.courseName); });
+    return names.filter((name: string) => ['待确认科目', '待分类', '其他', ''].indexOf(name) < 0);
+  }
+  private beginAssignment(items: WrongBookItem[]): void {
+    this.assigningIds = items.map((item: WrongBookItem) => item.exerciseId).slice(0, 100);
+    this.assignmentCourse = ''; this.assignmentMessage = '';
+  }
+  private async assignCourse(): Promise<void> {
+    if (this.assignmentSaving || !this.assigningIds.length || !this.assignmentCourse.trim()) return;
+    if (AgentApiClient.getConfig().useFixture) {
+      this.assignmentMessage = '修改科目需要连接服务，请先切换到在线模式。';
+      return;
+    }
+    this.assignmentSaving = true;
+    const owner: string = ClientCache.currentOwnerUserId();
+    const version: number = this.requestVersion;
+    const result = await AgentApiClient.classifyWrongBook(this.assigningIds, this.assignmentCourse.trim());
+    if (!this.isPageActive || version !== this.requestVersion || owner !== ClientCache.currentOwnerUserId()) return;
+    this.assignmentSaving = false;
+    if (!result.ok) { this.assignmentMessage = (result as ApiFailure).error.message; return; }
+    this.assigningIds = []; this.selectedCourse = result.data.courseName; this.selectedPoint = '';
+    this.preview = null; this.assignmentMessage = `已归入「${result.data.courseName}」，共 ${result.data.updatedCount} 道题。`;
+    await this.load();
+  }
+
+  @Builder
+  AssignmentPanel() {
+    Column({ space: 12 }) {
+      Text(`为 ${this.assigningIds.length} 道题选择科目`).fontSize(17).fontWeight(FontWeight.Bold).width('100%')
+      Text('可选已有科目，也可输入新科目名称。仅修改所选题目的归属，作答记录保持不变。').fontSize(13).fontColor('#667085').width('100%')
+      Flex({ wrap: FlexWrap.Wrap }) {
+        ForEach(this.assignmentChoices(), (name: string) => {
+          Button(name).fontSize(13).margin(4).enabled(!this.assignmentSaving)
+            .fontColor(this.assignmentCourse === name ? '#FFFFFF' : '#2563EB')
+            .backgroundColor(this.assignmentCourse === name ? '#2563EB' : '#EFF6FF')
+            .onClick(() => this.assignmentCourse = name)
+        }, (name: string) => name)
+      }.width('100%')
+      TextInput({ text: this.assignmentCourse, placeholder: '选择已有科目或输入新科目' }).maxLength(30)
+        .enabled(!this.assignmentSaving).onChange((value: string) => this.assignmentCourse = value)
+      ActionButton({ label: this.assignmentSaving ? '保存中…' : '确认归类', available: !this.assignmentSaving && this.assignmentCourse.trim().length > 0, onAction: () => { void this.assignCourse(); } })
+      ActionButton({ label: '取消', available: !this.assignmentSaving, onAction: () => { this.assigningIds = []; this.assignmentMessage = ''; } })
+    }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
+  }
+
+  @State contentWidth: number = 320;
   @State isLoading: boolean = true;
   @State errorMessage: string = '';
   @State courses: WrongBookCourse[] = [];
@@ -55,6 +111,7 @@ struct WrongBook {
     this.requestVersion++;
     this.isLoading = false;
     this.isSubmitting = false;
+    this.assignmentSaving = false;
   }
 
   onPageShow(): void {
@@ -74,6 +131,7 @@ struct WrongBook {
     this.requestVersion++;
     this.isLoading = false;
     this.isSubmitting = false;
+    this.assignmentSaving = false;
   }
 
   private async load(): Promise<void> {
@@ -202,7 +260,9 @@ struct WrongBook {
   build() {
     Column() {
       PageHeader({ title: this.selectedPoint || this.selectedCourse || '错题本', detail: this.practiceItem !== null ? `${this.practiceIndex + 1}/${this.practiceItems.length} 题` : `${this.visibleCount()} 题`, onBack: () => {
-        if (this.practiceItem !== null) this.leavePractice();
+        if (this.assignmentSaving) return;
+        if (this.assigningIds.length) this.assigningIds = [];
+        else if (this.practiceItem !== null) this.leavePractice();
         else if (this.preview !== null) this.preview = null;
         else if (this.selectedPoint) this.selectedPoint = '';
         else if (this.selectedCourse) this.selectedCourse = '';
@@ -212,7 +272,10 @@ struct WrongBook {
         Column({ space: 14 }) {
           Text('按课程整理；在这里刷对同一道题 3 次后，系统会自动移出。')
             .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
-          if (this.isLoading) {
+          if (this.assignmentMessage) Text(this.assignmentMessage).fontSize(13).fontColor('#475467').width('100%')
+          if (this.assigningIds.length > 0) {
+            this.AssignmentPanel()
+          } else if (this.isLoading) {
             LoadingProgress().width(34).height(34).margin({ top: 48 })
           } else if (this.errorMessage.length > 0) {
             Text(this.errorMessage).fontSize(14).fontColor('#B42318')
@@ -224,8 +287,12 @@ struct WrongBook {
             Text(this.preview.stem).fontSize(17)
             Text('拍照收藏题 · 答案尚待核对，不进行自动判分').fontSize(12).fontColor('#64748B')
             Text(this.preview.explanation).fontSize(15)
-            Button('返回知识点题目').onClick(() => this.preview = null)
-            Button('选择知识点练习同类题').onClick(() => router.pushUrl({ url: 'pages/ExercisePractice', params: { courseName: this.preview?.courseName || '', knowledgePointId: this.preview?.knowledgePointId || '' } }))
+            Flex({ direction: this.contentWidth >= 360 ? FlexDirection.Row : FlexDirection.Column, justifyContent: FlexAlign.Center }) {
+              Column() { ActionButton({ label: '返回题目', onAction: () => this.preview = null }) }
+                .width(this.contentWidth >= 360 ? '48%' : '100%').margin({ bottom: 10, right: this.contentWidth >= 360 ? 12 : 0 })
+              Column() { ActionButton({ label: '同类练习', onAction: () => router.pushUrl({ url: 'pages/ExercisePractice', params: { courseName: this.preview?.courseName || '', knowledgePointId: this.preview?.knowledgePointId || '' } }) }) }
+                .width(this.contentWidth >= 360 ? '48%' : '100%')
+            }.width('100%')
           } else if (this.total === 0) {
             Column({ space: 10 }) {
               Text('错题本还是空的').fontSize(18).fontWeight(FontWeight.Bold)
@@ -246,6 +313,10 @@ struct WrongBook {
               }, (course: WrongBookCourse) => course.courseName)
             } else {
               ForEach(this.visibleCourses(), (course: WrongBookCourse) => {
+                if (course.courseName === '待确认科目') {
+                  Text('这些题目的科目尚不明确。可逐题选择，或将同一科目的题目批量归类。').fontSize(13).fontColor('#667085').width('100%')
+                  ActionButton({ label: this.selectedPoint ? '归类本知识点题目' : '归类本科目题目（最多100题）', onAction: () => this.beginAssignment(this.selectedPoint ? this.pointItems(course) : course.items) })
+                }
                 if (!this.selectedPoint) {
                   ForEach(this.points(course), (point: string) => {
                     Row() {
@@ -258,6 +329,7 @@ struct WrongBook {
                 } else {
                   ForEach(this.pointItems(course), (item: WrongBookItem) => {
                     Column({ space: 12 }) {
+                      ActionButton({ label: '修改所属科目', onAction: () => this.beginAssignment([item]) })
                       Text(item.stem).fontSize(16).fontColor('#344054').maxLines(3).width('100%')
                       Row() {
                         Text(`已答对 ${item.correctCount}/3 次`).fontSize(12).fontColor('#98A2B3').layoutWeight(1)
@@ -271,7 +343,7 @@ struct WrongBook {
               }, (course: WrongBookCourse) => course.courseName)
             }
           }
-        }.width('100%').padding({ left: 16, right: 16, top: 16, bottom: 40 })
+        }.width('100%').alignItems(HorizontalAlign.Start).onAreaChange((_old: Area, area: Area) => { this.contentWidth = Number(area.width) - 32; }).padding({ left: 16, right: 16, top: 16, bottom: 40 })
       }.align(Alignment.TopStart).layoutWeight(1).backgroundColor('#F5F6F8')
     }.width('100%').height('100%')
   }

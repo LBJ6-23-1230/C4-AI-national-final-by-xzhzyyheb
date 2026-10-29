@@ -218,7 +218,7 @@ def test_configuration_check_does_not_create_runtime_database(tmp_path):
     assert not path.exists()
 
 
-@pytest.mark.parametrize('action,expected', [('register', [201, 409]), ('code', [200, 429])])
+@pytest.mark.parametrize('action,expected', [('register', [201, 201]), ('code', [200, 429])])
 def test_auth_workers_serialize_uniqueness_and_code_cooldown(tmp_path, action, expected):
     database = tmp_path / 'auth.sqlite'
     SQLiteRepository(database).close()

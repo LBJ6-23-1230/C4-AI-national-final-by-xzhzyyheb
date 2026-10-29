@@ -276,7 +276,6 @@ struct StudySuggestion {
           Blank()
           Text('学习建议').fontSize(13).fontColor('#2563EB').fontWeight(FontWeight.Bold)
         }.width('100%').padding({ left: 20, right: 20, top: 14, bottom: 14 }).backgroundColor('#FFFFFF')
-        Button('阶段复盘与考前建议').onClick(() => router.pushUrl({ url: 'pages/LearningReview' }))
       Scroll() {
           Column({ space: 16 }) {
             Text('今日学习建议').fontSize(26).fontWeight(FontWeight.Bold).fontColor('#172033').width('100%')

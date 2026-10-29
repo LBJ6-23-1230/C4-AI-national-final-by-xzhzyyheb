@@ -8,7 +8,7 @@ import { LearningPreferencesRequest, DocumentPointsRequest } from './ApiModels';
 import { http } from '@kit.NetworkKit';
 import { ExerciseSourcesResponse } from './ApiModels';
 import { LearningContext } from './ApiModels';
-import { API_CONTRACT_VERSION, DemoResetResponse, PartnerContactListResponse, PartnerInvitationCreateRequest, PartnerInvitationListResponse, PartnerInvitationResponse, PartnerMatchRequest, PartnerMatchResponse, ExerciseQuery, ExerciseSetResponse, ExerciseSubmission, ExerciseSubmissionResult, KnowledgeBase, KnowledgeBaseCreateRequest, KnowledgeBaseDetail, KnowledgeBaseListResponse, KnowledgeDocument, KnowledgeDocumentDetail, KnowledgeDocumentUploadRequest, KnowledgeSearchRequest, KnowledgeSearchResponse, LearningPlan, PlanDiff, ProactiveRequest, ProactiveResponse, ProfileResponse, ScheduleRecognitionRequest, ScheduleRecognitionResponse, TraceResponse, WorkflowCreateRequest, WorkflowResponse, WorkflowRunRequest, WorkflowRunResponse, WorkflowStatusResponse, WrongBookAttemptRequest, WrongBookAttemptResponse, WrongBookResponse, WrongBookToggleRequest, WrongBookToggleResponse } from './ApiModels';
+import { WrongBookClassifyRequest, WrongBookClassifyResponse, API_CONTRACT_VERSION, DemoResetResponse, PartnerContactListResponse, PartnerInvitationCreateRequest, PartnerInvitationListResponse, PartnerInvitationResponse, PartnerMatchRequest, PartnerMatchResponse, ExerciseQuery, ExerciseSetResponse, ExerciseSubmission, ExerciseSubmissionResult, KnowledgeBase, KnowledgeBaseCreateRequest, KnowledgeBaseDetail, KnowledgeBaseListResponse, KnowledgeDocument, KnowledgeDocumentDetail, KnowledgeDocumentUploadRequest, KnowledgeSearchRequest, KnowledgeSearchResponse, LearningPlan, PlanDiff, ProactiveRequest, ProactiveResponse, ProfileResponse, ScheduleRecognitionRequest, ScheduleRecognitionResponse, TraceResponse, WorkflowCreateRequest, WorkflowResponse, WorkflowRunRequest, WorkflowRunResponse, WorkflowStatusResponse, WrongBookAttemptRequest, WrongBookAttemptResponse, WrongBookResponse, WrongBookToggleRequest, WrongBookToggleResponse } from './ApiModels';
 import { ApiFailure, ApiResult, apiFailure, apiSuccess } from './ApiResult';
 import { ApiDefaults } from './ApiDefaults';
 import { AuthChangePasswordRequest, AuthChangePasswordResponse, AuthHuaweiLoginRequest, AuthLoginOrRegisterRequest, AuthLoginOrRegisterResponse, AuthLoginRequest, AuthRegisterRequest, AuthSendCodeRequest, AuthSendCodeResponse, AuthSessionResponse, AuthStatusResponse, AuthUserResponse, AuthVerifyCodeRequest } from './AuthModels';
@@ -242,6 +242,11 @@ export class AgentApiClient {
     return AgentApiClient.request<ExerciseSubmissionResult>(http.RequestMethod.POST,
       `/api/v1/exercises/${encodeURIComponent(setId)}/submit`, submission,
       ApiDefaults.LLM_BOUND_READ_TIMEOUT_MS);
+  }
+
+  static async classifyWrongBook(exerciseIds: string[], courseName: string): Promise<ApiResult<WrongBookClassifyResponse>> {
+    const body: WrongBookClassifyRequest = { exerciseIds: exerciseIds, courseName: courseName };
+    return AgentApiClient.request<WrongBookClassifyResponse>(http.RequestMethod.POST, '/api/v1/wrong-book/classify', body);
   }
 
   static async getWrongBook(): Promise<ApiResult<WrongBookResponse>> {

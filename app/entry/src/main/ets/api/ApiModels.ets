@@ -594,6 +594,15 @@ export interface WrongBookItem extends Exercise {
   lastPracticedAt?: string;
 }
 
+export interface WrongBookClassifyRequest {
+  exerciseIds: string[];
+  courseName: string;
+}
+export interface WrongBookClassifyResponse {
+  courseName: string;
+  updatedCount: number;
+}
+
 export interface WrongBookCourse {
   courseName: string;
   items: WrongBookItem[];

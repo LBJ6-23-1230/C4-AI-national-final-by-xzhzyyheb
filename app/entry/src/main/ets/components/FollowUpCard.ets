@@ -1,3 +1,4 @@
+import { ActionButton } from './ActionButton';
 import router from '@ohos.router';
 
 /**
@@ -24,6 +25,7 @@ import router from '@ohos.router';
 @Component
 export struct FollowUpCard {
   /** 卡片标题，例如「接下来」。 */
+  @Prop outlinedActions: boolean = false;
   @Prop title: string = '接下来';
   /** 一句话说明为什么建议这一步（来自 Agent 的判断，不硬编码）。 */
   @Prop reason: string = '';
@@ -62,7 +64,9 @@ export struct FollowUpCard {
           .fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
       }
 
-      if (this.primaryText.length > 0) {
+      if (this.primaryText.length > 0 && this.outlinedActions) {
+        ActionButton({ label: this.primaryText, onAction: () => { if (this.onPrimary) this.onPrimary(); else this.go(this.primaryTarget); } })
+      } else if (this.primaryText.length > 0) {
         Button(this.primaryText)
           .width('100%').height(48).fontSize(15).fontWeight(FontWeight.Bold)
           .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
@@ -75,7 +79,9 @@ export struct FollowUpCard {
           })
       }
 
-      if (this.secondaryText.length > 0) {
+      if (this.secondaryText.length > 0 && this.outlinedActions) {
+        ActionButton({ label: this.secondaryText, onAction: () => { if (this.onSecondary) this.onSecondary(); else this.go(this.secondaryTarget); } })
+      } else if (this.secondaryText.length > 0) {
         Button(this.secondaryText)
           .width('100%').height(44).fontSize(14).fontColor('#2563EB')
           .backgroundColor('#FFFFFF').border({ width: 1, color: '#BFDBFE' }).borderRadius(12)

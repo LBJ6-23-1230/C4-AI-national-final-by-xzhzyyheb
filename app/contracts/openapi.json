@@ -4678,6 +4678,72 @@
         },
         "operationId": "scheduleDeferredPlanTask"
       }
+    },
+    "/api/v1/wrong-book/classify": {
+      "post": {
+        "summary": "确认或修改错题所属科目",
+        "operationId": "classifyWrongBook",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "exerciseIds",
+                  "courseName"
+                ],
+                "properties": {
+                  "exerciseIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "courseName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 30
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "科目已更新，题目与作答记录保持不变",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "courseName",
+                    "updatedCount"
+                  ],
+                  "properties": {
+                    "courseName": {
+                      "type": "string"
+                    },
+                    "updatedCount": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "科目或题目列表无效"
+          },
+          "404": {
+            "description": "题目不存在或不属于当前用户"
+          }
+        }
+      }
     }
   },
   "components": {

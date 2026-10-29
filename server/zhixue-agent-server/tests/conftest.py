@@ -64,6 +64,7 @@ def isolate_repository_backend(monkeypatch):
 	那里会主动带上 `ZHIXUE_DB=sqlite`，因此不会漏测。
 	"""
 	# An absent variable would be reloaded from the developer's .env by create_app.
+	monkeypatch.setenv("PYTHON_DOTENV_DISABLED", "1")
 	monkeypatch.setenv("ZHIXUE_DB", "json")
 
 

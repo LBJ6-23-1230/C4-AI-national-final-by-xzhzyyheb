@@ -423,6 +423,8 @@ struct PartnerMatch {
     await this.loadInvitations();
     if (action === 'accept') {
       await this.loadContacts();
+      if (!this.ownsRequest(owner, page)) return;
+      router.pushUrl({ url: 'pages/PartnerChat', params: { partnerId: item.fromUserId, partnerName: item.fromName } });
     }
   }
 

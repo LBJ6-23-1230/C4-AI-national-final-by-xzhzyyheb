@@ -1213,6 +1213,7 @@ def _handle_analyze_wrong(message: str, data: dict[str, Any], image_base64: str 
             "questionText保留完整解题条件和选项；reply只写该题答案、必要推导和建议，不重复题干或寒暄。"
             "不为缩短输出而省略解题步骤、条件或题目。难以辨认的题仍保留条目，readable=false，不能编造。"
             "questionNumber保留原题号，无题号时按阅读顺序编号。"
+            "courseName填写本题所属大学课程，不要填知识点；无法确定则留空，不强行归类。"
             "questionCount为所见独立题目总数，questions必须逐一对应；全部输出才complete=true。"
             "只输出完整JSON，不用代码块。"
         )
@@ -1222,7 +1223,7 @@ def _handle_analyze_wrong(message: str, data: dict[str, Any], image_base64: str 
             '输出JSON：{"questionCount":题数,"complete":true,"questions":['
             '{"questionNumber":"原题号","readable":true,"answerVisible":false,'
             '"questionText":"完整题干和选项","reply":"答案：…；解析：…",'
-            '"knowledgePoint":"本题知识点",'
+            '"knowledgePoint":"本题知识点","courseName":"课程名称或空字符串",'
             '"wrongType":"只有用户原作答明确且错误时填写，否则为空"}]}'
         )
         raw = _call_llm_with_image(system_prompt, user_prompt, image_base64,

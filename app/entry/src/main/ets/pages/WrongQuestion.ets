@@ -273,7 +273,7 @@ struct WrongQuestion {
         ? analysis.questions : (analysis !== undefined ? [analysis] : []);
       this.analysisResults = questions.map((question: WrongAnalysis): WrongAnalysisResult => {
         const point: string = (question.knowledgePoint ?? '').trim();
-        return { course: '', knowledge: point.length > 0 ? [point] : [],
+        return { course: question.courseName || '', knowledge: point.length > 0 ? [point] : [],
           wrongType: question.wrongType ?? '', reason: question.reply || response.reply,
           suggestions: [], tags: [], imageUri: imageUri,
           questionNumber: question.questionNumber ?? '', questionText: question.questionText ?? '',

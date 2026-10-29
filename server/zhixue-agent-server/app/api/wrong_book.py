@@ -62,7 +62,11 @@ def _course_for(user_id: str, question: dict) -> str:
 
 
 def _public(record: dict) -> dict:
-	return {key: value for key, value in record.items() if key != "answerKey"}
+	result = {key: value for key, value in record.items() if key != "answerKey"}
+	if not str(record.get("answerKey") or "").strip() and result.get("explanation") in (
+		None, "", "正确答案是 。请结合题干与选项重新核对概念。"):
+		result["explanation"] = "答案与解析尚待核对，请结合原题确认完整题干与选项。"
+	return result
 
 
 def add_item(repository, user_id: str, question: dict, automatic: bool = False) -> dict:
@@ -72,6 +76,7 @@ def add_item(repository, user_id: str, question: dict, automatic: bool = False) 
 		"userId": user_id,
 		"exerciseId": exercise_id,
 		"courseName": existing.get("courseName") or _course_for(user_id, question),
+		"courseConfirmed": bool(existing.get("courseConfirmed", False)),
 		"knowledgePointId": question.get("knowledgePointId", ""),
 		"knowledgePointName": question.get("knowledgePointName", ""),
 		"difficulty": question.get("difficulty", "medium"),
@@ -80,7 +85,10 @@ def add_item(repository, user_id: str, question: dict, automatic: bool = False) 
 		"source": question.get("source", "bank"),
 		"sources": question.get("sources", []),
 		"answerKey": question.get("answerKey", ""),
-		"explanation": question.get("explanation") or f"正确答案是 {question.get('answerKey', '')}。请结合题干与选项重新核对概念。",
+		"explanation": question.get("explanation") or (
+			f"正确答案是 {question['answerKey']}。请结合题干与选项重新核对概念。"
+			if str(question.get("answerKey") or "").strip()
+			else "答案与解析尚待核对，请结合原题确认完整题干与选项。"),
 		"correctCount": int(existing.get("correctCount", 0)),
 		"wrongCount": int(existing.get("wrongCount", 0)) + (1 if automatic else 0),
 		"addedAutomatically": bool(existing.get("addedAutomatically", automatic)),
@@ -121,11 +129,41 @@ def list_wrong_book():
 	from app.services.subject_classification import subject, topic_group
 	profile = _repository.get("profiles", user_id) if _repository else {}
 	for item in items:
-		item["courseName"] = subject(item.get("courseName"), item.get("knowledgePointName"), item.get("stem"), profile)
+		if not item.get("courseConfirmed"):
+			item["courseName"] = subject(item.get("courseName"), item.get("knowledgePointName"), item.get("stem"), profile)
 		item["knowledgeGroup"] = topic_group(item.get("knowledgePointName"))
 		courses.setdefault(str(item.get("courseName") or "其他"), []).append(item)
 	return jsonify({"userId": user_id, "total": len(items),
 		"courses": [{"courseName": name, "items": rows} for name, rows in courses.items()]})
+
+
+@wrong_book_api.post("/api/v1/wrong-book/classify")
+@_locked
+def classify_wrong_book():
+	"""Owner-scoped, atomic assignment; preserve all answers and practice counters."""
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+	user_id = resolve_user_id(data.get("userId"))
+	course = data.get("courseName")
+	ids = data.get("exerciseIds")
+	if (not isinstance(course, str) or not 1 <= len(course.strip()) <= 30
+		or course.strip() in ("待确认科目", "待分类", "其他")
+		or any(ord(c) < 32 for c in course)
+		or not isinstance(ids, list) or not 1 <= len(ids) <= 100
+		or any(not isinstance(i, str) or not i.strip() for i in ids)):
+		return jsonify({"errorCode": "BAD_REQUEST", "message": "请选择题目并填写1到30字的有效科目名称", "details": None}), 400
+	from app.services.course_names import ALIASES
+	course = ALIASES.get(course.strip(), course.strip())
+	ids = list(dict.fromkeys(ids))
+	records = [_repository.get("wrong_book", _key(user_id, i)) if _repository else None for i in ids]
+	if any(row is None for row in records):
+		return jsonify({"errorCode": "NOT_FOUND", "message": "部分题目不存在或已移出错题本，请刷新后重试", "details": None}), 404
+	for row in records:
+		row["courseName"] = course
+		row["courseConfirmed"] = True
+		_repository.save("wrong_book", _key(user_id, row["exerciseId"]), row)
+	return jsonify({"courseName": course, "updatedCount": len(records)})
 
 
 @wrong_book_api.post("/api/v1/wrong-book/<exercise_id>")

@@ -206,7 +206,7 @@ struct StudyTags {
   private buildChartData(): void {
     // 最多 6 个维度：雷达图再密就看不清标签了；优先展示最薄弱的维度，
     // 避免接口返回顺序把真正需要关注的知识点挤出图表。
-    const items: KnowledgeMastery[] = this.mastery.filter((p: KnowledgeMastery) => this.assessed(p)).sort((a: KnowledgeMastery, b: KnowledgeMastery): number => a.knowledgePointId.localeCompare(b.knowledgePointId)).slice(0, 6);
+    const items: KnowledgeMastery[] = this.mastery.filter((p: KnowledgeMastery) => this.assessed(p)).sort((a: KnowledgeMastery, b: KnowledgeMastery): number => a.masteryScore - b.masteryScore || a.knowledgePointId.localeCompare(b.knowledgePointId)).slice(0, 6);
     this.chartDims = [];
     this.chartCurrent = [];
     this.chartTarget = [];
@@ -216,23 +216,6 @@ struct StudyTags {
     for (let index: number = 0; index < items.length; index++) {
       this.chartDims.push(items[index].knowledgePointName);
       this.chartCurrent.push(items[index].masteryScore);
-    }
-
-    // ⚠️ 下面三段是补上的。原先这里只填了 dims/current，
-    // 而 `target` / `weakIndices` / `strengthIndices` 三个数组
-    // **声明了、传给组件了、却从未赋值**，永远是空数组 ——
-    // 于是雷达图里三条与之相关的绘制分支全是死代码：
-    //   · 「目标水平(灰虚线)」：组件判 `target.length === n`，空数组长度为 0 必不成立
-    //   · 最薄弱点标红（半径 7 的红点）
-    //   · 最强点标深蓝
-    // 图还是画得出来（网格/轴线/当前水平/标签都正常），
-    // 所以只看截图看不出问题 —— 属于"画了但少画了三样"。
-
-    // 目标线：从学习目标文案里取"80+"这类分数，取不到就用 80
-    // （示例目标为「数据结构期末80+」）。
-    const targetValue: number = StudyTags.parseTargetScore(this.goal);
-    for (let index: number = 0; index < items.length; index++) {
-      // Exam marks and mastery scores have different scales.
     }
 
     // 最薄弱 / 最强：按本次展示的维度里取极值。
@@ -392,7 +375,6 @@ struct StudyTags {
         .width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 })
         .backgroundColor('#FFFFFF')
 
-        Text('阶段复盘与考前建议 ›').fontSize(13).fontColor('#667085').width('100%').padding(16).onClick(() => router.pushUrl({ url: 'pages/LearningReview' }))
       Scroll() {
           Column({ space: 16 }) {
             if (this.isLoading) {
@@ -427,7 +409,7 @@ struct StudyTags {
                 if (this.chartDims.length >= 3) {
                   Column({ space: 8 }) {
                     Text(this.selectedCourse + ' · 知识掌握度').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
-                    Text('蓝线表示后端返回的当前掌握度；分数不在前端重新计算。')
+                    Text(`展示本课程已评估知识点中最薄弱的 ${this.chartDims.length} 项（最多 6 项），范围 0–100 分。形状随掌握度变化；全部知识点见下方列表。`)
                       .fontSize(13).fontColor('#6B7280')
                     RadarChart({
                       dimensions: this.chartDims,
@@ -447,7 +429,7 @@ struct StudyTags {
                     // 雷达图的，现在始终没有触发」—— 根因在这里（以及演示画像里
                     // 原先只预置了 1 个知识点，见 server 的 `app/api/demo.py`）。
                     // 与其让用户以为坏了，不如说清触发条件与达成路径。
-                    Text(`雷达图需要至少 3 个知识点才成形（当前 ${this.mastery.length} 个），`
+                    Text(`雷达图需要至少 3 个已评估知识点（当前 ${this.chartDims.length} 个），`
                       + '所以先用进度卡展示。做几轮其他知识点的专项练习、掌握度积累到 3 个以上后，'
                       + '这里会自动切换成雷达图。')
                       .fontSize(13).fontColor('#6B7280')

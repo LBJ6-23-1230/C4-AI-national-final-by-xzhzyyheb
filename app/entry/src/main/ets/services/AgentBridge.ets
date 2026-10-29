@@ -409,7 +409,7 @@ export class AgentBridge {
       && AgentBridge.stringField(record, 'knowledgePoint').length === 0
       && AgentBridge.stringField(record, 'recognitionStatus').length === 0
       && AgentBridge.stringField(record, 'wrongType').length === 0) return undefined;
-    return { knowledgePoint: AgentBridge.stringField(record, 'knowledgePoint'),
+    return { courseName: AgentBridge.stringField(record, 'courseName'), knowledgePoint: AgentBridge.stringField(record, 'knowledgePoint'),
       wrongType: AgentBridge.stringField(record, 'wrongType'),
       diagnosisId: AgentBridge.stringField(record, 'diagnosisId'),
       questionText: AgentBridge.stringField(record, 'questionText'),

@@ -405,6 +405,8 @@ async function check(name, run) {
     assert.equal(validator.isValid('GET', '/api/v1/focus-sessions', { userId: 'alice' }), false);
     assert.equal(validator.isValid('POST', '/api/v1/focus-sessions', { userId: 'alice', eventId: 'e' }), false);
     assert.equal(validator.isValid('GET', '/api/v1/missing', {}), false);
+    assert.equal(validator.isValid('POST', '/api/v1/wrong-book/classify', { courseName: '数学', updatedCount: 2 }), true);
+    assert.equal(validator.isValid('POST', '/api/v1/wrong-book/classify', { added: true, removed: false, exerciseId: 'x' }), false);
   });
   await check('late diagnosis confirmation cannot overwrite a newer goal request', async () => {
     appState.currentUser.userId = 'alice'; appState.chatSessionId = 'goals-chat';
@@ -415,7 +417,7 @@ async function check(name, run) {
     pending.resolve({ ok: true, data: { status: 'created', learningContext: { goalId: 'late' } } });
     await confirming; assert.equal(page.learningContext.goalId, 'newer');
   });
-  await check('goal switching serializes mutations and preserves a collapsed summary', async () => {
+  await check('goal history selection serializes mutations and opens the selected task', async () => {
     appState.currentUser.userId = 'alice'; appState.chatSessionId = 'goals-chat';
     const pending = deferred(); let calls = 0;
     network.manageChatGoal = () => { calls++; return pending.promise; };
@@ -424,7 +426,7 @@ async function check(name, run) {
     assert.equal(calls, 1);
     pending.resolve({ ok: true, data: { status: 'selected', learningContext: { goalId: 'one' } } });
     await selecting; assert.equal(page.learningContext.goalId, 'one');
-    assert.equal(page.showLearningGoalCard, false); assert.equal(page.isGoalLoading, false);
+    assert.equal(page.showLearningGoalCard, true); assert.equal(page.isGoalLoading, false);
   });
   await check('intent switching clears stale image prompt and leaves image selection explicit', async () => {
     const page = loadPage('ChatMain'); let pickCount = 0;
@@ -579,7 +581,7 @@ async function check(name, run) {
     let sent;
     network.manageChatGoal = async (id, payload) => { sent = payload; return ok({ learningContext: null }); };
     const page = loadPage('ChatMain'); page.loadGoalHistory = () => {};
-    page.diagnosisEditedId = 'diagnosis-3'; page.diagnosisEditedPoint = '第三题修订知识点';
+    page.diagnosisEdits = [{ id: 'diagnosis-3', point: '第三题修订知识点' }];
     await page.confirmDiagnosis({ id: 'message', wrongAnalysis: { diagnosisId: 'diagnosis-1', knowledgePoint: '第一题' } },
       { diagnosisId: 'diagnosis-3', knowledgePoint: '第三题' });
     assert.equal(sent.diagnosisId, 'diagnosis-3');
@@ -609,6 +611,25 @@ async function check(name, run) {
     assert.equal(parse({ knowledgePoint: 'legacy' }).wrongAnalysis.knowledgePoint, 'legacy');
     assert.equal(parse({}).wrongAnalysis, undefined);
     assert.equal(parse({ recognitionStatus: 'unreadable', questions: [] }).wrongAnalysis.questions.length, 0);
+  });
+  await check('review back returns to the same diagnosis without popping its route', async () => {
+    const page = loadPage('ExercisePractice');
+    page.result = { submissionId: 'original', review: [] };
+    page.answers = ['A', 'B']; page.isPageActive = true;
+    page.pageScroller = { currentOffset: () => ({ yOffset: 250 }), scrollEdge: () => {} };
+    network.backCalls = 0;
+    page.openReview(); assert.equal(page.showReview, true); assert.equal(page.resultOffset, 250);
+    assert.equal(page.onBackPress(), true);
+    assert.equal(page.showReview, false); assert.equal(network.backCalls, 0);
+    assert.equal(page.result.submissionId, 'original'); assert.deepEqual(Array.from(page.answers), ['A', 'B']);
+    page.goBack(); assert.equal(network.backCalls, 1);
+  });
+  await check('source overlay takes precedence over review when returning', async () => {
+    const page = loadPage('ExercisePractice'); network.backCalls = 0;
+    page.sourceVisible = true; page.showReview = true;
+    const version = page.sourceRequestVersion;
+    page.goBack(); assert.equal(page.sourceVisible, false); assert.equal(page.showReview, true);
+    assert.equal(page.sourceRequestVersion, version + 1); assert.equal(network.backCalls, 0);
   });
   await check('course next step accepts null, undefined and empty route parameters', async () => {
     const course = { courseName: '数据结构', goal: '期末 85 分', examDate: '2026-11-10' };

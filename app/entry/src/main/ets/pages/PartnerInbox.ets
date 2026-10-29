@@ -52,7 +52,10 @@ struct PartnerInboxPage {
       List({ space: 1 }) {
         if (this.notice) { ListItem() { Text(this.notice).fontColor('#B45309').padding(20).onClick(() => this.load()) } }
         if (!this.items.length && !this.loading && !this.notice) {
-          ListItem() { Text('还没有搭子会话，结伴后可在这里聊天。').fontSize(14).fontColor('#98A2B3').padding(24) }
+          ListItem() { Column({ space: 12 }) {
+            Text('还没有搭子会话，先匹配一位一起学习的伙伴。').fontSize(14).fontColor('#667085')
+            Button('去匹配搭子').onClick(() => router.pushUrl({ url: 'pages/PartnerMatch' }))
+          }.width('100%').padding(24) }
         }
         ForEach(this.items, (item: PartnerConversation) => {
           ListItem() {

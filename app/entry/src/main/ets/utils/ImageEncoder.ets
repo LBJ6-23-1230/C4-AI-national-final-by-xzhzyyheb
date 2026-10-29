@@ -36,14 +36,14 @@ export class ImageEncoder {
     }
     let file: fileIo.File | null = null;
     try {
-      file = fileIo.openSync(target, fileIo.OpenMode.READ_ONLY);
-      const stat: fileIo.Stat = fileIo.statSync(file.fd);
+      file = await fileIo.open(target, fileIo.OpenMode.READ_ONLY);
+      const stat: fileIo.Stat = await fileIo.stat(file.fd);
       const size: number = stat.size;
       if (size <= 0 || size > ImageEncoder.MAX_BYTES) {
         return '';
       }
       const buffer: ArrayBuffer = new ArrayBuffer(size);
-      const read: number = fileIo.readSync(file.fd, buffer);
+      const read: number = await fileIo.read(file.fd, buffer);
       if (read !== size) {
         return '';
       }
@@ -53,13 +53,13 @@ export class ImageEncoder {
         ? new Uint8Array(buffer)
         : new Uint8Array(buffer.slice(0, read));
       const helper: util.Base64Helper = new util.Base64Helper();
-      return helper.encodeToStringSync(bytes);
+      return await helper.encodeToString(bytes);
     } catch (error) {
       return '';
     } finally {
       if (file !== null) {
         try {
-          fileIo.closeSync(file);
+          await fileIo.close(file);
         } catch (closeError) {
           // 关闭失败无需上报，文件描述符会随进程回收
         }

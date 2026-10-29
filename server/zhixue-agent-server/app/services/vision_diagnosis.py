@@ -30,6 +30,7 @@ def normalize(parsed):
             reply = "已读取题干，但未看到可核验的用户答案或解题过程，暂不能判断个人错因。请核对题干后再补充作答。"
         questions.append({
             "questionNumber": str(row.get("questionNumber") or index + 1),
+            "courseName": str(row.get("courseName") or "").strip()[:30] if readable else "",
             "questionText": question,
             "knowledgePoint": str(row.get("knowledgePoint") or "").strip()[:60] if readable else "",
             "wrongType": str(row.get("wrongType") or "")[:80] if readable and answer_visible else "",
@@ -52,6 +53,7 @@ def normalize(parsed):
     first = questions[0] if questions else {}
     return reply, {"questionText": first.get("questionText", ""),
                    "knowledgePoint": first.get("knowledgePoint", ""),
+                   "courseName": first.get("courseName", ""),
                    "wrongType": first.get("wrongType", ""),
                    "recognitionStatus": status, "complete": complete,
                    "questionCount": count, "questions": questions}

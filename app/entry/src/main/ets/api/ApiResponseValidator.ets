@@ -124,6 +124,9 @@ export class ApiResponseValidator {
       return ApiResponseValidator.hasString(data, 'userId') &&
         ApiResponseValidator.hasNumber(data, 'total') && ApiResponseValidator.hasArray(data, 'courses');
     }
+    if (method === 'POST' && route === '/api/v1/wrong-book/classify') {
+      return ApiResponseValidator.hasString(data, 'courseName') && ApiResponseValidator.hasNumber(data, 'updatedCount');
+    }
     if (method === 'POST' && route.indexOf('/api/v1/wrong-book/') === 0 && route.endsWith('/attempt')) {
       return ApiResponseValidator.hasString(data, 'exerciseId') &&
         ApiResponseValidator.hasBoolean(data, 'correct') &&

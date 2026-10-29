@@ -1,3 +1,4 @@
+import { ActionButton } from '../components/ActionButton';
 import { Evidence, MasteryHistory } from '../api/ApiModels';
 import { LearningEvidence } from '../utils/LearningEvidence';
 import router from '@ohos.router';
@@ -113,6 +114,26 @@ struct ExercisePractice {
     this.waitTimer = -1;
     if (this.waitStartedAt > 0) this.waitSeconds = Math.floor((Date.now() - this.waitStartedAt) / 1000);
   }
+  private resultOffset: number = 0;
+  private openReview(): void {
+    this.resultOffset = this.pageScroller.currentOffset().yOffset;
+    this.showReview = true;
+    this.scrollToTop();
+  }
+  private closeReview(): void {
+    this.showReview = false;
+    setTimeout(() => { if (this.isPageActive) this.pageScroller.scrollTo({ xOffset: 0, yOffset: this.resultOffset }); }, 50);
+  }
+  private goBack(): void {
+    if (this.sourceVisible) { this.sourceRequestVersion++; this.sourceVisible = false; }
+    else if (this.showReview) this.closeReview();
+    else router.back();
+  }
+  onBackPress(): boolean {
+    if (this.sourceVisible || this.showReview) { this.goBack(); return true; }
+    return false;
+  }
+
   private leaveWaiting(): void {
     this.requestVersion++;
     this.stopWait();
@@ -620,7 +641,7 @@ struct ExercisePractice {
       Row() {
         Text('逐题解析').fontSize(23).fontWeight(FontWeight.Bold).fontColor('#111827')
         Blank()
-        Text('返回结果').fontSize(13).fontColor('#2563EB').onClick(() => this.showReview = false)
+        Text('返回结果').fontSize(13).fontColor('#2563EB').onClick(() => this.closeReview())
       }.width('100%')
       Text('答错题已自动加入错题本。每道做过的题也可以由你自行加入或移除。')
         .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
@@ -730,14 +751,11 @@ struct ExercisePractice {
 
       Text(`薄弱知识点：${this.weakPointText(value)}`).fontSize(14).fontColor('#475467')
 
-      Button('查看题目与逐题解析')
-        .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold)
-        .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
-        .onClick(() => { this.showReview = true; this.scrollToTop(); })
+      ActionButton({ label: '查看题目与逐题解析', onAction: () => this.openReview() })
 
       if (value.needReplan && value.planDiff !== undefined) {
         Text('已根据本次结果调整复习安排 · 查看原因 ›').fontSize(13).fontColor('#667085')
-          .onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+          .stateStyles({ normal: { .fontColor('#2563EB').backgroundColor('#FFFFFF') }, pressed: { .fontColor('#FFFFFF').backgroundColor('#2563EB') } }).onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
       }
 
       // ★ 核心闭环收口。
@@ -746,6 +764,7 @@ struct ExercisePractice {
       // 这条 Agent 主链在最后一格断掉了：用户看到分数变了，却不知道该干嘛。
       // 现在把「继续练这个知识点」立为唯一主行动，其余降级为次要。
       FollowUpCard({
+        outlinedActions: true,
         title: '接下来',
         reason: value.needReplan && value.planDiff !== undefined
           ? '已根据本次知识点评估调整计划。建议先查看变化，再选择下一项学习任务。'
@@ -761,15 +780,9 @@ struct ExercisePractice {
 
       // 反馈之后的三条路：继续练同一个知识点 / 去画像看新的掌握度 / 换一个知识点。
       // 这正是用户要的"根据反馈结果决定继续练还是刷新画像"——两个都给，由用户点。
-      Button('换一个知识点练')
-        .width('100%').height(44).fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
-        .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
-        .onClick(() => this.backToPicker())
+      ActionButton({ label: '换一个知识点练', onAction: () => this.backToPicker() })
 
-      Button('返回首页')
-        .width('100%').height(44).fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
-        .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
-        .onClick(() => router.pushUrl({ url: 'pages/Index' }))
+      ActionButton({ label: '返回首页', onAction: () => router.pushUrl({ url: 'pages/Index' }) })
     }.width('100%')
   }
 
@@ -853,7 +866,7 @@ struct ExercisePractice {
     Stack() {
       Column() {
         Row({ space: 12 }) {
-          Text('← 返回').fontSize(14).fontColor('#64748B').onClick(() => router.back())
+          Text(this.showReview ? '← 返回诊断结果' : '← 返回').fontSize(14).fontColor('#64748B').padding({ top: 8, bottom: 8 }).onClick(() => this.goBack())
           Blank()
           if (!this.showPicker && !this.pickerLoading) {
             Text('换知识点').fontSize(13).fontColor('#2563EB')
