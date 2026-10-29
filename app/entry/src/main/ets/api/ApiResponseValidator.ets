@@ -101,7 +101,8 @@ export class ApiResponseValidator {
     if (method === 'GET' && route === '/api/v1/plans/current') {
       return ApiResponseValidator.isPlan(data);
     }
-    if (method === 'POST' && route === '/api/v1/plans/current/availability') {
+    if ((method === 'POST' && route === '/api/v1/plans/current/availability') ||
+      (method === 'POST' && route === '/api/v1/plans/current/tasks/schedule')) {
       return ApiResponseValidator.isRecordField(data, 'plan') &&
         ApiResponseValidator.isPlan(data['plan'] as Record<string, Object>) &&
         ApiResponseValidator.isRecordField(data, 'planDiff') &&

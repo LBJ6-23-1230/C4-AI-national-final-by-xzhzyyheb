@@ -401,6 +401,12 @@ export interface PlanBudgetRequest {
   idempotencyKey: string;
 }
 
+export interface PlanTaskScheduleRequest {
+  taskId: string;
+  expectedPlanVersion: number;
+  idempotencyKey: string;
+}
+
 export interface PlanBudgetSummary {
   availableMinutes: number;
   scheduledMinutes: number;

@@ -44,16 +44,23 @@ def reconcile(plan, rows, selected_id=None):
             task.pop("deferredReason", None)
             regular.append(task)
         else:
-            task["deferredReason"] = "作业已同步，选择可用时间或点击加入计划后安排"
+            task["deferredReason"] = previous.get("deferredReason") or "作业已同步，选择可用时间或点击加入计划后安排"
             deferred.append(task)
     result.update(tasks=regular, unscheduledTasks=deferred)
+    # Ignore snapshot ordering when nothing about the actual assignments changed.
+    # In particular a page refresh must preserve the user's explicit selection.
+    current_ddls = {key: task for key, task in existing.items() if task.get("source") == "ddl"}
+    next_ddls = {t["taskId"]: t for t in regular + deferred if t.get("source") == "ddl"}
+    if not selected_id and current_ddls == next_ddls:
+        return deepcopy(plan)
     budget = plan.get("constraints", {}).get("availableMinutes")
     if selected_id:
         # Adding a specific assignment is an explicit commitment to its duration.
         budget = max(budget or 0, sum(t["durationMinutes"] for t in regular if t.get("status") != "completed"))
         if budget > 1440:
             raise ValueError("当前安排超过一天，请先调整计划时间")
-    if budget is not None:
+    # Reading an unchanged DDL snapshot must not re-fit a deliberate task selection.
+    if budget is not None and result != plan:
         result = fit_plan_to_budget(result, budget)["plan"]
     if result != plan:
         result["version"] = plan["version"] + 1

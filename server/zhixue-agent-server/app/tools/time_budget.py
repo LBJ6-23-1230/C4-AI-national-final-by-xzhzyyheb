@@ -3,6 +3,41 @@
 from copy import deepcopy
 
 
+def schedule_deferred_task(old_plan: dict, task_id: str) -> dict:
+    """Commit only the chosen task, extending the budget just enough to fit it."""
+    plan = deepcopy(old_plan)
+    deferred = plan.get("unscheduledTasks", [])
+    task = next((t for t in deferred if t["taskId"] == task_id), None)
+    if task is None:
+        raise LookupError("任务已不在待安排列表，请刷新计划")
+    if task.get("status") == "completed":
+        raise ValueError("该任务已完成，请刷新计划")
+    pending = [t for t in plan.get("tasks", []) if t.get("status") != "completed"]
+    if any(type(t.get("durationMinutes")) is not int or t["durationMinutes"] <= 0
+           for t in [*pending, task]):
+        raise ValueError("任务时长未明确，请先补充预计时长")
+    scheduled_minutes = sum(t["durationMinutes"] for t in pending) + task["durationMinutes"]
+    available = max(plan.get("constraints", {}).get("availableMinutes", 0), scheduled_minutes)
+    if available > 1440:
+        raise ValueError("加入后超过一天的可用时间，请先调整当前计划")
+    task.pop("deferredReason", None)
+    task["status"] = "pending"
+    plan["tasks"] = [*plan.get("tasks", []), task]
+    plan["unscheduledTasks"] = [t for t in deferred if t["taskId"] != task_id]
+    for other in plan["unscheduledTasks"]:
+        if type(other.get("durationMinutes")) is int and other["durationMinutes"] > 0:
+            other["deferredReason"] = "本次未选择，任务保留，可单独加入本次计划"
+    plan["constraints"] = {**plan.get("constraints", {}), "availableMinutes": available}
+    plan["budgetSummary"] = {
+        "availableMinutes": available,
+        "scheduledMinutes": scheduled_minutes,
+        "unallocatedMinutes": available - scheduled_minutes,
+        "unscheduledMinutes": sum(t["durationMinutes"] for t in plan["unscheduledTasks"]
+                                  if type(t.get("durationMinutes")) is int and t["durationMinutes"] > 0),
+    }
+    return plan
+
+
 def fit_plan_to_budget(old_plan: dict, available_minutes: int, prioritize_point=None) -> dict:
     if isinstance(available_minutes, bool) or not isinstance(available_minutes, int) or not 0 <= available_minutes <= 1440:
         raise ValueError("available_minutes must be an integer between 0 and 1440")

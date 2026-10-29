@@ -17,7 +17,7 @@ import { FixtureApiTransport } from './FixtureApiTransport';
 import { ApiResponseValidator } from './ApiResponseValidator';
 import { FocusSession } from '../models/AgentModels';
 import { FocusSaveResponse } from './ApiModels';
-import { PlanBudgetRequest, PlanBudgetResponse } from './ApiModels';
+import { PlanBudgetRequest, PlanBudgetResponse, PlanTaskScheduleRequest } from './ApiModels';
 import { AssignmentSyncRequest } from './ApiModels';
 
 export interface FocusHistoryResponse {
@@ -168,6 +168,10 @@ export class AgentApiClient {
 
   static async updatePlanBudget(request: PlanBudgetRequest): Promise<ApiResult<PlanBudgetResponse>> {
     return AgentApiClient.request<PlanBudgetResponse>(http.RequestMethod.POST, '/api/v1/plans/current/availability', request);
+  }
+
+  static async schedulePlanTask(request: PlanTaskScheduleRequest): Promise<ApiResult<PlanBudgetResponse>> {
+    return AgentApiClient.request<PlanBudgetResponse>(http.RequestMethod.POST, '/api/v1/plans/current/tasks/schedule', request);
   }
 
   static async saveFocusSession(session: FocusSession): Promise<ApiResult<FocusSaveResponse>> {

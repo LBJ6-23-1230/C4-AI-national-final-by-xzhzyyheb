@@ -12,6 +12,7 @@ export struct PlanDiffCard {
     }
     const raw: string = change.change.trim();
     if (raw === 'deferred') return '暂未安排，任务保留';
+    if (raw === 'scheduled') return '已加入本次计划';
     if (raw === 'removed') return '移出本次安排';
     if (raw.endsWith('分钟')) {
       return raw;
@@ -23,7 +24,7 @@ export struct PlanDiffCard {
     if (change.durationMinutes === undefined) {
       return '';
     }
-    return change.change === 'deferred' ? `预计需 ${change.durationMinutes} 分钟` : `调整后 ${change.durationMinutes} 分钟`;
+    return change.change === 'deferred' || change.change === 'scheduled' ? `预计需 ${change.durationMinutes} 分钟` : `调整后 ${change.durationMinutes} 分钟`;
   }
 
   build() {

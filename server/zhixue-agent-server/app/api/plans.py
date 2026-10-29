@@ -52,6 +52,70 @@ def sync_assignments():
 	return jsonify(plan)
 
 
+@plans_api.post("/api/v1/plans/current/tasks/schedule")
+def schedule_task():
+	from app.tools.time_budget import schedule_deferred_task
+	from app.tools.plan_tools import create_plan_history
+	from app.tools.profile_merge import PROFILE_LOCK
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+	owner = resolve_user_id(data.get("userId"))
+	key, guard = bounded_str(data.get("idempotencyKey"), "idempotencyKey", MAX_ID_CHARS)
+	if guard is not None:
+		return guard
+	task_id, guard = bounded_str(data.get("taskId"), "taskId", MAX_ID_CHARS)
+	if guard is not None:
+		return guard
+	version = data.get("expectedPlanVersion")
+	if type(version) is not int or version < 1:
+		return jsonify({"errorCode": "BAD_REQUEST", "message": "expectedPlanVersion must be a positive integer"}), 400
+	operation_id = hashlib.sha256(f"schedule\0{owner}\0{key}".encode()).hexdigest()
+	facts = {"taskId": task_id, "expectedPlanVersion": version}
+	with PROFILE_LOCK, _repository.transaction():
+		previous = _repository.get("plan_adjustments", operation_id)
+		if previous:
+			if previous["request"] != facts:
+				return jsonify({"errorCode": "CONFLICT", "message": "该请求已用于其他操作，请刷新计划"}), 409
+			return jsonify(previous["response"])
+		plan = next((p for p in _repository.list("plans") if plan_belongs_to(p, owner)), None)
+		if plan is None:
+			return jsonify({"errorCode": "NOT_FOUND", "message": "当前学习计划不存在"}), 404
+		if plan["version"] != version:
+			return jsonify({"errorCode": "CONFLICT", "message": "计划已有更新，请刷新后重新加入任务"}), 409
+		try:
+			updated = schedule_deferred_task(plan, task_id)
+		except LookupError as error:
+			return jsonify({"errorCode": "NOT_FOUND", "message": str(error)}), 404
+		except ValueError as error:
+			return jsonify({"errorCode": "BAD_REQUEST", "message": str(error)}), 400
+		updated.update(version=version + 1, userId=owner)
+		task = updated["tasks"][-1]
+		minutes = updated["budgetSummary"]["availableMinutes"]
+		reason = f"已将「{task['knowledgePointName']}」加入本次计划，可用时间为{minutes}分钟；其他待安排任务保留"
+		updated["reason"] = reason
+		history = create_plan_history(plan, updated, reason, [])
+		for change in history["changedTasks"]:
+			if change.get("taskId") == task_id:
+				change["change"] = "scheduled"
+		history.update(planId=plan["planId"], adjustmentReason=reason, triggerEvidence=[])
+		event_id, trace_id = f"schedule-{operation_id}", f"trace-schedule-{operation_id}"
+		now = datetime.now(timezone.utc).isoformat()
+		response = {"plan": updated, "planDiff": history, "changed": True, "traceId": trace_id, "eventId": event_id}
+		_repository.apply_batch([], [
+			("plans", plan["planId"], updated),
+			("plan_histories", f"{plan['planId']}:v{updated['version']}", history),
+			("plan_adjustments", operation_id, {"userId": owner, "request": facts, "response": response}),
+			("learning_events", event_id, {"eventId": event_id, "userId": owner, "type": "PlanTaskScheduled",
+				"objectId": task_id, "occurredAt": now, "availableMinutes": minutes, "status": "recorded"}),
+			("traces", trace_id, {"traceId": trace_id, "userId": owner, "events": [{
+				"agent": "planner", "toolCalls": ["schedule_deferred_task"], "inputSummary": f"加入任务{task_id}",
+				"outputSummary": reason, "evidenceIds": [], "timestamp": now, "status": "completed",
+				"stateVersion": updated["version"], "inputStateVersion": version, "outputStateVersion": updated["version"]}]}),
+		])
+		return jsonify(response)
+
+
 @plans_api.post("/api/v1/plans/current/availability")
 def update_available_minutes():
 	from app.agents.planner import PlannerAgent

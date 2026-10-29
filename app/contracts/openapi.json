@@ -4638,6 +4638,46 @@
           }
         }
       }
+    },
+    "/api/v1/plans/current/tasks/schedule": {
+      "post": {
+        "summary": "Add only the selected deferred task, preserving current tasks and extending the total-minute budget only when needed",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanTaskScheduleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Selected task scheduled with an updated plan, budget and history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanBudgetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, missing task duration or total budget exceeds 1440 minutes"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "404": {
+            "description": "No owned plan or task is no longer deferred"
+          },
+          "409": {
+            "description": "Stale plan version or conflicting idempotency key"
+          }
+        },
+        "operationId": "scheduleDeferredPlanTask"
+      }
     }
   },
   "components": {
@@ -8681,6 +8721,30 @@
           "status",
           "lastReadMessageId"
         ]
+      },
+      "PlanTaskScheduleRequest": {
+        "type": "object",
+        "required": [
+          "taskId",
+          "expectedPlanVersion",
+          "idempotencyKey"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expectedPlanVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
       }
     },
     "responses": {

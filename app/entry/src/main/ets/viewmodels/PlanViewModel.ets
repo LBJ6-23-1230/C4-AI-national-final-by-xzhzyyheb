@@ -1,5 +1,5 @@
 import { AgentApiClient } from '../api/AgentApiClient';
-import { LearningPlan, PlanBudgetRequest, PlanBudgetResponse } from '../api/ApiModels';
+import { LearningPlan, PlanBudgetRequest, PlanBudgetResponse, PlanTaskScheduleRequest } from '../api/ApiModels';
 import { ApiFailure, ApiResult, apiFailure } from '../api/ApiResult';
 import { ClientCache } from '../cache/ClientCache';
 import { appState } from '../data/AppState';
@@ -49,6 +49,22 @@ export class PlanViewModel {
   async updateBudget(request: PlanBudgetRequest): Promise<ApiResult<PlanBudgetResponse>> {
     const owner: string = ClientCache.currentOwnerUserId();
     const result = await AgentApiClient.updatePlanBudget(request);
+    if (ClientCache.currentOwnerUserId() !== owner) {
+      return apiFailure('IDENTITY_CHANGED', '账号已切换，请重新打开计划。', false, 'network');
+    }
+    if (result.ok) {
+      const current: LearningPlan | null = ClientCache.getCurrentPlan();
+      if (current !== null && current.planId === result.data.plan.planId && current.version > result.data.plan.version) {
+        return apiFailure('STALE_PLAN', '计划已有更新，请刷新查看当前安排。', true, 'network');
+      }
+      ClientCache.cacheCurrentPlan(result.data.plan);
+    }
+    return result;
+  }
+
+  async scheduleTask(request: PlanTaskScheduleRequest): Promise<ApiResult<PlanBudgetResponse>> {
+    const owner: string = ClientCache.currentOwnerUserId();
+    const result = await AgentApiClient.schedulePlanTask(request);
     if (ClientCache.currentOwnerUserId() !== owner) {
       return apiFailure('IDENTITY_CHANGED', '账号已切换，请重新打开计划。', false, 'network');
     }

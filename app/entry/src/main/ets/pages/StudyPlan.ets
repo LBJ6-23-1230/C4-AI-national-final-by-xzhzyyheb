@@ -2,7 +2,7 @@ import router from '@ohos.router';
 import { appState } from '../data/AppState';
 import { CourseInfo, FocusTask, HomeworkDDL } from '../models/AgentModels';
 import { AIFloatButton } from '../components/AIFloatButton';
-import { KnowledgeMastery, LearningPlan, PlanTask, PlanBudgetRequest, PlanDiff } from '../api/ApiModels';
+import { KnowledgeMastery, LearningPlan, PlanTask, PlanBudgetRequest, PlanTaskScheduleRequest, PlanDiff } from '../api/ApiModels';
 import { PlanViewModel } from '../viewmodels/PlanViewModel';
 import { PlanDiffCard } from '../components/PlanDiffCard';
 import { ClientCache } from '../cache/ClientCache';
@@ -19,7 +19,7 @@ struct StudyPlan {
   @State apiPlanMessage: string = '';
   @State selectedCourse: string = '';
   @State showReason: boolean = false;
-  @State showDeferred: boolean = false;
+  @State showDeferred: boolean = true;
   @State showCandidates: boolean = false;
   @State budgetText: string = '60';
   @State budgetMessage: string = '';
@@ -27,6 +27,10 @@ struct StudyPlan {
   @State budgetDiff: PlanDiff | null = null;
   private pendingBudget: PlanBudgetRequest | null = null;
   private pendingBudgetOwner: string = '';
+  @State schedulingTaskId: string = '';
+  @State deferredMessage: string = '';
+  private pendingSchedule: PlanTaskScheduleRequest | null = null;
+  private pendingScheduleOwner: string = '';
   @State conversationTasks: HomeworkDDL[] = [];
   private planViewModel: PlanViewModel = new PlanViewModel();
   private planRequestVersion: number = 0;
@@ -114,7 +118,7 @@ struct StudyPlan {
 
   private startTask(task: PlanTask): void {
     appState.setFocusTask({
-      course: '专项学习', task: task.knowledgePointName, plannedMinutes: task.durationMinutes,
+      course: task.sourceCourse ?? '专项学习', task: task.knowledgePointName, plannedMinutes: task.durationMinutes,
       source: 'agent', mode: 'normal', timerType: 'countdown', planTaskId: task.taskId
     } as FocusTask);
     router.pushUrl({ url: 'pages/FocusSetup' });
@@ -147,11 +151,72 @@ struct StudyPlan {
       this.budgetDiff = result.data.changed ? result.data.planDiff : null;
       this.budgetMessage = result.data.changed ? '已按可用时间调整，未安排任务保留在下方。' : '当前安排已满足此时间预算。';
       this.pendingBudget = null;
+      this.pendingSchedule = null;
+      this.deferredMessage = '';
     } else {
       const failure: ApiFailure = result as ApiFailure;
       this.budgetMessage = failure.error.message;
       if (failure.error.statusCode === 409 || failure.error.code === 'STALE_PLAN') {
         this.pendingBudget = null;
+        await this.loadCurrentPlan(true);
+      }
+    }
+  }
+
+  private scheduledMinutes(): number {
+    return (this.apiPlan?.tasks ?? []).filter((task: PlanTask): boolean => task.status !== 'completed')
+      .reduce((total: number, task: PlanTask): number => total + task.durationMinutes, 0);
+  }
+
+  private budgetAfterAdding(task: PlanTask): number {
+    return Math.max(this.apiPlan?.budgetSummary?.availableMinutes ?? 0, this.scheduledMinutes() + task.durationMinutes);
+  }
+
+  private canScheduleTask(task: PlanTask): boolean {
+    return Number.isInteger(task.durationMinutes) && task.durationMinutes > 0 && this.budgetAfterAdding(task) <= 1440;
+  }
+
+  private scheduleHint(task: PlanTask): string {
+    if (!Number.isInteger(task.durationMinutes) || task.durationMinutes <= 0) return '请先在任务来源处补充预计时长';
+    const total: number = this.budgetAfterAdding(task);
+    if (total > 1440) return '加入后超过一天，请先调整当前计划';
+    const extra: number = total - (this.apiPlan?.budgetSummary?.availableMinutes ?? 0);
+    return extra > 0 ? `加入后本次可用时间为${total}分钟（增加${extra}分钟）` : '本次剩余时间足够，无需增加时间预算';
+  }
+
+  private async scheduleDeferredTask(task: PlanTask): Promise<void> {
+    if (this.budgetSaving || this.isApiPlanLoading || this.apiPlan === null || !this.canScheduleTask(task)) return;
+    if (AgentApiClient.getConfig().useFixture) {
+      this.deferredMessage = '加入任务需要连接服务，请先切换到在线服务。';
+      return;
+    }
+    const owner: string = ClientCache.currentOwnerUserId();
+    if (this.pendingSchedule === null || this.pendingSchedule.taskId !== task.taskId || this.pendingScheduleOwner !== owner) {
+      this.pendingSchedule = { taskId: task.taskId, expectedPlanVersion: this.apiPlan.version,
+        idempotencyKey: `schedule-${Date.now()}-${Math.random().toString(36).substring(2, 8)}` };
+      this.pendingScheduleOwner = owner;
+    }
+    this.budgetSaving = true;
+    this.schedulingTaskId = task.taskId;
+    this.deferredMessage = '';
+    const requestVersion: number = ++this.planRequestVersion;
+    const result = await this.planViewModel.scheduleTask(this.pendingSchedule);
+    this.budgetSaving = false;
+    this.schedulingTaskId = '';
+    if (!this.isPageActive || owner !== ClientCache.currentOwnerUserId() || requestVersion !== this.planRequestVersion) return;
+    if (result.ok) {
+      this.apiPlan = result.data.plan;
+      this.budgetText = (result.data.plan.budgetSummary?.availableMinutes ?? 0).toString();
+      this.budgetDiff = result.data.planDiff;
+      this.budgetMessage = '';
+      this.deferredMessage = `已将「${task.knowledgePointName}」加入上方当前任务，可点击“开始任务”。本次可用时间为${this.budgetText}分钟。`;
+      this.pendingSchedule = null;
+      this.pendingBudget = null;
+    } else {
+      const failure: ApiFailure = result as ApiFailure;
+      this.deferredMessage = failure.error.message;
+      if (failure.error.statusCode === 409 || failure.error.statusCode === 404 || failure.error.code === 'STALE_PLAN') {
+        this.pendingSchedule = null;
         await this.loadCurrentPlan(true);
       }
     }
@@ -330,14 +395,28 @@ struct StudyPlan {
                   this.PlanTaskCard(task)
                 }, (task: PlanTask) => `${task.taskId}-${task.status}`)
               }
+              if (this.deferredMessage.length > 0) {
+                Text(this.deferredMessage).fontSize(13).fontColor('#475467').lineHeight(20)
+                  .width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(12)
+              }
               if (this.apiPlan.unscheduledTasks !== undefined && this.apiPlan.unscheduledTasks.length > 0) {
                 Text(`暂未安排 ${this.apiPlan.unscheduledTasks.length} 项 ${this.showDeferred ? '↑' : '↓'}`).onClick(() => this.showDeferred = !this.showDeferred).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#92400E').width('100%')
                 if (this.showDeferred) {
+                Text('这些任务尚未计入本次学习安排，会保留供后续选择。点击“加入本次计划”仅加入所选任务，时间不足时会增加本次时间预算。')
+                  .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
                 ForEach(this.apiPlan.unscheduledTasks, (task: PlanTask) => {
-                  Column({ space: 4 }) {
-                    Text(`${task.knowledgePointName} · ${task.durationMinutes}分钟`).fontSize(14).fontColor('#344054')
-                    Text(task.deferredReason ?? '等待后续安排').fontSize(12).fontColor('#667085')
-                  }.width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(12)
+                  Column({ space: 8 }) {
+                    Text(task.knowledgePointName).fontSize(16).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%')
+                    Text(`${task.sourceCourse ? task.sourceCourse + ' · ' : ''}预计${task.durationMinutes}分钟${task.dueDate ? ' · 截止' + task.dueDate : ''}`)
+                      .fontSize(12).fontColor('#667085').width('100%')
+                    Text(task.deferredReason ?? '等待后续安排').fontSize(12).fontColor('#667085').width('100%')
+                    Text(this.scheduleHint(task)).fontSize(12).fontColor('#92400E').width('100%')
+                    Button(this.schedulingTaskId === task.taskId ? '正在加入…' : '加入本次计划')
+                      .width('100%').height(40).fontSize(13).fontWeight(FontWeight.Bold)
+                      .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(10)
+                      .enabled(!this.budgetSaving && !this.isApiPlanLoading && this.canScheduleTask(task))
+                      .onClick(() => { void this.scheduleDeferredTask(task); })
+                  }.width('100%').padding(14).backgroundColor('#FFFBEB').borderRadius(12)
                 }, (task: PlanTask) => task.taskId)
                 }
               }
@@ -376,7 +455,7 @@ struct StudyPlan {
             }
             Button(this.isApiPlanLoading ? '正在刷新…' : '刷新当前计划').width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold)
               .fontColor('#2563EB').backgroundColor('#FFFFFF').border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
-              .enabled(!this.isApiPlanLoading).onClick(() => this.loadCurrentPlan(true))
+              .enabled(!this.isApiPlanLoading && !this.budgetSaving).onClick(() => this.loadCurrentPlan(true))
             if (this.apiPlan !== null) {
               Button('确认计划').width('100%').height(48).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
                 .backgroundColor('#2563EB').borderRadius(14).margin({ bottom: 20 }).onClick(() => this.completePlan())
