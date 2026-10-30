@@ -1,4 +1,6 @@
 import { util } from '@kit.ArkTS';
+import { TodayOverview, ReminderList, ReminderSettings } from './ReminderModels';
+import { ClientCache } from '../cache/ClientCache';
 import { DecisionFactor, DemoResetResponse, Evidence, Exercise, ExerciseAnswer, ExerciseReview, ExerciseSetResponse, ExerciseSubmission, ExerciseSubmissionResult, KnowledgeBase, KnowledgeBaseCreateRequest, KnowledgeBaseDetail, KnowledgeBaseListResponse, KnowledgeChunkHit, KnowledgeDocument, KnowledgeDocumentChunk, KnowledgeDocumentDetail, KnowledgeDocumentListResponse, KnowledgeDocumentUploadRequest, KnowledgeMastery, KnowledgeSearchRequest, KnowledgeSearchResponse, LearningPlan, PlanDiff, ProactiveRequest, ProactiveResponse, ProfileResponse, ScheduleRecognitionResponse, TraceResponse, WorkflowCreateRequest, WorkflowResponse, WorkflowRunRequest, WorkflowRunResponse, WorkflowStatusResponse, WrongBookAttemptRequest, WrongBookAttemptResponse, WrongBookItem, WrongBookResponse, WrongBookToggleRequest, WrongBookToggleResponse } from './ApiModels';
 import { ApiResult, apiFailure, apiSuccess } from './ApiResult';
 import { ApiDefaults } from './ApiDefaults';
@@ -74,6 +76,14 @@ export class FixtureApiTransport {
   static async request<T>(method: string, path: string, body?: Object): Promise<ApiResult<T>> {
     // 统一用去查询串的路径匹配：`?userId=` 之类不能再让精确比较失效。
     const route: string = FixtureApiTransport.basePath(path);
+    if (route === '/api/v1/today') return apiSuccess<TodayOverview>({ userId: ClientCache.currentOwnerUserId(),
+      dataTime: new Date().toISOString(), version: 'fixture-empty', highlight: null, tasks: [], pendingCount: 0,
+      guidance: '离线演示模式：今日事项需连接服务端后同步。', modelCalls: 0 }, 'fixture') as ApiResult<T>;
+    if (route === '/api/v1/reminders') return apiSuccess<ReminderList>({ events: [], cursor: '', hasMore: false }, 'fixture') as ApiResult<T>;
+    if (route === '/api/v1/reminder-preferences' && method === 'GET') return apiSuccess<ReminderSettings>({ preferences: {
+      enabled: false, timezone: 'Asia/Shanghai', quietStart: 22, quietEnd: 8, dailyLimit: 2,
+      minimumGapMinutes: 240, urgentException: false, summaryHour: 9, categories: ['task', 'exam', 'gap', 'conflict'] }, pushConfigured: false }, 'fixture') as ApiResult<T>;
+    if (route.startsWith('/api/v1/reminder')) return apiFailure('OFFLINE', '提醒操作需要连接服务端，离线模式不会投递通知。', true, 'fixture') as ApiResult<T>;
     if (method === 'POST' && route === '/api/v1/workflows') return apiSuccess<WorkflowResponse>(FixtureApiTransport.workflow(body as WorkflowCreateRequest), 'fixture') as ApiResult<T>;
     if (method === 'POST' && route.indexOf('/api/v1/workflows/') === 0 && route.endsWith('/run')) return apiSuccess<WorkflowRunResponse>(FixtureApiTransport.workflowRun(body as WorkflowRunRequest), 'fixture') as ApiResult<T>;
     if (method === 'GET' && route.indexOf('/api/v1/workflows/') === 0) return apiSuccess<WorkflowStatusResponse>(FixtureApiTransport.workflowStatus(), 'fixture') as ApiResult<T>;

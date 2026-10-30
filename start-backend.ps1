@@ -18,7 +18,9 @@ try {
     }
     & $venvPy -c "import sys; sys.exit(0 if sys.version_info >= (3,12) else 1)"
     if ($LASTEXITCODE -ne 0) { throw '需要 Python 3.12 或更新版本' }
-    & $venvPy -c "import flask, flask_cors, openai, dotenv, pypdf, pymupdf, olefile" 2>$null
+    # A missing import prints stderr; Windows PowerShell 5 treats that as a
+    # terminating NativeCommandError under Stop, before dependency installation.
+    & $venvPy -c "import importlib.util,sys; modules=('flask','flask_cors','openai','dotenv','pypdf','pymupdf','olefile','sqlalchemy','psycopg','alembic','boto3','obs'); sys.exit(0 if all(importlib.util.find_spec(name) is not None for name in modules) else 1)"
     if ($LASTEXITCODE -ne 0) {
         if ($Check) { throw '依赖缺失，请先运行 start-backend.ps1 安装依赖' }
         & $venvPy -m pip install -r requirements.txt

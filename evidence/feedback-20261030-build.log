@@ -1,0 +1,631 @@
+> hvigor [32mFinished :entry:clean... after 148 ms [39m
+> hvigor [32mUP-TO-DATE :entry:default@PreBuild...  [39m
+> hvigor [32mFinished :entry:default@CreateModuleInfo... after 1 ms [39m
+> hvigor [32mFinished :entry:default@GenerateMetadata... after 4 ms [39m
+> hvigor [32mFinished :entry:default@ConfigureCmake... after 1 ms [39m
+> hvigor [32mFinished :entry:default@MergeProfile... after 5 ms [39m
+> hvigor [32mFinished :entry:default@CreateBuildProfile... after 3 ms [39m
+> hvigor [32mFinished :entry:default@PreCheckSyscap... after 1 ms [39m
+> hvigor [32mFinished :entry:default@GeneratePkgContextInfo... after 8 ms [39m
+> hvigor [32mFinished :entry:default@GeneratePkgSdkInfo... after 5 ms [39m
+> hvigor [32mFinished :entry:default@ProcessIntegratedHsp... after 1 ms [39m
+> hvigor [32mFinished :entry:default@BuildNativeWithCmake... after 1 ms [39m
+> hvigor [32mFinished :entry:default@MakePackInfo... after 6 ms [39m
+> hvigor [32mFinished :entry:default@SyscapTransform... after 13 ms [39m
+> hvigor [32mFinished :entry:default@ProcessProfile... after 127 ms [39m
+> hvigor [32mFinished :entry:default@ProcessRouterMap... after 5 ms [39m
+> hvigor [32mFinished :entry:default@ProcessShareConfig... after 5 ms [39m
+> hvigor [32mFinished :entry:default@ProcessStartupConfig... after 3 ms [39m
+> hvigor [32mFinished :entry:default@BuildNativeWithNinja... after 2 ms [39m
+> hvigor [32mFinished :entry:default@ProcessResource... after 5 ms [39m
+> hvigor [32mFinished :entry:default@GenerateLoaderJson... after 19 ms [39m
+> hvigor [32mFinished :entry:default@ProcessLibs... after 8 ms [39m
+> hvigor [32mFinished :entry:default@CompileResource... after 307 ms [39m
+> hvigor [32mFinished :entry:default@DoNativeStrip... after 5 ms [39m
+> hvigor [32mFinished :entry:default@BuildJS... after 5 ms [39m
+> hvigor [32mFinished :entry:default@CacheNativeLibs... after 13 ms [39m
+> hvigor WARN: WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/api/TokenCipher.ets:255:44
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/api/TokenCipher.ets:256:12
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/api/TokenCipher.ets:272:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/api/TokenCipher.ets:273:12
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/api/TokenCipher.ets:321:11
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/services/DistributedStateService.ets:334:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/services/DistributedStateService.ets:342:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/services/DistributedStateService.ets:406:11
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/entryability/EntryAbility.ets:164:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/components/PartnerInboxButton.ets:37:29
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/components/PageHeader.ets:12:98
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/services/VoiceInputService.ets:160:12
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/components/FocusRecoveryCard.ets:20:56
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:511:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:511:14
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:515:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:515:14
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:518:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:518:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:583:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:816:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:816:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:822:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:822:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:824:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:824:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:866:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:869:35
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:1074:16
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:1104:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ChatMain.ets:1104:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Login.ets:113:12
+ 'clear' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Login.ets:163:51
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Login.ets:222:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Login.ets:222:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:224:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:224:14
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:276:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:276:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:300:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:300:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:323:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:323:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:361:77
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:395:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:479:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:515:39
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:650:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Account.ets:650:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/utils/AvatarEncoder.ets:39:48
+ 'packing' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/EditProfile.ets:116:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/EditProfile.ets:116:18
+ 'showToast' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/EditProfile.ets:117:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/EditProfile.ets:125:70
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/EditProfile.ets:161:48
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/components/AIFloatButton.ets:221:63
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/CourseImport.ets:27:27
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/CourseImport.ets:91:18
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/CourseImport.ets:220:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/CourseImport.ets:220:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/CourseImport.ets:698:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/CourseImport.ets:826:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/components/CourseReviewReminder.ets:24:94
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/services/ChatNavigation.ets:10:12
+ 'clear' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/services/ChatNavigation.ets:11:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/services/ChatNavigation.ets:11:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:102:53
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:219:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:219:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:234:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:234:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:373:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:373:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:377:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:377:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:477:27
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:489:31
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:536:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:556:52
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:603:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:603:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:606:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:606:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:687:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:687:14
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:762:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:762:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:793:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:793:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:821:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:821:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:826:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:826:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:830:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:830:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:955:41
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:991:43
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:999:43
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:1001:43
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/Index.ets:1033:41
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:140:61
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:146:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:146:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:151:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:151:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:155:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:155:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:159:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:159:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:168:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:168:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudySuggestion.ets:228:31
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/components/FollowUpCard.ets:51:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/components/FollowUpCard.ets:51:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongQuestion.ets:326:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongQuestion.ets:326:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongQuestion.ets:329:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongQuestion.ets:329:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongQuestion.ets:517:35
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongQuestion.ets:658:96
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:78:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:78:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:80:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:80:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:198:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:363:37
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:514:43
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:520:30
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyTags.ets:600:43
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:132:17
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:143:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:147:28
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:275:53
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:707:31
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:767:174
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:787:77
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:794:60
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:842:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ExercisePractice.ets:846:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ApiEnvironment.ets:23:14
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ApiEnvironment.ets:110:77
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/AgentTrace.ets:32:51
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/AgentTrace.ets:182:79
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/AgentTrace.ets:223:97
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerMatch.ets:271:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerMatch.ets:427:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerMatch.ets:427:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerMatch.ets:806:56
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerMatch.ets:837:41
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerMatch.ets:878:30
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerMatch.ets:1017:26
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:78:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:78:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:84:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:84:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:124:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:124:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:230:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:230:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:235:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/StudyPlan.ets:245:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ReviewSummary.ets:42:77
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ReviewSummary.ets:121:35
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/ReviewSummary.ets:127:22
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:188:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:188:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:199:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:199:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:202:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:202:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:287:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:302:29
+ 'show' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusSetup.ets:382:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusTimer.ets:199:14
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusTimer.ets:207:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusTimer.ets:207:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusTimer.ets:278:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusResult.ets:28:14
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/FocusResult.ets:240:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningHistory.ets:37:81
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningHistory.ets:62:167
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/KnowledgeBase.ets:921:31
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/KnowledgeBase.ets:1098:41
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongBook.ets:52:17
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongBook.ets:140:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/WrongBook.ets:140:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerChat.ets:57:27
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerChat.ets:160:69
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningReview.ets:43:27
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningReview.ets:79:106
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningReview.ets:80:89
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningReview.ets:103:170
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningReview.ets:110:83
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningSetup.ets:25:27
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/LearningSetup.ets:107:29
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerInbox.ets:57:50
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerInbox.ets:78:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/app/entry/src/main/ets/pages/PartnerDetail.ets:18:27
+ 'getParams' has been deprecated.
+
+
+> hvigor [32mFinished :entry:default@CompileArkTS... after 14 s 27 ms [39m
+> hvigor [32mFinished :entry:default@GeneratePkgModuleJson... after 4 ms [39m
+> hvigor [32mFinished :entry:default@ProcessCompiledResources... after 1 ms [39m
+> hvigor [32mFinished :entry:default@PackageHap... after 485 ms [39m
+> hvigor [32mFinished :entry:default@PackingCheck... after 7 ms [39m
+> hvigor WARN: No signingConfig found for product default
+> hvigor [32mFinished :entry:default@SignHap... after 3 ms [39m
+> hvigor [32mFinished :entry:default@CollectDebugSymbol... after 2 ms [39m
+> hvigor [32mFinished :entry:assembleHap... after 1 ms [39m
+> hvigor [32mBUILD SUCCESSFUL in 20 s 878 ms [39m

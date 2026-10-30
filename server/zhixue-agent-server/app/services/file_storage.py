@@ -36,6 +36,11 @@ class FileStorage:
         path = (self.root / key).resolve()
         if not path.is_relative_to(self.root):
             raise ValueError("invalid object key")
+        # ZIPs may be extracted under a long Windows directory. Validate the
+        # resolved path first, then use the native extended-length spelling for IO.
+        if os.name == 'nt' and not str(path).startswith('\\\\?\\'):
+            value = str(path)
+            path = Path('\\\\?\\UNC\\' + value[2:] if value.startswith('\\\\') else '\\\\?\\' + value)
         return path
 
     def put(self, owner, raw, file_name):

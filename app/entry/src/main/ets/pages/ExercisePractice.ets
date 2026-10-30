@@ -32,6 +32,12 @@ struct ExercisePractice {
   @State practiceKnowledgePoint: string = DemoSnapshot.EXERCISE_KNOWLEDGE_POINT_ID;
   /** 知识点是否由**调用方显式指定**（路由参数，或用户在选择器里点选）。决定是否允许服务端现场出题。 */
   @State practiceFromRoute: boolean = false;
+  @State forceGenerate: boolean = false;
+  private initialExcludedIds: string[] = [];
+  private roundId: string = '';
+  private roundScope: string = '';
+  private roundLoaded: boolean = false;
+  private roundExcludedIds: string[] = [];
   @State sourceMode: string = 'general';
   @State learningGoalId: string = '';
   @State learningGoalVersion: number = 0;
@@ -215,6 +221,7 @@ struct ExercisePractice {
   /** 选定知识点后开练。知识点由用户显式指定 → 允许题库覆盖不到时由服务端现场出题。 */
   private chooseKnowledgePoint(point: KnowledgeMastery): void {
     this.selectedCourse = point.sourceCourse || '待分类';
+    this.roundId = '';
     this.practiceKnowledgePoint = point.knowledgePointId;
     this.practiceFromRoute = true;
     this.showPicker = false;
@@ -248,10 +255,13 @@ struct ExercisePractice {
     this.isLoading = false;
     this.practiceFromRoute = false;
     this.learningGoalId = '';
+    this.roundId = '';
     this.learningGoalVersion = 0;
     this.sourceMode = 'general';
     this.sourceKbId = '';
     this.sourceDocumentId = '';
+    this.forceGenerate = false;
+    this.initialExcludedIds = [];
     this.result = null;
     this.loadPickerOptions();
   }
@@ -273,6 +283,10 @@ struct ExercisePractice {
         return;
       }
       const raw: Object | undefined = params['knowledgePointId'];
+      this.forceGenerate = params['forceGenerate'] === true;
+      if (Array.isArray(params['excludeExerciseIds'])) {
+        this.initialExcludedIds = (params['excludeExerciseIds'] as string[]).filter((id: string) => typeof id === 'string');
+      }
       if (typeof params['goalId'] === 'string' && typeof params['goalStateVersion'] === 'number') {
         this.learningGoalId = params['goalId'] as string;
         this.learningGoalVersion = params['goalStateVersion'] as number;
@@ -359,12 +373,20 @@ struct ExercisePractice {
     const currentRequestVersion: number = ++this.requestVersion;
     const owner: string = appState.currentUser.userId;
     this.isLoading = true;
+    const scope: string = `${owner}:${this.selectedCourse}:${this.practiceKnowledgePoint}:${this.sourceMode}`;
+    if (this.roundId.length === 0 || this.roundLoaded || this.roundScope !== scope) {
+      this.roundId = `round-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      this.roundScope = scope;
+      this.roundLoaded = false;
+      this.roundExcludedIds = this.initialExcludedIds.concat(forceRefresh ? this.exercises.map((item: Exercise): string => item.exerciseId) : []);
+    }
     this.startWait();
     this.errorMessage = '';
     this.warningMessage = '';
     const data: ExerciseSetResponse | null =
       await this.viewModel.load(DemoSnapshot.EXERCISE_SET_ID, forceRefresh, {
         courseName: this.selectedCourse || undefined,
+        roundId: this.selectedCourse && this.sourceMode === 'general' ? this.roundId : undefined,
         knowledgePointId: this.practiceKnowledgePoint,
         count: DemoSnapshot.EXERCISE_COUNT,
         sourceMode: this.sourceMode,
@@ -372,8 +394,8 @@ struct ExercisePractice {
         documentId: this.sourceDocumentId,
         // “再练一组”必须排除当前屏幕上的题。此前 forceRefresh 只绕过前端缓存，
         // 后端仍从题库第 1 题开始取，因此每次都会拿回完全相同的三题。
-        excludeExerciseIds: forceRefresh
-          ? this.exercises.map((item: Exercise): string => item.exerciseId) : [],
+        excludeExerciseIds: this.roundExcludedIds,
+        forceGenerate: this.forceGenerate,
         // 知识点是从别的页面带进来的（错题诊断那条路径）→ 允许题库覆盖不到时
         // 由服务端现场出题；用演示默认知识点时**不带这个参数**，演示基线不受影响。
         generate: this.practiceFromRoute
@@ -408,6 +430,7 @@ struct ExercisePractice {
       return;
     }
     this.setId = data.setId;
+    this.roundLoaded = true;
     this.exercises = data.exercises;
     this.answers = [];
     for (let index: number = 0; index < data.exercises.length; index++) {
@@ -749,6 +772,7 @@ struct ExercisePractice {
       }.width('100%').padding(13).backgroundColor('#FFFBEB').borderRadius(12)
 
 
+      Text(value.planChangeSummary ?? '本轮测评结果已保存。').fontSize(14).fontColor('#0F766E')
       Text(`薄弱知识点：${this.weakPointText(value)}`).fontSize(14).fontColor('#475467')
 
       ActionButton({ label: '查看题目与逐题解析', onAction: () => this.openReview() })

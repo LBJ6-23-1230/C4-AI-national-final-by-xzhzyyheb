@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from app.agent.proactive import proactive_decision
-from app.api.identity import resolve_user_id
+from app.api.identity import resolve_user_id, current_user_id
 from app.repositories.json_repository import JsonRepository
 
 proactive_api = Blueprint("proactive", __name__)
@@ -59,6 +59,15 @@ def post_proactive():
             "details": None,
         }), 400
     owner = resolve_user_id(data.get("userId"))
+    if current_user_id():
+        from app.services.reminders import reconcile
+        overview = reconcile(_repository, owner)
+        event = overview['highlight']
+        return jsonify(userId=owner, shouldNotify=False, channel='silent', title=event['title'] if event else '',
+            body=event['reason'] if event else overview['guidance'], reason=event['reason'] if event else overview['guidance'],
+            action=dict(type='none', label='', targetPage='', preset={}), factors=[], contextTags=[],
+            cardData=dict(taskName=event['title'] if event else '', knowledgePointId=event['knowledgePointId'] if event else '',
+                durationMinutes=event['durationMinutes'] if event else 0, hint=''), eventId=event['eventId'] if event else '')
     context = data.get("context")
     if context is not None and not isinstance(context, dict):
         return jsonify({

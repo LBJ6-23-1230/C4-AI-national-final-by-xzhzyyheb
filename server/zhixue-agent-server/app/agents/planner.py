@@ -28,6 +28,12 @@ class PlannerAgent:
 			result = self.registry.execute("replan_learning_path", self.name, {
 				"old_plan": plan, "state": state.get("replanState", {})})
 			if budget is not None:
+				# DDL effort is a hard fact. Offer a short first segment of the
+				# assessed practice only when the current plan has deadline work.
+				if any(t.get('source') == 'ddl' for t in result['plan'].get('tasks', [])):
+					for task in result['plan'].get('tasks', []):
+						if task.get('knowledgePointId') == state.get('replanState', {}).get('knowledgePointId') and task.get('source') != 'ddl' and not task.get('parentTaskId'):
+							task['allowPartial'] = True
 				fitted = self.registry.execute("fit_plan_to_budget", self.name, {
 					"old_plan": result["plan"], "available_minutes": budget,
 					"prioritize_point": state.get("replanState", {}).get("knowledgePointId")})

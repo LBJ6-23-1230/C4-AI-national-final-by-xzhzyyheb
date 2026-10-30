@@ -63,6 +63,7 @@ def _course_for(user_id: str, question: dict) -> str:
 
 def _public(record: dict) -> dict:
 	result = {key: value for key, value in record.items() if key != "answerKey"}
+	result["canAutoGrade"] = bool(record.get("answerKey") and record.get("options"))
 	if not str(record.get("answerKey") or "").strip() and result.get("explanation") in (
 		None, "", "正确答案是 。请结合题干与选项重新核对概念。"):
 		result["explanation"] = "答案与解析尚待核对，请结合原题确认完整题干与选项。"
@@ -163,6 +164,15 @@ def classify_wrong_book():
 		row["courseName"] = course
 		row["courseConfirmed"] = True
 		_repository.save("wrong_book", _key(user_id, row["exerciseId"]), row)
+		# Keep the owner's learning target after the final original is removed
+		# on its third correct attempt; the completion screen can still generate
+		# similar questions without depending on an extant wrong-book item.
+		point_id = row.get("knowledgePointId")
+		if point_id:
+			import hashlib
+			target_key = hashlib.sha256((user_id + '\0' + course + '\0' + point_id).encode()).hexdigest()
+			_repository.save("wrong_book_targets", target_key, dict(userId=user_id, courseName=course,
+				knowledgePointId=point_id, knowledgePointName=row.get("knowledgePointName", point_id)))
 	return jsonify({"courseName": course, "updatedCount": len(records)})
 
 

@@ -34,6 +34,11 @@ services:
     env_file: [.env.production, .env.worker]
     command: [python, worker.py]
     stop_grace_period: 120s
+  reminder-worker:
+    <<: *runtime
+    env_file: [.env.production, .env.worker]
+    command: [python, reminder_worker.py]
+    stop_grace_period: 75s
   migrate:
     <<: *runtime
     restart: 'no'

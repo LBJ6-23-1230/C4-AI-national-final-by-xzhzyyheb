@@ -476,6 +476,8 @@ export interface ExerciseSetResponse {
 }
 
 export interface ExerciseQuery {
+  roundId?: string;
+  forceGenerate?: boolean;
   courseName?: string;
   sourceMode?: string;
   kbId?: string;
@@ -556,6 +558,7 @@ export interface PlanDiff {
 }
 
 export interface ExerciseSubmissionResult {
+  planChangeSummary?: string;
   reviewStatus?: string;
   goalId?: string;
   learningContext?: LearningContext;
@@ -584,6 +587,7 @@ export interface ExerciseReview {
 }
 
 export interface WrongBookItem extends Exercise {
+  canAutoGrade?: boolean;
   knowledgeGroup?: string;
   courseName: string;
   explanation: string;

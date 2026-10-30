@@ -49,6 +49,8 @@ def sync_assignments():
 				history = create_plan_history(previous, plan, plan.get("reason", "作业同步"), [])
 				history.update(planId=plan["planId"], adjustmentReason=plan.get("reason", "作业同步"), triggerEvidence=[])
 				_repository.save("plan_histories", f"{plan['planId']}:v{plan['version']}", history)
+		from app.services.reminders import reconcile as reconcile_reminders
+		reconcile_reminders(_repository, owner)
 	return jsonify(plan)
 
 
@@ -198,6 +200,8 @@ def update_available_minutes():
 			saves.extend([("plans", plan["planId"], updated),
 				("plan_histories", f"{plan['planId']}:v{updated['version']}", history)])
 		_repository.apply_batch([], saves)
+		from app.services.reminders import reconcile as reconcile_reminders
+		reconcile_reminders(_repository, owner)
 		return jsonify(response)
 
 

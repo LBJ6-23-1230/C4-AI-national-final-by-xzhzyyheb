@@ -288,6 +288,9 @@ def logout():
     if not token:
         return _error("UNAUTHORIZED", "缺少 Authorization: Bearer <token> 请求头", 401)
     service.revoke_session(_repository, token)
+    from app.services.reminders import unbind
+    from app.api.identity import resolve_user_id
+    unbind(_repository, resolve_user_id(None))
     return jsonify({"status": "ok"})
 
 

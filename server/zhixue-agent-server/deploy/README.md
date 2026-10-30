@@ -8,7 +8,9 @@
 
 本次真实测试版本：PostgreSQL 17.11 / Python 3.12。云上使用厂商支持的 PostgreSQL 17 补丁版本，并在测试环境先验证。数据库、ECS、OBS 同地域；ECS/RDS 同 VPC。公网开放 443，80 用于 HTTPS 跳转；5432 和 API 8000 不对公网开放。
 
-默认连接预算：API 2 个进程 × (5 池连接 + 2 溢出) + Worker (5 + 2) = 最多 21，另给迁移、监控、备份预留。增加实例/进程前重新计算。Gunicorn 不 preload，连接池有存活检查，跨 fork 会重新建池。
+默认连接预算：API 2 个进程 × (5 池连接 + 2 溢出) + 作业 Worker (5 + 2) + 提醒 Worker (5 + 2) = 最多 28，另给迁移、监控、备份预留。增加实例/进程前重新计算。Gunicorn 不 preload，连接池有存活检查，跨 fork 会重新建池。
+
+2026-10-30 新增独立 `reminder-worker`，配置、权限增量与回退见 [提醒 Worker 说明](reminder-worker.md)。未配置 Push Kit 时仅维护事件和队列，不发送外部通知。
 
 ## 2. 构建镜像和配置
 

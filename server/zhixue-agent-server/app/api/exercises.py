@@ -22,6 +22,7 @@ from app.tools.exercise_tools import _CLIENT_FIELDS, select_exercises
 from app.services.assessment_replan import replan_request, execute_assessment_replan
 from app.services import review_jobs
 from app.services import exercise_cache
+from app.services import practice_rounds
 
 
 exercises_api = Blueprint("exercises", __name__)
@@ -139,21 +140,147 @@ def _merged_grading_tables(user_id: str | None = None) -> tuple[dict, dict]:
 	return answer_keys, knowledge_points
 
 
-def _generate_and_store(knowledge_point_name: str, count: int, excluded_ids=()) -> list[dict]:
+def _generate_and_store(knowledge_point_name: str, count: int, excluded_ids=(), *,
+		point_id: str | None = None, point_name: str | None = None, course: str = '', fresh: bool = False) -> list[dict]:
 	"""让模型针对该知识点出题；**含答案**的版本存仓库，返回可下发的题面（不含答案）。"""
 	owner = resolve_user_id(None)
-	cache_key = exercise_cache.key(_repository, owner, knowledge_point_name, count)
+	cache_key = exercise_cache.key(_repository, owner, knowledge_point_name, count,
+		{"pointId": point_id, "course": course})
 	with exercise_cache.guard(cache_key):
-		items = exercise_cache.get(cache_key, _repository, excluded_ids)
+		items = None if fresh else exercise_cache.get(cache_key, _repository, excluded_ids)
 		if items is None:
 			items = exercise_gen.generate_exercises(knowledge_point_name, count)
 			if not items:
 				return []
+			# Bind before caching/persisting. Rewriting after cache.put invalidated
+			# every subsequent cache hit and lost the original profile point ID.
+			items = [dict(item, **({"knowledgePointId": point_id,
+				"knowledgePointName": point_name or knowledge_point_name, "courseName": course}
+				if point_id else {})) for item in items if item["exerciseId"] not in excluded_ids]
 			if _repository:
 				_repository.apply_batch([], [("exercises", item["exerciseId"], dict(item, userId=owner)) for item in items])
 				exercise_cache.put(cache_key, items)
 	# 只下发题面字段：`answerKey` / `explanation` **绝不出后端**
 	return [{key: item[key] for key in _CLIENT_FIELDS if key in item} for item in items]
+
+
+def _course_exercises(set_id, owner, course, raw_point, difficulty, count, excluded_ids):
+	# Serialize local reopens without holding a database transaction over the model call.
+	with exercise_cache.guard((str(_repository.path), owner, course, raw_point)):
+		return _course_exercises_locked(set_id, owner, course, raw_point, difficulty, count, excluded_ids)
+
+
+def _course_exercises_locked(set_id, owner, course, raw_point, difficulty, count, excluded_ids):
+	"""Resolve an owned profile/book target, then keep grading bound to that target."""
+	from app.services.subject_classification import normalized_mastery, subject
+	from app.services.exercise_quality import is_subject_question
+	profile = _repository.get("profiles", owner) if _repository else None
+	rows = normalized_mastery(profile or {})
+	point = next((p for p in rows if p.get("knowledgePointId") == raw_point
+		and p.get("sourceCourse") == course), None)
+	if point is None:
+		# A manually reclassified photo may still have its old profile course.
+		# Accept only this owner's actual book record, never an arbitrary name.
+		book = next((q for q in (_repository.list("wrong_book") if _repository else [])
+			if q.get("userId") == owner and q.get("knowledgePointId") == raw_point
+			and (q.get("courseName") if q.get("courseConfirmed") else subject(q.get("courseName"),
+				q.get("knowledgePointName"), q.get("stem"), profile)) == course), None)
+		if book is None and _repository:
+			target_key = hashlib.sha256((owner + '\0' + course + '\0' + raw_point).encode()).hexdigest()
+			book = _repository.get("wrong_book_targets", target_key)
+		if book is None:
+			return jsonify({"errorCode": "COURSE_POINT_MISMATCH", "message": "课程与知识点不匹配，请重新选择"}), 400
+		conflict = any(p.get("knowledgePointId") == raw_point and p.get("sourceCourse") != course for p in rows)
+		point = dict(knowledgePointId=('course-point-' + hashlib.sha256((course + '\0' + raw_point).encode()).hexdigest()[:20]
+			if conflict else raw_point), knowledgePointName=book["knowledgePointName"], sourceCourse=course)
+	target = point["knowledgePointId"]
+	fresh = request.args.get("forceGenerate", '').lower() in ("1", "true", "yes")
+	generate = fresh or request.args.get("generate", '').lower() in ("1", "true", "yes")
+	round_id = request.args.get('roundId', '')
+	if len(round_id) > 128:
+		return jsonify(errorCode='BAD_REQUEST', message='roundId is too long'), 400
+	round_key = practice_rounds.identity(owner, round_id)
+	signature = practice_rounds.signature(course, target, difficulty, count, excluded_ids, fresh)
+	previous = _repository.get('practice_rounds', round_key) if round_id else None
+	if previous:
+		if previous['signature'] != signature:
+			return jsonify(errorCode='CONFLICT', message='本轮参数已变化，请重新开始练习'), 409
+		return jsonify(previous['response'])
+	prior = practice_rounds.previous_questions(_repository, owner, _EXERCISE_BANK, bool(round_id))
+	prior.extend(q for q in _EXERCISE_BANK + _repository.list('exercises') if q.get('exerciseId') in excluded_ids)
+	seen = {practice_rounds.fingerprint(q) for q in prior}
+	exercises = []
+	if not fresh:
+		# Imported/scanned points have stable synthetic IDs. An exact display-name
+		# match can still use the bank, but must grade against the profile's ID.
+		from app.api.wrong_book import _course_for
+		bank = [q for q in _EXERCISE_BANK if (q.get("knowledgePointId") == target
+			or q.get("knowledgePointName") == point["knowledgePointName"])
+			and _course_for(owner, q) == course]
+		candidates = []
+		for q in bank:
+			if q["knowledgePointId"] != target:
+				if q["exerciseId"] in excluded_ids:
+					continue
+				q = dict(q, exerciseId='bound-' + hashlib.sha256(
+					(owner + '\0' + course + '\0' + target + '\0' + q["exerciseId"]).encode()).hexdigest()[:24],
+					knowledgePointId=target, knowledgePointName=point["knowledgePointName"], courseName=course, userId=owner)
+				_repository.save("exercises", q["exerciseId"], q)
+			candidates.append(q)
+		candidates.extend(q for q in (_repository.list("exercises") if _repository else [])
+			if q.get("userId") == owner and q.get("knowledgePointId") == target and q.get("courseName") == course
+			and q.get("answerKey") and q.get("options") and is_subject_question(q))
+		available = []
+		for q in candidates:
+			fingerprint = practice_rounds.fingerprint(q)
+			if q.get('exerciseId') in excluded_ids or fingerprint in seen:
+				continue
+			if difficulty and q.get('difficulty') != difficulty:
+				continue
+			available.append(q)
+			seen.add(fingerprint)
+		exercises = select_exercises(available, target, difficulty, count, ())
+	if len(exercises) < count and generate:
+		token = exercise_gen.avoid_questions.set(tuple(q['stem'] for q in prior + exercises if q.get('stem')))
+		try:
+			generated = _generate_and_store(course + '：' + point["knowledgePointName"], min(count - len(exercises), 6), excluded_ids,
+				point_id=target, point_name=point["knowledgePointName"], course=course, fresh=fresh or bool(round_id))
+		finally:
+			exercise_gen.avoid_questions.reset(token)
+		for q in generated:
+			fingerprint = practice_rounds.fingerprint(q)
+			if fingerprint not in seen:
+				exercises.append(q)
+				seen.add(fingerprint)
+	if exercises and _repository:
+		with PROFILE_LOCK, _repository.transaction():
+			current = _repository.get("profiles", owner) or dict(userId=owner, goal='课程复习', mastery=[], evidence=[], history=[])
+			if not any(p.get("knowledgePointId") == target for p in current.get("mastery", [])):
+				current.setdefault("mastery", []).append(dict(point, masteryScore=0, confidence=0,
+					source='practice', lastUpdated=datetime.now(timezone.utc).isoformat()))
+				current["profileVersion"] = current.get("profileVersion", 0) + 1
+				_repository.save("profiles", owner, current)
+	message = '' if exercises else ('出题服务尚未配置，请联系服务管理员配置模型后重试。' if generate and not exercise_gen.generation_available()
+		else '本次出题未成功，请重新加载或换一个知识点重试。' if generate else '本课程暂无可用题目，请启用现场出题。')
+	response = {"setId": set_id, "exercises": exercises, "courseName": course,
+		"knowledgePointId": target, "generationFailed": not bool(exercises), "message": message}
+	if round_id and exercises:
+		with _repository.transaction():
+			previous = _repository.get('practice_rounds', round_key)
+			if previous:
+				if previous['signature'] != signature:
+					return jsonify(errorCode='CONFLICT', message='本轮参数已变化，请重新开始练习'), 409
+				return jsonify(previous['response'])
+			# Recheck across processes after generation; never issue an already issued stem.
+			issued = practice_rounds.previous_questions(_repository, owner, _EXERCISE_BANK, True)
+			used = {practice_rounds.fingerprint(q) for q in issued}
+			response['exercises'] = [q for q in exercises if practice_rounds.fingerprint(q) not in used]
+			if not response['exercises']:
+				response.update(generationFailed=True, message='本轮未获得新题，请重新加载。')
+			else:
+				_repository.save('practice_rounds', round_key, dict(userId=owner, signature=signature,
+					response=response, createdAt=datetime.now(timezone.utc).isoformat()))
+	return jsonify(response)
 
 
 def configure_exercises_repository(repository: JsonRepository) -> None:
@@ -224,29 +351,12 @@ def get_exercise_set(set_id: str):
 		return _material_set(set_id, raw_point, count)
 	course = (request.args.get("courseName") or "").strip()
 	if course:
-		owner = resolve_user_id(None)
-		profile = _repository.get("profiles", owner) if _repository else None
-		from app.services.subject_classification import normalized_mastery
-		point = next((p for p in normalized_mastery(profile or {})
-			if p.get("knowledgePointId") == raw_point and p.get("sourceCourse", "待分类") == course), None)
-		if point is None:
-			return jsonify({"errorCode": "COURSE_POINT_MISMATCH", "message": "课程与知识点不匹配，请重新选择"}), 400
-		from app.api.wrong_book import _course_for
-		bank = [q for q in _EXERCISE_BANK if q.get("knowledgePointId") == raw_point and _course_for(owner, q) == course]
-		exercises = select_exercises(bank, raw_point, difficulty, count, excluded_ids) if bank else []
-		if not exercises and request.args.get("generate") in ("1", "true", "yes"):
-			exercises = _generate_and_store(course + "：" + point["knowledgePointName"], min(count, 10), excluded_ids)
-			for exercise in exercises:
-				exercise.update(knowledgePointId=raw_point, knowledgePointName=point["knowledgePointName"])
-				stored = _repository.get("exercises", exercise["exerciseId"])
-				if stored:
-					stored.update(knowledgePointId=raw_point, knowledgePointName=point["knowledgePointName"], courseName=course)
-					_repository.save("exercises", exercise["exerciseId"], stored)
-		return jsonify({"setId": set_id, "exercises": exercises, "courseName": course,
-			"generationFailed": not bool(exercises), "message": "本课程暂未生成可用题目，请补充资料或重试" if not exercises else ""})
+		return _course_exercises(set_id, resolve_user_id(None), course, raw_point, difficulty, count, excluded_ids)
 	# `generate=1` 才允许现场出题 —— **默认行为一个字节都不变**，
 	# 演示基线那条路径（不带参数）永远不会触发模型调用。
 	generate_requested = (request.args.get("generate") or "").strip().lower() in ("1", "true", "yes")
+	fresh = request.args.get("forceGenerate", '').lower() in ("1", "true", "yes")
+	generate_requested = generate_requested or fresh
 	# ⚠️ 这里必须用 **raw_point** 判"调用方到底有没有给筛选条件"。
 	# 用解析后的 `knowledge_point_id` 会踩坑：知识点解析不出来时它是 None，
 	# 于是 `has_filter` 为假 → 直接走演示分支返回那 3 道题，
@@ -261,9 +371,9 @@ def get_exercise_set(set_id: str):
 		# 覆盖面从 6 个知识点扩到**任意**知识点。
 		# 判定依据是 `knowledge_point_id is None`（解析不出 = 题库里没有），
 		# 而不是"select 返回空" —— 后者在无过滤时会返回题库前 N 题，永远不为空。
-		generation_attempted = bool(raw_point and knowledge_point_id is None and generate_requested)
+		generation_attempted = bool(raw_point and (knowledge_point_id is None or fresh) and generate_requested)
 		if generation_attempted:
-			exercises = _generate_and_store(raw_point, count, excluded_ids)
+			exercises = _generate_and_store(raw_point, count, excluded_ids, fresh=fresh)
 		if not exercises:
 			if generation_attempted:
 				# ⚠️ 已经为这个知识点尝试过现场出题、但一道都没拿到时，**绝不能回落**到
@@ -567,6 +677,8 @@ def submit_exercises(set_id: str):
 					"status": "completed", "sessionId": data.get("sessionId"), "stepId": "step-2",
 					"inputStateVersion": 1, "outputStateVersion": 2})
 			trace = {"traceId": trace_id, "userId": user_id, "events": events}
+			response['planChangeSummary'] = ('本轮结果已更新，已根据测评调整学习安排。'
+				if replanned else '本轮结果已更新，当前计划无需调整。')
 			repository.save("traces", trace_id, trace)
 			if goal_id:
 				from app.services.learning_context import bind_submission
@@ -587,6 +699,8 @@ def submit_exercises(set_id: str):
 					"createdAt": timestamp.isoformat()})
 		http_response = jsonify(response)
 		if repository is not None:
+			from app.services.reminders import reconcile as reconcile_reminders
+			reconcile_reminders(repository, user_id)
 			repository.commit()
 			if pending_review is not None:
 				wrong_snapshots = {key: repository.get("wrong_book", f"{user_id}:{key}")

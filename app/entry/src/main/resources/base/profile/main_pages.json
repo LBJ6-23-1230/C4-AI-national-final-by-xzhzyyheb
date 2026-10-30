@@ -25,6 +25,7 @@
     "pages/LearningReview",
     "pages/LearningSetup",
     "pages/PartnerInbox",
-    "pages/PartnerDetail"
+    "pages/PartnerDetail",
+    "pages/Reminders"
   ]
 }

@@ -67,6 +67,10 @@ Python 3.12 完整锁定安装可用 `pip install -r requirements-lock-py312.txt
 - **默认**：JSON，落在 `data/repository.json` —— 可直接肉眼查看，便于答辩演示与人工核对
 - **多进程部署**：设 `ZHIXUE_DB=sqlite`（或 `ZHIXUE_DB=sqlite:<path>`）
   改用并发安全的 SQLite 后端
+- **PostgreSQL**：设 `ZHIXUE_DB=postgresql` + `DATABASE_URL=postgresql+psycopg://...`；
+  空库先 `alembic upgrade head`，启动要求 `alembic_version` 等于
+  `app/repositories/pg_schema.py` 的 `REVISION`。改完后跑
+  `python tools/check_database.py`（项目根）一次查完连接、schema 版本、权限与 `/ready`
 
 > 注意：`data/repository.json` 与 `chat/history.json` 是**运行期状态**，
 > 已在 `.gitignore` 中，绝不入库、绝不进交付包。

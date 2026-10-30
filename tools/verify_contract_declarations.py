@@ -17,6 +17,8 @@ sys.path.insert(0, str(ROOT / "server" / "zhixue-agent-server"))
 
 tmp = tempfile.mkdtemp(prefix="contractverify-")
 os.environ["ZHIXUE_CHAT_DIR"] = tmp
+os.environ["ZHIXUE_DB"] = "json"
+os.environ["PYTHON_DOTENV_DISABLED"] = "1"
 os.environ.pop("ZHIXUE_REPOSITORY", None)
 
 from app import create_app  # noqa: E402
@@ -58,13 +60,14 @@ check("405 响应体是 JSON 错误体", isinstance(body, dict) and "errorCode" 
 
 print()
 print("=" * 78)
-print("3) register 的 409")
+print("3) 注册接口允许同一手机号创建独立账号")
 print("=" * 78)
-client.post("/api/v1/auth/register", json={"nickname": "v1", "phone": "13900007777"})
+first = client.post("/api/v1/auth/register", json={"nickname": "v1", "phone": "13900007777"})
 r = client.post("/api/v1/auth/register", json={"nickname": "v2", "phone": "13900007777"})
-check("重复手机号 -> 409 CONFLICT",
-      r.status_code == 409 and (r.get_json() or {}).get("errorCode") == "CONFLICT",
-      "实际 %s %s" % (r.status_code, (r.get_json() or {}).get("errorCode")))
+check("相同手机号、不同账号 -> 201 且账号互不相同",
+      first.status_code == r.status_code == 201 and
+      first.get_json()['user']['userId'] != r.get_json()['user']['userId'],
+      "实际 %s" % r.status_code)
 
 print()
 print("=" * 78)

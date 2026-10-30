@@ -19,6 +19,7 @@ import { FocusSession } from '../models/AgentModels';
 import { FocusSaveResponse } from './ApiModels';
 import { PlanBudgetRequest, PlanBudgetResponse, PlanTaskScheduleRequest } from './ApiModels';
 import { AssignmentSyncRequest } from './ApiModels';
+import { TodayOverview, ReminderList, ReminderAction, ReminderActionResult, ReminderSettings, ReminderPreferences, ReminderDevice, ReminderDeviceResult } from './ReminderModels';
 
 export interface FocusHistoryResponse {
   userId: string;
@@ -44,6 +45,24 @@ interface KnowledgePointImportRequest {
  * 默认地址集中定义在 `ApiDefaults.DEFAULT_BASE_URL`，页面里不得再各写一份 IP。
  */
 export class AgentApiClient {
+  static async getToday(): Promise<ApiResult<TodayOverview>> {
+    return AgentApiClient.request<TodayOverview>(http.RequestMethod.GET, '/api/v1/today');
+  }
+  static async getReminders(cursor: string = ''): Promise<ApiResult<ReminderList>> {
+    return AgentApiClient.request<ReminderList>(http.RequestMethod.GET, `/api/v1/reminders?after=${encodeURIComponent(cursor)}`);
+  }
+  static async reminderAction(eventId: string, data: ReminderAction): Promise<ApiResult<ReminderActionResult>> {
+    return AgentApiClient.request<ReminderActionResult>(http.RequestMethod.POST, `/api/v1/reminders/${encodeURIComponent(eventId)}/actions`, data);
+  }
+  static async getReminderSettings(): Promise<ApiResult<ReminderSettings>> {
+    return AgentApiClient.request<ReminderSettings>(http.RequestMethod.GET, '/api/v1/reminder-preferences');
+  }
+  static async saveReminderSettings(data: ReminderPreferences): Promise<ApiResult<ReminderSettings>> {
+    return AgentApiClient.request<ReminderSettings>(http.RequestMethod.PUT, '/api/v1/reminder-preferences', data);
+  }
+  static async bindReminderDevice(data: ReminderDevice): Promise<ApiResult<ReminderDeviceResult>> {
+    return AgentApiClient.request<ReminderDeviceResult>(http.RequestMethod.POST, '/api/v1/reminder-devices', data);
+  }
   static async partnerInbox(offset: number = 0): Promise<ApiResult<PartnerInbox>> {
     return AgentApiClient.request<PartnerInbox>(http.RequestMethod.GET, `/api/v1/partner-conversations?offset=${offset}`);
   }
@@ -196,6 +215,7 @@ export class AgentApiClient {
     let path: string = `/api/v1/exercises/${encodeURIComponent(setId)}`;
     if (query !== undefined) {
       const parameters: string[] = [];
+      if (query.roundId) parameters.push(`roundId=${encodeURIComponent(query.roundId)}`);
       if (query.sourceMode !== undefined) parameters.push(`sourceMode=${encodeURIComponent(query.sourceMode)}`);
       if (query.kbId !== undefined) parameters.push(`kbId=${encodeURIComponent(query.kbId)}`);
       if (query.documentId !== undefined) parameters.push(`documentId=${encodeURIComponent(query.documentId)}`);
@@ -218,6 +238,7 @@ export class AgentApiClient {
       if (query.generate === true) {
         parameters.push('generate=1');
       }
+      if (query.forceGenerate === true) parameters.push('forceGenerate=1');
       if (parameters.length > 0) {
         path = `${path}?${parameters.join('&')}`;
       }
@@ -226,7 +247,7 @@ export class AgentApiClient {
     // 而默认超时是 8 秒 —— 不放宽必然超时（已实测复现：后端 200、前端报"连接超时"）。
     // 取值必须 > 后端 `LLM_TIMEOUT_SECONDS`（默认 30）。
     return AgentApiClient.request<ExerciseSetResponse>(http.RequestMethod.GET, path, undefined,
-      query !== undefined && (query.generate === true || query.sourceMode === 'materials')
+      query !== undefined && (query.generate === true || query.forceGenerate === true || query.sourceMode === 'materials')
         ? ApiDefaults.LLM_BOUND_READ_TIMEOUT_MS : undefined);
   }
 

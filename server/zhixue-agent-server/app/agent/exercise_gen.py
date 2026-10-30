@@ -33,6 +33,7 @@ import hashlib
 import json
 import re
 import uuid
+from contextvars import ContextVar
 from typing import Any
 
 from app.agent import chat_llm
@@ -40,6 +41,7 @@ from app.services.exercise_quality import is_subject_question
 
 #: 一次最多生成几道（防止一句 prompt 要 20 道，既慢又容易出废题）
 MAX_GENERATE_COUNT = 6
+avoid_questions = ContextVar('exercise_avoid_questions', default=())
 #: 选项必须是 A-D 四个
 _OPTION_LETTERS = ("A", "B", "C", "D")
 _OPTION_RE = re.compile(r"^\s*([A-D])\s*[.、．:：]\s*(\S.*)$")
@@ -234,7 +236,9 @@ def generate_exercises(knowledge_point_name: str, count: int) -> list[dict[str, 
 	try:
 		content = chat_llm._call_llm(
 			_SYSTEM_PROMPT,
-			_USER_PROMPT.format(point=point, count=wanted),
+			_USER_PROMPT.format(point=point, count=wanted) +
+			'\n本轮编号：' + uuid.uuid4().hex + '\n请更换情境和考查角度，禁止重复以下已发题干：\n' +
+			json.dumps(list(avoid_questions.get())[-40:], ensure_ascii=False),
 			temperature=0.6,
 			# 4 道题 × (题干+4 选项+解析) 的中文量，800 会截断
 			max_tokens=1600,

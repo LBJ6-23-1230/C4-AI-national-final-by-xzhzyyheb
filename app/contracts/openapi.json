@@ -789,6 +789,24 @@
               "maxLength": 120
             },
             "description": "知识点所属课程；必须与当前用户画像中的知识点匹配"
+          },
+          {
+            "name": "forceGenerate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "显式请求大模型生成新一组题目，不复用题库或已缓存的生成题；用于错题本整组完成后的同类练习。"
+          },
+          {
+            "name": "roundId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Owner-scoped practice round. Retry with the same ID restores its questions; a new ID excludes previously issued question stems."
           }
         ],
         "responses": {
@@ -4744,6 +4762,299 @@
           }
         }
       }
+    },
+    "/api/v1/today": {
+      "get": {
+        "operationId": "get__api_v1_today",
+        "summary": "Unified durable reminders",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayOverview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "401": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "404": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "409": {
+            "description": "Invalid request, identity or stale version"
+          }
+        }
+      }
+    },
+    "/api/v1/reminders": {
+      "get": {
+        "operationId": "get__api_v1_reminders",
+        "summary": "Unified durable reminders",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "401": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "404": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "409": {
+            "description": "Invalid request, identity or stale version"
+          }
+        },
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/reminders/{eventId}/actions": {
+      "post": {
+        "operationId": "post__api_v1_reminders_eventId_actions",
+        "summary": "Unified durable reminders",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "401": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "404": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "409": {
+            "description": "Invalid request, identity or stale version"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderAction"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/reminder-preferences": {
+      "get": {
+        "operationId": "get__api_v1_reminder-preferences",
+        "summary": "Unified durable reminders",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "401": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "404": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "409": {
+            "description": "Invalid request, identity or stale version"
+          }
+        }
+      },
+      "put": {
+        "operationId": "put__api_v1_reminder-preferences",
+        "summary": "Unified durable reminders",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "401": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "404": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "409": {
+            "description": "Invalid request, identity or stale version"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderPreferences"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reminder-devices": {
+      "get": {
+        "operationId": "get__api_v1_reminder-devices",
+        "summary": "Unified durable reminders",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDeviceList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "401": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "404": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "409": {
+            "description": "Invalid request, identity or stale version"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post__api_v1_reminder-devices",
+        "summary": "Unified durable reminders",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDeviceResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "401": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "404": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "409": {
+            "description": "Invalid request, identity or stale version"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderDevice"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete__api_v1_reminder-devices",
+        "summary": "Unified durable reminders",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDeviceUnbound"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "401": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "404": {
+            "description": "Invalid request, identity or stale version"
+          },
+          "409": {
+            "description": "Invalid request, identity or stale version"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderDeviceUnbind"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5771,6 +6082,9 @@
               "basic",
               "failed"
             ]
+          },
+          "planChangeSummary": {
+            "type": "string"
           }
         }
       },
@@ -7132,6 +7446,10 @@
               "lastPracticedAt": {
                 "type": "string",
                 "nullable": true
+              },
+              "canAutoGrade": {
+                "type": "boolean",
+                "description": "本题具有可自动判分的标准答案与结构化选项；false 时仅作答并核对参考解析。"
               }
             }
           }
@@ -8811,6 +9129,358 @@
             "maxLength": 128
           }
         }
+      },
+      "ReminderEvent": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "objectId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "knowledgePointId": {
+            "type": "string"
+          },
+          "targetPage": {
+            "type": "string"
+          },
+          "dataTime": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "sourceVersion": {
+            "type": "integer"
+          },
+          "durationMinutes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "eventId",
+          "userId",
+          "kind",
+          "objectId",
+          "title",
+          "courseName",
+          "level",
+          "status",
+          "reason",
+          "planId",
+          "knowledgePointId",
+          "targetPage",
+          "dataTime",
+          "version",
+          "sourceVersion",
+          "durationMinutes"
+        ]
+      },
+      "TodayOverview": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "dataTime": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "highlight": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReminderEvent"
+              }
+            ],
+            "nullable": true
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderEvent"
+            }
+          },
+          "pendingCount": {
+            "type": "integer"
+          },
+          "guidance": {
+            "type": "string"
+          },
+          "modelCalls": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "userId",
+          "dataTime",
+          "version",
+          "highlight",
+          "tasks",
+          "pendingCount",
+          "guidance",
+          "modelCalls"
+        ]
+      },
+      "ReminderList": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderEvent"
+            }
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "events",
+          "cursor",
+          "hasMore"
+        ]
+      },
+      "ReminderAction": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "start",
+              "snooze",
+              "ignore"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minutes": {
+            "type": "integer",
+            "enum": [
+              15,
+              30,
+              60
+            ]
+          }
+        },
+        "required": [
+          "action",
+          "version",
+          "idempotencyKey"
+        ]
+      },
+      "ReminderActionResult": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/ReminderEvent"
+          }
+        },
+        "required": [
+          "event"
+        ]
+      },
+      "ReminderPreferences": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "quietStart": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "quietEnd": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "summaryHour": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "dailyLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "minimumGapMinutes": {
+            "type": "integer",
+            "minimum": 240,
+            "maximum": 1440
+          },
+          "urgentException": {
+            "type": "boolean"
+          },
+          "categories": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "task",
+                "exam",
+                "gap",
+                "conflict"
+              ]
+            }
+          }
+        },
+        "required": [
+          "enabled",
+          "timezone",
+          "quietStart",
+          "quietEnd",
+          "summaryHour",
+          "dailyLimit",
+          "minimumGapMinutes",
+          "urgentException"
+        ]
+      },
+      "ReminderSettings": {
+        "type": "object",
+        "properties": {
+          "preferences": {
+            "$ref": "#/components/schemas/ReminderPreferences"
+          },
+          "pushConfigured": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "preferences",
+          "pushConfigured"
+        ]
+      },
+      "ReminderDevice": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "pushToken": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "permission": {
+            "type": "boolean"
+          },
+          "foreground": {
+            "type": "boolean"
+          },
+          "focusing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deviceId",
+          "pushToken",
+          "permission",
+          "foreground",
+          "focusing"
+        ]
+      },
+      "ReminderDeviceResult": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "hasToken": {
+            "type": "boolean"
+          },
+          "lastActive": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId",
+          "active",
+          "hasToken",
+          "lastActive"
+        ]
+      },
+      "ReminderDeviceList": {
+        "type": "object",
+        "properties": {
+          "devices": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "devices"
+        ]
+      },
+      "ReminderDeviceUnbind": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId"
+        ]
+      },
+      "ReminderDeviceUnbound": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
       }
     },
     "responses": {

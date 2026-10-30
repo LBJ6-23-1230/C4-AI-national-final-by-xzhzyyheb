@@ -201,6 +201,8 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
     from app.api.partner_inbox import partner_inbox_api
     app.register_blueprint(partner_inbox_api)
     app.register_blueprint(focus_api)
+    from app.api.reminders import reminders_api
+    app.register_blueprint(reminders_api)
 
     @app.before_request
     def resolve_optional_identity():

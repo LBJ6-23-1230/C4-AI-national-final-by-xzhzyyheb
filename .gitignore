@@ -9,7 +9,7 @@ pytest-cache-files-*/
 .venv/
 venv/
 
-# ---- 环境与密钥（绝不入库 / 绝不进交付 zip）----
+# ---- 环境与密钥（不入库；仅显式要求的本机完整备份保留）----
 .env
 .env.*
 *.env
@@ -50,6 +50,7 @@ build/
 # 所以 `!hap/知学Mate-signed.hap` 这类写法只有在 `hap/` 本身没被忽略时才管用。
 *.hap
 !deliverables/*.hap
+!deliverables/proactive-practice-20261030/*.hap
 !hap/知学Mate-signed.hap
 !03-演示文件与源代码/hap/知学Mate-signed.hap
 *.har
@@ -61,6 +62,14 @@ Thumbs.db
 desktop.ini
 ~$*
 *.log
+# 保留本轮已检查的验收证据；后端和 Worker 的实时日志仍只留本机。
+!/evidence/c4-version1-*-20261030.log
+!/evidence/proactive-*-20261030.log
+!/evidence/feedback-20261030-*.log
+!/server/zhixue-agent-server/evidence/feedback-20261030-pytest.log
+!/server/zhixue-agent-server/evidence/proactive-20261030-pytest.log
+!/server/zhixue-agent-server/evidence/proactive-final-*-20261030.log
+!/server/zhixue-agent-server/evidence/proactive-validator-20261030.log
 *.process.lock
 .venv-clean*/
 

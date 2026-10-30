@@ -1,4 +1,5 @@
 import { PartnerInboxButton } from '../components/PartnerInboxButton';
+import { TodayPanel } from '../components/TodayPanel';
 import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
@@ -55,6 +56,7 @@ interface DiagnosisEdit { id: string; point: string; }
 @Entry
 @Component
 struct ChatMain {
+  @State todayRevision: number = 0;
   @State messages: ChatMessage[] = [];
   @State inputText: string = '';
   @State pendingImage: string = '';
@@ -239,6 +241,7 @@ struct ChatMain {
    * "等待补充知识点 / 等待作答"，看起来像操作没生效，只能手工再点一次。
    */
   onPageShow(): void {
+    this.todayRevision++;
     this.inboxRefreshVersion++;
     this.isPageActive = true;
     if (!this.hasShownOnce) {
@@ -299,6 +302,7 @@ struct ChatMain {
         Column() {
           this.Header()
           FocusRecoveryCard()
+          TodayPanel({ revision: this.todayRevision })
 
           this.IntentBar()
           this.MessageList()
@@ -594,6 +598,12 @@ struct ChatMain {
         .fontSize(20).fontColor('#334155').backgroundColor('#F1F5F9')
         .width(38).height(38).borderRadius(10).margin({ right: 10 })
         .onClick(() => this.openHistory())
+      Button('新对话', { type: ButtonType.Normal })
+        .fontSize(13).fontWeight(FontWeight.Normal).fontColor('#475467')
+        .backgroundColor('#FFFFFF').borderRadius(8).height(34).margin({ right: 10 })
+        .stateStyles({ normal: { .backgroundColor('#FFFFFF').fontColor('#475467') },
+          pressed: { .backgroundColor('#F2F4F7').fontColor('#1F2937') } })
+        .onClick(() => this.resetChat())
       Column({ space: 4 }) {
         Text('知学 Mate')
           .fontSize(20)
@@ -611,13 +621,6 @@ struct ChatMain {
       Row({ space: 4 }) {
         PartnerInboxButton({ refreshVersion: this.inboxRefreshVersion })
         Button('任务记录').fontSize(13).height(34).backgroundColor('#F2F4F7').fontColor('#475467').borderRadius(8).onClick(() => { this.showGoalHistory = !this.showGoalHistory; void this.loadGoalHistory(); })
-        Button('新对话')
-          .fontSize(13)
-          .fontColor('#2563EB')
-          .backgroundColor('#EAF2FF')
-          .borderRadius(8)
-          .height(34)
-          .onClick(() => this.resetChat())
       }
     }
     .width('100%')

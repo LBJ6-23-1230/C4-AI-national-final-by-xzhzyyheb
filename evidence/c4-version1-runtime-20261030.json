@@ -1,0 +1,37 @@
+{
+  "verifiedRoot": "E:\\C4-AI-national-final-by-xzhzyyheb-main\\.package-work\\verify-20261030-154610-36a86e\\C4-AI-version1",
+  "port": 5011,
+  "ready": true,
+  "modelConfigured": true,
+  "model": "qwen3.8-flash",
+  "todayModelCalls": 0,
+  "pushConfigured": false,
+  "realExerciseRounds": [
+    {
+      "seconds": 7.13,
+      "questionStems": [
+        "在长度为 n 的顺序表中，若要在第 i (1 ≤ i ≤ n+1) 个位置插入一个新元素，需要移动的元素个数是多少？",
+        "相较于顺序表，单链表在访问第 k 个元素时的时间复杂度主要取决于什么？"
+      ],
+      "fingerprints": [
+        "832c69543e7736b3d0f0f9e6a88a7310189b86ab940d306e9d9bc159872562b5",
+        "8f316565d051335529d84ef362d46ace119ef451794924b90c5f3a0852e62d06"
+      ],
+      "retryStable": true
+    },
+    {
+      "seconds": 7.45,
+      "questionStems": [
+        "在带头结点的单链表中，若指针 p 指向第 i 个数据节点，则执行语句 `s->next = p->next; p->next = s;` 后，新节点 s 位于链表的哪个位置？",
+        "关于循环单链表与不带头结点的普通单链表，下列说法正确的是？"
+      ],
+      "fingerprints": [
+        "66b467c619aeabae83b72d1d3a6d778789811d3cf771fba7354501b9a0e618c3",
+        "20e20da982d0becf11c1f532c4edd13d7e087e15477177e66660712788c0e2f1"
+      ],
+      "retryStable": true
+    }
+  ],
+  "distinctRounds": true,
+  "isolatedTestData": true
+}

@@ -1,4 +1,5 @@
 """Assessment-to-planner handoff and one shared plan commit operation."""
+from time import perf_counter
 
 from app.agents.planner import PlannerAgent
 from app.domain.assessment import AssessmentResult
@@ -20,6 +21,20 @@ def execute_assessment_replan(repository, user_id: str, plan_id: str,
                               handoff: dict, evidence_ids: list[str], submission_id=None) -> dict:
     """Called under the shared profile lock. Execute the role before recording it."""
     plan = repository.get("plans", plan_id)
+    started = perf_counter()
+    profile_snapshot = repository.get('profiles', user_id) or {}
+    handoff = dict(handoff, evidenceIds=list(evidence_ids), userId=user_id,
+        planId=plan_id, inputVersion=(plan or {}).get('version', 0),
+        profileVersion=profile_snapshot.get('profileVersion', 1),
+        hardConstraints=(plan or {}).get('constraints', {}),
+        knownFacts=[dict(taskId=t.get('taskId'), dueDate=t.get('dueDate'), dueAt=t.get('dueAt'),
+            durationMinutes=t.get('durationMinutes'), status=t.get('status'))
+            for t in (plan or {}).get('tasks', []) if t.get('source') == 'ddl'])
+    def record_handoff(changed, output_version, tools):
+        key = f"{user_id}:{submission_id or plan_id}:{handoff['inputVersion']}"
+        repository.save('agent_handoffs', key, dict(handoff, changed=changed,
+            outputVersion=output_version, processing='rules', modelCalls=0, tokens=None,
+            toolCalls=tools, elapsedMs=round((perf_counter() - started) * 1000, 3)))
     def mark_handled():
         if submission_id:
             record = repository.get("submissions", submission_id)
@@ -31,6 +46,7 @@ def execute_assessment_replan(repository, user_id: str, plan_id: str,
     result = PlannerAgent().run({"plan": plan, "needReplan": True,
                                  "replanState": handoff["replanState"]})
     if not result.output.get("changedTasks"):
+        record_handoff(False, plan['version'], list(result.tool_calls))
         mark_handled()
         return {"changed": False, "plan": plan, "toolCalls": list(result.tool_calls),
                 "reason": "规划检查完成，当前计划无需变更或没有对应待调整任务"}
@@ -57,5 +73,8 @@ def execute_assessment_replan(repository, user_id: str, plan_id: str,
             response = dict(record["response"], plan=updated, planDiff=history)
             saves.append(("submissions", submission_id, dict(record, response=response, replanHandled=True)))
     repository.apply_batch([], saves)
+    record_handoff(True, updated['version'], list(result.tool_calls))
+    from app.services.reminders import reconcile
+    reconcile(repository, user_id)
     return {"changed": True, "plan": updated, "planDiff": history,
             "toolCalls": list(result.tool_calls), "reason": handoff["objective"]}

@@ -135,6 +135,8 @@ def save_scanned():
                 confidence=0, source='scan', lastUpdated=now()))
             profile['profileVersion'] = profile.get('profileVersion', 0) + 1
             repo().save('profiles', owner, profile)
+            from app.services.reminders import reconcile
+            reconcile(repo(), owner)
         repo().save('exercises', exercise_id, question)
         record = add_item(repo(), owner, question)
     return jsonify(item={k: v for k, v in record.items() if k != 'answerKey'}), 201
@@ -280,6 +282,8 @@ def course_settings():
             profile.update(targetCourses=courses, targetCourse=course,
                            profileVersion=profile.get('profileVersion', 0) + 1)
             repo().save('profiles', owner, profile)
+            from app.services.reminders import reconcile
+            reconcile(repo(), owner)
     courses = set(profile.get('targetCourses', []))
     from app.services.subject_classification import normalized_mastery, subject
     courses = {subject(c) for c in courses if isinstance(c, str) and c.strip()}

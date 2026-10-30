@@ -414,28 +414,14 @@ struct Account {
               .borderRadius(10)
           }
 
-          // ---------- 主动提醒设置 ----------
-          Row({ space: 12 }) {
-            Column({ space: 4 }) {
-              Text('Agent 主动提醒').fontSize(15).fontWeight(FontWeight.Bold)
-                .fontColor('#1F2937').width('100%')
-              Text('开启后，应用进入后台时才会请求 Agent 判断；shouldNotify=false 时不会投递。')
-                .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
-            }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-            // ⚠️ 必须用 `$$` 双向绑定。
-            //
-            // 修复的缺陷：原来 `isOn: this.proactiveEnabled` 是单向的 ——
-            // 用户拨到"开"，Toggle 内部视觉已变 ON，但若 `updateProactiveSetting`
-            // 因**没拿到通知权限**而把 `proactiveEnabled` 置回 false，
-            // 由于它本来就是 false（**没有状态变化**），ArkUI 不会重渲染，
-            // 于是开关**停在 ON**、而存储与提示文字都是 OFF，两边对不上。
-            // 加 `$$` 后用户的拨动会先写回 @State，置回 false 就是一次真实变化，
-            // 开关会跟着弹回去。
-            Toggle({ type: ToggleType.Switch, isOn: $$this.proactiveEnabled })
-              .onChange((value: boolean) => { void this.updateProactiveSetting(value); })
-          }
-          .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-          .border({ width: 1, color: '#E2E8F0' })
+          Row() {
+            Column({ space: 5 }) {
+              Text('提醒与设备设置').fontSize(15).fontWeight(FontWeight.Bold).width('100%')
+              Text('今日事项、稍后提醒、免打扰与通知授权').fontSize(12).fontColor('#667085').width('100%')
+            }.layoutWeight(1)
+            Text('›').fontSize(22).fontColor('#667085')
+          }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
+            .onClick(() => router.pushUrl({ url: 'pages/Reminders' }))
 
           // ---------- 登录态说明 / 降低门槛 ----------
           if (this.signedIn) {

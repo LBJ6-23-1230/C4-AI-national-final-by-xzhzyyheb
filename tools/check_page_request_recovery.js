@@ -98,7 +98,8 @@ function loadPage(name) {
       refreshStatus(...args) { return network.workflowStatus(...args); }
       getErrorMessage() { return 'offline'; }
     }, VoiceInputService: class { async dispose() {} },
-    ClientCache: { getWorkflow: () => ({ sessionId: 'workflow' }), getWorkflowStatus: () => null },
+    ClientCache: { getWorkflow: () => ({ sessionId: 'workflow' }), getWorkflowStatus: () => null,
+      currentOwnerUserId: () => appState.currentUser.userId },
     AgentBridge: { callAgent: (...args) => network.chat(...args), loadHistory: () => network.history(), loadChatImage: (...args) => network.chatImage(...args) }
   });
   vm.runInContext(compiled.outputText, context, { filename: file });
@@ -118,6 +119,92 @@ async function check(name, run) {
 }
 
 (async () => {
+  await check('wrong-book selection starts empty and applies only explicitly selected questions', async () => {
+    const page = loadPage('WrongBook');
+    const items = [{ exerciseId: 'a' }, { exerciseId: 'b' }, { exerciseId: 'c' }];
+    page.beginAssignment();
+    assert.equal(page.selecting, true);
+    assert.equal(page.assigningIds.length, 0);
+    page.toggleSelection(items[1]);
+    assert.equal(page.assigningIds.join(','), 'b');
+    page.selectAll(items);
+    assert.equal(page.assigningIds.join(','), 'a,b,c');
+    page.selectAll(items);
+    assert.equal(page.assigningIds.length, 0);
+    page.toggleSelection(items[2]);
+    network.getConfig = () => ({ useFixture: false });
+    let submitted;
+    network.classifyWrongBook = async (ids, course) => {
+      submitted = { ids: [...ids], course }; return ok({ courseName: course, updatedCount: ids.length });
+    };
+    network.getWrongBook = async () => ok({ total: 1, courses: [] });
+    page.isPageActive = true;
+    page.assignmentCourse = '算法专题';
+    page.assignmentOpen = true;
+    await page.assignCourse();
+    assert.equal(submitted.ids.join(','), 'c');
+    assert.equal(submitted.course, '算法专题');
+    assert.equal(page.selecting, false);
+    assert.equal(page.assignmentOpen, false);
+  });
+  await check('wrong-book group includes photos and unlocks fresh similar practice only after every question', async () => {
+    const page = loadPage('WrongBook');
+    const items = [
+      { exerciseId: 'photo', courseName: '数据结构', knowledgePointId: 'tree', knowledgePointName: '树', options: [], canAutoGrade: false },
+      { exerciseId: 'choice', courseName: '数据结构', knowledgePointId: 'tree', knowledgePointName: '树', options: ['A. a'], canAutoGrade: true }
+    ];
+    page.courses = [{ courseName: '数据结构', items }];
+    page.startPractice(items[0]);
+    assert.equal(page.practiceItems.length, 2);
+    page.openSimilarPractice();
+    const before = network.lastRoute;
+    page.continuePractice();
+    assert.equal(page.practiceIndex, 0);
+    page.selectedAnswer = '我的解题过程';
+    await page.submitAttempt();
+    assert.equal(page.referenceReviewed, true);
+    assert.equal(page.attempt, null, 'Unverified answers must not manufacture a grade');
+    page.continuePractice();
+    assert.equal(page.practiceItem.exerciseId, 'choice');
+    page.openSimilarPractice();
+    assert.equal(network.lastRoute, before);
+    page.attempt = { correct: true };
+    page.continuePractice();
+    assert.equal(page.practiceCompleted, true);
+    page.openSimilarPractice();
+    assert.equal(network.lastRoute.params.forceGenerate, true);
+    assert.equal(network.lastRoute.params.excludeExerciseIds.join(','), 'photo,choice');
+    assert.equal(network.lastRoute.params.courseName, '数据结构');
+    assert.equal(network.lastRoute.params.knowledgePointId, 'tree');
+  });
+  await check('leaving wrong-book practice rejects a late answer response', async () => {
+    const page = loadPage('WrongBook');
+    const pending = deferred();
+    network.attemptWrongBook = () => pending.promise;
+    network.getWrongBook = async () => ok({ total: 0, courses: [] });
+    page.practiceItem = { exerciseId: 'choice', options: ['A. a'] };
+    page.isPageActive = true;
+    page.selectedAnswer = 'A';
+    const sending = page.submitAttempt();
+    page.leavePractice();
+    pending.resolve(ok({ correct: true, removed: false }));
+    await sending;
+    assert.equal(page.attempt, null);
+    assert.equal(page.isSubmitting, false);
+  });
+  await check('similar-practice route preserves force generation and initial exclusions', async () => {
+    network.routeParams = { courseName: '数据结构', knowledgePointId: 'tree', forceGenerate: true, excludeExerciseIds: ['photo'] };
+    const page = loadPage('ExercisePractice');
+    page.readRouteParams();
+    page.selectedCourse = '数据结构';
+    let query;
+    network.load = async (_set, _refresh, q) => { query = q; return exerciseSet; };
+    await page.loadExercises();
+    assert.equal(query.forceGenerate, true);
+    assert.equal(query.generate, true);
+    assert.equal(query.excludeExerciseIds.join(','), 'photo');
+    delete network.routeParams;
+  });
   await check('workflow refresh can be retried after completing while hidden', async () => {
     const pending = deferred();
     network.workflowStatus = () => pending.promise;

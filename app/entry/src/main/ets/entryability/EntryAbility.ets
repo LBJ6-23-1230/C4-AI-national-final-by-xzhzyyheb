@@ -70,7 +70,7 @@ export default class EntryAbility extends UIAbility {
     // 产品定位是"对话式学习秘书"：进来就能直接说话，不用先读一遍功能清单。
     // 先加载对话页、再异步判断是否要去登录页，这样即使校验慢也不会白屏。
     const fromLearningCard: boolean = this.prepareLearningCardLaunch(this.pendingLaunchWant);
-    const initialPage: string = fromLearningCard ? 'pages/FocusSetup' : 'pages/ChatMain';
+    const initialPage: string = fromLearningCard ? 'pages/Reminders' : 'pages/ChatMain';
     windowStage.loadContent(initialPage, (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
@@ -161,7 +161,7 @@ export default class EntryAbility extends UIAbility {
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.pendingLaunchWant = want;
     if (this.activeWindowStage !== null && this.prepareLearningCardLaunch(want)) {
-      this.activeWindowStage.loadContent('pages/FocusSetup');
+      this.activeWindowStage.loadContent('pages/Reminders');
     }
   }
 
@@ -247,6 +247,7 @@ export default class EntryAbility extends UIAbility {
   onForeground(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
     void appState.syncFocusSessions();
+    void ProactiveSurfaceService.refresh(this.context, true);
   }
 
   onBackground(): void {
@@ -259,26 +260,9 @@ export default class EntryAbility extends UIAbility {
     if (want === null || want.parameters === undefined) return false;
     const source: Object | undefined = want.parameters['source'];
     if (`${source ?? ''}` !== 'learning_card') return false;
-    const taskValue: Object | undefined = want.parameters['taskName'];
-    const durationValue: Object | undefined = want.parameters['durationMinutes'];
-    const taskName: string = `${taskValue ?? ''}`.trim();
-    const parsedMinutes: number = Number(durationValue ?? 30);
-    const durationMinutes: number = parsedMinutes >= 1 && parsedMinutes <= 180 ? parsedMinutes : 30;
-    const cardTask: FocusTask = {
-      course: appState.getHighPriorityCourse()?.courseName ?? '通用学习',
-      task: taskName.length > 0 ? taskName : '完成今日学习建议',
-      plannedMinutes: durationMinutes,
-      source: 'agent',
-      mode: 'normal',
-      timerType: 'countdown'
-    };
-    // ⚠️ 这里只是**先写一次**保证首屏渲染正确；真正保住它的是 `restoreIdentity()`
-    // 的 finally 分支。原因是启动序列里 `applyLogout()`（onWindowStageCreate 与
-    // restoreIdentity 各一次）与 `applyLogin()` 都会走 `resetAccountScopedState()`，
-    // 而那里有 `this.activeFocusTask = null` —— 卡片任务写在两次清理之间，必然被抹掉。
-    // 表现为：从桌面卡片点进来，任务名回到默认值、时长从 45 分钟变成 30 分钟。
-    this.pendingCardTask = cardTask;
-    appState.setFocusTask(cardTask);
+    // Card snapshots can be stale or belong to a previous account.
+    // Resolve the current account's event again before starting any task.
+    this.pendingCardTask = null;
     return true;
   }
 

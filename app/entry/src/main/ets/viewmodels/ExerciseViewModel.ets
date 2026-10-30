@@ -57,7 +57,7 @@ export class ExerciseViewModel {
     const owner: string = ClientCache.currentOwnerUserId();
     const version: number = ++this.loadVersion;
     this.errorMessage = '';
-    const cached: ExerciseSetResponse | null = query?.courseName ? null : ClientCache.getExerciseSet();
+    const cached: ExerciseSetResponse | null = query?.courseName || query?.forceGenerate ? null : ClientCache.getExerciseSet();
     if (!forceRefresh && query?.sourceMode !== 'materials' && cached !== null && cached.setId === setId
       && ExerciseViewModel.matchesQuery(cached, query)) {
       return cached;

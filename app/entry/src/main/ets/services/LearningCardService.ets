@@ -3,11 +3,14 @@ import { preferences } from '@kit.ArkData';
 import { formBindingData, formProvider } from '@kit.FormKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { ProactiveResponse } from '../api/ApiModels';
+import { TodayOverview } from '../api/ReminderModels';
 
 const DOMAIN: number = 0x5A01;
 const TAG: string = 'LearningCard';
 
 export interface LearningCardData {
+  eventId?: string;
+  eventVersion?: number;
   /** 卡片内容属于谁。用于身份切换时判断是否需要整体刷新（见 `saveDecision`）。 */
   userId: string;
   title: string;
@@ -28,6 +31,18 @@ interface RegisteredForm {
  * The card extension must not perform network work, so it always renders this local snapshot.
  */
 export class LearningCardService {
+  static async saveOverview(context: common.Context, overview: TodayOverview): Promise<void> {
+    const event = overview.highlight;
+    const data: LearningCardData = { userId: overview.userId, eventId: event?.eventId ?? '',
+      eventVersion: event?.version ?? 0, title: '今日重点', taskName: event?.title ?? '当前没有待处理提醒',
+      reason: event?.reason ?? overview.guidance, durationText: event ? `${event.durationMinutes} 分钟` : '打开查看安排',
+      durationMinutes: event?.durationMinutes ?? 0, actionText: '打开核对任务' };
+    try {
+      const store = preferences.getPreferencesSync(context, { name: LearningCardService.STORE_NAME });
+      store.putSync(LearningCardService.KEY_DATA, JSON.stringify(data)); store.flushSync();
+      await LearningCardService.updateRegisteredForms(context, data);
+    } catch (_) { /* The next foreground sync retries the snapshot update. */ }
+  }
   private static readonly STORE_NAME: string = 'learning_card';
   private static readonly KEY_DATA: string = 'data';
   private static readonly KEY_FORM_IDS: string = 'form_ids';
@@ -117,6 +132,8 @@ export class LearningCardService {
   static bindingData(data: LearningCardData, compact: boolean = false): formBindingData.FormBindingData {
     return formBindingData.createFormBindingData({
       cardTitle: data.title,
+      eventId: data.eventId ?? '',
+      eventVersion: data.eventVersion ?? 0,
       taskName: data.taskName,
       reason: data.reason,
       durationText: data.durationText,

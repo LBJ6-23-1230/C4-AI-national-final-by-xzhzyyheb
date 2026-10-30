@@ -11,6 +11,8 @@ import { WrongBookAttemptResponse, WrongBookCourse, WrongBookItem, WrongBookResp
 @Entry
 @Component
 struct WrongBook {
+  @State selecting: boolean = false;
+  @State assignmentOpen: boolean = false;
   @State assigningIds: string[] = [];
   @State assignmentCourse: string = '';
   @State assignmentMessage: string = '';
@@ -20,9 +22,41 @@ struct WrongBook {
     appState.courses.forEach((c: CourseInfo) => { if (names.indexOf(c.courseName) < 0) names.push(c.courseName); });
     return names.filter((name: string) => ['待确认科目', '待分类', '其他', ''].indexOf(name) < 0);
   }
-  private beginAssignment(items: WrongBookItem[]): void {
-    this.assigningIds = items.map((item: WrongBookItem) => item.exerciseId).slice(0, 100);
+  private beginAssignment(): void {
+    this.selecting = true;
+    this.assigningIds = [];
     this.assignmentCourse = ''; this.assignmentMessage = '';
+  }
+  private toggleSelection(item: WrongBookItem): void {
+    if (this.assigningIds.indexOf(item.exerciseId) >= 0) {
+      this.assigningIds = this.assigningIds.filter((id: string) => id !== item.exerciseId);
+    } else if (this.assigningIds.length < 100) {
+      this.assigningIds = this.assigningIds.concat([item.exerciseId]);
+    } else this.assignmentMessage = '每次最多修改100道题，请分批选择。';
+  }
+  private selectAll(items: WrongBookItem[]): void {
+    const ids: string[] = items.map((item: WrongBookItem) => item.exerciseId).slice(0, 100);
+    this.assigningIds = ids.every((id: string) => this.assigningIds.indexOf(id) >= 0) ? [] : ids;
+    this.assignmentMessage = items.length > 100 ? '每次最多修改100道题，已选择前100题。' : '';
+  }
+  private cancelSelection(): void {
+    this.selecting = false; this.assignmentOpen = false; this.assigningIds = []; this.assignmentMessage = '';
+  }
+  private goBack(): void {
+    if (this.assignmentSaving) return;
+    if (this.assignmentOpen) this.assignmentOpen = false;
+    else if (this.selecting) this.cancelSelection();
+    else if (this.practiceItem !== null) this.leavePractice();
+    else if (this.selectedPoint) this.selectedPoint = '';
+    else if (this.selectedCourse) this.selectedCourse = '';
+    else router.back();
+  }
+  onBackPress(): boolean {
+    if (this.assignmentSaving || this.assignmentOpen || this.selecting || this.practiceItem !== null || this.selectedPoint || this.selectedCourse) {
+      this.goBack();
+      return true;
+    }
+    return false;
   }
   private async assignCourse(): Promise<void> {
     if (this.assignmentSaving || !this.assigningIds.length || !this.assignmentCourse.trim()) return;
@@ -37,8 +71,9 @@ struct WrongBook {
     if (!this.isPageActive || version !== this.requestVersion || owner !== ClientCache.currentOwnerUserId()) return;
     this.assignmentSaving = false;
     if (!result.ok) { this.assignmentMessage = (result as ApiFailure).error.message; return; }
-    this.assigningIds = []; this.selectedCourse = result.data.courseName; this.selectedPoint = '';
-    this.preview = null; this.assignmentMessage = `已归入「${result.data.courseName}」，共 ${result.data.updatedCount} 道题。`;
+    this.selecting = false; this.assignmentOpen = false; this.assigningIds = [];
+    this.selectedCourse = result.data.courseName;
+    this.assignmentMessage = `已归入「${result.data.courseName}」，共 ${result.data.updatedCount} 道题。`;
     await this.load();
   }
 
@@ -58,7 +93,7 @@ struct WrongBook {
       TextInput({ text: this.assignmentCourse, placeholder: '选择已有科目或输入新科目' }).maxLength(30)
         .enabled(!this.assignmentSaving).onChange((value: string) => this.assignmentCourse = value)
       ActionButton({ label: this.assignmentSaving ? '保存中…' : '确认归类', available: !this.assignmentSaving && this.assignmentCourse.trim().length > 0, onAction: () => { void this.assignCourse(); } })
-      ActionButton({ label: '取消', available: !this.assignmentSaving, onAction: () => { this.assigningIds = []; this.assignmentMessage = ''; } })
+      ActionButton({ label: '返回选择题目', available: !this.assignmentSaving, onAction: () => { this.assignmentOpen = false; } })
     }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
   }
 
@@ -68,7 +103,6 @@ struct WrongBook {
   @State courses: WrongBookCourse[] = [];
   @State total: number = 0;
   @State selectedCourse: string = '';
-  @State preview: WrongBookItem | null = null;
   @State selectedPoint: string = '';
   private visibleCount(): number {
     if (this.practiceItem !== null) return this.practiceItems.length;
@@ -96,6 +130,20 @@ struct WrongBook {
   @State isSubmitting: boolean = false;
   @State practiceItems: WrongBookItem[] = [];
   @State practiceIndex: number = 0;
+  @State practiceCompleted: boolean = false;
+  @State referenceReviewed: boolean = false;
+  private canGrade(item: WrongBookItem): boolean {
+    return item.options.length > 0 && item.canAutoGrade !== false;
+  }
+  private openSimilarPractice(): void {
+    if (!this.practiceCompleted || this.practiceItem === null) return;
+    router.pushUrl({ url: 'pages/ExercisePractice', params: {
+      courseName: this.practiceItem.courseName,
+      knowledgePointId: this.practiceItem.knowledgePointId,
+      forceGenerate: true,
+      excludeExerciseIds: this.practiceItems.map((item: WrongBookItem) => item.exerciseId)
+    } });
+  }
   private requestVersion: number = 0;
   private isPageActive: boolean = false;
   /** 首帧的 onPageShow 与 aboutToAppear 属于同一次进入。 */
@@ -121,7 +169,7 @@ struct WrongBook {
       return;
     }
     // 逐题解析或练习页可能刚把题加入/移出错题本，返回后必须重新对账。
-    if (this.practiceItem === null) {
+    if (this.practiceItem === null || this.practiceCompleted) {
       void this.load();
     }
   }
@@ -154,9 +202,10 @@ struct WrongBook {
   }
 
   private startPractice(item: WrongBookItem): void {
+    this.requestVersion++;
     const course: WrongBookCourse | undefined = this.courses.find((value: WrongBookCourse): boolean =>
       value.courseName === item.courseName);
-    const items: WrongBookItem[] = course !== undefined ? course.items.filter((value: WrongBookItem) => (value.knowledgeGroup || value.knowledgePointName) === (item.knowledgeGroup || item.knowledgePointName) && value.options.length > 0) : [item];
+    const items: WrongBookItem[] = course !== undefined ? course.items.filter((value: WrongBookItem) => (value.knowledgeGroup || value.knowledgePointName) === (item.knowledgeGroup || item.knowledgePointName)) : [item];
     const startIndex: number = items.findIndex((value: WrongBookItem): boolean =>
       value.exerciseId === item.exerciseId);
     // 从用户点中的题开始，练到末尾后再接上前面的题，确保这一轮覆盖整个科目。
@@ -167,39 +216,56 @@ struct WrongBook {
     this.practiceItem = this.practiceItems[0];
     this.selectedAnswer = '';
     this.attempt = null;
+    this.practiceCompleted = false;
+    this.referenceReviewed = false;
+    this.errorMessage = '';
   }
 
   private leavePractice(): void {
+    this.requestVersion++;
+    this.isSubmitting = false;
     this.practiceItem = null;
     this.practiceItems = [];
     this.practiceIndex = 0;
     this.selectedAnswer = '';
     this.attempt = null;
+    this.practiceCompleted = false;
+    this.referenceReviewed = false;
+    this.errorMessage = '';
+    void this.load();
   }
 
   private continuePractice(): void {
+    if (this.attempt === null && !this.referenceReviewed) return;
     const nextIndex: number = this.practiceIndex + 1;
     if (nextIndex >= this.practiceItems.length) {
-      this.leavePractice();
+      this.practiceCompleted = true;
       return;
     }
     this.practiceIndex = nextIndex;
     this.practiceItem = this.practiceItems[nextIndex];
     this.selectedAnswer = '';
     this.attempt = null;
+    this.referenceReviewed = false;
     this.errorMessage = '';
   }
 
   private async submitAttempt(): Promise<void> {
     if (this.practiceItem === null || this.selectedAnswer.length === 0 || this.isSubmitting) return;
+    if (this.attempt !== null || this.referenceReviewed) return;
+    if (!this.canGrade(this.practiceItem)) {
+      this.referenceReviewed = true;
+      return;
+    }
     this.isSubmitting = true;
+    this.errorMessage = '';
     const owner: string = ClientCache.currentOwnerUserId();
     const requestVersion: number = this.requestVersion;
     const result = await AgentApiClient.attemptWrongBook(this.practiceItem.exerciseId, this.selectedAnswer);
     if (!this.isPageActive || requestVersion !== this.requestVersion || owner !== ClientCache.currentOwnerUserId()) return;
     this.isSubmitting = false;
     if (!result.ok) {
-      this.errorMessage = '本次作答提交失败，请重试。';
+      this.errorMessage = (result as ApiFailure).error.message || '本次作答提交失败，请重试。';
       return;
     }
     this.attempt = result.data;
@@ -218,6 +284,17 @@ struct WrongBook {
   }
 
   @Builder
+  CompletionPanel() {
+    Column({ space: 14 }) {
+      Text('本知识点刷题完成').fontSize(21).fontWeight(FontWeight.Bold)
+      Text(`已完成 ${this.practiceItems.length} 道题。可继续生成同类题，交卷后更新知识点掌握度与学情画像。`)
+        .fontSize(14).fontColor('#475467').lineHeight(22)
+      ActionButton({ label: '同类练习', onAction: () => this.openSimilarPractice() })
+      ActionButton({ label: '返回题目列表', onAction: () => this.leavePractice() })
+    }.width('100%').padding(20).backgroundColor('#FFFFFF').borderRadius(16)
+  }
+
+  @Builder
   PracticePanel(item: WrongBookItem) {
     Column({ space: 12 }) {
       Row() {
@@ -227,14 +304,23 @@ struct WrongBook {
         Text('返回题目列表').fontSize(13).fontColor('#64748B').onClick(() => this.leavePractice())
       }.width('100%')
       Text(item.stem).fontSize(17).fontWeight(FontWeight.Medium).fontColor('#1F2937').lineHeight(24)
+      if (!this.canGrade(item)) {
+        TextArea({ text: this.selectedAnswer, placeholder: '先写下你的答案或解题过程，再查看参考解析' })
+          .width('100%').constraintSize({ minHeight: 120 }).enabled(!this.referenceReviewed)
+          .onChange((value: string) => this.selectedAnswer = value)
+        Text('本题答案尚未核对，提交后可对照参考解析；本题不自动判分，同类练习交卷后会更新掌握度。')
+          .fontSize(12).fontColor('#64748B').lineHeight(19)
+      } else {
       ForEach(item.options, (option: string) => {
         Button(option).width('100%').height(42).fontSize(14)
           .fontColor(this.selectedAnswer === option.substring(0, 1) ? '#FFFFFF' : '#344054')
           .backgroundColor(this.selectedAnswer === option.substring(0, 1) ? '#2563EB' : '#F8FAFC')
           .border({ width: 1, color: '#D0D5DD' }).borderRadius(10)
-          .enabled(this.attempt === null)
+          .enabled(this.attempt === null && !this.isSubmitting)
           .onClick(() => this.selectedAnswer = option.substring(0, 1))
       }, (option: string) => option)
+      }
+      if (this.errorMessage) Text(this.errorMessage).fontSize(13).fontColor('#B42318')
       if (this.attempt !== null) {
         Text(this.attempt.correct ? '回答正确' : `回答错误，正确答案：${this.attempt.correctAnswer}`)
           .fontSize(15).fontWeight(FontWeight.Bold)
@@ -243,14 +329,19 @@ struct WrongBook {
         Text(this.attempt.removed ? '已累计答对 3 次，自动移出错题本。'
           : `已答对 ${this.attempt.correctCount} / 3 次。`)
           .fontSize(13).fontColor('#2563EB').width('100%')
-        Button(this.practiceIndex + 1 < this.practiceItems.length ? '继续下一题' : '完成本知识点刷题，返回列表')
+      } else if (this.referenceReviewed) {
+        Text('参考解析').fontSize(15).fontWeight(FontWeight.Bold).width('100%')
+        Text(item.explanation || '本题暂无参考解析，请结合教材核对。').fontSize(14).fontColor('#475467').lineHeight(22).width('100%')
+      }
+      if (this.attempt !== null || this.referenceReviewed) {
+        Button(this.practiceIndex + 1 < this.practiceItems.length ? '继续下一题' : '完成本知识点刷题')
           .width('100%').height(42).fontSize(14).fontColor('#FFFFFF')
           .backgroundColor('#2563EB').borderRadius(10)
           .onClick(() => this.continuePractice())
       } else {
-        Button(this.isSubmitting ? '提交中…' : '提交答案').width('100%').height(44)
+        Button(this.isSubmitting ? '提交中…' : this.canGrade(item) ? '提交答案' : '提交并查看参考解析').width('100%').height(44)
           .fontSize(15).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(10)
-          .enabled(this.selectedAnswer.length > 0 && !this.isSubmitting)
+          .enabled(this.selectedAnswer.trim().length > 0 && !this.isSubmitting)
           .onClick(() => this.submitAttempt())
       }
     }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
@@ -259,40 +350,25 @@ struct WrongBook {
 
   build() {
     Column() {
-      PageHeader({ title: this.selectedPoint || this.selectedCourse || '错题本', detail: this.practiceItem !== null ? `${this.practiceIndex + 1}/${this.practiceItems.length} 题` : `${this.visibleCount()} 题`, onBack: () => {
-        if (this.assignmentSaving) return;
-        if (this.assigningIds.length) this.assigningIds = [];
-        else if (this.practiceItem !== null) this.leavePractice();
-        else if (this.preview !== null) this.preview = null;
-        else if (this.selectedPoint) this.selectedPoint = '';
-        else if (this.selectedCourse) this.selectedCourse = '';
-        else router.back();
-      } })
+      PageHeader({ title: this.selectedPoint || this.selectedCourse || '错题本', detail: this.practiceItem !== null ? `${this.practiceIndex + 1}/${this.practiceItems.length} 题` : `${this.visibleCount()} 题`, onBack: () => this.goBack() })
       Scroll() {
         Column({ space: 14 }) {
           Text('按课程整理；在这里刷对同一道题 3 次后，系统会自动移出。')
             .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
           if (this.assignmentMessage) Text(this.assignmentMessage).fontSize(13).fontColor('#475467').width('100%')
-          if (this.assigningIds.length > 0) {
+          if (this.assignmentOpen) {
             this.AssignmentPanel()
           } else if (this.isLoading) {
             LoadingProgress().width(34).height(34).margin({ top: 48 })
-          } else if (this.errorMessage.length > 0) {
-            Text(this.errorMessage).fontSize(14).fontColor('#B42318')
+          } else if (this.practiceCompleted) {
+            this.CompletionPanel()
           } else if (this.practiceItem !== null) {
             // 最后一题答对并被自动移除后 total 会立刻变成 0，仍要保留本题反馈与
             // “完成本学科”按钮；用户主动返回列表后再展示空状态。
             this.PracticePanel(this.practiceItem)
-          } else if (this.preview !== null) {
-            Text(this.preview.stem).fontSize(17)
-            Text('拍照收藏题 · 答案尚待核对，不进行自动判分').fontSize(12).fontColor('#64748B')
-            Text(this.preview.explanation).fontSize(15)
-            Flex({ direction: this.contentWidth >= 360 ? FlexDirection.Row : FlexDirection.Column, justifyContent: FlexAlign.Center }) {
-              Column() { ActionButton({ label: '返回题目', onAction: () => this.preview = null }) }
-                .width(this.contentWidth >= 360 ? '48%' : '100%').margin({ bottom: 10, right: this.contentWidth >= 360 ? 12 : 0 })
-              Column() { ActionButton({ label: '同类练习', onAction: () => router.pushUrl({ url: 'pages/ExercisePractice', params: { courseName: this.preview?.courseName || '', knowledgePointId: this.preview?.knowledgePointId || '' } }) }) }
-                .width(this.contentWidth >= 360 ? '48%' : '100%')
-            }.width('100%')
+          } else if (this.errorMessage.length > 0) {
+            Text(this.errorMessage).fontSize(14).fontColor('#B42318')
+            ActionButton({ label: '重新加载', onAction: () => { void this.load(); } })
           } else if (this.total === 0) {
             Column({ space: 10 }) {
               Text('错题本还是空的').fontSize(18).fontWeight(FontWeight.Bold)
@@ -315,7 +391,6 @@ struct WrongBook {
               ForEach(this.visibleCourses(), (course: WrongBookCourse) => {
                 if (course.courseName === '待确认科目') {
                   Text('这些题目的科目尚不明确。可逐题选择，或将同一科目的题目批量归类。').fontSize(13).fontColor('#667085').width('100%')
-                  ActionButton({ label: this.selectedPoint ? '归类本知识点题目' : '归类本科目题目（最多100题）', onAction: () => this.beginAssignment(this.selectedPoint ? this.pointItems(course) : course.items) })
                 }
                 if (!this.selectedPoint) {
                   ForEach(this.points(course), (point: string) => {
@@ -324,19 +399,39 @@ struct WrongBook {
                       Text(`${course.items.filter((item: WrongBookItem) => (item.knowledgeGroup || item.knowledgePointName) === point).length} 题  ›`)
                         .fontSize(13).fontColor('#98A2B3')
                     }.width('100%').padding(20).backgroundColor('#FFFFFF').borderRadius(12)
-                      .onClick(() => this.selectedPoint = point)
+                      .onClick(() => { this.selectedPoint = point; this.cancelSelection(); })
                   }, (point: string) => point)
                 } else {
+                  if (!this.selecting) {
+                    ActionButton({ label: '修改所属科目', onAction: () => this.beginAssignment() })
+                  } else {
+                    Row({ space: 10 }) {
+                      Text(`已选 ${this.assigningIds.length} 题`).fontSize(13).layoutWeight(1)
+                      Button('全选 / 取消全选').fontSize(12).height(32).onClick(() => this.selectAll(this.pointItems(course)))
+                      Button('取消').fontSize(12).height(32).onClick(() => this.cancelSelection())
+                    }.width('100%')
+                    ActionButton({ label: '为所选题目修改科目', available: this.assigningIds.length > 0,
+                      onAction: () => { this.assignmentOpen = true; } })
+                  }
                   ForEach(this.pointItems(course), (item: WrongBookItem) => {
                     Column({ space: 12 }) {
-                      ActionButton({ label: '修改所属科目', onAction: () => this.beginAssignment([item]) })
-                      Text(item.stem).fontSize(16).fontColor('#344054').maxLines(3).width('100%')
+                      Row({ space: 10 }) {
+                        if (this.selecting) {
+                          Button(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '●' : '○')
+                            .fontSize(24).fontColor('#2563EB').backgroundColor('#FFFFFF').width(40).height(40)
+                            .accessibilityText(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '已选中，点击取消' : '未选中，点击选择')
+                            .onClick(() => this.toggleSelection(item))
+                        }
+                        Text(item.stem).fontSize(16).fontColor('#344054').maxLines(3).layoutWeight(1)
+                      }.width('100%')
+                      if (!this.selecting) {
                       Row() {
                         Text(`已答对 ${item.correctCount}/3 次`).fontSize(12).fontColor('#98A2B3').layoutWeight(1)
-                        Button(item.options.length ? '开始刷题' : '查看题目', { type: ButtonType.Normal }).height(34).fontSize(13).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(8)
-                          .onClick(() => { if (item.options.length) this.startPractice(item); else this.preview = item; })
+                        Button('开始刷题', { type: ButtonType.Normal }).height(34).fontSize(13).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(8)
+                          .onClick(() => this.startPractice(item))
                         Text('移除').fontSize(13).fontColor('#98A2B3').padding({ left: 18 }).onClick(() => this.removeItem(item))
                       }.width('100%')
+                      }
                     }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(12)
                   }, (item: WrongBookItem) => item.exerciseId)
                 }

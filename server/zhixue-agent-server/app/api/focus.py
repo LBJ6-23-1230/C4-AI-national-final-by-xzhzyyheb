@@ -144,4 +144,6 @@ def submit_focus_session():
                 "selfAssessment": session["selfAssessment"], "status": "recorded"}),
         ])
         _repository.apply_batch([], saves)
+        from app.services.reminders import reconcile
+        reconcile(_repository, owner)
         return jsonify(response)

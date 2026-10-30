@@ -1,0 +1,23 @@
+A = E:\C4-AI-national-final-by-xzhzyyheb-main\C4-AI-national-final-by-xzhzyyheb-main\contracts\openapi.json
+B = E:\C4-AI-national-final-by-xzhzyyheb-main\C4-AI-national-final-by-xzhzyyheb-main\app\contracts\openapi.json
+info.version  A=api-contract-v0.3  B=api-contract-v0.3
+paths  A=73  B=73
+--------------------------------------------------------------------------
+字节级校验：
+   A  271177 B  sha256 b20b88d644906e4b0e256f791e54fe26
+   B  271177 B  sha256 b20b88d644906e4b0e256f791e54fe26
+   逐字节一致: True
+   BOM: A=False  B=False
+   CRLF: A=9539  B=9539    裸LF: A=0  B=0
+--------------------------------------------------------------------------
+仅在 A 中存在的字段 (0):
+
+仅在 B 中存在的字段 (0):
+
+取值不同的字段 (0):
+
+接口路径差异：
+   仅 A 暴露: []
+   仅 B 暴露: []
+
+结论：PASS（真源与镜像逐字节一致）

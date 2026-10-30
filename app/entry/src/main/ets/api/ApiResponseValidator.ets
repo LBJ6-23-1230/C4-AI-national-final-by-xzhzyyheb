@@ -1,5 +1,13 @@
 /** Lightweight runtime guards for JSON received from the api-contract-v0.3 endpoints. */
 export class ApiResponseValidator {
+  private static isReminder(payload: Object): boolean {
+    if (!ApiResponseValidator.isRecord(payload)) return false;
+    const data: Record<string, Object> = payload as Record<string, Object>;
+    return ['eventId', 'userId', 'kind', 'objectId', 'title', 'courseName', 'level', 'status', 'reason',
+      'planId', 'knowledgePointId', 'targetPage', 'dataTime'].every((key: string) => ApiResponseValidator.hasString(data, key)) &&
+      ApiResponseValidator.hasNumber(data, 'version') && ApiResponseValidator.hasNumber(data, 'sourceVersion') &&
+      ApiResponseValidator.hasNumber(data, 'durationMinutes');
+  }
   /**
    * 去掉 URL 上的查询串，只留路径。
    *
@@ -25,6 +33,26 @@ export class ApiResponseValidator {
     const data: Record<string, Object> = payload as Record<string, Object>;
     // 一律用去查询串的路径做匹配，避免 `?a=b` 让精确比较失效。
     const route: string = ApiResponseValidator.basePath(path);
+    if (route === '/api/v1/today') return ApiResponseValidator.hasString(data, 'userId') &&
+      ApiResponseValidator.hasString(data, 'dataTime') && ApiResponseValidator.hasString(data, 'version') &&
+      ApiResponseValidator.hasNumber(data, 'pendingCount') && ApiResponseValidator.hasString(data, 'guidance') &&
+      ApiResponseValidator.hasArray(data, 'tasks') && (data['tasks'] as Object[]).every((item: Object) => ApiResponseValidator.isReminder(item)) &&
+      (data['highlight'] === null || ApiResponseValidator.isReminder(data['highlight']));
+    if (route === '/api/v1/reminders') return ApiResponseValidator.hasArray(data, 'events') &&
+      (data['events'] as Object[]).every((item: Object) => ApiResponseValidator.isReminder(item)) &&
+      ApiResponseValidator.hasString(data, 'cursor') && ApiResponseValidator.hasBoolean(data, 'hasMore');
+    if (method === 'POST' && route.indexOf('/api/v1/reminders/') === 0 && route.endsWith('/actions')) return ApiResponseValidator.isReminder(data['event']);
+    if (route === '/api/v1/reminder-preferences') {
+      if (!ApiResponseValidator.isRecordField(data, 'preferences') || !ApiResponseValidator.hasBoolean(data, 'pushConfigured')) return false;
+      const prefs: Record<string, Object> = data['preferences'] as Record<string, Object>;
+      if (prefs['categories'] !== undefined && (!ApiResponseValidator.hasArray(prefs, 'categories') ||
+        !(prefs['categories'] as Object[]).every((item: Object) => typeof item === 'string' && ['task', 'exam', 'gap', 'conflict'].includes(item as string)))) return false;
+      return ApiResponseValidator.hasBoolean(prefs, 'enabled') && ApiResponseValidator.hasBoolean(prefs, 'urgentException') &&
+        ApiResponseValidator.hasString(prefs, 'timezone') && ['quietStart', 'quietEnd', 'dailyLimit', 'minimumGapMinutes', 'summaryHour']
+          .every((key: string) => ApiResponseValidator.hasNumber(prefs, key));
+    }
+    if (route === '/api/v1/reminder-devices') return method === 'GET' ? ApiResponseValidator.hasArray(data, 'devices') :
+      method === 'DELETE' ? ApiResponseValidator.hasString(data, 'status') : ApiResponseValidator.hasString(data, 'deviceId') && ApiResponseValidator.hasBoolean(data, 'active');
     if (route === '/api/v1/learning-course-settings') return ApiResponseValidator.hasArray(data, 'courses');
     if (route === '/api/v1/partner-conversations') return ApiResponseValidator.hasArray(data, 'conversations') && ApiResponseValidator.hasNumber(data, 'totalUnread');
     if (route.endsWith('/summary') && route.indexOf('/api/v1/partners/') === 0) return ApiResponseValidator.isRecordField(data, 'conversation');

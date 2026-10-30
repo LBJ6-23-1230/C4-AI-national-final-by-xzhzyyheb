@@ -1,0 +1,38 @@
+10-30 15:28:39.968  INFO - Start verify-app
+10-30 15:28:39.990  WARN - Missing parameter: outproof
+10-30 15:28:40.013  INFO - Find Hap Signing Block success, version: 3, block count: 3
+10-30 15:28:40.015  INFO - trying verify codesign block
+10-30 15:28:40.121  INFO - profile type is: release
+10-30 15:28:40.157  INFO - verify codesign success
+10-30 15:28:40.169  INFO - +++++++++++++++++++++++++++certificate #0 +++++++++++++++++++++++++++++++
+10-30 15:28:40.169  INFO - Subject: CN=Huawei CBG Root CA G2, OU=Huawei CBG, O=Huawei, C=CN
+10-30 15:28:40.169  INFO - Issuer: CN=Huawei CBG Root CA G2, OU=Huawei CBG, O=Huawei, C=CN
+10-30 15:28:40.170  INFO - SerialNumber: 4a18699f9d7d8cd0
+10-30 15:28:40.170  INFO - Validity: 2020-03-16 11:04:39 ~ 2049-03-16 11:04:39
+10-30 15:28:40.170  INFO - SHA256: DF:21:A3:C0:9F:79:54:57:93:05:F8:5C:64:F8:0C:AD:86:F7:98:53:EE:3A:88:7C:1D:EC:95:D2:18:DF:3A:37
+10-30 15:28:40.170  INFO - Signature Algorithm: SHA384withECDSA
+10-30 15:28:40.170  INFO - Key: EC, key length: 384 bits
+10-30 15:28:40.170  INFO - Cert Version: V3
+10-30 15:28:40.170  INFO - +++++++++++++++++++++++++++certificate #1 +++++++++++++++++++++++++++++++
+10-30 15:28:40.171  INFO - Subject: CN="������(2044548867596244609)\\,Release", OU=2044548867596244609, O=������, C=CN
+10-30 15:28:40.171  INFO - Issuer: CN=Huawei CBG Developer Relations CA G2, OU=Huawei CBG, O=Huawei, C=CN
+10-30 15:28:40.171  INFO - SerialNumber: 9fd49abaebfc1f93bb4e667d8ac
+10-30 15:28:40.171  INFO - Validity: 2026-09-21 23:06:23 ~ 2029-09-21 23:06:23
+10-30 15:28:40.171  INFO - SHA256: 13:A3:03:8D:C6:BE:13:E0:DE:16:91:9E:A9:0D:60:38:4F:9F:39:82:04:50:C2:96:B5:0B:59:21:8B:7A:86:00
+10-30 15:28:40.171  INFO - Signature Algorithm: SHA384withECDSA
+10-30 15:28:40.172  INFO - Key: EC, key length: 256 bits
+10-30 15:28:40.172  INFO - Cert Version: V3
+10-30 15:28:40.172  INFO - +++++++++++++++++++++++++++certificate #2 +++++++++++++++++++++++++++++++
+10-30 15:28:40.172  INFO - Subject: CN=Huawei CBG Developer Relations CA G2, OU=Huawei CBG, O=Huawei, C=CN
+10-30 15:28:40.172  INFO - Issuer: CN=Huawei CBG Root CA G2, OU=Huawei CBG, O=Huawei, C=CN
+10-30 15:28:40.172  INFO - SerialNumber: 5e6b835db5a9381f
+10-30 15:28:40.172  INFO - Validity: 2020-07-09 10:04:24 ~ 2030-07-07 10:04:24
+10-30 15:28:40.172  INFO - SHA256: 0D:AA:8A:96:5B:51:53:12:4F:79:D4:B4:23:78:D0:AC:2F:55:36:AC:B5:FC:E1:92:4F:43:72:3E:97:58:71:80
+10-30 15:28:40.172  INFO - Signature Algorithm: SHA384withECDSA
+10-30 15:28:40.172  INFO - Key: EC, key length: 384 bits
+10-30 15:28:40.172  INFO - Cert Version: V3
+10-30 15:28:40.172  INFO - version is: 2, number of block is: 1
+10-30 15:28:40.178  INFO - Digest verify result: true, DigestAlgorithm: SHA-256
+10-30 15:28:40.182  INFO - Write certificate chain success!
+10-30 15:28:40.184  INFO - verify: Verify success
+10-30 15:28:40.184  INFO - verify-app success

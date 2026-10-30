@@ -91,9 +91,9 @@ def _distribute_durations(tasks: list[dict[str, Any]], target_id: Any,
 	"""
 	if score is None:
 		return None
-	weak = next((t for t in tasks if t.get("knowledgePointId") == target_id and t.get("status") != "completed"), None)
+	weak = next((t for t in tasks if t.get("knowledgePointId") == target_id and t.get("status") == "pending" and t.get('source') != 'ddl'), None)
 	strong = next((t for t in tasks
-				   if t is not weak and t.get("status") == "pending"), None)
+				   if t is not weak and t.get("status") == "pending" and t.get('source') != 'ddl'), None)
 	if weak is None or strong is None:
 		return None
 
@@ -130,14 +130,14 @@ def replan_learning_path(old_plan: dict[str, Any], state: dict[str, Any]) -> dic
 	# 当前边界拿不到可靠的任务名称、优先级等新增任务所需信息，因此保持计划
 	# 不变比凭空创建一个不完整任务更安全。后续完整规划流程仍可依据新画像生成
 	# 对应知识点任务。
-	if not any(task.get("knowledgePointId") == target_id and task.get("status") != "completed" for task in tasks):
+	if not any(task.get("knowledgePointId") == target_id and task.get("status") == "pending" and task.get('source') != 'ddl' for task in tasks):
 		return {"plan": dict(old_plan), "changedTasks": [], "decision": decision}
 
 	# 优先走「按得分重新分配总时长」。条件不满足时回退到固定 ±15 的老逻辑。
 	distribution = _distribute_durations(tasks, target_id, score)
 	changed: list[dict[str, Any]] = []
 	for task in tasks:
-		if task.get("status") == "completed":
+		if task.get("status") != "pending" or task.get('source') == 'ddl':
 			continue
 		task_id = task.get("taskId")
 		if distribution is not None and task_id in distribution:
