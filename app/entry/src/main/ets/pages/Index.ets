@@ -477,7 +477,19 @@ struct Index {
     .onClick(() => router.pushUrl({ url: target }))
   }
 
-  /** 引导卡（学习 / 我的 标签顶部）。 */
+  @Builder
+  LearningShortcut(icon: Resource, title: string, detail: string, target: string) {
+    Column({ space: 7 }) {
+      Image(icon).width(28).height(28).objectFit(ImageFit.Contain)
+      Text(title).fontSize(14).fontWeight(FontWeight.Medium).fontColor('#1F2937')
+      Text(detail).fontSize(11).fontColor('#667085').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+    }.layoutWeight(1).padding(14).backgroundColor('#FFFFFF').borderRadius(14)
+      .onClick(() => router.pushUrl({ url: target }))
+  }
+
+  private hasLearningData(): boolean { return appState.courses.length > 0 || appState.homeworkDDLs.length > 0; }
+
+  /** 首次导入引导；已有数据时使用紧凑的课程管理入口。 */
   @Builder
   PanelCard(title: string, desc: string, buttonText: string, target: string) {
     Column({ space: 12 }) {
@@ -946,41 +958,27 @@ struct Index {
             // 需要它们时去「智能体」页点对应智能体；这里只解决"任务从哪来、时间怎么安排"。
             if (this.activeTab === 2) {
               Row() {
+                Text('常用操作').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#0F172A')
                 Blank()
-                Row({ space: 5 }) {
-                  Text('✎').fontSize(14).fontColor('#2563EB')
-                  Text('错题本').fontSize(12).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-                }.padding({ left: 11, right: 11, top: 7, bottom: 7 })
-                  .backgroundColor('#EFF6FF').borderRadius(16)
-                  .onClick(() => router.pushUrl({ url: 'pages/WrongBook' }))
+                Text(`${appState.getUrgentDDLs().length} 项作业临近`).fontSize(11).fontColor('#667085')
               }.width('100%')
-              CourseReviewReminder()
               if (appState.focusRuntime !== null && appState.focusRuntime.ownerId === appState.currentUser.userId && appState.focusRuntime.finishedAt === undefined) {
                 this.PanelRow($r('app.media.feature_focus'), '继续专注', '返回正在进行的计时任务', 'pages/FocusTimer')
+              } else {
+                this.PanelRow($r('app.media.feature_focus'), '开始专注', '选择任务，安排本次学习时间', 'pages/FocusSetup')
               }
-              if (this.agentPlanMessage.length > 0) {
-                this.PlanLoadNotice()
+              Row({ space: 12 }) {
+                this.LearningShortcut($r('app.media.feature_courses'), '课程与 DDL',
+                  this.hasLearningData() ? `${appState.courses.length} 门课程 · ${appState.getPendingDDLs().length} 项待办` : '添加或导入课程', 'pages/CourseImport')
+                this.LearningShortcut($r('app.media.feature_diagnosis'), '我的错题本', '按课程整理与练习', 'pages/WrongBook')
+              }.width('100%')
+              this.PanelRow($r('app.media.feature_courses'), '我的知识库', '管理课程讲义、笔记与资料', 'pages/KnowledgeBase')
+              if (!this.hasLearningData()) {
+                this.PanelCard('建立课程与学习目标', '导入课程表与作业截止时间，安排自己的学习任务。', '去上传 / 导入数据', 'pages/CourseImport')
               }
-              this.PanelCard('第 1 步：课程、目标与 DDL',
-                '导入 CSV/JSON 课程表与作业截止时间。导入后，全部智能体的分析自动切换为你的真实数据。',
-                '去上传 / 导入数据', 'pages/CourseImport')
-
-              Row() {
-                Text('任务安排').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-                Blank()
-                Text(`${appState.getUrgentDDLs().length} 项临近`).fontSize(11)
-                  .fontColor(appState.getUrgentDDLs().length > 0 ? '#B45309' : '#10B981')
-              }.width('100%').margin({ top: 4 })
-
-              this.PanelRow($r('app.media.feature_focus'), '开始专注', '按任务倒计时，结束后自动生成复盘', 'pages/FocusSetup')
-              this.PanelRow($r('app.media.feature_courses'), '课程与作业清单', '查看已导入的课程与 DDL', 'pages/CourseImport')
-
-              // 知识库入口：让 Agent 的判断有据可依（引用你自己的课程资料）
-              this.PanelCard('我的知识库', '上传、补充和管理课程讲义、笔记与资料。', '进入我的知识库', 'pages/KnowledgeBase')
-              this.PanelCard('阶段复盘与考前建议', '结合本课程学习记录，生成可执行的复习行动。', '查看阶段建议', 'pages/LearningReview')
-              this.PanelCard('我的错题本',
-                '答错题自动收录并按课程整理；也可手动加入做过的题。每题累计答对 3 次后自动移出。',
-                '进入错题本刷题', 'pages/WrongBook')
+              CourseReviewReminder({ revision: this.refreshKey })
+              this.PanelRow($r('app.media.feature_review'), '阶段复盘与考前建议', '结合本课程记录，整理下一步复习行动', 'pages/LearningReview')
+              if (this.agentPlanMessage.length > 0) this.PlanLoadNotice()
             }
 
             // ================= 标签 3：我的（身份 / 数据 / 搭子） =================
@@ -1152,7 +1150,7 @@ const AGENT_SPECS: AgentSpec[] = [
   {
     key: 'assessment', icon: $r('app.media.feature_assessment'), name: '测评智能体', category: '效果评估',
     role: '评估练习表现',
-    desc: '根据作答结果识别需巩固的知识点，记录变化，并提供后续学习建议。',
+    desc: '汇总练习记录，查看需巩固与待复测的知识点；做题和解析统一进入练习智能体。',
     routes: [
       { label: '练习表现与复盘', target: 'pages/ReviewSummary', prompt: '' }
     ],

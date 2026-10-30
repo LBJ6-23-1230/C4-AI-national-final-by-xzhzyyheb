@@ -8,6 +8,11 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require(process.argv[2] || 'typescript');
 const root = path.resolve(__dirname, '../app/entry/src/main/ets');
+const examContext = vm.createContext({});
+vm.runInContext(ts.transpileModule(fs.readFileSync(path.join(root, 'services/UpcomingExamService.ets'), 'utf8')
+  .replace(/^import[^\n]+\n/gm, '').replace('export class', 'class') + '\nglobalThis.Exams = UpcomingExamService;', {
+    compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, examContext);
+const UpcomingExamService = examContext.Exams;
 let passed = 0;
 const network = {};
 const appState = { currentUser: { userId: 'alice' }, chatSessionId: '', chatMessages: '', hasActiveChat: false };
@@ -88,7 +93,8 @@ function loadPage(name, directory = 'pages') {
       back: () => { network.backCalls = (network.backCalls || 0) + 1; }
     },
     LearningEvidence: { assessed: point => point.assessed === true, score: point => point.recentAccuracy ?? point.masteryScore, hasAccuracy: point => typeof point.recentAccuracy === 'number' },
-    Scroller: class {}, Edge: {},
+    UpcomingExamService,
+    Scroller: class { scrollTo(value) { network.lastScroll = value; } }, Edge: {},
     ExerciseViewModel: class {
       load(...args) { return network.load(...args); }
       submit(...args) { return network.submit(...args); }
@@ -97,6 +103,7 @@ function loadPage(name, directory = 'pages') {
       getSubmissionFailure() { return network.submissionFailure ?? null; }
     },
     ProfileViewModel: class { load(...args) { return network.profile(...args); } },
+    PlanViewModel: class {}, ProactiveViewModel: class {},
     WorkflowViewModel: class {
       refreshStatus(...args) { return network.workflowStatus(...args); }
       getErrorMessage() { return 'offline'; }
@@ -122,6 +129,110 @@ async function check(name, run) {
 }
 
 (async () => {
+  await check('review collapses only the filtered list and preserves underlying evidence', async () => {
+    const page = loadPage('ReviewSummary');
+    page.data = { points: Array.from({ length: 9 }, (_, i) => ({ knowledgePointId: String(i), knowledgePointName: String(i),
+      sourceCourse: i < 7 ? '数据结构' : '操作系统', assessmentStatus: 'unassessed' })) };
+    assert.equal(page.visiblePoints().length, 3);
+    assert.equal(page.hiddenCount(), 6);
+    page.pointsOffset = 123;
+    page.togglePoints();
+    assert.equal(page.visiblePoints().length, 9);
+    assert.equal(page.hiddenCount(), 0);
+    page.detailPointIds = ['0'];
+    page.selectCourse('数据结构');
+    assert.equal(page.pointsExpanded, false);
+    assert.equal(page.hiddenCount(), 4);
+    assert.equal(page.detailPointIds.length, 0);
+    page.togglePoints(); page.togglePoints();
+    assert.equal(network.lastScroll.yOffset, 123);
+    page.selectCourse('操作系统');
+    assert.equal(page.visiblePoints().length, 2);
+    assert.equal(page.hiddenCount(), 0);
+    assert.equal(page.data.points.length, 9);
+    page.selectCourse('不存在');
+    assert.equal(page.visiblePoints().length, 0);
+    assert.equal(page.hiddenCount(), 0);
+  });
+  await check('review prioritizes retests and weak points without confusing historical and daily records', async () => {
+    const page = loadPage('ReviewSummary');
+    page.data = { answeredCount: 0, points: [
+      { knowledgePointId: 'none', knowledgePointName: '未测', assessmentStatus: 'unassessed', effectiveQuestionCount: 0 },
+      { knowledgePointId: 'stable', knowledgePointName: '稳定', assessmentStatus: 'stable', effectiveQuestionCount: 10 },
+      { knowledgePointId: 'weak', knowledgePointName: '巩固', assessmentStatus: 'needs_practice', effectiveQuestionCount: 9 },
+      { knowledgePointId: 'retest', knowledgePointName: '复测', assessmentStatus: 'retest_due', effectiveQuestionCount: 8 }] };
+    assert.equal(Array.from(page.visiblePoints(), p => p.knowledgePointId).join(','), 'retest,weak,stable');
+    assert.equal(page.practiceLabel(), '继续练习，补充测评记录');
+    page.data = { answeredCount: 0, points: [] };
+    assert.equal(page.practiceLabel(), '完成一组练习，了解当前表现');
+    page.togglePointDetails('one'); page.togglePointDetails('two'); page.togglePointDetails('one');
+    assert.equal(page.detailPointIds.join(','), 'two');
+  });
+  await check('review routes the exact point and course and requests fresh questions for a retest', async () => {
+    const page = loadPage('ReviewSummary');
+    page.practice({ knowledgePointId: 'http', sourceCourse: '计算机网络', assessmentStatus: 'retest_due' });
+    assert.equal(network.lastRoute.url, 'pages/ExercisePractice');
+    assert.equal(network.lastRoute.params.knowledgePointId, 'http');
+    assert.equal(network.lastRoute.params.courseName, '计算机网络');
+    assert.equal(network.lastRoute.params.forceGenerate, true);
+    page.selectCourse('操作系统'); page.practice();
+    assert.equal(network.lastRoute.params.courseName, '操作系统');
+    assert.equal(network.lastRoute.params.knowledgePointId, undefined);
+    assert.equal(network.lastRoute.params.forceGenerate, undefined);
+  });
+  await check('a late review response cannot restore another period or account', async () => {
+    const first = deferred(), second = deferred(); let calls = 0;
+    network.getLearningEffect = () => (++calls === 1 ? first.promise : second.promise);
+    const page = loadPage('ReviewSummary'); page.active = true;
+    const today = page.load(); page.days = 7; const week = page.load();
+    second.resolve(ok({ userId: 'alice', days: 7, points: [] })); await week;
+    first.resolve(ok({ userId: 'alice', days: 1, points: [] })); await today;
+    assert.equal(page.data.days, 7);
+    const old = deferred(); network.getLearningEffect = () => old.promise;
+    const pending = page.load(); appState.currentUser.userId = 'bob';
+    old.resolve(ok({ userId: 'alice', points: [{ knowledgePointId: 'private' }] })); await pending;
+    assert.equal(page.data.days, 7);
+    network.getLearningEffect = async () => ({ ok: false }); await page.load();
+    assert.equal(page.data, null);
+    assert.equal(page.loading, false);
+  });
+  await check('exam summary counts only upcoming scheduled exams and sorts the nearest first', async () => {
+    const course = (name, days, extra = {}) => ({ courseName: name, examDate: '2026-11-01', daysUntilExam: days, reviewDue: true, ...extra });
+    const input = [course('操作系统', 13), course('数据结构', 11), course('今天', 0), course('两周', 14),
+      course('过期', -1), course('远期', 15), course('缺日期', 2, { examDate: '' }), course('未知', null),
+      course('错误数字', NaN), course('不提醒', 1, { reviewDue: false })];
+    const ordered = UpcomingExamService.sorted(input);
+    assert.equal(Array.from(ordered, c => c.courseName).join(','), '今天,数据结构,操作系统,两周');
+    assert.equal(input[0].courseName, '操作系统');
+    assert.equal(UpcomingExamService.countdown(ordered[0]), '今天考试');
+    assert.equal(UpcomingExamService.countdown(ordered[1]), '11 天后考试');
+    const panel = loadPage('CourseReviewReminder', 'components'); panel.active = true;
+    network.courseSettings = async () => ok({ courses: input }); await panel.load();
+    assert.equal(panel.due.length, 4);
+    panel.openExams(); assert.equal(network.lastRoute.url, 'pages/UpcomingExams');
+    const list = loadPage('UpcomingExams'); list.review(panel.due[1]);
+    assert.equal(network.lastRoute.params.courseName, '数据结构');
+    assert.equal(network.lastRoute.url, 'pages/LearningReview');
+  });
+  await check('exam refresh rejects older responses and clears stale results after a failure', async () => {
+    const first = deferred(), second = deferred(); let calls = 0;
+    network.courseSettings = () => (++calls === 1 ? first.promise : second.promise);
+    const panel = loadPage('CourseReviewReminder', 'components'); panel.active = true;
+    const old = panel.load(), current = panel.load();
+    second.resolve(ok({ courses: [] })); await current;
+    first.resolve(ok({ courses: [{ courseName: '旧课程', examDate: '2026-11-01', daysUntilExam: 1, reviewDue: true }] })); await old;
+    assert.equal(panel.due.length, 0);
+    network.courseSettings = async () => ({ ok: false }); await panel.load();
+    assert.ok(panel.notice.includes('重试'));
+    const list = loadPage('UpcomingExams'); list.active = true; await list.load();
+    assert.equal(list.loading, false); assert.ok(list.notice.includes('重试'));
+  });
+  await check('learning onboarding appears only when both courses and assignments are empty', async () => {
+    const page = loadPage('Index');
+    appState.courses = []; appState.homeworkDDLs = []; assert.equal(page.hasLearningData(), false);
+    appState.homeworkDDLs = [{ id: 'ddl' }]; assert.equal(page.hasLearningData(), true);
+    appState.courses = [{ courseName: '数据结构' }]; appState.homeworkDDLs = []; assert.equal(page.hasLearningData(), true);
+  });
   await check('reminder reason stays attached to the same task during an unrelated refresh', async () => {
     const panel = loadPage('TodayPanel', 'components');
     panel.displayOwner = 'alice';
