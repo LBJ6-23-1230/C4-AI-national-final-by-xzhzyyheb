@@ -42,8 +42,8 @@ function endOfMethod(source, start) {
   throw Error('unclosed method');
 }
 
-function loadPage(name) {
-  const file = path.join(root, 'pages', name + '.ets');
+function loadPage(name, directory = 'pages') {
+  const file = path.join(root, directory, name + '.ets');
   const source = fs.readFileSync(file, 'utf8');
   const declaration = /struct (\w+)\s*\{/.exec(source);
   const first = source.indexOf('  aboutToAppear()');
@@ -58,7 +58,7 @@ function loadPage(name) {
   fieldParts.push(fieldSource.slice(previous));
   const fields = fieldParts.join('')
     .replace(/^\s*@Builder\s*$/gm, '')
-    .replace(/^\s*@(?:State|StorageLink\([^\n]+?\)|Watch\([^\n]+?\))\s*/gm, '\n  ')
+    .replace(/^\s*@(?:State|Prop|StorageLink\([^\n]+?\)|Watch\([^\n]+?\))\s*/gm, '\n  ')
     .replace(/@Watch\([^)]*\)\s*/g, '');
   const methods = [];
   const pattern = /^  (?:(?:private|async)\s+)*(\w+)\(/gm;
@@ -78,6 +78,9 @@ function loadPage(name) {
     // Scrolling and device services do not participate in request decisions.
     setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, clearInterval: () => {},
     appState, DemoSnapshot: snapshot, AgentApiClient: network,
+    getContext: () => ({}),
+    TodayStore: { save: () => {}, firstDisplay: () => false },
+    LearningCardService: { saveOverview: async () => {} },
     ApiDefaults: { DEMO_USER_ID: 'demo-user', ALLOW_DEBUG: true, ALLOW_DEMO: true },
     router: {
       getParams: () => Object.hasOwn(network, 'routeParams') ? network.routeParams : ({ knowledgePointId: 'point' }),
@@ -119,6 +122,39 @@ async function check(name, run) {
 }
 
 (async () => {
+  await check('reminder reason stays attached to the same task during an unrelated refresh', async () => {
+    const panel = loadPage('TodayPanel', 'components');
+    panel.displayOwner = 'alice';
+    panel.data = { userId: 'alice', highlight: { eventId: 'tcp', version: 1, title: 'TCP', reason: 'TCP deadline' }, tasks: [] };
+    panel.toggleReason();
+    network.getToday = async () => ok({ ...panel.data, tasks: [{ eventId: 'calculus', title: 'Calculus' }] });
+    await panel.refresh();
+    assert.equal(panel.expanded, true);
+    assert.equal(panel.data.highlight.title, 'TCP');
+    assert.equal(panel.data.highlight.reason, 'TCP deadline');
+  });
+  await check('changing the highlighted task closes its old reason before displaying a new task', async () => {
+    const panel = loadPage('TodayPanel', 'components');
+    panel.displayOwner = 'alice';
+    panel.data = { userId: 'alice', highlight: { eventId: 'tcp', version: 1, title: 'TCP', reason: 'TCP deadline' }, tasks: [] };
+    panel.toggleReason();
+    network.getToday = async () => ok({ userId: 'alice', highlight: { eventId: 'report', version: 1, title: 'Report', reason: 'Report deadline' }, tasks: [] });
+    await panel.refresh();
+    assert.equal(panel.expanded, false);
+    assert.equal(panel.data.highlight.eventId, 'report');
+    panel.toggleReason();
+    assert.equal(panel.data.highlight.reason, 'Report deadline');
+  });
+  await check('a newer version of the same reminder closes a previously expanded reason', async () => {
+    const panel = loadPage('TodayPanel', 'components');
+    panel.displayOwner = 'alice';
+    panel.data = { userId: 'alice', highlight: { eventId: 'tcp', version: 1, title: 'TCP', reason: 'Old deadline' }, tasks: [] };
+    panel.toggleReason();
+    network.getToday = async () => ok({ ...panel.data, highlight: { ...panel.data.highlight, version: 2, reason: 'New deadline' } });
+    await panel.refresh();
+    assert.equal(panel.expanded, false);
+    assert.equal(panel.data.highlight.reason, 'New deadline');
+  });
   await check('wrong-book selection starts empty and applies only explicitly selected questions', async () => {
     const page = loadPage('WrongBook');
     const items = [{ exerciseId: 'a' }, { exerciseId: 'b' }, { exerciseId: 'c' }];

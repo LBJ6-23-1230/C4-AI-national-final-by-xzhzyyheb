@@ -79,5 +79,5 @@ def test_vision_has_independent_budget_and_timeout_is_reported(monkeypatch, tmp_
         raise TimeoutError('llm_budget')
     monkeypatch.setattr(chat_llm, '_handle_analyze_wrong', timeout)
     result = chat_llm.chat('分析图片', image_base64='image')
-    assert not result['llmUsed'] and '识题超时' in result['reply']
+    assert not result['llmUsed'] and '识别超时' in result['reply']
     assert not result['wrongAnalysis']

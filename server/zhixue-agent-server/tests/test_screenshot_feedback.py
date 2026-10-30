@@ -65,12 +65,19 @@ def test_received_but_unreadable_is_not_reported_as_no_upload(setup, monkeypatch
     assert 'learningContext' not in result
 
 
-def test_vision_failure_has_received_receipt_and_no_false_goal(setup, monkeypatch):
-    monkeypatch.setattr(chat_llm, '_call_llm_with_image', lambda *a, **k: (_ for _ in ()).throw(TimeoutError()))
+@pytest.mark.parametrize('error', [TimeoutError('llm_budget'), RuntimeError('upstream unavailable')])
+def test_vision_failure_has_received_receipt_and_no_false_goal(setup, monkeypatch, error):
+    monkeypatch.setattr(chat_llm, '_call_llm_with_image', lambda *a, **k: (_ for _ in ()).throw(error))
+    diagnoses_before = copy.deepcopy(setup[1].list('chat_diagnoses'))
     result = send(setup, image=png()).get_json()
     assert result['attachmentReceipt']['status'] == 'failed'
     assert '图片已接收' in result['reply'] and not result['llmUsed']
+    assert result['reply'] == ('图片已接收，但识别超时。请重试，或裁剪成单题后上传。'
+                               if isinstance(error, TimeoutError) else
+                               '图片已接收，但识别未完成。请重试，或裁剪成单题后上传。')
+    assert not result.get('wrongAnalysis')
     assert 'learningContext' not in result
+    assert setup[1].list('chat_diagnoses') == diagnoses_before
 
 
 def test_confirmation_binds_current_question_and_keeps_multiple_goal_history(setup, monkeypatch):

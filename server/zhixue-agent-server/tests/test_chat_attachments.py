@@ -52,6 +52,21 @@ def test_image_only_message_is_not_dropped_from_history(client):
     assert row['user_input'] and row['image_preview']
 
 
+def test_coordinated_photo_reaches_recognition_with_initialized_session(client, monkeypatch):
+    calls = []
+    def recognize(**kwargs):
+        calls.append(kwargs)
+        return dict(reply='请核对图片内容', intent='analyze_wrong', card=None, llmUsed=False)
+    monkeypatch.setattr(chat_llm, 'chat', recognize)
+    body = dict(message='识别错题', image=PNG, coordinateLearning=True)
+    assert client.post('/api/agent/chat', json=body).status_code == 400
+    assert calls == []  # The old empty-session request never reached recognition.
+    response = client.post('/api/agent/chat', json=dict(body, sessionId='chat-photo-first-request'))
+    assert response.status_code == 200
+    assert len(calls) == 1 and calls[0]['session_id'] == 'chat-photo-first-request'
+    assert calls[0]['image_base64'] == PNG
+
+
 def test_expired_history_removes_old_original(client, monkeypatch):
     monkeypatch.setattr(chat_llm, 'HISTORY_MAX_ENTRIES', 1)
     client.post('/api/agent/chat', json={'message': '诊断', 'image': PNG, 'userId': 'alice'})

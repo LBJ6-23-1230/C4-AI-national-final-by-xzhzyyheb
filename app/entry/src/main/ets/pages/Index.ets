@@ -18,7 +18,6 @@ import { PlanViewModel } from '../viewmodels/PlanViewModel';
 import { ProactiveViewModel } from '../viewmodels/ProactiveViewModel';
 import { common } from '@kit.AbilityKit';
 import { LearningCardService } from '../services/LearningCardService';
-import { TodayPanel } from '../components/TodayPanel';
 import { WorkflowSessionStore } from '../cache/WorkflowSessionStore';
 import { AuthClient } from '../api/AuthClient';
 import { AuthStore } from '../api/AuthStore';
@@ -946,7 +945,6 @@ struct Index {
             // 去重原则：智能体能力（建议/计划/错题/画像）一律不在此重复，
             // 需要它们时去「智能体」页点对应智能体；这里只解决"任务从哪来、时间怎么安排"。
             if (this.activeTab === 2) {
-              TodayPanel()
               Row() {
                 Blank()
                 Row({ space: 5 }) {

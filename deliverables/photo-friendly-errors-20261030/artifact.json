@@ -1,0 +1,12 @@
+{
+  "baseCommit": "fd0a4d2",
+  "includesWorkingTreeChanges": true,
+  "file": "zhixue-photo-friendly-errors-signed.hap",
+  "bytes": 4493498,
+  "sha256": "58e0f7575e90e1cbf16890d4ec9bf16dee9f453779c3fee58c742ee81ae8629a",
+  "validation": {
+    "backendRelated": "78 passed",
+    "pageControllers": 50,
+    "arktsBuild": "passed"
+  }
+}

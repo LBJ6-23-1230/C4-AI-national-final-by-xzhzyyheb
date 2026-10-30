@@ -43,10 +43,15 @@ export struct TodayPanel {
     if (!this.active || version !== this.requestVersion || owner !== appState.currentUser.userId) return;
     this.loading = false;
     if (result.ok && result.data.userId === owner) {
+      if (this.data?.highlight?.eventId !== result.data.highlight?.eventId ||
+        this.data?.highlight?.version !== result.data.highlight?.version) this.expanded = false;
       this.data = result.data; this.message = '';
       TodayStore.save(getContext(this) as common.Context, result.data);
       void LearningCardService.saveOverview(getContext(this) as common.Context, result.data);
     } else this.message = '更新失败，点击重试';
+  }
+  private toggleReason(): void {
+    if (this.data?.highlight) this.expanded = !this.expanded;
   }
   private async act(event: ReminderEvent, action: string): Promise<void> {
     if (this.busy) return;
@@ -92,12 +97,13 @@ export struct TodayPanel {
           Text('稍后30分钟').fontSize(12).fontColor('#475467').onClick(() => this.act(this.data!.highlight!, 'snooze'))
           Text('今天忽略').fontSize(12).fontColor('#667085').onClick(() => this.act(this.data!.highlight!, 'ignore'))
         }.width('100%')
-        Text(this.expanded ? this.data!.highlight!.reason : '为什么建议现在做 ›').fontSize(12).fontColor('#667085').width('100%')
-          .onClick(() => this.expanded = !this.expanded)
-        if (this.data!.tasks.length > 0 && this.expanded) {
-          ForEach(this.data!.tasks, (item: ReminderEvent) => {
-            Text(`接下来 · ${item.title} · ${item.durationMinutes} 分钟`).fontSize(12).fontColor('#475467').width('100%')
-          }, (item: ReminderEvent) => item.eventId)
+        Text(this.expanded ? '收起本任务依据 ∧' : '为什么建议现在做 ›').fontSize(12).fontColor('#667085').width('100%')
+          .onClick(() => this.toggleReason())
+        if (this.expanded) {
+          Column({ space: 5 }) {
+            Text(`「${this.data!.highlight!.title}」的建议依据`).fontSize(12).fontWeight(FontWeight.Medium).fontColor('#475467').width('100%')
+            Text(this.data!.highlight!.reason).fontSize(12).fontColor('#667085').width('100%')
+          }.width('100%').padding(10).backgroundColor('#F8FAFC').borderRadius(8)
         }
       } else {
         Text(this.loading ? '正在读取今日安排…' : this.data?.guidance ?? '今日安排暂未读取').fontSize(13).fontColor('#667085').width('100%')

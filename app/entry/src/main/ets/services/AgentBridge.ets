@@ -175,7 +175,21 @@ export class AgentBridge {
     return request;
   }
 
+  static ensureChatSessionId(): string {
+    const current: string = (appState.chatSessionId || '').trim();
+    if (current.length > 0 && current.length <= 128) {
+      appState.chatSessionId = current;
+      return current;
+    }
+    // Standalone entry points (for example photo diagnosis) can send before
+    // ChatMain has ever sent a message. Allocate once and reuse for follow-ups.
+    const created: string = `chat-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
+    appState.chatSessionId = created;
+    return created;
+  }
+
   static buildRequestBody(message: string, image: string, history: AgentHistoryItem[]): string {
+    const sessionId: string = AgentBridge.ensureChatSessionId();
     // 单独序列化 user_data，避免 inline object literal 触发 ArkTS 编译错误
     const userDataObj: Record<string, Object> = {};
     userDataObj['courses'] = appState.courses;
@@ -194,7 +208,7 @@ export class AgentBridge {
     parts.push('"userId":' + JSON.stringify(appState.currentUser.userId));
     // 同一场对话的每一轮都携带同一个 id；只有点「新对话」才更换。
     // 后端据此把历史按完整会话归档，而不是把每一问一答拆成独立卡片。
-    parts.push('"sessionId":' + JSON.stringify(appState.chatSessionId));
+    parts.push('"sessionId":' + JSON.stringify(sessionId));
     parts.push('"coordinateLearning":true');
     return '{' + parts.join(',') + '}';
   }

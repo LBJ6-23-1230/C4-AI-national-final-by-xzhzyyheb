@@ -196,6 +196,16 @@ struct ExercisePractice {
     return names;
   }
 
+  private showCriteria(): void {
+    AlertDialog.show({ title: '练习状态说明',
+      message: '推荐：默认优先展示当前课程已作答、近期正确率较低的3项；搜索时展示匹配项。是展示顺序，不是掌握状态。\n\n' +
+        '需巩固：近期至少8道不同有效题、分布在至少2轮，但尚未同时达到80%正确率及基础/进阶题覆盖。\n\n' +
+        '待复测：有有效作答，但距离最近一次已满7天；只提醒重新验证，不表示已经遗忘。\n\n' +
+        '未测评：没有可核验的有效作答。少于8题或不足2轮时标为“初步结果”。\n\n' +
+        '统计每个知识点最近20道不同题目的首次作答，重复原题不重复增加样本。以上为试行规则。',
+      confirm: { value: '知道了', action: () => {} } });
+  }
+
   private startFlow(): void {
     if (this.practiceFromRoute) {
       this.loadExercises();
@@ -888,6 +898,8 @@ struct ExercisePractice {
           }, (name: string) => name)
         }
         }.scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).width('100%')
+        Text('判定说明 ›').fontSize(12).fontColor('#667085').width('100%').textAlign(TextAlign.End)
+          .padding({ top: 4, bottom: 4 }).onClick(() => this.showCriteria())
         if (this.coursePoints().length === 0) Text('暂无符合条件的知识点，请调整筛选。').fontSize(13).fontColor('#667085')
         ForEach(this.coursePoints(), (item: KnowledgeMastery, index: number) => {
           Column({ space: 8 }) {

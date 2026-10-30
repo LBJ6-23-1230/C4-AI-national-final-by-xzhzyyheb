@@ -988,13 +988,12 @@ struct ChatMain {
             .borderRadius(8)
         }
 
-        if (message.role === 'agent' && message.status === 'done' &&
-          (message.sourceLabel !== undefined || message.llmUsed !== undefined)) {
-          Text(message.sourceLabel ?? (message.llmUsed ? '大模型生成' : '本地规则兜底'))
+        if (message.role === 'agent' && message.status === 'done' && message.sourceLabel !== undefined) {
+          Text(message.sourceLabel)
             .fontSize(11)
-            .fontColor(message.sourceLabel !== undefined || message.llmUsed ? '#2563EB' : '#B45309')
+            .fontColor('#2563EB')
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-            .backgroundColor(message.sourceLabel !== undefined || message.llmUsed ? '#EAF2FF' : '#FFF7ED')
+            .backgroundColor('#EAF2FF')
             .borderRadius(10)
         }
 

@@ -44,7 +44,8 @@ def test_shortcut_failure_preserves_honest_fallback(monkeypatch):
     result = chat_llm.chat("帮我看看我的薄弱知识点", user_id="latency-empty",
                            user_context={"userId": "latency-empty"})
     assert result["llmUsed"] is False
-    assert "降级" in result["reply"]
+    assert "没有足够的掌握度或有效错题证据" in result["reply"]
+    assert "降级" not in result["reply"]
 
 
 def test_pending_cancel_skips_classifier_and_preserves_session_scope(monkeypatch):

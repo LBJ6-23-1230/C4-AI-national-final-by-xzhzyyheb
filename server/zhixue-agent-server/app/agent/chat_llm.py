@@ -9,8 +9,8 @@
 设计纪律：
 1. LLM 只负责"生成自然语言回复 / 识别意图"；所有业务计算（判分、掌握度、优先级、重规划）
    一律留在 `app/tools` 与 `app/decision` 的确定性代码里，不进入 prompt。
-2. 未配置 `DASHSCOPE_API_KEY` 时**不得伪装成真实 LLM 结果**：意图识别退回关键词匹配，
-   回复文案明确标注为本地规则兜底。
+2. 未配置 `DASHSCOPE_API_KEY` 时意图识别退回关键词匹配，通过 `llmUsed=False`
+   保留实际来源；面向用户的回复只描述业务结果与下一步操作。
 3. 任何异常都不抛出到路由层，统一转成可读的中文回复，保证聊天链路不 500。
 """
 
@@ -143,12 +143,6 @@ _LOCAL_REPLY: dict[str, str] = {
     "update_profile": "你可以直接说明要更新的信息，例如「我掌握了二叉树遍历」。",
     "unknown": "你可以问我今日建议、薄弱点、学习计划，也可以上传错题或匹配学习搭子。",
 }
-
-_LOCAL_NOTICE = (
-    "\n\n（提示：当前未配置 DASHSCOPE_API_KEY，"
-    "以上回复由本地确定性规则生成，不是大模型输出。）"
-)
-
 
 # --------------------------------------------------------------------------- 文件与配置
 def _load_prompt(filename: str) -> str:
@@ -1378,7 +1372,7 @@ def _chat_in_session(message: str, image_base64: str | None = None,
     profile_updates: dict[str, Any] = {}
     wrong_analysis: dict[str, Any] = {}
     image_timed_out = False
-    llm_attempted = llm_used  # 模型的意图判定是否真的成功（后续据此决定能否说"调用失败"）
+    llm_attempted = llm_used  # 保留意图识别实际使用模型的状态。
     if is_profile_confirmation:
         # “确认更新/取消更新”是确定性事务命令，不能再次依赖模型分类。
         # 否则模型未配置或把短句判成 unknown 时，待确认更新永远无法提交。
@@ -1417,22 +1411,15 @@ def _chat_in_session(message: str, image_base64: str | None = None,
         else:
             reply = _LOCAL_REPLY.get(intent, _LOCAL_REPLY["unknown"])
         if image_base64:
-            reply = ("图片已接收，但本次识图未成功。请重试或粘贴完整题干；模型未配置或不可用时无法识图。")
+            reply = "图片已接收，但识别未完成。请重试，或裁剪成单题后上传。"
             if image_timed_out:
-                reply = "图片已接收，但整页识题超时，本次未取得完整解析。请重试，或按题裁剪后分批上传；本次结果未保存为成功诊断。"
+                reply = "图片已接收，但识别超时。请重试，或裁剪成单题后上传。"
             llm_attempted = False
-        # ⚠️ 只有"模型调用确实失败"才把 llmUsed 置 False。
-        # `unknown` 是模型**依 prompt 正确返回**的兜底意图（prompt 第 84/127 行），
-        # 它没有对应子 Agent handler，因此 reply 为空、落到 `_LOCAL_REPLY["unknown"]`。
-        # 若此处不加区分地置 False，`/api/agent/chat` 就会回复
-        # "本次大模型调用失败" —— 而模型其实刚刚成功响应过，属于**对成功结果的误报**。
+        # unknown 是模型正常返回的兜底意图，没有专用 handler。
+        # 使用通用回复时仍保留实际调用状态，不能把成功识别误记为模型失败。
         llm_used = llm_attempted
 
-    if not is_profile_confirmation and not llm_used and llm_ready():
-        # LLM 已配置但本次调用失败：诚实说明，不伪装成模型输出
-        reply += "\n\n（提示：本次大模型调用失败，已降级为本地确定性规则回复。）"
-    elif not is_profile_confirmation and not llm_ready():
-        reply += _LOCAL_NOTICE
+    # 技术故障由运行日志与 llmUsed 记录，不拼进用户可见的回复。
 
     if not image_base64 and re.search(r"(?:看到|收到了|收到|读到了).{0,25}(?:图片|上传.{0,4}图)|图片中显示|图中可见", reply):
         reply = "本次消息未附图片，我不能声称看到图片。请上传题目，或粘贴完整题干和你的作答后再诊断。"

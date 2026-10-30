@@ -74,14 +74,14 @@ def test_card_target_page_is_always_a_declared_page(client):
 
 
 # --------------------------------------------------------------------------- 不伪装
-def test_reply_is_labelled_as_local_rule_when_llm_is_absent(client):
+def test_missing_llm_keeps_source_metadata_without_configuration_in_reply(client):
     body = client.post("/api/agent/chat", json={"message": "今天我应该先学什么？"}).get_json()
 
-    # 契约基线三字段 + 可选的 llmUsed（前端据它显示"本地规则兜底"标签）
+    # 来源信息留在结构化字段，配置细节不进入用户回复。
     assert set(body) == {"reply", "intent", "card", "llmUsed"}
     assert body["intent"] == "get_suggestion"
     assert body["llmUsed"] is False, "未配置 Key 时必须如实标注非大模型输出"
-    assert "DASHSCOPE_API_KEY" in body["reply"], "未配置 Key 时必须显式声明是本地规则兜底"
+    assert body["reply"] == chat_llm._LOCAL_REPLY["get_suggestion"]
 
 
 def test_real_user_without_evidence_never_receives_demo_weakness(client):
@@ -249,8 +249,8 @@ def test_multimodal_uses_configured_model_and_detects_png(monkeypatch):
     assert image_url.startswith("data:image/png;base64,")
 
 
-def test_llm_failure_degrades_honestly(monkeypatch, client):
-    """Key 已配置但调用失败时，必须说明降级，而不是返回静默兜底。"""
+def test_llm_failure_keeps_source_metadata_without_technical_notice(monkeypatch, client):
+    """业务回复与实际来源保留，调用失败与降级细节不展示。"""
     monkeypatch.setenv("DASHSCOPE_API_KEY", "configured-but-unreachable")
 
     def _boom(*_args, **_kwargs):
@@ -261,7 +261,8 @@ def test_llm_failure_degrades_honestly(monkeypatch, client):
     body = client.post("/api/agent/chat", json={"message": "今天我应该先学什么？"}).get_json()
 
     assert body["intent"] == "get_suggestion"
-    assert "本地确定性规则" in body["reply"] or "本地规则" in body["reply"]
+    assert body["llmUsed"] is False
+    assert body["reply"] == chat_llm._LOCAL_REPLY["get_suggestion"]
 
 
 def test_chat_result_marks_failed_llm_as_unused(monkeypatch):
@@ -275,7 +276,7 @@ def test_chat_result_marks_failed_llm_as_unused(monkeypatch):
     result = chat_llm.chat("今天我应该先学什么？")
 
     assert result["llmUsed"] is False
-    assert "本次大模型调用失败" in result["reply"]
+    assert result["reply"] == chat_llm._LOCAL_REPLY["get_suggestion"]
 
 
 def test_chat_result_marks_successful_llm_as_used(monkeypatch):

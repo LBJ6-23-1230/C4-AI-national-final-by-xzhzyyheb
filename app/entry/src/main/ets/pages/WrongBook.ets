@@ -417,8 +417,13 @@ struct WrongBook {
                     Column({ space: 12 }) {
                       Row({ space: 10 }) {
                         if (this.selecting) {
-                          Button(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '●' : '○')
-                            .fontSize(24).fontColor('#2563EB').backgroundColor('#FFFFFF').width(40).height(40)
+                          Button({ type: ButtonType.Circle }) {
+                            Text(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '✓' : '')
+                              .fontSize(18).fontColor('#FFFFFF').textAlign(TextAlign.Center)
+                          }
+                            .width(32).height(32).padding(0).borderRadius(16).flexShrink(0)
+                            .backgroundColor(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '#2563EB' : '#FFFFFF')
+                            .border({ width: 1.5, color: '#2563EB' })
                             .accessibilityText(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '已选中，点击取消' : '未选中，点击选择')
                             .onClick(() => this.toggleSelection(item))
                         }

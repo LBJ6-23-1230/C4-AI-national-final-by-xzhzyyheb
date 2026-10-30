@@ -130,6 +130,26 @@ const failure = { ok: false, error: { message: 'offline' } };
   const body = JSON.parse(AgentBridge.buildRequestBody('learn', '', []));
   assert.equal(body.coordinateLearning, true);
   assert.equal(body.sessionId, 'stable-chat');
+  // Photo diagnosis can be the first request after login/new conversation.
+  appState.chatSessionId = '';
+  const photo = JSON.parse(AgentBridge.buildRequestBody('diagnose photo', 'data:image/png;base64,example', []));
+  assert.ok(photo.sessionId.length >= 1 && photo.sessionId.length <= 128);
+  assert.equal(appState.chatSessionId, photo.sessionId);
+  assert.equal(photo.image, 'data:image/png;base64,example');
+  assert.equal(photo.coordinateLearning, true);
+  assert.equal(JSON.parse(AgentBridge.buildRequestBody('follow up', '', [])).sessionId, photo.sessionId);
+  appState.chatSessionId = '';
+  const nextPhoto = JSON.parse(AgentBridge.buildRequestBody('new photo conversation', 'image', []));
+  assert.notEqual(nextPhoto.sessionId, photo.sessionId);
+  for (const broken of [undefined, '   ', 'x'.repeat(129)]) {
+    appState.chatSessionId = broken;
+    const repaired = JSON.parse(AgentBridge.buildRequestBody('diagnose', 'image', []));
+    assert.ok(repaired.sessionId.length >= 1 && repaired.sessionId.length <= 128);
+    assert.equal(JSON.parse(AgentBridge.buildRequestBody('retry', 'image', [])).sessionId, repaired.sessionId);
+  }
+  appState.chatSessionId = '  saved-session  ';
+  assert.equal(JSON.parse(AgentBridge.buildRequestBody('resume', '', [])).sessionId, 'saved-session');
+  assert.equal(appState.chatSessionId, 'saved-session');
   const { TraceViewModel } = load(path.join(root, 'viewmodels/TraceViewModel.ets'));
   network.getTrace = () => new Promise(resolve => { release = resolve; });
   const traceLoading = new TraceViewModel().load('trace-goal', true);
@@ -139,4 +159,5 @@ const failure = { ok: false, error: { message: 'offline' } };
   assert.equal(ClientCache.getTrace(), null);
   console.log('PASS: actual ETS exercise modules enforce material scope, fresh retrieval, explicit failures, async request order and account isolation.');
   console.log('PASS: actual ETS goal DTO parsing, chat request, explicit submission binding and trace account isolation.');
+  console.log('PASS: standalone photo diagnosis creates a valid session, follow-ups reuse it, and new conversations rotate it.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
