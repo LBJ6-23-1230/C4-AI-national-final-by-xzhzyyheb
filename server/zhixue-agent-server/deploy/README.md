@@ -40,7 +40,7 @@ OBS 使用 `FILE_STORAGE=obs` 和华为官方 Python SDK；支持 S3 兼容服�
 docker compose --env-file .env.production --profile tools run --rm migrate
 ```
 
-结构版本为 `20261027_01`。API/Worker 启动只检查连接和版本，不执行 DDL。迁移成功后由数据库管理员执行 `deploy/roles.sql`，再把 `zhixue_api` 和 `zhixue_worker` 分别授予对应的 LOGIN 角色。API/Worker 的环境文件不得使用迁移角色。后续迁移新增表时，需要复核授权；默认不向应用授予 CREATE。
+结构版本为 `20261030_03`。API/Worker 启动只检查连接和版本，不执行 DDL。迁移成功后由数据库管理员执行 `deploy/roles.sql`，再把 `zhixue_api` 和 `zhixue_worker` 分别授予对应的 LOGIN 角色。API/Worker 的环境文件不得使用迁移角色。后续迁移新增表时，需要复核授权；默认不向应用授予 CREATE。
 
 已有结构版本不符或数据库不可用时启动失败，禁止自动创建 JSON 空库。不要通过删掉 `alembic_version` 或强制 stamp 绕过检查。
 
@@ -124,3 +124,8 @@ SELECT count(*) FROM file_objects WHERE status='uploaded';
 短信提供商和可信华为登录仍需外部服务接入；当前未接入时返回真实错误，不回显生产验证码。正式上线前需要验证账号注册策略、隐私政策、服务额度、真机移动网络和发布签名。不要将本次本机测试报告当作正式云端验收。
 
 参考：[SQLAlchemy 连接池](https://docs.sqlalchemy.org/en/20/core/pooling.html)、[PostgreSQL 锁](https://www.postgresql.org/docs/current/explicit-locking.html)、[华为 OBS SDK](https://github.com/huaweicloud/huaweicloud-sdk-python-obs)。
+
+
+## 2026-10-30 课程与作业同步升级
+
+新增 `learning_courses`、`learning_assignments`，迁移头为 `20261030_03`。更新 API 前先备份，并通过迁移角色执行 `alembic upgrade head`；应用启动不执行 DDL。旧客户端空作业列表不再代表删除。两台设备安装新版，原设备首次登录以补充方式迁移课程与 DDL，再由另一设备恢复。

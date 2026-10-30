@@ -203,6 +203,8 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
     app.register_blueprint(focus_api)
     from app.api.reminders import reminders_api
     app.register_blueprint(reminders_api)
+    from app.api.learning_data import learning_data_api
+    app.register_blueprint(learning_data_api)
 
     @app.before_request
     def resolve_optional_identity():

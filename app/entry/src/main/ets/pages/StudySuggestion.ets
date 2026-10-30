@@ -234,7 +234,7 @@ struct StudySuggestion {
   NoTaskBlock() {
     Column({ space: 12 }) {
       Text(this.pendingAssignments().length > 0 ? `有 ${this.pendingAssignments().length} 项作业待安排`
-        : (this.allTasksDone() ? '本次计划已全部完成' : '当前计划没有可执行任务'))
+        : (this.allTasksDone() ? '本次计划已全部完成' : '选择课程与时长，开始本次学习'))
         .fontSize(19).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
       Text(this.pendingAssignments().length > 0
         ? '你的作业 DDL 已同步。选择一项加入本次计划，按该作业预计时长安排；也可以到完整计划里调整可用时间。'
@@ -279,7 +279,7 @@ struct StudySuggestion {
       Scroll() {
           Column({ space: 16 }) {
             Text('今日学习建议').fontSize(26).fontWeight(FontWeight.Bold).fontColor('#172033').width('100%')
-            Text('任务、时长和判断依据均来自当前 Agent 计划，前端不重新计算优先级。')
+            Text('根据你的课程、作业与练习记录，选择今天要做的事。')
               .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
             if (this.isCached && !this.isLoading) {
               Text('当前显示的是最近一次成功读取的计划，可能已过期。')

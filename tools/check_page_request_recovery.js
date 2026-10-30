@@ -84,7 +84,7 @@ function loadPage(name) {
       pushUrl: route => { network.lastRoute = route; },
       back: () => { network.backCalls = (network.backCalls || 0) + 1; }
     },
-    LearningEvidence: { assessed: point => point.assessed === true },
+    LearningEvidence: { assessed: point => point.assessed === true, score: point => point.recentAccuracy ?? point.masteryScore, hasAccuracy: point => typeof point.recentAccuracy === 'number' },
     Scroller: class {}, Edge: {},
     ExerciseViewModel: class {
       load(...args) { return network.load(...args); }

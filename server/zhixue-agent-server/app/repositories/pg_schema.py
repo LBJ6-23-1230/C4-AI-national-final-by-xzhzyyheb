@@ -8,7 +8,7 @@ from sqlalchemy import (MetaData, Table, Column, Text, Integer, DateTime, Index,
                         CheckConstraint, UniqueConstraint, ForeignKeyConstraint, func)
 from sqlalchemy.dialects.postgresql import JSONB
 
-REVISION = "20261028_02"
+REVISION = "20261030_03"
 metadata = MetaData()
 COLLECTIONS = {
     "users": "users", "sessions": "auth_sessions",
@@ -21,6 +21,7 @@ COLLECTIONS = {
     "jobs": "jobs", "file_objects": "file_objects", "audit_events": "audit_events",
     "focus_sessions": "focus_sessions", "exercise_usage": "exercise_usage",
     "document_tag_revisions": "document_tag_revisions", "learning_events": "learning_events",
+    "courses": "learning_courses", "assignments": "learning_assignments",
 }
 
 

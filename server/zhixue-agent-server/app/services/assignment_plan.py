@@ -27,9 +27,17 @@ def validate_assignments(rows):
         seen.add(row["id"])
 
 
-def reconcile(plan, rows, selected_id=None):
+def reconcile(plan, rows, selected_id=None, *, authoritative=False):
     result = deepcopy(plan)
     existing = {t["taskId"]: t for t in plan.get("tasks", []) + plan.get("unscheduledTasks", [])}
+    if not authoritative:
+        # Old clients send device-local snapshots. Absence is never a deletion.
+        present = {r['id'] for r in rows}
+        rows = list(rows) + [dict(id=t['taskId'], title=t['knowledgePointName'],
+            courseName=t.get('sourceCourse', ''), dueDate=t['dueDate'],
+            estimatedMinutes=t['durationMinutes'], priority=t.get('priority', 'normal'),
+            completed=t.get('status') == 'completed') for t in existing.values()
+            if t.get('source') == 'ddl' and t['taskId'] not in present]
     scheduled_ids = {t["taskId"] for t in plan.get("tasks", [])}
     regular = [t for t in plan.get("tasks", []) if t.get("source") != "ddl"]
     deferred = [t for t in plan.get("unscheduledTasks", []) if t.get("source") != "ddl"]

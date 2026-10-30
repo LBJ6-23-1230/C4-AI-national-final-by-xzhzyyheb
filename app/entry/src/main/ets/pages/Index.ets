@@ -1153,10 +1153,10 @@ const AGENT_SPECS: AgentSpec[] = [
   },
   {
     key: 'assessment', icon: $r('app.media.feature_assessment'), name: '测评智能体', category: '效果评估',
-    role: '验证学习是否有效',
-    desc: '汇总掌握度变化、计划重排与学习证据，输出复盘与下一步建议，形成全过程可信记录。',
+    role: '评估练习表现',
+    desc: '根据作答结果识别需巩固的知识点，记录变化，并提供后续学习建议。',
     routes: [
-      { label: '学习复盘', target: 'pages/ReviewSummary', prompt: '' }
+      { label: '练习表现与复盘', target: 'pages/ReviewSummary', prompt: '' }
     ],
     ready: true
   },

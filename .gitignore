@@ -85,6 +85,7 @@ _test_*/
 
 # ---- 决赛整理：本机备份与制作缓存（保留在原位置） ----
 /.local-work/
+/server/zhixue-agent-server/.local-work/
 /ppt_bg_work/
 /tmp/
 /output/

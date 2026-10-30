@@ -61,6 +61,8 @@ def get_profile(user_id: str):
 	from app.services.course_names import profile_courses
 	from app.services.subject_classification import normalized_mastery
 	profile = dict(profile, targetCourses=profile_courses(profile), mastery=normalized_mastery(profile))
+	from app.services.learning_effect import projected_mastery
+	profile['mastery'] = projected_mastery(_repository, user_id, profile['mastery'])
 	return jsonify({"profileVersion": profile.get("profileVersion", 1),
 		"profile": profile, "mastery": profile.get("mastery", []),
 		"history": profile.get("history", []), "evidence": profile.get("evidence", [])})
@@ -100,6 +102,8 @@ def add_knowledge_points(user_id):
 		selected = [p for c in courses for p in cached[c]]
 		profile = merge_points_into_profile(staged, user_id, selected)
 		staged.commit()
+		from app.services.learning_effect import projected_mastery
+		profile = dict(profile, mastery=projected_mastery(_repository, user_id, profile.get('mastery', [])))
 		return jsonify({"profileVersion": profile.get("profileVersion", 1), "profile": profile,
 			"mastery": profile.get("mastery", []), "history": profile.get("history", []),
 			"evidence": profile.get("evidence", []),

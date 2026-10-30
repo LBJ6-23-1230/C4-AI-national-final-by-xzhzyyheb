@@ -1,3 +1,4 @@
+import { LearningSnapshot, LearningEffect } from './LearningSyncModels';
 import { util } from '@kit.ArkTS';
 import { TodayOverview, ReminderList, ReminderSettings } from './ReminderModels';
 import { ClientCache } from '../cache/ClientCache';
@@ -76,6 +77,12 @@ export class FixtureApiTransport {
   static async request<T>(method: string, path: string, body?: Object): Promise<ApiResult<T>> {
     // 统一用去查询串的路径匹配：`?userId=` 之类不能再让精确比较失效。
     const route: string = FixtureApiTransport.basePath(path);
+    if (route === '/api/v1/learning-data' && method === 'GET') return apiSuccess<LearningSnapshot>({
+      userId: ClientCache.currentOwnerUserId(), revision: 0, courses: [], homeworkDDLs: [] }, 'fixture') as ApiResult<T>;
+    if (route === '/api/v1/learning-effect') return apiSuccess<LearningEffect>({
+      userId: ClientCache.currentOwnerUserId(), days: path.indexOf('days=7') >= 0 ? 7 : 1, timezone: 'Asia/Shanghai',
+      focusMinutes: 0, completedFocusSessions: 0, answeredCount: 0, correctCount: 0, practiceAccuracy: null,
+      conclusion: '连接服务端后可查看你的学习记录', points: [], ruleVersion: 'practice-evidence-v1' }, 'fixture') as ApiResult<T>;
     if (route === '/api/v1/today') return apiSuccess<TodayOverview>({ userId: ClientCache.currentOwnerUserId(),
       dataTime: new Date().toISOString(), version: 'fixture-empty', highlight: null, tasks: [], pendingCount: 0,
       guidance: '离线演示模式：今日事项需连接服务端后同步。', modelCalls: 0 }, 'fixture') as ApiResult<T>;

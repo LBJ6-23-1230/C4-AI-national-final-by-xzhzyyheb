@@ -185,11 +185,11 @@ def public(event):
 def overview(repo, owner, stamp=None):
     events = [e for e in repo.list('reminder_events') if e.get('userId') == owner and e['status'] not in TERMINAL]
     events.sort(key=lambda e: ({'urgent': 0, 'important': 1, 'normal': 2}[e['level']], e['due'], e['eventId']))
-    visible = [e for e in events if e['status'] not in ('ignored', 'snoozed')]
+    visible = [e for e in events if e['status'] == 'pending']
     return dict(userId=owner, dataTime=(stamp or now()).isoformat(),
         version=digest(*(str((e['eventId'], e['version'], e['status'])) for e in events))[:20],
         highlight=public(visible[0]) if visible else None, tasks=[public(e) for e in visible[1:3]],
-        pendingCount=len(events), guidance='先导入课程或完成一次知识点诊断，建立学情。' if not events else '今天的事项已处理，可查看安排。',
+        pendingCount=len(visible), guidance='先导入课程或完成一次知识点诊断，建立学情。' if not events else '今天的事项已处理，可查看安排。',
         modelCalls=0)
 
 

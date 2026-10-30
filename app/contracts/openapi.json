@@ -5055,6 +5055,159 @@
           }
         }
       }
+    },
+    "/api/v1/learning-data": {
+      "get": {
+        "tags": [
+          "Learning"
+        ],
+        "summary": "读取课程与作业",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要登录"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Learning"
+        ],
+        "summary": "提交显式课程与作业变更",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "400": {
+            "description": "数据格式错误"
+          },
+          "409": {
+            "description": "记录版本冲突"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearningChanges"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learning-effect": {
+      "get": {
+        "tags": [
+          "Learning"
+        ],
+        "summary": "读取学习投入与练习表现",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningEffect"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要登录"
+          }
+        },
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                7
+              ],
+              "default": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/reminders/{eventId}/actions/{operationKey}": {
+      "get": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "确认已提交提醒操作的结果",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "operationKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderActionResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "尚未找到操作结果"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5542,6 +5695,55 @@
             "format": "date-time"
           },
           "sourceCourse": {
+            "type": "string"
+          },
+          "topicGroup": {
+            "type": "string"
+          },
+          "assessmentStatus": {
+            "type": "string",
+            "enum": [
+              "unassessed",
+              "evidence_limited",
+              "needs_practice",
+              "stable",
+              "retest_due"
+            ]
+          },
+          "effectiveQuestionCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "correctCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "recentAccuracy": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "nullable": true
+          },
+          "lastAssessedAt": {
+            "type": "string"
+          },
+          "assessmentRoundCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "performanceChange": {
+            "type": "number",
+            "nullable": true
+          },
+          "retentionStatus": {
+            "type": "string",
+            "enum": [
+              "not_tested",
+              "preliminary_good",
+              "needs_review"
+            ]
+          },
+          "ruleVersion": {
             "type": "string"
           }
         }
@@ -7126,6 +7328,10 @@
                 "type": "string"
               }
             }
+          },
+          "syncVersion": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -9481,6 +9687,221 @@
         "required": [
           "status"
         ]
+      },
+      "SyncedAssignment": {
+        "type": "object",
+        "required": [
+          "id",
+          "courseName",
+          "title",
+          "dueDate",
+          "daysLeft",
+          "priority",
+          "estimatedMinutes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysLeft": {
+            "type": "integer"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "estimatedMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "syncVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "courseId": {
+            "type": "string"
+          }
+        }
+      },
+      "LearningDeletion": {
+        "type": "object",
+        "required": [
+          "id",
+          "expectedVersion"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "LearningChanges": {
+        "type": "object",
+        "required": [
+          "idempotencyKey"
+        ],
+        "properties": {
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseInfo"
+            }
+          },
+          "homeworkDDLs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncedAssignment"
+            }
+          },
+          "deletedCourses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningDeletion"
+            }
+          },
+          "deletedDDLs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningDeletion"
+            }
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "migration": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "LearningSnapshot": {
+        "type": "object",
+        "required": [
+          "userId",
+          "revision",
+          "courses",
+          "homeworkDDLs"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "courses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseInfo"
+            }
+          },
+          "homeworkDDLs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncedAssignment"
+            }
+          },
+          "deletedCourses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningDeletion"
+            }
+          },
+          "deletedDDLs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningDeletion"
+            }
+          }
+        }
+      },
+      "LearningEffect": {
+        "type": "object",
+        "required": [
+          "userId",
+          "days",
+          "timezone",
+          "focusMinutes",
+          "completedFocusSessions",
+          "answeredCount",
+          "correctCount",
+          "practiceAccuracy",
+          "conclusion",
+          "points",
+          "ruleVersion"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "days": {
+            "type": "integer",
+            "enum": [
+              1,
+              7
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "focusMinutes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completedFocusSessions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answeredCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "correctCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "practiceAccuracy": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "nullable": true
+          },
+          "conclusion": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeMastery"
+            }
+          },
+          "ruleVersion": {
+            "type": "string"
+          },
+          "timeAttribution": {
+            "type": "string"
+          }
+        }
       }
     },
     "responses": {

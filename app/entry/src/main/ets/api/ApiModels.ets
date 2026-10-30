@@ -176,6 +176,16 @@ export interface Evidence {
 }
 
 export interface KnowledgeMastery {
+  topicGroup?: string;
+  assessmentStatus?: string;
+  effectiveQuestionCount?: number;
+  correctCount?: number;
+  recentAccuracy?: number | null;
+  lastAssessedAt?: string;
+  assessmentRoundCount?: number;
+  performanceChange?: number | null;
+  retentionStatus?: string;
+  ruleVersion?: string;
   sourceCourse?: string;
   knowledgePointId: string;
   knowledgePointName: string;

@@ -45,6 +45,7 @@ export interface RecentStatus {
 }
 
 export interface CourseInfo {
+  syncVersion?: number;
   courseId: string;
   courseName: string;
   exam: ExamInfo;
@@ -53,6 +54,9 @@ export interface CourseInfo {
 }
 
 export interface HomeworkDDL {
+  courseId?: string;
+  syncVersion?: number;
+  completed?: boolean;
   id: string;
   courseName: string;
   title: string;

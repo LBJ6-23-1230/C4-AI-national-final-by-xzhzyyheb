@@ -17,6 +17,9 @@ export struct TodayPanel {
   @State loading: boolean = false;
   @State busy: boolean = false;
   @State expanded: boolean = false;
+  @State panelOpen: boolean = false;
+  @State actionMessage: string = '';
+  private displayOwner: string = '';
   private requestVersion: number = 0;
   private active: boolean = true;
   aboutToAppear(): void {
@@ -28,6 +31,11 @@ export struct TodayPanel {
   aboutToDisappear(): void { this.active = false; this.requestVersion++; }
   private async refresh(): Promise<void> {
     const owner: string = appState.currentUser.userId;
+    if (owner !== this.displayOwner) {
+      this.displayOwner = owner;
+      this.panelOpen = appState.isSignedIn && TodayStore.firstDisplay(getContext(this) as common.Context, owner);
+      this.expanded = false; this.actionMessage = ''; this.busy = false;
+    }
     if (this.data?.userId !== owner) this.data = null;
     const version: number = ++this.requestVersion;
     this.loading = true;
@@ -38,7 +46,7 @@ export struct TodayPanel {
       this.data = result.data; this.message = '';
       TodayStore.save(getContext(this) as common.Context, result.data);
       void LearningCardService.saveOverview(getContext(this) as common.Context, result.data);
-    } else this.message = result.ok ? '账号已变化，请刷新。' : (result as ApiFailure).error.message;
+    } else this.message = '更新失败，点击重试';
   }
   private async act(event: ReminderEvent, action: string): Promise<void> {
     if (this.busy) return;
@@ -51,7 +59,8 @@ export struct TodayPanel {
       idempotencyKey: `${event.eventId}-${event.version}-${action}`, minutes: 30 });
     if (!this.active || owner !== appState.currentUser.userId) return;
     this.busy = false;
-    if (!result.ok) { this.message = (result as ApiFailure).error.message; void this.refresh(); return; }
+    if (!result.ok) { this.actionMessage = (result as ApiFailure).error.code === 'RESULT_UNCONFIRMED' ? '暂未确认，请重试' : '操作失败，请重试'; return; }
+    this.actionMessage = action === 'snooze' ? '已稍后提醒' : action === 'ignore' ? '今日已忽略' : '';
     if (action === 'start') {
       if (event.targetPage === 'pages/FocusSetup') {
         appState.setFocusTask({ course: event.courseName, task: event.title, plannedMinutes: event.durationMinutes,
@@ -65,10 +74,13 @@ export struct TodayPanel {
   build() {
     Column({ space: 8 }) {
       Row() {
-        Text('今日重点').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#101828')
+        Text(this.data?.pendingCount ? `! 今日有 ${this.data!.pendingCount} 项待处理` : '今日安排')
+          .fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.data?.highlight?.level === 'urgent' ? '#B42318' : '#101828').layoutWeight(1).maxLines(1)
         Blank()
-        Text('提醒与设置 ›').fontSize(12).fontColor('#475467').onClick(() => router.pushUrl({ url: 'pages/Reminders' }))
+        Text(this.panelOpen ? '收起 ∧' : '展开 ∨').fontSize(12).fontColor('#2563EB').padding(8)
+          .onClick(() => this.panelOpen = !this.panelOpen)
       }.width('100%')
+      if (this.panelOpen) {
       if (this.data?.highlight) {
         Text(this.data!.highlight!.title).fontSize(18).fontWeight(FontWeight.Medium)
           .fontColor(this.data!.highlight!.level === 'urgent' ? '#B42318' : '#101828').width('100%').maxLines(2)
@@ -91,8 +103,11 @@ export struct TodayPanel {
         Text(this.loading ? '正在读取今日安排…' : this.data?.guidance ?? '今日安排暂未读取').fontSize(13).fontColor('#667085').width('100%')
         Text('查看今日安排 ›').fontSize(13).fontColor('#2563EB').width('100%').onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
       }
+      Text('提醒与设置 ›').fontSize(12).fontColor('#475467').width('100%').onClick(() => router.pushUrl({ url: 'pages/Reminders' }))
+      }
+      if (this.actionMessage) Text(this.actionMessage).fontSize(12).fontColor('#667085').width('100%')
       if (this.message) {
-        Text(`${this.message}${this.data ? ' · 保留缓存：' + this.data.dataTime.slice(0, 16).replace('T', ' ') : ''} · 点击重试`)
+        Text(this.message)
           .fontSize(11).fontColor('#B54708').width('100%').onClick(() => this.refresh())
       }
     }.padding(14).width('100%').backgroundColor('#FFFFFF').borderRadius(12)

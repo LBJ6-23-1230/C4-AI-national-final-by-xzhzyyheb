@@ -43,6 +43,8 @@ import { DateHelper } from '../utils/DateHelper';
 import { FocusClock } from '../utils/FocusClock';
 import { ClientCache } from '../cache/ClientCache';
 import { LearningDataStore, StoredLearningData, StoredTaskStatus } from '../cache/LearningDataStore';
+import { LearningSync } from '../services/LearningSync';
+import { LearningSnapshot } from '../api/LearningSyncModels';
 
 /**
  * AppState — 全局单例状态管理
@@ -54,6 +56,70 @@ import { LearningDataStore, StoredLearningData, StoredTaskStatus } from '../cach
 export class AppState {
   private static instance: AppState;
   private knowledgeSyncVersion: number = 0;
+  private learningSync: LearningSync = new LearningSync();
+  private learningEnvironment: string = '';
+
+  public async syncLearningData(): Promise<boolean> {
+    if (this.learningEnvironment !== LearningDataStore.environment()) this.restoreLearningData(this.currentUser.userId);
+    if (!this.isSignedIn || AgentApiClient.getConfig().useFixture) return true;
+    const owner: string = this.currentUser.userId;
+    const engine: LearningSync = this.learningSync;
+    const environment: string = AgentApiClient.getConfig().baseUrl;
+    const current = (): boolean => this.isSignedIn && this.currentUser.userId === owner &&
+      this.learningSync === engine && AgentApiClient.getConfig().baseUrl === environment;
+    const snapshot: LearningSnapshot | null = await engine.sync(owner, current);
+    if (!current()) return false;
+    if (snapshot !== null && engine.queue.length === 0) {
+      engine.accept(snapshot);
+      this.courses = snapshot.courses;
+      this.homeworkDDLs = snapshot.homeworkDDLs;
+      this.importedCourseCount = this.courses.length;
+      this.importedDDLCount = this.homeworkDDLs.length;
+      this.isDataImported = this.courses.length + this.homeworkDDLs.length > 0;
+      this.homeworkDDLs.forEach((item: HomeworkDDL) => {
+        if (item.completed) this.taskStatusOverrides.set(item.id, 'completed');
+      });
+      this.notifyLearningDataChanged();
+    }
+    AppStorage.setOrCreate('learningSyncMessage', engine.message);
+    AppStorage.setOrCreate('learningSyncConflict', engine.conflict);
+    this.saveLearningSnapshot();
+    if (snapshot !== null && engine.queue.length > 0) return this.syncLearningData();
+    return snapshot !== null;
+  }
+
+  public async useServerLearningData(): Promise<void> {
+    if (this.learningSync.running) return;
+    const owner: string = this.currentUser.userId;
+    const cloud = await AgentApiClient.getLearningData();
+    if (owner !== this.currentUser.userId) return;
+    if (!cloud.ok || cloud.data.userId !== owner) { AppStorage.setOrCreate('learningSyncMessage', '同步失败，请重试。'); return; }
+    // Retain a recoverable copy before the user explicitly selects cloud data.
+    const saved: boolean = LearningDataStore.save(`conflict-backup-${this.currentUser.userId}-${Date.now()}`, {
+      courses: this.courses, homeworkDDLs: this.homeworkDDLs, isDataImported: this.isDataImported,
+      syncQueue: this.learningSync.queue, cloudInitialized: this.learningSync.initialized });
+    if (!saved) { AppStorage.setOrCreate('learningSyncMessage', '本机备份失败，请重试。'); return; }
+    this.learningSync = new LearningSync();
+    this.learningSync.restore(cloud.data.courses, cloud.data.homeworkDDLs, [], true);
+    this.courses = cloud.data.courses; this.homeworkDDLs = cloud.data.homeworkDDLs;
+    this.isDataImported = this.courses.length + this.homeworkDDLs.length > 0;
+    this.importedCourseCount = this.courses.length; this.importedDDLCount = this.homeworkDDLs.length;
+    this.saveLearningSnapshot(); this.notifyLearningDataChanged();
+    AppStorage.setOrCreate('learningSyncConflict', false);
+    AppStorage.setOrCreate('learningSyncMessage', '已恢复云端数据，本机修改已备份。');
+  }
+
+  public async keepLocalLearningChanges(): Promise<void> {
+    if (this.learningSync.running) return;
+    const owner: string = this.currentUser.userId;
+    const engine: LearningSync = this.learningSync;
+    const cloud = await AgentApiClient.getLearningData();
+    if (owner !== this.currentUser.userId || engine !== this.learningSync) return;
+    if (!cloud.ok || cloud.data.userId !== owner) { AppStorage.setOrCreate('learningSyncMessage', '同步失败，请重试。'); return; }
+    engine.keepLocal(cloud.data);
+    this.saveLearningSnapshot();
+    await this.syncLearningData();
+  }
 
   public notifyLearningDataChanged(): void {
     AppStorage.setOrCreate('learningDataRevision', (AppStorage.get<number>('learningDataRevision') ?? 0) + 1);
@@ -93,11 +159,26 @@ export class AppState {
 
   /** 把当前课程/DDL 快照保存到当前 userId 的独立命名空间。 */
   private persistLearningData(): boolean {
+    if (this.learningEnvironment !== LearningDataStore.environment()) {
+      this.restoreLearningData(this.currentUser.userId);
+      AppStorage.setOrCreate('learningSyncMessage', '接口环境已变化，请重新打开页面。');
+      return false;
+    }
+    this.homeworkDDLs.forEach((item: HomeworkDDL) => item.completed = this.isTaskCompleted(item.id, 'pending'));
+    this.learningSync.capture(this.courses, this.homeworkDDLs);
+    const saved: boolean = this.saveLearningSnapshot();
+    if (saved && this.learningSync.queue.length > 0) void this.syncLearningData();
+    return saved;
+  }
+
+  private saveLearningSnapshot(): boolean {
     const statuses: StoredTaskStatus[] = [];
     this.taskStatusOverrides.forEach((status: PlanTaskStatus, taskId: string) => {
       statuses.push({ taskId: taskId, status: status });
     });
     const snapshot: StoredLearningData = {
+      syncQueue: this.learningSync.queue,
+      cloudInitialized: this.learningSync.initialized,
       courses: this.courses,
       homeworkDDLs: this.homeworkDDLs,
       isDataImported: this.isDataImported,
@@ -116,9 +197,12 @@ export class AppState {
 
   /** 身份切换完成后只恢复该账号自己的课程与 DDL。 */
   private restoreLearningData(userId: string): void {
+    this.learningEnvironment = LearningDataStore.environment();
     const saved: StoredLearningData = LearningDataStore.load(userId);
     this.courses = saved.courses;
     this.homeworkDDLs = saved.homeworkDDLs;
+    this.learningSync = new LearningSync();
+    this.learningSync.restore(this.courses, this.homeworkDDLs, saved.syncQueue ?? [], saved.cloudInitialized ?? false);
     this.isDataImported = saved.isDataImported;
     this.importedCourseCount = saved.courses.length;
     this.importedDDLCount = saved.homeworkDDLs.length;
@@ -327,6 +411,7 @@ export class AppState {
     // ⚠️ 必须放在 `resetAccountScopedState()` **之后**：那里面会把 loginNotice 清空
     // （它也是账号维度的状态，不能串给下一个登录的人）。
     this.loginNotice = notice;
+    void this.syncLearningData();
     void this.syncFocusSessions();
   }
 
@@ -482,7 +567,7 @@ export class AppState {
   /**
    * 应用对话中已经由用户“确认更新”的结构化改动。
    *
-   * 课程与 DDL 的权威副本就在 AppState；因此确认后应直接写入这里并按账号持久化，
+   * AppState 持有设备缓存；确认后写入本机队列，再向服务端提交显式修改，
    * 不需要再把用户赶到“课程与作业”页重复导入。`tasks` 按后端 prompt 的约定是
    * 该课程更新后的完整任务列表，所以会替换该课程原有 DDL，其他课程完全保留。
    */
@@ -1155,12 +1240,12 @@ export class AppState {
     const courseMinutes: Map<string, number> = new Map();
     let todayMinutes: number = 0;
     let totalCompletion: number = 0;
+    let todaySessionCount: number = 0;
     const todayKey: string = DateHelper.todayKey();
     // 收集"有专注记录"的日期键，用于计算连续天数。
     const studyDays: Set<string> = new Set<string>();
     for (let index: number = 0; index < this.focusSessions.length; index++) {
       const session: FocusSession = this.focusSessions[index];
-      totalCompletion += session.completionRate;
       const accumulated: number = courseMinutes.get(session.course) ?? 0;
       courseMinutes.set(session.course, accumulated + session.actualMinutes);
       // ⚠️ `todayMinutes` 必须**按本地日期过滤**。
@@ -1174,11 +1259,13 @@ export class AppState {
       studyDays.add(dayKey);
       if (dayKey === todayKey) {
         todayMinutes += session.actualMinutes;
+        totalCompletion += session.completionRate;
+        todaySessionCount++;
       }
     }
     return {
       todayMinutes: todayMinutes,
-      completionRate: this.focusSessions.length === 0 ? 0 : Math.round(totalCompletion / this.focusSessions.length),
+      completionRate: todaySessionCount === 0 ? 0 : Math.round(totalCompletion / todaySessionCount),
       streakDays: AppState.countStreakDays(studyDays, todayKey),
       courseMinutes: courseMinutes,
       recentSessions: this.focusSessions.slice(-7).reverse()

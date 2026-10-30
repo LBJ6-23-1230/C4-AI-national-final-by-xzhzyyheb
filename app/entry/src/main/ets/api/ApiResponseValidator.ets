@@ -3,8 +3,11 @@ export class ApiResponseValidator {
   private static isReminder(payload: Object): boolean {
     if (!ApiResponseValidator.isRecord(payload)) return false;
     const data: Record<string, Object> = payload as Record<string, Object>;
-    return ['eventId', 'userId', 'kind', 'objectId', 'title', 'courseName', 'level', 'status', 'reason',
-      'planId', 'knowledgePointId', 'targetPage', 'dataTime'].every((key: string) => ApiResponseValidator.hasString(data, key)) &&
+    return ['eventId', 'userId', 'kind', 'objectId', 'title', 'level', 'status', 'reason',
+      'targetPage', 'dataTime'].every((key: string) => ApiResponseValidator.hasString(data, key)) &&
+      ['courseName', 'planId', 'knowledgePointId'].every((key: string) => ApiResponseValidator.isString(data, key)) &&
+      ['task', 'exam', 'gap', 'conflict'].includes(data['kind'] as string) &&
+      ['pending', 'started', 'snoozed', 'ignored', 'completed', 'invalid'].includes(data['status'] as string) &&
       ApiResponseValidator.hasNumber(data, 'version') && ApiResponseValidator.hasNumber(data, 'sourceVersion') &&
       ApiResponseValidator.hasNumber(data, 'durationMinutes');
   }
@@ -33,6 +36,23 @@ export class ApiResponseValidator {
     const data: Record<string, Object> = payload as Record<string, Object>;
     // 一律用去查询串的路径做匹配，避免 `?a=b` 让精确比较失效。
     const route: string = ApiResponseValidator.basePath(path);
+    if (route === '/api/v1/learning-data') return ApiResponseValidator.hasString(data, 'userId') &&
+      ApiResponseValidator.hasNumber(data, 'revision') && ApiResponseValidator.hasArray(data, 'courses') &&
+      ApiResponseValidator.hasArray(data, 'homeworkDDLs') &&
+      (data['courses'] as Object[]).every((item: Object) => ApiResponseValidator.isRecord(item) &&
+        ApiResponseValidator.hasString(item as Record<string, Object>, 'courseId') &&
+        ApiResponseValidator.hasString(item as Record<string, Object>, 'courseName') &&
+        ApiResponseValidator.isRecordField(item as Record<string, Object>, 'exam') &&
+        ApiResponseValidator.isRecordField(item as Record<string, Object>, 'recentStatus') &&
+        ApiResponseValidator.hasNumber(item as Record<string, Object>, 'syncVersion')) &&
+      (data['homeworkDDLs'] as Object[]).every((item: Object) => ApiResponseValidator.isRecord(item) &&
+        ['id', 'courseName', 'title', 'dueDate'].every((key: string) => ApiResponseValidator.hasString(item as Record<string, Object>, key)) &&
+        ['syncVersion', 'estimatedMinutes', 'daysLeft'].every((key: string) => ApiResponseValidator.hasNumber(item as Record<string, Object>, key)));
+    if (route === '/api/v1/learning-effect') return ApiResponseValidator.hasString(data, 'userId') &&
+      ApiResponseValidator.hasString(data, 'conclusion') && ApiResponseValidator.hasString(data, 'ruleVersion') &&
+      ['days', 'focusMinutes', 'completedFocusSessions', 'answeredCount', 'correctCount'].every((key: string) => ApiResponseValidator.hasNumber(data, key)) &&
+      (data['practiceAccuracy'] === null || ApiResponseValidator.hasNumber(data, 'practiceAccuracy')) &&
+      ApiResponseValidator.hasArray(data, 'points');
     if (route === '/api/v1/today') return ApiResponseValidator.hasString(data, 'userId') &&
       ApiResponseValidator.hasString(data, 'dataTime') && ApiResponseValidator.hasString(data, 'version') &&
       ApiResponseValidator.hasNumber(data, 'pendingCount') && ApiResponseValidator.hasString(data, 'guidance') &&
@@ -40,7 +60,8 @@ export class ApiResponseValidator {
       (data['highlight'] === null || ApiResponseValidator.isReminder(data['highlight']));
     if (route === '/api/v1/reminders') return ApiResponseValidator.hasArray(data, 'events') &&
       (data['events'] as Object[]).every((item: Object) => ApiResponseValidator.isReminder(item)) &&
-      ApiResponseValidator.hasString(data, 'cursor') && ApiResponseValidator.hasBoolean(data, 'hasMore');
+      ApiResponseValidator.isString(data, 'cursor') && ApiResponseValidator.hasBoolean(data, 'hasMore');
+    if (method === 'GET' && route.indexOf('/api/v1/reminders/') === 0 && route.indexOf('/actions/') > 0) return ApiResponseValidator.isReminder(data['event']);
     if (method === 'POST' && route.indexOf('/api/v1/reminders/') === 0 && route.endsWith('/actions')) return ApiResponseValidator.isReminder(data['event']);
     if (route === '/api/v1/reminder-preferences') {
       if (!ApiResponseValidator.isRecordField(data, 'preferences') || !ApiResponseValidator.hasBoolean(data, 'pushConfigured')) return false;

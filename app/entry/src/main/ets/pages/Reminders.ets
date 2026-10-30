@@ -70,7 +70,7 @@ struct Reminders {
       idempotencyKey: `${item.eventId}-${item.version}-${action}-${minutes}`, minutes: minutes });
     if (!this.active || owner !== appState.currentUser.userId) return;
     this.busy = false;
-    if (!result.ok) this.message = (result as ApiFailure).error.message;
+    if (!result.ok) this.message = (result as ApiFailure).error.code === 'RESULT_UNCONFIRMED' ? '暂未确认，请重试。' : '操作失败，请重试。';
     else if (action === 'start') {
       if (item.targetPage === 'pages/FocusSetup') {
         if (appState.focusRuntime !== null) { this.message = '请先处理当前专注任务。'; void this.load(); return; }
@@ -79,7 +79,7 @@ struct Reminders {
       }
       router.pushUrl({ url: item.targetPage, params: { courseName: item.courseName,
         knowledgePointId: item.knowledgePointId, eventId: item.eventId, eventVersion: result.data.event.version } });
-    } else this.message = action === 'snooze' ? `已设为${minutes}分钟后提醒，仍遵守免打扰和每日额度。` : '今天不再提醒此事项。';
+    } else this.message = action === 'snooze' ? '已稍后提醒。' : '今日已忽略。';
     void this.load();
   }
   private statusLabel(item: ReminderEvent): string {

@@ -58,11 +58,12 @@ struct StudyTags {
     }
     let weakest: KnowledgeMastery = this.mastery.filter((p: KnowledgeMastery) => this.assessed(p))[0];
     for (let index: number = 1; index < this.mastery.length; index++) {
-      if (this.assessed(this.mastery[index]) && this.mastery[index].masteryScore < weakest.masteryScore) {
+      if (this.assessed(this.mastery[index]) && LearningEvidence.score(this.mastery[index]) < LearningEvidence.score(weakest)) {
         weakest = this.mastery[index];
       }
     }
-    return `当前最薄弱的是「${weakest.knowledgePointName}」，掌握度 ${weakest.masteryScore}。`
+    if (!LearningEvidence.hasAccuracy(weakest)) return `「${weakest.knowledgePointName}」已有历史记录，建议完成新题验证当前表现。`;
+    return `当前最薄弱的是「${weakest.knowledgePointName}」，近期练习正确率 ${LearningEvidence.score(weakest)}%。`
       + '先围绕这个知识点练习，再根据结果调整计划。';
   }
 
@@ -73,7 +74,7 @@ struct StudyTags {
   private openRecommendedPractice(): void {
     const points: KnowledgeMastery[] = this.mastery.filter((point: KnowledgeMastery) => this.assessed(point))
       .sort((left: KnowledgeMastery, right: KnowledgeMastery): number =>
-        left.masteryScore - right.masteryScore);
+        LearningEvidence.score(left) - LearningEvidence.score(right));
     if (points.length > 0) {
       router.pushUrl({ url: 'pages/ExercisePractice', params: { knowledgePointId: points[0].knowledgePointId } });
     } else {
@@ -206,7 +207,7 @@ struct StudyTags {
   private buildChartData(): void {
     // 最多 6 个维度：雷达图再密就看不清标签了；优先展示最薄弱的维度，
     // 避免接口返回顺序把真正需要关注的知识点挤出图表。
-    const items: KnowledgeMastery[] = this.mastery.filter((p: KnowledgeMastery) => this.assessed(p)).sort((a: KnowledgeMastery, b: KnowledgeMastery): number => a.masteryScore - b.masteryScore || a.knowledgePointId.localeCompare(b.knowledgePointId)).slice(0, 6);
+    const items: KnowledgeMastery[] = this.mastery.filter((p: KnowledgeMastery) => this.assessed(p) && LearningEvidence.hasAccuracy(p)).sort((a: KnowledgeMastery, b: KnowledgeMastery): number => LearningEvidence.score(a) - LearningEvidence.score(b) || a.knowledgePointId.localeCompare(b.knowledgePointId)).slice(0, 6);
     this.chartDims = [];
     this.chartCurrent = [];
     this.chartTarget = [];
@@ -215,7 +216,7 @@ struct StudyTags {
 
     for (let index: number = 0; index < items.length; index++) {
       this.chartDims.push(items[index].knowledgePointName);
-      this.chartCurrent.push(items[index].masteryScore);
+      this.chartCurrent.push(LearningEvidence.score(items[index]));
     }
 
     // 最薄弱 / 最强：按本次展示的维度里取极值。
@@ -224,15 +225,15 @@ struct StudyTags {
       let weakest: number = 0;
       let strongest: number = 0;
       for (let index: number = 1; index < items.length; index++) {
-        if (items[index].masteryScore < items[weakest].masteryScore) {
+        if (LearningEvidence.score(items[index]) < LearningEvidence.score(items[weakest])) {
           weakest = index;
         }
-        if (items[index].masteryScore > items[strongest].masteryScore) {
+        if (LearningEvidence.score(items[index]) > LearningEvidence.score(items[strongest])) {
           strongest = index;
         }
       }
       // 掌握度全相同（并列）时不标任何点，避免随便挑一个标红造成误导
-      if (items[weakest].masteryScore !== items[strongest].masteryScore) {
+      if (LearningEvidence.score(items[weakest]) !== LearningEvidence.score(items[strongest])) {
         this.chartWeak = [weakest];
         this.chartStrong = [strongest];
       }
@@ -286,7 +287,7 @@ struct StudyTags {
     const items: KnowledgeMastery[] = this.mastery.slice();
     items.sort((left: KnowledgeMastery, right: KnowledgeMastery): number => {
       if (this.assessed(left) !== this.assessed(right)) return this.assessed(left) ? -1 : 1;
-      const scoreDiff: number = left.masteryScore - right.masteryScore;
+      const scoreDiff: number = LearningEvidence.score(left) - LearningEvidence.score(right);
       if (scoreDiff !== 0) return scoreDiff;
       return this.evidenceCount(right.knowledgePointId) - this.evidenceCount(left.knowledgePointId);
     });
@@ -299,11 +300,11 @@ struct StudyTags {
   }
 
   private weakMasteryCount(): number {
-    return this.mastery.filter((item: KnowledgeMastery): boolean => this.assessed(item) && item.masteryScore < 60).length;
+    return this.mastery.filter((item: KnowledgeMastery): boolean => LearningEvidence.hasAccuracy(item) && LearningEvidence.score(item) < 60).length;
   }
 
   private masteredCount(): number {
-    return this.mastery.filter((item: KnowledgeMastery): boolean => this.assessed(item) && item.masteryScore >= 80).length;
+    return this.mastery.filter((item: KnowledgeMastery): boolean => item.assessmentStatus === 'stable').length;
   }
 
   private masteryLevel(score: number): string {
@@ -393,8 +394,7 @@ struct StudyTags {
               // 实测反馈：「学习画像和学情画像有什么区别？点开之后跳转的界面是一样的」。
               // 它们确实是**同一页** —— 数据只有一份，差别只在"看"还是"改"。
               // 与其让用户猜，不如在页面上直接讲清楚。
-              Text('本页同时是「学情画像」与「学习画像」：前者在对话里用来查看掌握度；'
-                + '后者在你更新学习档案（目标 / 掌握情况）之后回到这里核对结果。两者读的是同一份数据。')
+              Text('查看各课程的练习表现与验证记录。')
                 .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
 
               Column({ space: 8 }) {
@@ -408,8 +408,8 @@ struct StudyTags {
               if (this.mastery.length > 0) {
                 if (this.chartDims.length >= 3) {
                   Column({ space: 8 }) {
-                    Text(this.selectedCourse + ' · 知识掌握度').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
-                    Text(`展示本课程已评估知识点中最薄弱的 ${this.chartDims.length} 项（最多 6 项），范围 0–100 分。形状随掌握度变化；全部知识点见下方列表。`)
+                    Text(this.selectedCourse + ' · 近期练习表现').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
+                    Text(`展示本课程已评估知识点中最薄弱的 ${this.chartDims.length} 项（最多 6 项），显示近期练习正确率；全部知识点见下方列表。`)
                       .fontSize(13).fontColor('#6B7280')
                     RadarChart({
                       dimensions: this.chartDims,
@@ -423,23 +423,21 @@ struct StudyTags {
                   .shadow({ radius: 8, color: '#10000000', offsetX: 0, offsetY: 4 })
                 } else {
                   Column({ space: 10 }) {
-                    Text('当前掌握度').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
+                    Text('当前练习表现').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
                     // 雷达图**不是没触发，而是维度不够**：至少要三个轴才成形，
                     // 两个点连起来只是一条线。实测反馈「之前初赛版本在学情画像内有
                     // 雷达图的，现在始终没有触发」—— 根因在这里（以及演示画像里
                     // 原先只预置了 1 个知识点，见 server 的 `app/api/demo.py`）。
                     // 与其让用户以为坏了，不如说清触发条件与达成路径。
-                    Text(`雷达图需要至少 3 个已评估知识点（当前 ${this.chartDims.length} 个），`
-                      + '所以先用进度卡展示。做几轮其他知识点的专项练习、掌握度积累到 3 个以上后，'
-                      + '这里会自动切换成雷达图。')
+                    Text('先查看近期练习结果，更多知识点可在下方展开。')
                       .fontSize(13).fontColor('#6B7280')
-                    ForEach(this.mastery, (item: KnowledgeMastery) => {
+                    ForEach(this.mastery.slice(0, 3), (item: KnowledgeMastery) => {
                       Column({ space: 8 }) {
                         Row() {
                           Text(item.knowledgePointName).fontSize(15).fontWeight(FontWeight.Medium).fontColor('#1F2937').layoutWeight(1)
-                          Text(this.assessed(item) ? `${item.masteryScore} / 100` : '尚无练习记录').fontSize(17).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+                          Text(this.assessed(item) ? LearningEvidence.accuracyText(item) : '未测评').fontSize(17).fontWeight(FontWeight.Bold).fontColor('#2563EB')
                         }.width('100%')
-                        if (this.assessed(item)) { Progress({ value: item.masteryScore, total: 100, type: ProgressType.Linear })
+                        if (LearningEvidence.hasAccuracy(item)) { Progress({ value: LearningEvidence.score(item), total: 100, type: ProgressType.Linear })
                           .color('#7C9FA0').backgroundColor('#ECEFF3').height(8).borderRadius(8) }
                       }.width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(12)
                     }, (item: KnowledgeMastery) => item.knowledgePointId)
@@ -463,13 +461,13 @@ struct StudyTags {
                     Blank()
                     Text(`共 ${this.mastery.length} 个知识点`).fontSize(12).fontColor('#667085')
                   }.width('100%')
-                  Text(`按掌握度从低到高排列，默认只展示最需要提升的 ${Math.min(MASTERY_PREVIEW_COUNT, this.mastery.length)} 项。`)
+                  Text(`按近期练习表现排列，默认只展示最需要提升的 ${Math.min(MASTERY_PREVIEW_COUNT, this.mastery.length)} 项。`)
                     .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
                   Row({ space: 8 }) {
                     Text(`待提升 ${this.weakMasteryCount()}`)
                       .fontSize(12).fontColor('#B42318').backgroundColor('#FEF3F2')
                       .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12)
-                    Text(`掌握良好 ${this.masteredCount()}`)
+                    Text(`当前表现较稳定 ${this.masteredCount()}`)
                       .fontSize(12).fontColor('#0F766E').backgroundColor('#ECFDF5')
                       .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12)
                   }.width('100%')
@@ -478,16 +476,16 @@ struct StudyTags {
                       Row() {
                         Text(item.knowledgePointName).fontSize(15).fontWeight(FontWeight.Medium)
                           .fontColor('#1F2937').layoutWeight(1).maxLines(1)
-                        Text(this.assessed(item) ? this.masteryLevel(item.masteryScore) : '尚无练习记录').fontSize(11)
-                          .fontColor(item.masteryScore < 60 ? '#B42318' : (item.masteryScore >= 80 ? '#0F766E' : '#B45309'))
+                        Text(this.assessed(item) ? LearningEvidence.label(item) : '未测评').fontSize(11)
+                          .fontColor(LearningEvidence.score(item) < 60 ? '#B42318' : (LearningEvidence.score(item) >= 80 ? '#0F766E' : '#B45309'))
                           .margin({ right: 8 })
-                        Text(this.assessed(item) ? `${item.masteryScore}` : '—').fontSize(22).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-                        Text(this.assessed(item) ? '分' : '').fontSize(11).fontColor('#64748B').margin({ top: 7 })
+                        Text(LearningEvidence.hasAccuracy(item) ? `${LearningEvidence.score(item)}` : '—').fontSize(22).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+                        Text(LearningEvidence.hasAccuracy(item) ? '%' : '').fontSize(11).fontColor('#64748B').margin({ top: 7 })
                       }.width('100%').alignItems(VerticalAlign.Center)
-                      if (this.assessed(item)) { Progress({ value: item.masteryScore, total: 100, type: ProgressType.Linear })
-                        .color(item.masteryScore < 60 ? '#F97316' : '#2563EB')
+                      if (LearningEvidence.hasAccuracy(item)) { Progress({ value: LearningEvidence.score(item), total: 100, type: ProgressType.Linear })
+                        .color(LearningEvidence.score(item) < 60 ? '#F97316' : '#2563EB')
                         .backgroundColor('#ECEFF3').height(6).borderRadius(8) }
-                      Text(`练习证据 ${this.evidenceCount(item.knowledgePointId)} 条 · 更新于 ${ApiDisplayFormatter.timestamp(item.lastUpdated)}`)
+                      Text(LearningEvidence.detail(item))
                         .fontSize(11).fontColor('#98A2B3').maxLines(1)
                     }
                     .width('100%').padding(12).backgroundColor('#F8FAFC')

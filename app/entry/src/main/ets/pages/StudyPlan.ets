@@ -363,8 +363,7 @@ struct StudyPlan {
                       .onClick(() => { this.selectedCourse = course; this.pendingBudget = null; })
                   }, (course: string) => course)
                 }.width('100%')
-                TextInput({ text: this.selectedCourse, placeholder: '先选主攻课程（与课程/资料名称一致）' })
-                  .enabled(!this.budgetSaving).onChange((v: string) => { this.selectedCourse = v.trim(); this.pendingBudget = null; })
+                if (this.courseChoices().length === 0) Text('先导入课程或资料，再选择本次学习内容。').fontSize(13).fontColor('#667085')
                 Text('按课程和时长安排最多3项任务，其余知识点保留在候选池。课程作业另行安排。')
                   .fontSize(12).fontColor('#667085').width('100%')
                 Row({ space: 8 }) {

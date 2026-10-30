@@ -69,6 +69,9 @@ struct ExercisePractice {
   @State pickerHistory: MasteryHistory[] = [];
   private pickerAssessed(item: KnowledgeMastery): boolean { return LearningEvidence.assessed(item, this.pickerEvidence, this.pickerHistory); }
   @State pickerOptions: KnowledgeMastery[] = [];
+  @State pointFilter: string = '推荐';
+  @State pointSearch: string = '';
+  @State selectedTopic: string = '全部主题';
   private profileViewModel: ProfileViewModel = new ProfileViewModel();
   private viewModel: ExerciseViewModel = new ExerciseViewModel();
   private pageScroller: Scroller = new Scroller();
@@ -179,7 +182,18 @@ struct ExercisePractice {
   }
 
   private coursePoints(): KnowledgeMastery[] {
-    return this.pickerOptions.filter((p: KnowledgeMastery) => (p.sourceCourse || '待分类') === this.selectedCourse);
+    const points = this.pickerOptions.filter((p: KnowledgeMastery) => (p.sourceCourse || '待分类') === this.selectedCourse)
+      .filter((p: KnowledgeMastery) => this.selectedTopic === '全部主题' || p.topicGroup === this.selectedTopic)
+      .filter((p: KnowledgeMastery) => !this.pointSearch || p.knowledgePointName.includes(this.pointSearch))
+      .filter((p: KnowledgeMastery) => this.pointFilter === '全部' || this.pointFilter === '推荐' ||
+        (this.pointFilter === '未测评' ? !this.pickerAssessed(p) : LearningEvidence.label(p) === this.pointFilter));
+    return this.pointFilter === '推荐' && !this.pointSearch ? points.slice(0, 3) : points;
+  }
+  private topicChoices(): string[] {
+    const names: string[] = ['全部主题'];
+    this.pickerOptions.filter((p: KnowledgeMastery) => (p.sourceCourse || '待分类') === this.selectedCourse)
+      .forEach((p: KnowledgeMastery) => { if (p.topicGroup && !names.includes(p.topicGroup)) names.push(p.topicGroup); });
+    return names;
   }
 
   private startFlow(): void {
@@ -210,7 +224,8 @@ struct ExercisePractice {
     this.pickerErrorMessage = state.errorMessage;
     const sorted: KnowledgeMastery[] = state.mastery.slice();
     sorted.sort((left: KnowledgeMastery, right: KnowledgeMastery): number =>
-      left.masteryScore - right.masteryScore);
+      Number((left.effectiveQuestionCount ?? 0) === 0) - Number((right.effectiveQuestionCount ?? 0) === 0) ||
+      LearningEvidence.score(left) - LearningEvidence.score(right));
     this.pickerEvidence = state.evidence;
     this.pickerHistory = state.history;
     this.pickerOptions = sorted;
@@ -743,9 +758,9 @@ struct ExercisePractice {
           Text('本次正确率').fontSize(12).fontColor('#667085')
         }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor('#EFF6FF').borderRadius(14)
         Column({ space: 4 }) {
-          Text(`${value.assessment.oldMastery} → ${value.assessment.suggestedNewMastery}`)
+          Text(`${value.review.filter((item: ExerciseReview) => item.correct).length}/${value.review.length}`)
             .fontSize(22).fontWeight(FontWeight.Bold).fontColor('#0F766E')
-          Text(value.assessment.oldMastery === value.assessment.suggestedNewMastery ? '累计掌握度暂未变化，建议继续巩固' : '主要练习知识点的掌握度估计').fontSize(12).fontColor('#667085').textAlign(TextAlign.Center)
+          Text('本轮答对题数').fontSize(12).fontColor('#667085').textAlign(TextAlign.Center)
         }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor('#ECFDF5').borderRadius(14)
       }.width('100%')
 
@@ -759,7 +774,7 @@ struct ExercisePractice {
                 Text(`答对 ${item.correctCount}/${item.questionCount} 题`)
                   .fontSize(12).fontColor('#667085')
               }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-              Text(`${item.oldScore} → ${item.newScore}`).fontSize(17).fontColor('#0F766E')
+              Text(`${item.questionCount > 0 ? Math.round(item.correctCount / item.questionCount * 100) : 0}%`).fontSize(17).fontColor('#0F766E')
             }.width('100%')
           }, (item: PointMasteryUpdate) => item.knowledgePointId)
         }.width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(12)
@@ -821,7 +836,7 @@ struct ExercisePractice {
   KnowledgePointPicker() {
     Column({ space: 14 }) {
       Text('选择要练的知识点').fontSize(22).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
-      Text('按掌握度从低到高排列，最薄弱的排在最前。分数来自你的知识画像，不由前端计算。')
+      Text('先练推荐项，也可以按课程、主题或状态选择。')
         .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
 
       if (this.pickerErrorMessage.length > 0) {
@@ -835,7 +850,7 @@ struct ExercisePractice {
           Button(course).fontSize(14).margin(4)
             .backgroundColor(course === this.selectedCourse ? '#2563EB' : '#EFF6FF')
             .fontColor(course === this.selectedCourse ? '#FFFFFF' : '#2563EB')
-            .onClick(() => this.selectedCourse = course)
+            .onClick(() => { this.selectedCourse = course; this.selectedTopic = '全部主题'; this.pointFilter = '推荐'; })
         }, (course: string) => course)
       }.width('100%')
       if (this.pickerOptions.length === 0) {
@@ -862,21 +877,31 @@ struct ExercisePractice {
           }
         }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
       } else {
+        TextInput({ text: this.pointSearch, placeholder: '搜索知识点' }).onChange((v: string) => this.pointSearch = v)
+        Select(this.topicChoices().map((name: string): SelectOption => { return { value: name }; }))
+          .value(this.selectedTopic).onSelect((index: number) => this.selectedTopic = this.topicChoices()[index])
+        Scroll() {
+        Row({ space: 4 }) {
+          ForEach(['推荐', '需巩固', '待复测', '未测评', '全部'], (name: string) => {
+            Button(name).fontSize(12).margin(4).backgroundColor(this.pointFilter === name ? '#2563EB' : '#EFF6FF')
+              .fontColor(this.pointFilter === name ? '#FFFFFF' : '#2563EB').onClick(() => this.pointFilter = name)
+          }, (name: string) => name)
+        }
+        }.scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).width('100%')
+        if (this.coursePoints().length === 0) Text('暂无符合条件的知识点，请调整筛选。').fontSize(13).fontColor('#667085')
         ForEach(this.coursePoints(), (item: KnowledgeMastery, index: number) => {
           Column({ space: 8 }) {
             Row({ space: 8 }) {
               Text(item.knowledgePointName)
                 .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937').layoutWeight(1)
               if (index === 0 && this.pickerAssessed(item)) {
-                Text('最薄弱').fontSize(11).fontColor('#B45309').backgroundColor('#FEF3C7')
+                Text('可继续练习').fontSize(11).fontColor('#B45309').backgroundColor('#FEF3C7')
                   .borderRadius(8).padding({ left: 8, right: 8, top: 3, bottom: 3 })
               }
-              Text(this.pickerAssessed(item) ? `${item.masteryScore}` : '尚无练习记录').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-              Text(this.pickerAssessed(item) ? ' / 100' : '').fontSize(11).fontColor('#64748B').margin({ top: 6 })
+              Text(LearningEvidence.label(item)).fontSize(12).fontColor('#667085')
             }.width('100%').alignItems(VerticalAlign.Top)
-            if (this.pickerAssessed(item)) { Progress({ value: item.masteryScore, total: 100, type: ProgressType.Linear })
-              .color('#2563EB').backgroundColor('#DBEAFE').height(8).borderRadius(8) }
-            Text(this.pickerAssessed(item) ? '开始专项练习 →' : '点击开始诊断，完成后会生成掌握度').fontSize(12).fontSize(13).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+            Text(LearningEvidence.detail(item)).fontSize(12).fontColor('#667085')
+            Text(this.pickerAssessed(item) ? '开始专项练习 →' : '开始诊断 →').fontSize(13).fontWeight(FontWeight.Medium).fontColor('#2563EB')
           }
           .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
           .border({ width: 1, color: index === 0 ? '#BFDBFE' : '#E2E8F0' })

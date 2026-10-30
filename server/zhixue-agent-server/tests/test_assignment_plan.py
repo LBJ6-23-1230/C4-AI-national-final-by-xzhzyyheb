@@ -17,7 +17,7 @@ def assignment(key='ddl-one', **changes):
 
 
 @pytest.mark.parametrize('backend', ['json', 'sqlite'])
-def test_sync_add_complete_delete_and_preserve_other_tasks(tmp_path, monkeypatch, backend):
+def test_sync_add_complete_and_empty_device_snapshot_preserves_tasks(tmp_path, monkeypatch, backend):
     monkeypatch.setenv('ZHIXUE_DB', backend)
     client = create_app(tmp_path / 'assignments.json').test_client()
     original = client.get('/api/v1/plans/current').get_json()
@@ -34,8 +34,7 @@ def test_sync_add_complete_delete_and_preserve_other_tasks(tmp_path, monkeypatch
     completed = client.post(URL, json={'assignments': [dict(row, completed=True)]}).get_json()
     assert next(t for t in completed['tasks'] if t['taskId'] == row['id'])['status'] == 'completed'
     removed = client.post(URL, json={'assignments': []}).get_json()
-    assert removed['tasks'] == original['tasks']
-    assert not removed['unscheduledTasks']
+    assert removed == completed  # Empty device cache is not a deletion request.
 
 
 def test_new_account_sync_repairs_existing_local_ddls_and_isolates_identity(tmp_path):

@@ -686,6 +686,9 @@ def submit_exercises(set_id: str):
 			submission_record = {"response": response, "userId": user_id,
 				"idempotencyKey": f"{set_id}:{idempotency_key}", "answers": answers, "reviewToken": uuid.uuid4().hex,
 				"requestFingerprint": request_fingerprint, "createdAt": timestamp.isoformat()}
+			from app.services.learning_effect import question_facts
+			submission_record['questionFacts'] = question_facts(
+				[questions_by_id[k] for k in submitted_answers], correct_ids)
 			repository.save("submissions", result_id, submission_record)
 			if durable_review:
 				from app.services.job_queue import enqueue

@@ -16,6 +16,8 @@ import { PlanViewModel } from '../viewmodels/PlanViewModel';
 @Entry
 @Component
 struct CourseImport {
+  @StorageLink('learningSyncMessage') learningSyncMessage: string = '';
+  @StorageLink('learningSyncConflict') learningSyncConflict: boolean = false;
   @StorageLink('knowledgeSyncMessage') knowledgeSyncMessage: string = '';
   @StorageLink('learningDataRevision') @Watch('onLearningDataChanged') learningDataRevision: number = 0;
   @State ddlFilter: string = 'all';
@@ -28,10 +30,12 @@ struct CourseImport {
     if (params && (params['initialTab'] === 'import' || params['initialTab'] === 'ddls')) this.activeTab = params['initialTab'];
     if (params && params['ddlFilter'] === 'pending') this.ddlFilter = 'pending';
     this.refreshLearningData();
+    void appState.syncLearningData();
   }
 
   onPageShow(): void {
     this.refreshLearningData();
+    void appState.syncLearningData();
   }
   @State jsonInputText: string = '';
   @State importType: string = 'course';
@@ -709,6 +713,21 @@ struct CourseImport {
       .backgroundColor('#FFFFFF').shadow({ radius: 4, color: '#08000000', offsetX: 0, offsetY: 2 })
 
       // 导入状态条
+      if (this.learningSyncMessage.length > 0) {
+        Row({ space: 10 }) {
+          Text(this.learningSyncMessage).fontSize(12).fontColor('#667085').layoutWeight(1)
+          if (this.learningSyncConflict) {
+            Text('使用云端并备份本机').fontSize(12).fontColor('#2563EB').onClick(() => appState.useServerLearningData())
+            Text('保留本机修改').fontSize(12).fontColor('#2563EB').onClick(() => AlertDialog.show({
+              title: '保留本机修改？', message: '将用本机待同步的修改更新云端对应记录，其他云端记录会保留。',
+              primaryButton: { value: '取消', action: () => {} },
+              secondaryButton: { value: '确认同步', action: () => { void appState.keepLocalLearningChanges(); } }
+            }))
+          } else {
+            Text('重新同步').fontSize(12).fontColor('#2563EB').onClick(() => appState.syncLearningData())
+          }
+        }.width('100%').padding(12)
+      }
       if (this.knowledgeSyncMessage.length > 0) {
         Text(this.knowledgeSyncMessage).fontSize(13).fontColor('#2563EB').padding(12)
       }

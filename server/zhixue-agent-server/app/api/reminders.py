@@ -52,6 +52,15 @@ def action(event_id):
     return jsonify(service.action(repo(), resolve_user_id(None), event_id, body()))
 
 
+@reminders_api.get('/api/v1/reminders/<event_id>/actions/<operation_key>')
+def action_result(event_id, operation_key):
+    owner = resolve_user_id(None)
+    record = repo().get('reminder_actions', service.digest(owner, operation_key))
+    if not record or record.get('userId') != owner or record.get('request', {}).get('eventId') != event_id:
+        return jsonify(errorCode='NOT_FOUND', message='操作尚未确认'), 404
+    return jsonify(record['response'])
+
+
 @reminders_api.route('/api/v1/reminder-preferences', methods=['GET', 'PUT'])
 def preferences():
     owner = resolve_user_id(None)

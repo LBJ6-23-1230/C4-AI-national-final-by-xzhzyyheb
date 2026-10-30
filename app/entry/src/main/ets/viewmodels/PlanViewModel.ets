@@ -31,6 +31,7 @@ export interface PlanViewState {
 /** Reads the current plan from the contract API without creating plan data locally. */
 export class PlanViewModel {
   async syncAssignments(selectedId?: string): Promise<ApiResult<LearningPlan>> {
+    if (!await appState.syncLearningData()) return apiFailure('SYNC_FAILED', '同步失败，请重试。', true, 'network');
     const owner: string = ClientCache.currentOwnerUserId();
     const assignments: AssignmentSnapshot[] = appState.homeworkDDLs.map((ddl: HomeworkDDL): AssignmentSnapshot => ({
       id: ddl.id, title: ddl.title, courseName: ddl.courseName, dueDate: ddl.dueDate,
@@ -85,12 +86,6 @@ export class PlanViewModel {
       return { plan: cached, kind: 'ok', errorMessage: '', isCached: true };
     }
 
-    if (!AgentApiClient.getConfig().useFixture) {
-      const sync = await this.syncAssignments();
-      if (!sync.ok && (sync as ApiFailure).error.statusCode !== 404) {
-        return { plan: null, kind: 'error', errorMessage: `作业同步失败：${(sync as ApiFailure).error.message}`, isCached: false };
-      }
-    }
     const result = await AgentApiClient.getCurrentPlan();
     if (ClientCache.currentOwnerUserId() !== owner) {
       return { plan: null, kind: 'identity_changed', errorMessage: '账号已切换，请重新打开计划。', isCached: false };

@@ -6,6 +6,7 @@ import { GoalActionRequest, GoalActionResponse, GoalHistoryResponse } from './Ap
 import { AuthProfileUpdateRequest } from './AuthModels';
 import { LearningPreferencesRequest, DocumentPointsRequest } from './ApiModels';
 import { http } from '@kit.NetworkKit';
+import { LearningChanges, LearningSnapshot, LearningEffect } from './LearningSyncModels';
 import { ExerciseSourcesResponse } from './ApiModels';
 import { LearningContext } from './ApiModels';
 import { WrongBookClassifyRequest, WrongBookClassifyResponse, API_CONTRACT_VERSION, DemoResetResponse, PartnerContactListResponse, PartnerInvitationCreateRequest, PartnerInvitationListResponse, PartnerInvitationResponse, PartnerMatchRequest, PartnerMatchResponse, ExerciseQuery, ExerciseSetResponse, ExerciseSubmission, ExerciseSubmissionResult, KnowledgeBase, KnowledgeBaseCreateRequest, KnowledgeBaseDetail, KnowledgeBaseListResponse, KnowledgeDocument, KnowledgeDocumentDetail, KnowledgeDocumentUploadRequest, KnowledgeSearchRequest, KnowledgeSearchResponse, LearningPlan, PlanDiff, ProactiveRequest, ProactiveResponse, ProfileResponse, ScheduleRecognitionRequest, ScheduleRecognitionResponse, TraceResponse, WorkflowCreateRequest, WorkflowResponse, WorkflowRunRequest, WorkflowRunResponse, WorkflowStatusResponse, WrongBookAttemptRequest, WrongBookAttemptResponse, WrongBookResponse, WrongBookToggleRequest, WrongBookToggleResponse } from './ApiModels';
@@ -45,6 +46,15 @@ interface KnowledgePointImportRequest {
  * 默认地址集中定义在 `ApiDefaults.DEFAULT_BASE_URL`，页面里不得再各写一份 IP。
  */
 export class AgentApiClient {
+  static async getLearningData(): Promise<ApiResult<LearningSnapshot>> {
+    return AgentApiClient.request<LearningSnapshot>(http.RequestMethod.GET, '/api/v1/learning-data');
+  }
+  static async saveLearningData(body: LearningChanges): Promise<ApiResult<LearningSnapshot>> {
+    return AgentApiClient.request<LearningSnapshot>(http.RequestMethod.POST, '/api/v1/learning-data', body);
+  }
+  static async getLearningEffect(days: number = 1): Promise<ApiResult<LearningEffect>> {
+    return AgentApiClient.request<LearningEffect>(http.RequestMethod.GET, `/api/v1/learning-effect?days=${days}`);
+  }
   static async getToday(): Promise<ApiResult<TodayOverview>> {
     return AgentApiClient.request<TodayOverview>(http.RequestMethod.GET, '/api/v1/today');
   }
@@ -52,7 +62,18 @@ export class AgentApiClient {
     return AgentApiClient.request<ReminderList>(http.RequestMethod.GET, `/api/v1/reminders?after=${encodeURIComponent(cursor)}`);
   }
   static async reminderAction(eventId: string, data: ReminderAction): Promise<ApiResult<ReminderActionResult>> {
-    return AgentApiClient.request<ReminderActionResult>(http.RequestMethod.POST, `/api/v1/reminders/${encodeURIComponent(eventId)}/actions`, data);
+    const token: string = AuthStore.getToken();
+    const baseUrl: string = AgentApiClient.config.baseUrl;
+    const result = await AgentApiClient.request<ReminderActionResult>(http.RequestMethod.POST, `/api/v1/reminders/${encodeURIComponent(eventId)}/actions`, data);
+    if (result.ok) return result;
+    const failure: ApiFailure = result as ApiFailure;
+    if (!['NETWORK_ERROR', 'INVALID_RESPONSE', 'EMPTY_RESPONSE'].includes(failure.error.code)) return result;
+    if (token !== AuthStore.getToken() || baseUrl !== AgentApiClient.config.baseUrl)
+      return apiFailure('IDENTITY_CHANGED', '请重新打开页面。', false, 'network');
+    const confirmed = await AgentApiClient.request<ReminderActionResult>(http.RequestMethod.GET,
+      `/api/v1/reminders/${encodeURIComponent(eventId)}/actions/${encodeURIComponent(data.idempotencyKey)}`);
+    if (confirmed.ok) return confirmed;
+    return apiFailure('RESULT_UNCONFIRMED', '暂未确认，请重试。', true, 'network');
   }
   static async getReminderSettings(): Promise<ApiResult<ReminderSettings>> {
     return AgentApiClient.request<ReminderSettings>(http.RequestMethod.GET, '/api/v1/reminder-preferences');

@@ -26,6 +26,10 @@ def sync_assignments():
 		return guard
 	owner = resolve_user_id(data.get("userId"))
 	rows, selected = data.get("assignments"), data.get("selectedId")
+	# Once migrated, device snapshots cannot overwrite canonical facts.
+	if _repository.get('learning_sync_state', owner):
+		from app.services.learning_data import snapshot
+		rows = [dict(r, completed=r.get('completed', False)) for r in snapshot(_repository, owner)['homeworkDDLs']]
 	try:
 		validate_assignments(rows)
 		if selected is not None and (not isinstance(selected, str) or not any(r["id"] == selected and not r["completed"] for r in rows)):
