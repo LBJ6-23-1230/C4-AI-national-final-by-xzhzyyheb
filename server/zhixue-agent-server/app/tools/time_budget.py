@@ -50,7 +50,13 @@ def fit_plan_to_budget(old_plan: dict, available_minutes: int, prioritize_point=
     pending.sort(key=lambda t: (0 if t.get('status') in ('running', 'in_progress') else
                                1 if t.get('source') == 'ddl' else 2,
                                t.get('dueAt') or t.get('dueDate') or '9999',
+                               {'high': 0, 'medium': 1, 'low': 2}.get(t.get('priority'), 1),
+                               t.get('masteryScore', 50),
                                bool(prioritize_point and t.get('knowledgePointId') != prioritize_point)))
+    base_total = sum(t.get('baseDurationMinutes', t.get('durationMinutes', 0)) for t in pending if type(t.get('durationMinutes')) is int and t['durationMinutes'] > 0)
+    for t in pending:
+        if type(t.get('durationMinutes')) is int and t['durationMinutes'] > 0:
+            t['durationMinutes'] = t.get('baseDurationMinutes', t['durationMinutes'])
     scheduled, deferred = [], []
     remaining = available_minutes
     for task in pending:
@@ -65,28 +71,42 @@ def fit_plan_to_budget(old_plan: dict, available_minutes: int, prioritize_point=
         elif duration <= remaining:
             scheduled.append(task)
             remaining -= duration
-        elif (prioritize_point and task.get('knowledgePointId') == prioritize_point and
-              task.get('source') != 'ddl' and task.get('status') == 'pending' and
+        elif (task.get('source') != 'ddl' and task.get('status') == 'pending' and
               task.get('allowPartial') and remaining >= 5):
             # Only explicitly divisible learning tasks may be split. Keep the
             # unfinished minutes visible with their own stable task identifier.
+            portion = remaining // 5 * 5
             rest = deepcopy(task)
-            rest['durationMinutes'] = duration - remaining
+            rest.pop('baseDurationMinutes', None)
+            rest['durationMinutes'] = duration - portion
             rest['taskId'] = task['taskId'] + ':remaining'
             rest['parentTaskId'] = task['taskId']
             rest['allowPartial'] = False
-            rest['deferredReason'] = f'本次安排{remaining}分钟，剩余{duration - remaining}分钟待后续安排'
-            task['durationMinutes'] = remaining
+            rest['deferredReason'] = f'预计需{duration - portion}分钟，当前剩余{remaining - portion}分钟，暂未安排'
+            task['durationMinutes'] = portion
+            task.pop('baseDurationMinutes', None)
             task['allowPartial'] = False
             scheduled.append(task)
             deferred.append(rest)
-            remaining = 0
+            remaining -= portion
         else:
             task["deferredReason"] = f"预计需{duration}分钟，当前剩余{remaining}分钟，暂未安排"
             deferred.append(task)
+    mode = 'under_budget' if available_minutes < base_total else 'exact_budget'
+    allocation_reason = ''
+    if available_minutes > base_total and scheduled and not deferred:
+        from app.tools.surplus_budget import allocate
+        remaining, mode, allocation_reason = allocate(scheduled, remaining, old_plan.get('budgetSummary'))
+    elif available_minutes > base_total:
+        mode = 'surplus_fallback'
+        allocation_reason = '没有可分配的有效任务，剩余时间保留未分配'
+    if mode in ('under_budget', 'exact_budget'):
+        for task in scheduled + deferred:
+            task.pop('extraMinutes', None)
+            task.pop('allocationReason', None)
     plan = dict(old_plan, tasks=completed + scheduled, unscheduledTasks=deferred,
                 constraints={**old_plan.get("constraints", {}), "availableMinutes": available_minutes},
-                budgetSummary={"availableMinutes": available_minutes,
+                budgetSummary={"baseTotalMinutes": base_total, "allocationMode": mode, "allocationReason": allocation_reason, "availableMinutes": available_minutes,
                     "scheduledMinutes": available_minutes - remaining,
                     "unallocatedMinutes": max(0, remaining),
                     "conflictMinutes": max(0, -remaining),

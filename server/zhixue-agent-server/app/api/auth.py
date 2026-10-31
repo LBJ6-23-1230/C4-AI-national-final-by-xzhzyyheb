@@ -3,8 +3,8 @@
 
 契约（与 `contracts/openapi.json` 的 Auth* 定义一致）
 ----------------------------------------------------
-POST   /api/v1/auth/register   {nickname, phone, password?, seedDemoData?} → {user, token, expiresAt, demoDataSeeded}
-POST   /api/v1/auth/login      {phone|nickname, password}   → {user, token, expiresAt}
+POST   /api/v1/auth/register   {phone, password, nickname?, seedDemoData?} → {user, token, expiresAt, demoDataSeeded}
+POST   /api/v1/auth/login      {phone, password} 或 {userId, token} → {user, token, expiresAt}
 POST   /api/v1/auth/change-password {oldPassword?, newPassword} (Bearer) → {status, hasPassword, wasFirstTime}
 POST   /api/v1/auth/logout     (Bearer)                → {status: "ok"}
 GET    /api/v1/auth/me         (Bearer)                → {user}
@@ -96,7 +96,7 @@ def _require_user():
 
 @auth_api.post("/api/v1/auth/register")
 def register():
-    """注册：昵称 + 年级 + **手机号** → userId + token，并预置一份空画像。
+    """注册：唯一手机号 + 密码，可选昵称/年级，并预置一份空画像。
 
     可选请求体字段 `seedDemoData`（布尔，默认 false）：是否顺便写入演示数据
     （二叉树知识点 + 起始计划）。响应里的 `demoDataSeeded` 如实回填本次结果。
@@ -148,20 +148,10 @@ def login():
             return _error(error.error_code, error.message, error.status)
         return jsonify(result)
 
-    # 手机号优先于昵称：手机号唯一、可验证，是更强的身份标识
-    if data.get("phone"):
-        try:
-            result = service.login_by_phone(_repository, data.get("phone"),
-                                            data.get("password"))
-        except service.AuthError as error:
-            return _error(error.error_code, error.message, error.status)
-        return jsonify(result)
-
     try:
-        result = service.login_by_nickname(_repository, data.get("nickname"),
-                                           data.get("password"))
+        result = service.login_by_phone(_repository, data.get('phone'), data.get('password'))
     except service.AuthError as error:
-        return _error(error.error_code, error.message, error.status)
+        return _auth_error(error)
     return jsonify(result)
 
 
@@ -199,53 +189,8 @@ def verify_code():
 
 @auth_api.post("/api/v1/auth/login-or-register")
 def login_or_register():
-    """**登录优先，注册兜底** —— 前端主按钮应调这个。
-
-    识别顺序：**手机号 → 昵称**（手机号唯一且可验证，优先级更高）。
-
-    行为：
-    * 命中已有账号 → 登录（不再新建）
-    * 未命中       → 创建账号（若 `_PHONE_REQUIRED` 为真则必须有手机号）
-
-    响应里带 `created` 布尔值，前端可据此提示"欢迎回来 / 已为你建号"。
-    """
-    if _repository is None:
-        return _error("INTERNAL_ERROR", "auth repository is not configured", 500)
-    data = _body()
-
-    # 先做一次格式校验，让"手机号写错"在注册/登录之前就被拦住
-    try:
-        phone = service.normalize_phone(data.get("phone"),
-                                        required=service._PHONE_REQUIRED)
-    except service.AuthError as error:
-        return _error(error.error_code, error.message, error.status)
-
-    existing = None
-    if phone:
-        existing = service.find_user_by_phone(_repository, phone)
-    if existing is None and not phone:
-        try:
-            matches = service.find_users_by_nickname(_repository, data.get("nickname"))
-        except service.AuthError as error:
-            return _error(error.error_code, error.message, error.status)
-        existing = matches[0] if matches else None
-
-    if existing is not None:
-        try:
-            result = (service.login_by_phone(_repository, phone, data.get("password")) if phone
-                      else service.login_by_nickname(_repository, data.get("nickname"),
-                                                     data.get("password")))
-        except service.AuthError as error:
-            return _error(error.error_code, error.message, error.status)
-        return jsonify({**result, "created": False})
-
-    try:
-        result = service.register_and_provision(_repository, data.get("nickname"),
-                                       data.get("grade"), phone, data.get("password"),
-                                       with_demo_data=_seed_demo_data(data))
-    except service.AuthError as error:
-        return _error(error.error_code, error.message, error.status)
-    return jsonify({**result, "created": True}), 201
+    """Compatibility endpoint: login only; never create an account after a typo."""
+    return login()
 
 
 @auth_api.post("/api/v1/auth/login-with-huawei")

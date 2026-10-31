@@ -22,19 +22,15 @@ export interface AuthUser {
   /** 脱敏手机号（`138****0000`）。服务端**不回传完整号码**。 */
   phoneMasked?: string;
   hasPhone?: boolean;
+  needsPasswordSetup?: boolean;
 }
 
 export interface AuthRegisterRequest {
-  nickname: string;
-  password?: string;
+  nickname?: string;
+  password: string;
   grade?: string;
   /**
-   * 手机号。注册必填，可绑定多个独立账号。
-   *
-   * ⚠️ 声明为必填（而非 `phone?`）是刻意的：契约里
-   * `AuthRegisterRequest.required = [nickname, phone]`，后端 `_PHONE_REQUIRED = True`，
-   * 少了它必然 400。原来的可选声明让"漏传"能通过类型检查、
-   * 到运行时才以 400 暴露 —— `AuthClient.register()` 就曾因此成为休眠炸弹。
+   * 手机号与密码必填；一个归一化手机号对应一个活跃账号。昵称仅供展示。
    */
   phone: string;
   /**
@@ -141,8 +137,8 @@ export const VERIFICATION_CODE_MESSAGES: Record<string, string> = {
   'INVALID_CODE': '验证码不正确，请检查后重试。',
   'CODE_EXPIRED': '验证码已过期，请重新获取。',
   'CODE_NOT_FOUND': '请先获取验证码。',
-  'SMS_NOT_CONFIGURED': '短信服务尚未配置，暂时无法发送验证码。可改用「昵称登录」或「一键体验」。',
-  'SMS_PROVIDER_UNAVAILABLE': '短信服务暂不可用，请稍后重试。可改用「昵称登录」或「一键体验」。'
+  'SMS_NOT_CONFIGURED': '短信服务尚未配置，暂时无法发送验证码。请使用手机号和密码登录。',
+  'SMS_PROVIDER_UNAVAILABLE': '短信服务暂不可用，请稍后重试。请使用手机号和密码登录。'
 };
 
 /**
@@ -160,7 +156,7 @@ export interface AuthLoginOrRegisterRequest extends AuthSeedDemoDataField {
 
 export interface AuthLoginOrRegisterResponse extends AuthSessionResponse {
   /** true = 本次新建了账号；false = 登录了已有账号。用于文案区分。 */
-  created: boolean;
+  created?: boolean;
 }
 
 export interface AuthSelectAccountRequest {
@@ -170,6 +166,7 @@ export interface AuthSelectAccountRequest {
 }
 
 export interface AuthSessionResponse {
+  needsPasswordSetup?: boolean;
   accounts?: AuthUser[];
   selectionToken?: string;
   user: AuthUser;

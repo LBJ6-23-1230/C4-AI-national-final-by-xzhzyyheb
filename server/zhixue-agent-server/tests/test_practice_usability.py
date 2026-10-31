@@ -15,7 +15,7 @@ from app.services.exercise_quality import is_subject_question, has_subject_conte
 def setup(tmp_path, monkeypatch, request):
     monkeypatch.setenv('ZHIXUE_DB', request.param)
     client = create_app(tmp_path / 'usability.json').test_client()
-    auth = client.post('/api/v1/auth/register', json={'nickname': '练习测试', 'phone': '13900009701', 'seedDemoData': True}).get_json()
+    auth = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 'nickname': '练习测试', 'phone': '13900009701', 'seedDemoData': True}).get_json()
     return client, workflows._repository, auth['user']['userId'], {'Authorization': 'Bearer ' + auth['token']}
 
 

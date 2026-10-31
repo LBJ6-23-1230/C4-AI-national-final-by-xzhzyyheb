@@ -60,13 +60,12 @@ check("405 响应体是 JSON 错误体", isinstance(body, dict) and "errorCode" 
 
 print()
 print("=" * 78)
-print("3) 注册接口允许同一手机号创建独立账号")
+print("3) 注册接口保证同一手机号唯一活跃账号")
 print("=" * 78)
-first = client.post("/api/v1/auth/register", json={"nickname": "v1", "phone": "13900007777"})
-r = client.post("/api/v1/auth/register", json={"nickname": "v2", "phone": "13900007777"})
-check("相同手机号、不同账号 -> 201 且账号互不相同",
-      first.status_code == r.status_code == 201 and
-      first.get_json()['user']['userId'] != r.get_json()['user']['userId'],
+first = client.post("/api/v1/auth/register", json={"nickname": "v1", "phone": "13900007777", "password": "contract-pw123"})
+r = client.post("/api/v1/auth/register", json={"nickname": "v2", "phone": "13900007777", "password": "contract-pw123"})
+check("重复手机号 -> 409 PHONE_ALREADY_REGISTERED",
+      first.status_code == 201 and r.status_code == 409 and r.get_json()['errorCode'] == 'PHONE_ALREADY_REGISTERED',
       "实际 %s" % r.status_code)
 
 print()

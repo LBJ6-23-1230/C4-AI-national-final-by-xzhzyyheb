@@ -151,7 +151,7 @@ def test_health_is_passive_cached_throttled_and_config_scoped(tmp_path, monkeypa
         assert state["configured"] is True and state["verified"] is None
     assert calls == []
     assert client.post("/api/agent/health").status_code == 401
-    registration = client.post("/api/v1/auth/register", json={"phone": "13900009821", "nickname": "health"}).get_json()
+    registration = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', "phone": "13900009821", "nickname": "health"}).get_json()
     headers = {"Authorization": f"Bearer {registration['token']}"}
     assert client.post("/api/agent/health", headers=headers).get_json()["verified"] is True
     assert client.post("/api/agent/health", headers=headers).status_code == 429

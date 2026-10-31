@@ -1,3 +1,4 @@
+import { ReminderNavigation } from '../services/ReminderNavigation';
 import router from '@ohos.router';
 import { common } from '@kit.AbilityKit';
 import notificationManager from '@ohos.notificationManager';
@@ -71,19 +72,12 @@ struct Reminders {
     if (!this.active || owner !== appState.currentUser.userId) return;
     this.busy = false;
     if (!result.ok) this.message = (result as ApiFailure).error.code === 'RESULT_UNCONFIRMED' ? '暂未确认，请重试。' : '操作失败，请重试。';
-    else if (action === 'start') {
-      if (item.targetPage === 'pages/FocusSetup') {
-        if (appState.focusRuntime !== null) { this.message = '请先处理当前专注任务。'; void this.load(); return; }
-        appState.setFocusTask({ course: item.courseName, task: item.title, plannedMinutes: item.durationMinutes,
-          source: 'agent', mode: 'normal', timerType: 'countdown', planTaskId: item.objectId } as FocusTask);
-      }
-      router.pushUrl({ url: item.targetPage, params: { courseName: item.courseName,
-        knowledgePointId: item.knowledgePointId, eventId: item.eventId, eventVersion: result.data.event.version } });
-    } else this.message = action === 'snooze' ? '已稍后提醒。' : '今日已忽略。';
+    else if (action === 'open') ReminderNavigation.open(item);
+    else this.message = action === 'snooze' ? '已延后至 ' + new Date(result.data.event.snoozedUntil ?? '').toLocaleString() : '今日已忽略。';
     void this.load();
   }
   private statusLabel(item: ReminderEvent): string {
-    if (item.status === 'snoozed') return '稍后提醒';
+    if (item.status === 'snoozed') return '已延后至 ' + new Date(item.snoozedUntil ?? '').toLocaleString();
     if (item.status === 'ignored') return '今天已忽略';
     if (item.status === 'started') return '已开始';
     if (item.status === 'completed') return '已完成';
@@ -95,6 +89,37 @@ struct Reminders {
     if (kind === 'exam') return '已评估知识点考前巩固';
     if (kind === 'conflict') return '时间预算冲突';
     return '学习间隔';
+  }
+  @State snoozeItem: ReminderEvent | null = null;
+  @State snoozeMinutes: string = '30';
+  private chooseSnooze(item: ReminderEvent): void { this.snoozeItem = item; this.snoozeMinutes = '30'; }
+  private confirmSnooze(): void {
+    const minutes: number = Number(this.snoozeMinutes);
+    if (!Number.isInteger(minutes) || minutes < 5 || minutes > 1440 || minutes % 5 !== 0) { this.message = '请输入5到1440分钟，且为5的倍数'; return; }
+    const item: ReminderEvent | null = this.snoozeItem;
+    this.snoozeItem = null;
+    if (item !== null) void this.act(item, 'snooze', minutes);
+  }
+  @Builder
+  SnoozeSelector() {
+    if (this.snoozeItem !== null) {
+      Column({ space: 10 }) {
+        Text('选择稍后提醒时间').fontSize(16)
+        Flex({ wrap: FlexWrap.Wrap }) {
+          ForEach([15, 30, 60, 120, 240], (minutes: number) => {
+            Button(`${minutes}分钟`).margin(4).onClick(() => { this.snoozeMinutes = minutes.toString(); this.confirmSnooze(); })
+          })
+          Button('今晚20点').margin(4).onClick(() => {
+            const tonight: Date = new Date(); tonight.setHours(20, 0, 0, 0);
+            const minutes: number = Math.ceil((tonight.getTime() - Date.now()) / 300000) * 5;
+            if (minutes < 5) { this.message = '今天20点已过，请选择其他时间'; return; }
+            this.snoozeMinutes = minutes.toString(); this.confirmSnooze();
+          })
+        }
+        TextInput({ text: this.snoozeMinutes, placeholder: '自定义分钟，5的倍数' }).type(InputType.Number).onChange((value: string) => this.snoozeMinutes = value)
+        Row({ space: 12 }) { Button('确认延后').onClick(() => this.confirmSnooze()); Button('取消').onClick(() => this.snoozeItem = null) }
+      }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(12)
+    }
   }
   build() {
     Column() {
@@ -151,6 +176,7 @@ struct Reminders {
               }.width('100%')
             })
           }.padding(16).backgroundColor('#FFFFFF').borderRadius(12).width('100%')
+          this.SnoozeSelector()
           if (this.message) { Text(this.message).fontSize(13).fontColor('#B54708').width('100%') }
           if (this.busy) { LoadingProgress().width(28).height(28) }
           if (!this.busy && this.events.length === 0) { Text('暂无提醒，可先导入课程并建立学习安排。').fontSize(14).fontColor('#667085') }
@@ -161,15 +187,11 @@ struct Reminders {
               Text(item.reason).fontSize(13).fontColor('#475467').width('100%')
               if (item.status !== 'completed' && item.status !== 'invalid') {
                 Row({ space: 16 }) {
-                  Button(item.targetPage === 'pages/StudyPlan' ? '查看安排' : '开始任务').height(40).fontSize(14).backgroundColor('#2563EB').enabled(!this.busy).onClick(() => this.act(item, 'start'))
+                  Button(item.targetPage === 'pages/StudyPlan' ? '查看安排' : '查看任务').height(40).fontSize(14).backgroundColor('#2563EB').enabled(!this.busy).onClick(() => this.act(item, 'open'))
                   Text('今天忽略').fontSize(13).fontColor('#667085').onClick(() => this.act(item, 'ignore'))
                 }.width('100%')
-                Row({ space: 16 }) {
-                  Text('稍后提醒：').fontSize(12).fontColor('#667085')
-                  ForEach([15, 30, 60], (minutes: number) => {
-                    Text(`${minutes}分钟`).fontSize(13).fontColor('#2563EB').onClick(() => this.act(item, 'snooze', minutes))
-                  })
-                }.width('100%')
+                Button('稍后开始').enabled(!this.busy && item.status !== 'snoozed').onClick(() => this.chooseSnooze(item))
+
               }
             }.padding(16).backgroundColor('#FFFFFF').borderRadius(12).width('100%')
           }, (item: ReminderEvent) => `${item.eventId}-${item.version}`)

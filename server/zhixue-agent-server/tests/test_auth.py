@@ -51,7 +51,7 @@ def _register(client, nickname="小明", grade="大二", phone=None, seed_demo_d
     见 `test_register_defaults_to_empty_profile` / `test_register_can_opt_into_demo_data`。
     """
     response = client.post("/api/v1/auth/register",
-                           json={"nickname": nickname, "grade": grade,
+                           json={'password': 'test-pw-123456', "nickname": nickname, "grade": grade,
                                  "phone": phone or _phone(),
                                  "seedDemoData": seed_demo_data})
     assert response.status_code == 201
@@ -83,15 +83,15 @@ def test_register_never_leaks_token_or_subject(client):
 def test_register_rejects_blank_and_overlong_nickname(client):
     # 都带上合法手机号，确保失败原因**确实来自昵称**而不是"缺手机号"
     assert client.post("/api/v1/auth/register",
-                       json={"nickname": "   ", "phone": _phone()}).status_code == 400
+                       json={'password': 'test-pw-123456', "nickname": "   ", "phone": _phone()}).status_code == 400
     assert client.post("/api/v1/auth/register",
-                       json={"nickname": "x" * 17, "phone": _phone()}).status_code == 400
-    assert client.post("/api/v1/auth/register", json={}).status_code == 400
+                       json={'password': 'test-pw-123456', "nickname": "x" * 17, "phone": _phone()}).status_code == 400
+    assert client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', }).status_code == 400
 
 
 def test_register_rejects_unknown_grade(client):
     response = client.post("/api/v1/auth/register",
-                           json={"nickname": "小明", "grade": "博后", "phone": _phone()})
+                           json={'password': 'test-pw-123456', "nickname": "小明", "grade": "博后", "phone": _phone()})
 
     assert response.status_code == 400
     assert response.get_json()["errorCode"] == "VALIDATION_ERROR"
@@ -399,7 +399,7 @@ def test_valid_bearer_does_not_change_demo_endpoints(client):
 def test_auth_endpoints_require_contract_version_header_to_match(client):
     """契约头校验对 auth 接口同样生效（复用 /api/v1 规则）。"""
     response = client.post("/api/v1/auth/register",
-                           json={"nickname": "小明", "phone": _phone()},
+                           json={'password': 'test-pw-123456', "nickname": "小明", "phone": _phone()},
                            headers={"X-API-Contract-Version": "api-contract-v0.2"})
 
     assert response.status_code == 409
@@ -430,7 +430,7 @@ def test_session_expiry_is_enforced(tmp_path):
     from app.repositories.json_repository import JsonRepository
 
     repository = JsonRepository(tmp_path / "repo.json")
-    outcome = auth.register_user(repository, "小明", phone=_phone())
+    outcome = auth.register_user(repository, "小明", phone=_phone(), password='test-pw-123456')
     session = repository.get(auth.SESSIONS, outcome["token"])
 
     session["expiresAt"] = "2020-01-01T00:00:00+00:00"

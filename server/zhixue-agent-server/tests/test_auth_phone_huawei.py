@@ -29,7 +29,7 @@ _TEST_PASSWORD = "test-pw-123456"
 def test_register_requires_phone(tmp_path):
     client = create_app(tmp_path / "req-phone.json").test_client()
 
-    missing = client.post("/api/v1/auth/register", json={"nickname": "无号同学"}, headers=H)
+    missing = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', "nickname": "无号同学"}, headers=H)
     assert missing.status_code == 400
     assert "手机号" in missing.get_json()["message"]
 
@@ -39,7 +39,7 @@ def test_register_rejects_malformed_phone(tmp_path):
 
     for bad in ("12345", "23800000000", "1380000000", "abc", "12800000000"):
         response = client.post("/api/v1/auth/register",
-                               json={"nickname": "错号", "phone": bad}, headers=H)
+                               json={'password': 'test-pw-123456', "nickname": "错号", "phone": bad}, headers=H)
         assert response.status_code == 400, f"phone={bad!r} → {response.status_code}"
 
 
@@ -61,19 +61,15 @@ def test_register_accepts_common_phone_formats(tmp_path):
     assert logged.get_json()["user"]["userId"] == created.get_json()["user"]["userId"]
 
 
-def test_register_allows_multiple_accounts_per_phone(tmp_path):
-    """同一手机号允许创建多个独立账号。"""
-    client = create_app(tmp_path / "dup.json").test_client()
-    phone = _phone()
-    assert client.post("/api/v1/auth/register",
-                       json={"nickname": "第一个", "phone": phone},
-                       headers=H).status_code == 201
+def test_register_rejects_duplicate_phone(tmp_path):
+    client = create_app(tmp_path / 'unique.json').test_client()
+    data = dict(phone='13900002222', password='password123', nickname='第一个')
+    assert client.post('/api/v1/auth/register', json=data).status_code == 201
+    data['nickname'] = '第二个'
+    result = client.post('/api/v1/auth/register', json=data)
+    assert result.status_code == 409
+    assert result.get_json()['errorCode'] == 'PHONE_ALREADY_REGISTERED'
 
-    duplicate = client.post("/api/v1/auth/register",
-                            json={"nickname": "第二个", "phone": phone}, headers=H)
-
-    assert duplicate.status_code == 201
-    assert duplicate.get_json()["user"]["nickname"] == "第二个"
 
 def test_phone_is_persisted_normalized_and_masked(tmp_path):
     """落库的是归一化号码；回传的是脱敏号码。"""
@@ -81,7 +77,7 @@ def test_phone_is_persisted_normalized_and_masked(tmp_path):
     phone = _phone()
 
     body = client.post("/api/v1/auth/register",
-                       json={"nickname": "脱敏", "phone": f"+86 {phone}"},
+                       json={'password': 'test-pw-123456', "nickname": "脱敏", "phone": f"+86 {phone}"},
                        headers=H).get_json()
 
     user = body["user"]
@@ -109,25 +105,21 @@ def test_login_by_phone_returns_same_account(tmp_path):
 def test_login_by_unknown_phone_is_401(tmp_path):
     client = create_app(tmp_path / "unknown.json").test_client()
 
-    response = client.post("/api/v1/auth/login", json={"phone": "13700000099"}, headers=H)
+    response = client.post("/api/v1/auth/login", json={"phone": "13700000099", "password": _TEST_PASSWORD}, headers=H)
 
     assert response.status_code == 401
 
 
-def test_login_or_register_prefers_phone_over_nickname(tmp_path):
-    """改了昵称但手机号不变 → 仍是同一个人。手机号才是身份。"""
-    client = create_app(tmp_path / "prefer.json").test_client()
-    phone = _phone()
+def test_login_or_register_does_not_create_accounts(tmp_path):
+    client = create_app(tmp_path / 'compat.json').test_client()
+    data = dict(phone='13900002221', password='password123', nickname='原名')
+    assert client.post('/api/v1/auth/login-or-register', json=data).status_code == 401
+    original = client.post('/api/v1/auth/register', json=data).get_json()
+    data['nickname'] = '新名'
+    result = client.post('/api/v1/auth/login-or-register', json=data)
+    assert result.status_code == 200
+    assert result.get_json()['user']['userId'] == original['user']['userId']
 
-    first = client.post("/api/v1/auth/login-or-register",
-                        json={"nickname": "原名", "phone": phone,
-                              "password": _TEST_PASSWORD}, headers=H).get_json()
-    renamed = client.post("/api/v1/auth/login-or-register",
-                          json={"nickname": "改了个名", "phone": phone,
-                                "password": _TEST_PASSWORD}, headers=H).get_json()
-
-    assert renamed["created"] is False
-    assert renamed["user"]["userId"] == first["user"]["userId"]
 
 
 # --------------------------------------------------------------------- 华为账号登录

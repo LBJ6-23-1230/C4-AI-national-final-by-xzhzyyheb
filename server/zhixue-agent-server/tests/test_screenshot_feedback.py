@@ -18,7 +18,7 @@ def setup(tmp_path, monkeypatch, request):
     client = create_app(tmp_path / 'screenshots.json').test_client()
     users = []
     for i in (1, 2):
-        auth = client.post('/api/v1/auth/register', json={
+        auth = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 
             'nickname': f'截图测试{i}', 'phone': f'1390000960{i}', 'grade': '大二', 'seedDemoData': False}).get_json()
         users.append((auth['user']['userId'], {'Authorization': 'Bearer ' + auth['token']}))
     return client, workflows._repository, users

@@ -63,6 +63,8 @@ def get_profile(user_id: str):
 	profile = dict(profile, targetCourses=profile_courses(profile), mastery=normalized_mastery(profile))
 	from app.services.learning_effect import projected_mastery
 	profile['mastery'] = projected_mastery(_repository, user_id, profile['mastery'])
+	from app.services.topic_groups import aggregate
+	profile['topicGroups'] = aggregate(profile['mastery'])
 	return jsonify({"profileVersion": profile.get("profileVersion", 1),
 		"profile": profile, "mastery": profile.get("mastery", []),
 		"history": profile.get("history", []), "evidence": profile.get("evidence", [])})

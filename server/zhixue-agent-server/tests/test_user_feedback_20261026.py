@@ -17,7 +17,7 @@ def encoded(value):
 @pytest.fixture
 def accounts(tmp_path):
     client = create_app(tmp_path / 'feedback.json').test_client()
-    users = [client.post('/api/v1/auth/register', json={
+    users = [client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 
         'phone': phone, 'nickname': phone, 'seedDemoData': False}).get_json()
         for phone in ('13900002601', '13900002602')]
     return client, [(u['user']['userId'], {'Authorization': 'Bearer ' + u['token']}) for u in users]

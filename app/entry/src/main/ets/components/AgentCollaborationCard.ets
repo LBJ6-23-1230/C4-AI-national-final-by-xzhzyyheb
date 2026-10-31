@@ -22,7 +22,7 @@ export struct AgentCollaborationCard {
     else this.notice = '协作记录暂时不可用';
   }
   private role(agent: string): string {
-    if (agent.toLowerCase().indexOf('secretary') >= 0) return '秘书 · 统筹下一步';
+    if (agent.toLowerCase().indexOf('secretary') >= 0) return '流程编排 · 协调下一步';
     if (agent.toLowerCase().indexOf('diagnos') >= 0) return '诊断 · 确认学习状态';
     if (agent.toLowerCase().indexOf('plan') >= 0) return '规划 · 安排学习任务';
     if (agent.toLowerCase().indexOf('exercise') >= 0) return '练习 · 准备针对性题目';

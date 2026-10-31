@@ -28,7 +28,8 @@ struct CourseImport {
   aboutToAppear(): void {
     const params = router.getParams() as Record<string, string>;
     if (params && (params['initialTab'] === 'import' || params['initialTab'] === 'ddls')) this.activeTab = params['initialTab'];
-    if (params && params['ddlFilter'] === 'pending') this.ddlFilter = 'pending';
+    if (params && params['focusDdlId']) { this.ddlDetailId = params['focusDdlId']; this.ddlFilter = 'all'; }
+    if (params && params['ddlFilter'] === 'pending' && !params['focusDdlId']) this.ddlFilter = 'pending';
     this.refreshLearningData();
     void appState.syncLearningData();
   }
@@ -216,11 +217,6 @@ struct CourseImport {
   /* ==================== 计划跳转 ==================== */
 
   private openPlan(): void {
-    if (appState.weeklyPlan === null) {
-      appState.setWeeklyPlan(LocalAgentService.generateWeeklyPlan(
-        appState.courses, appState.homeworkDDLs, appState.currentUser
-      ));
-    }
     router.pushUrl({ url: 'pages/StudyPlan' });
   }
 
@@ -806,6 +802,9 @@ struct CourseImport {
                   .backgroundColor('#FEF2F2').borderRadius(10).padding({ left: 10, right: 10, top: 4, bottom: 4 })
               }.width('100%').margin({ bottom: 8 })
 
+              if (this.ddlDetailId.length > 0 && !this.ddlList.some((ddl: HomeworkDDL) => ddl.id === this.ddlDetailId)) {
+                Text('该提醒对应的作业已删除或尚未同步，请刷新作业列表。').fontSize(13).fontColor('#B45309')
+              }
               if (this.ddlList.length === 0) {
                 Column({ space: 8 }) {
                   Text('📭').fontSize(36)

@@ -12,7 +12,7 @@ export class ApiDisplayFormatter {
 
   static agent(value: string | null): string {
     if (value === null || value.length === 0) return '等待调度';
-    if (value === 'secretary') return '学习秘书';
+    if (value === 'secretary') return '流程编排';
     if (value === 'diagnosis') return '薄弱点诊断';
     if (value === 'exercise') return '练习生成';
     if (value === 'assessment') return '学习评估';

@@ -133,7 +133,7 @@ def test_schedule_is_scoped_to_authenticated_account(tmp_path):
     client = create_app(tmp_path / "owners.json").test_client()
     seed(client)
     auth = client.post("/api/v1/auth/register", json=dict(phone="13900008712", nickname="任务安排测试",
-                                                        seedDemoData=False)).get_json()
+                                                        seedDemoData=False, password='test-pw-123456')).get_json()
     headers = {"Authorization": "Bearer " + auth["token"]}
     payload = dict(taskId="chosen", expectedPlanVersion=1, idempotencyKey="owner", userId="demo-user")
     assert client.post(URL, json=payload, headers=headers).status_code == 404

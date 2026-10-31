@@ -102,7 +102,10 @@ def candidates(repo, owner, stamp):
             level=level, reason=reason, due=sort_due, deadline=task.get('dueAt') or due_date,
             durationMinutes=task.get('durationMinutes', 0), evidenceIds=[],
             sourceVersion=plan.get('version', 1), planId=plan.get('planId', ''),
-            knowledgePointId=task.get('knowledgePointId', ''), targetPage='pages/FocusSetup'))
+            knowledgePointId=task.get('knowledgePointId', ''),
+            sourceType='ddl' if task.get('source') == 'ddl' else 'plan', sourceId=task_id,
+            targetParams=dict(initialTab='ddls', ddlFilter='pending', focusDdlId=task_id) if task.get('source') == 'ddl' else {},
+            targetPage='pages/CourseImport' if task.get('source') == 'ddl' else 'pages/StudyPlan'))
     evidence = profile.get('evidence', [])
     history = profile.get('history', [])
     for point in profile.get('mastery', []):
@@ -188,7 +191,7 @@ def overview(repo, owner, stamp=None):
     visible = [e for e in events if e['status'] == 'pending']
     return dict(userId=owner, dataTime=(stamp or now()).isoformat(),
         version=digest(*(str((e['eventId'], e['version'], e['status'])) for e in events))[:20],
-        highlight=public(visible[0]) if visible else None, tasks=[public(e) for e in visible[1:3]],
+        highlight=public(visible[0]) if visible else None, tasks=[public(e) for e in visible[1:3]], allTasks=[public(e) for e in visible],
         pendingCount=len(visible), guidance='先导入课程或完成一次知识点诊断，建立学情。' if not events else '今天的事项已处理，可查看安排。',
         modelCalls=0)
 
@@ -211,22 +214,22 @@ def action(repo, owner, event_id, data):
         if event['status'] in TERMINAL or type(data.get('version')) is not int or event['version'] != data['version']:
             raise RuntimeError('提醒已更新或已处理，请刷新')
         verb = data.get('action')
-        states = {'start': 'started', 'snooze': 'snoozed', 'ignore': 'ignored'}
+        states = {'open': event['status'], 'start': 'started', 'snooze': 'snoozed', 'ignore': 'ignored'}
         if verb not in states:
             raise ValueError('不支持的提醒动作')
         stamp = now()
         if verb == 'snooze':
             minutes = data.get('minutes', 30)
-            if type(minutes) is not int or minutes not in (15, 30, 60):
-                raise ValueError('请选择15、30或60分钟')
+            if type(minutes) is not int or not 5 <= minutes <= 1440 or minutes % 5:
+                raise ValueError('请输入5到1440分钟，且为5的倍数')
             event['snoozedUntil'] = (stamp + timedelta(minutes=minutes)).isoformat()
             event['snoozeKey'] = key
         if verb == 'ignore':
             event['ignoredDate'] = stamp.astimezone(ZoneInfo(preferences(repo, owner)['timezone'])).date().isoformat()
-        if verb != 'snooze':
+        if verb not in ('open', 'snooze'):
             event.pop('snoozeKey', None)
             event.pop('snoozedUntil', None)
-        event.update(status=states[verb], version=event['version'] + 1)
+        event.update(status=states[verb], version=event['version'] + int(verb != 'open'))
         response = dict(event=public(event))
         repo.apply_batch([], [('reminder_events', event_id, event), ('reminder_actions', operation,
             dict(userId=owner, request=dict(data, eventId=event_id), response=response))])

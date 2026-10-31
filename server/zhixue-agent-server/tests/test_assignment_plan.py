@@ -39,7 +39,7 @@ def test_sync_add_complete_and_empty_device_snapshot_preserves_tasks(tmp_path, m
 
 def test_new_account_sync_repairs_existing_local_ddls_and_isolates_identity(tmp_path):
     client = create_app(tmp_path / 'account.json').test_client()
-    auth = client.post('/api/v1/auth/register', json={'nickname': 'DDL测试', 'phone': '13900008765',
+    auth = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 'nickname': 'DDL测试', 'phone': '13900008765',
         'grade': '大二', 'seedDemoData': False}).get_json()
     headers = {'Authorization': 'Bearer ' + auth['token']}
     body = {'assignments': [assignment()], 'userId': 'demo-user'}

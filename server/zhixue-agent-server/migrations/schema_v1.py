@@ -1,4 +1,8 @@
-"""Versioned PostgreSQL tables; business IDs and JSON API payloads are preserved.
+"""Immutable 20261027_01 schema snapshot; apply the complete Alembic chain.
+
+The historical full phone constraint is removed in 20261028_02 and restored as
+an active-account partial index in 20261031_01 after explicit duplicate migration.
+Current runtime metadata is app.repositories.pg_schema, not this historical file.
 
 Each established domain has its own table. Frequently filtered fields are typed
 columns. New/rare collections use an explicit compatibility table until promoted.

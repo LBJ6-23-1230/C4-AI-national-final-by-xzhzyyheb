@@ -611,7 +611,7 @@ struct ChatMain {
           .fontColor('#111827')
         Row({ space: 6 }) {
           Text('').width(7).height(7).borderRadius(4).backgroundColor('#3B82F6')
-          Text('在线 · AI学习助手')
+          Text(AgentApiClient.getConfig().useFixture ? '离线演示 · AI学习助手' : '在线 · AI学习助手')
             .fontSize(12)
             .fontColor('#64748B')
         }
@@ -620,7 +620,7 @@ struct ChatMain {
       }.margin({ bottom: 6 })
       Row({ space: 4 }) {
         PartnerInboxButton({ refreshVersion: this.inboxRefreshVersion })
-        Button('任务记录').fontSize(13).height(34).backgroundColor('#F2F4F7').fontColor('#475467').borderRadius(8).onClick(() => { this.showGoalHistory = !this.showGoalHistory; void this.loadGoalHistory(); })
+        Button('学习记录').fontSize(13).height(34).backgroundColor('#F2F4F7').fontColor('#475467').borderRadius(8).onClick(() => { router.pushUrl({ url: 'pages/LearningRecords' }); })
       }
     }
     .width('100%')
@@ -780,7 +780,7 @@ struct ChatMain {
   }
 
   private roleLabel(role: string): string {
-    if (role === 'secretary' || role === 'clarify' || role === 'finish') return '学习秘书';
+    if (role === 'secretary' || role === 'clarify' || role === 'finish') return '流程编排';
     if (role === 'diagnosis') return '学情诊断';
     if (role === 'exercise') return '练习';
     if (role === 'assessment') return '评估';

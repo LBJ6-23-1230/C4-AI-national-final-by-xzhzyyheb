@@ -16,8 +16,8 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("FILE_STORAGE", "local")
     monkeypatch.setenv("FILE_STORAGE_DIR", str(tmp_path / "files"))
     result = create_app(tmp_path / "repository.json").test_client()
-    alice = result.post('/api/v1/auth/register', json={'phone': '13900009501', 'nickname': 'Alice'}).get_json()
-    bob = result.post('/api/v1/auth/register', json={'phone': '13900009502', 'nickname': 'Bob'}).get_json()
+    alice = result.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 'phone': '13900009501', 'nickname': 'Alice'}).get_json()
+    bob = result.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 'phone': '13900009502', 'nickname': 'Bob'}).get_json()
     result.environ_base['HTTP_AUTHORIZATION'] = 'Bearer ' + alice['token']
     result.bob_headers = {'Authorization': 'Bearer ' + bob['token']}
     return result

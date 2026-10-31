@@ -9,7 +9,7 @@ def inbox_setup(tmp_path):
     repository = app.extensions['repository']
     people = []
     for index in range(3):
-        response = client.post('/api/v1/auth/register', json={
+        response = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 
             'nickname': f'消息同学{index}', 'phone': f'1380055000{index}', 'seedDemoData': False})
         assert response.status_code == 201
         record = response.get_json()

@@ -70,6 +70,10 @@ def test_verify_code_auto_registers_and_is_single_use(tmp_path):
     assert body["user"]["phoneMasked"] == f"{phone[:3]}****{phone[-4:]}"
     assert phone not in str(body)
 
+    headers = {"Authorization": f"Bearer {body['token']}"}
+    assert client.get(f"/api/v1/profile/{body['user']['userId']}", headers=headers).status_code == 403
+    assert client.post('/api/v1/auth/change-password', headers=headers,
+                       json={'newPassword': 'test-pw-123456'}).status_code == 200
     profile = client.get(
         f"/api/v1/profile/{body['user']['userId']}",
         headers={"Authorization": f"Bearer {body['token']}"},
@@ -103,6 +107,9 @@ def test_verify_code_new_account_defaults_to_empty_profile(tmp_path):
     assert response.status_code == 201
     assert body["created"] is True
     assert body["demoDataSeeded"] is False
+    assert body['needsPasswordSetup'] is True
+    assert client.post('/api/v1/auth/change-password', headers={"Authorization": f"Bearer {body['token']}"},
+                       json={'newPassword': 'test-pw-123456'}).status_code == 200
     profile = client.get(f"/api/v1/profile/{body['user']['userId']}", headers={"Authorization": f"Bearer {body['token']}"}).get_json()
     assert profile["mastery"] == []
 
@@ -110,7 +117,7 @@ def test_verify_code_new_account_defaults_to_empty_profile(tmp_path):
 def test_verify_code_logs_existing_phone_into_same_account(tmp_path):
     client, _path = _client(tmp_path, "verify-existing.json")
     phone = _phone()
-    registered = client.post("/api/v1/auth/register", json={
+    registered = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
         "nickname": "已有用户",
         "phone": phone,
     }).get_json()

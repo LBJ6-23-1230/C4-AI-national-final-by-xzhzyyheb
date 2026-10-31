@@ -2,7 +2,7 @@ import { PartnerInbox, PartnerSummary, PartnerReadRequest, PartnerReadResult } f
 import { CourseSettings, CourseSettingRequest } from './LearningUpgradeModels';
 import { PartnerMessages, PartnerMessageRequest, PartnerMessageResult, ScannedQuestionRequest, SavedScannedQuestion, LearningReview, ReviewRequest, ReviewTasks, ReviewTaskRequest } from './LearningUpgradeModels';
 import { AuthSelectAccountRequest } from './AuthModels';
-import { GoalActionRequest, GoalActionResponse, GoalHistoryResponse } from './ApiModels';
+import { LearningRecords, GoalActionRequest, GoalActionResponse, GoalHistoryResponse } from './ApiModels';
 import { AuthProfileUpdateRequest } from './AuthModels';
 import { LearningPreferencesRequest, DocumentPointsRequest } from './ApiModels';
 import { http } from '@kit.NetworkKit';
@@ -46,6 +46,9 @@ interface KnowledgePointImportRequest {
  * 默认地址集中定义在 `ApiDefaults.DEFAULT_BASE_URL`，页面里不得再各写一份 IP。
  */
 export class AgentApiClient {
+  static async getLearningRecords(cursor: string = '', chatSessionId: string = ''): Promise<ApiResult<LearningRecords>> {
+    return AgentApiClient.request<LearningRecords>(http.RequestMethod.GET, `/api/v1/learning-records?limit=20&cursor=${encodeURIComponent(cursor)}&chatSessionId=${encodeURIComponent(chatSessionId)}`);
+  }
   static async getLearningData(): Promise<ApiResult<LearningSnapshot>> {
     return AgentApiClient.request<LearningSnapshot>(http.RequestMethod.GET, '/api/v1/learning-data');
   }

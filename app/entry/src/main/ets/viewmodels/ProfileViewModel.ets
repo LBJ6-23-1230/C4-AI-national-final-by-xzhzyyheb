@@ -1,5 +1,5 @@
 import { AgentApiClient } from '../api/AgentApiClient';
-import { Evidence, KnowledgeMastery, MasteryHistory, ProfileResponse } from '../api/ApiModels';
+import { TopicGroup, Evidence, KnowledgeMastery, MasteryHistory, ProfileResponse } from '../api/ApiModels';
 import { ApiFailure } from '../api/ApiResult';
 import { ClientCache } from '../cache/ClientCache';
 
@@ -13,6 +13,7 @@ export interface ProfileViewState {
   profileVersion: number;
   goal: string;
   mastery: KnowledgeMastery[];
+  topicGroups: TopicGroup[];
   history: MasteryHistory[];
   evidence: Evidence[];
   errorMessage: string;
@@ -44,6 +45,7 @@ export class ProfileViewModel {
       profileVersion: 0,
       goal: '',
       mastery: [],
+      topicGroups: [],
       history: [],
       evidence: [],
       errorMessage: detail,
@@ -57,6 +59,7 @@ export class ProfileViewModel {
       profileVersion: response.profileVersion,
       goal: response.profile?.goal ?? '',
       mastery: response.mastery,
+      topicGroups: response.profile?.topicGroups ?? [],
       history: response.history,
       evidence: response.evidence,
       errorMessage: '',

@@ -90,6 +90,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "description": "Existing application/json contract is unchanged. Opt in with Accept: text/event-stream for advisory progress and a single terminal result/error. Never replay an accepted POST after interruption. See contracts/chat-stream.md."
@@ -132,6 +142,16 @@
           },
           "404": {
             "description": "资源不存在、不属于当前身份，或开发工具未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -199,6 +219,16 @@
           },
           "404": {
             "description": "资源不存在、不属于当前身份，或开发工具未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -322,6 +352,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -391,6 +431,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -438,6 +488,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -517,6 +577,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -566,6 +636,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -608,6 +688,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -680,6 +770,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -852,6 +952,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "description": "Material mode requires knowledgePointId and an owned kbId; optional documentId narrows scope. Keyword/heading retrieval uses up to 3 fragments. Generation/grounding failure returns an empty set and explicit reason, never bank substitution. Questions are model-generated and may have errors. Standard answers and explanations are withheld until submission."
@@ -895,6 +1005,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -951,6 +1071,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -995,6 +1125,16 @@
           },
           "404": {
             "description": "资源不存在、不属于当前身份，或开发工具未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -1095,6 +1235,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1139,7 +1289,7 @@
             }
           },
           "409": {
-            "description": "该手机号已注册（errorCode=CONFLICT）",
+            "description": "手机号已注册、历史账号需迁移或选择入口已停用",
             "content": {
               "application/json": {
                 "schema": {
@@ -1150,6 +1300,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -1213,6 +1373,26 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "手机号已注册、历史账号需迁移或选择入口已停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -1254,6 +1434,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -1288,6 +1478,16 @@
           },
           "405": {
             "description": "请求方法不被该路径支持（后端统一返回 JSON 错误体，而非 HTML）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -1337,6 +1537,16 @@
           },
           "400": {
             "description": "昵称或头像无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -1398,6 +1608,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -1410,7 +1630,7 @@
     "/api/v1/auth/login-or-register": {
       "post": {
         "summary": "登录优先，注册兜底",
-        "description": "昵称已存在则登录该账号（不新建），不存在才建号。登录页主按钮应调此接口，避免同一昵称重复建号。",
+        "description": "兼容入口，仅登录不注册",
         "operationId": "loginOrRegister",
         "tags": [
           "auth"
@@ -1482,13 +1702,24 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
           {
             "$ref": "#/components/parameters/ContractVersionHeader"
           }
-        ]
+        ],
+        "deprecated": true
       }
     },
     "/api/v1/knowledge-bases": {
@@ -1554,6 +1785,16 @@
           },
           "404": {
             "description": "资源不存在、不属于当前身份，或开发工具未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -1640,6 +1881,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -1709,6 +1960,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -1764,6 +2025,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -1828,6 +2099,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -1917,6 +2198,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1981,6 +2272,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -2036,6 +2337,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -2127,6 +2438,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2202,6 +2523,16 @@
           },
           "503": {
             "description": "可信授权验证尚未接入，请使用手机号和密码登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -2289,6 +2620,16 @@
           },
           "401": {
             "description": "无效或过期凭据；不会降级为游客",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -2390,6 +2731,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -2435,6 +2786,16 @@
           },
           "404": {
             "description": "资源不存在、不属于当前身份，或开发工具未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -2493,6 +2854,16 @@
           },
           "404": {
             "description": "资源不存在、不属于当前身份，或开发工具未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -2579,6 +2950,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -2621,10 +3002,34 @@
             }
           },
           "401": {
-            "description": "Login required"
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "429": {
-            "description": "Probe rate limit or probe already running"
+            "description": "Probe rate limit or probe already running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2698,6 +3103,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -2738,6 +3153,16 @@
           },
           "404": {
             "description": "资源不存在、不属于当前身份，或开发工具未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -2803,6 +3228,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2853,6 +3288,16 @@
           },
           "405": {
             "description": "请求方法不被该路径支持（后端统一返回 JSON 错误体，而非 HTML）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -2953,6 +3398,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2989,6 +3444,16 @@
           },
           "404": {
             "description": "资源不存在、不属于当前身份，或开发工具未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -3050,6 +3515,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3104,6 +3579,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3123,13 +3608,44 @@
             }
           },
           "400": {
-            "description": "Invalid request"
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid session"
+            "description": "Invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Identity not accessible"
+            "description": "Identity not accessible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -3157,16 +3673,54 @@
             }
           },
           "400": {
-            "description": "Invalid request"
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid session"
+            "description": "Invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Identity not accessible"
+            "description": "Identity not accessible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Event ID reused with different facts"
+            "description": "Event ID reused with different facts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3196,16 +3750,54 @@
             }
           },
           "400": {
-            "description": "Invalid input"
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid session"
+            "description": "Invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "No owned plan"
+            "description": "No owned plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Stale plan version or conflicting idempotency key"
+            "description": "Stale plan version or conflicting idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3270,6 +3862,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3317,6 +3919,16 @@
           },
           "405": {
             "description": "请求方法不被该路径支持（后端统一返回 JSON 错误体，而非 HTML）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -3380,6 +3992,16 @@
           },
           "404": {
             "description": "目标真实账号不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -3459,6 +4081,16 @@
           },
           "405": {
             "description": "不支持的方法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
             "content": {
               "application/json": {
                 "schema": {
@@ -3792,6 +4424,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3821,16 +4463,54 @@
             }
           },
           "400": {
-            "description": "请求参数不合法"
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "会话无效"
+            "description": "会话无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "资源不存在或不属于当前用户"
+            "description": "资源不存在或不属于当前用户",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "数据版本变化"
+            "description": "数据版本变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -3870,16 +4550,54 @@
             }
           },
           "400": {
-            "description": "请求参数不合法"
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "会话无效"
+            "description": "会话无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "资源不存在或不属于当前用户"
+            "description": "资源不存在或不属于当前用户",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "数据版本变化"
+            "description": "数据版本变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -3919,16 +4637,54 @@
             }
           },
           "400": {
-            "description": "请求参数不合法"
+            "description": "请求参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "会话无效"
+            "description": "会话无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "资源不存在或不属于当前用户"
+            "description": "资源不存在或不属于当前用户",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "数据版本变化"
+            "description": "数据版本变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3958,13 +4714,44 @@
             }
           },
           "400": {
-            "description": "参数不合法"
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "目标或诊断不存在或不属于当前会话"
+            "description": "目标或诊断不存在或不属于当前会话",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "目标状态变化"
+            "description": "目标状态变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -3992,13 +4779,44 @@
             }
           },
           "400": {
-            "description": "参数不合法"
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "目标或诊断不存在或不属于当前会话"
+            "description": "目标或诊断不存在或不属于当前会话",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "目标状态变化"
+            "description": "目标状态变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -4031,7 +4849,24 @@
             "description": "OBS/S3 临时下载地址，有效期 120 秒；本地测试存储返回附件流"
           },
           "404": {
-            "description": "原文件不存在或无权访问"
+            "description": "原文件不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4070,7 +4905,24 @@
             }
           },
           "404": {
-            "description": "图片不存在、已删除或不属于当前账号"
+            "description": "图片不存在、已删除或不属于当前账号",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4129,7 +4981,24 @@
             }
           },
           "400": {
-            "description": "Invalid assignment snapshot or selected assignment."
+            "description": "Invalid assignment snapshot or selected assignment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4159,9 +5028,38 @@
             }
           },
           "401": {
-            "description": "Invalid, expired or used selection; invalid account or password"
+            "description": "Invalid, expired or used selection; invalid account or password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "手机号已注册、历史账号需迁移或选择入口已停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        }
+        },
+        "deprecated": true,
+        "description": "已停用，返回409 ACCOUNT_SWITCH_DISABLED"
       }
     },
     "/api/v1/partners/{partner}/messages": {
@@ -4180,16 +5078,54 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4226,16 +5162,44 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "201": {
             "description": "成功",
@@ -4243,6 +5207,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PartnerMessageResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -4286,16 +5260,44 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "201": {
             "description": "成功",
@@ -4303,6 +5305,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SavedScannedQuestion"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -4336,16 +5348,54 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -4376,16 +5426,54 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4416,16 +5504,54 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4446,16 +5572,54 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -4486,16 +5650,54 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -4514,16 +5716,54 @@
             }
           },
           "400": {
-            "description": "输入无效"
+            "description": "输入无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "数据不存在或无权访问"
+            "description": "数据不存在或无权访问",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "幂等键内容冲突，或本题标准答案尚未确认"
+            "description": "幂等键内容冲突，或本题标准答案尚未确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -4553,13 +5793,44 @@
             }
           },
           "400": {
-            "description": "参数无效"
+            "description": "参数无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "会话不存在或无访问权限"
+            "description": "会话不存在或无访问权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4590,13 +5861,44 @@
             }
           },
           "400": {
-            "description": "参数无效"
+            "description": "参数无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "会话不存在或无访问权限"
+            "description": "会话不存在或无访问权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4626,13 +5928,44 @@
             }
           },
           "400": {
-            "description": "参数无效"
+            "description": "参数无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "会话不存在或无访问权限"
+            "description": "会话不存在或无访问权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4682,16 +6015,54 @@
             }
           },
           "400": {
-            "description": "Invalid input, missing task duration or total budget exceeds 1440 minutes"
+            "description": "Invalid input, missing task duration or total budget exceeds 1440 minutes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid session"
+            "description": "Invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "No owned plan or task is no longer deferred"
+            "description": "No owned plan or task is no longer deferred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Stale plan version or conflicting idempotency key"
+            "description": "Stale plan version or conflicting idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "operationId": "scheduleDeferredPlanTask"
@@ -4755,10 +6126,34 @@
             }
           },
           "400": {
-            "description": "科目或题目列表无效"
+            "description": "科目或题目列表无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "题目不存在或不属于当前用户"
+            "description": "题目不存在或不属于当前用户",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4779,16 +6174,54 @@
             }
           },
           "400": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4809,16 +6242,54 @@
             }
           },
           "400": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4848,16 +6319,54 @@
             }
           },
           "400": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -4898,16 +6407,54 @@
             }
           },
           "400": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -4926,16 +6473,54 @@
             }
           },
           "400": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -4966,16 +6551,54 @@
             }
           },
           "400": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -4994,16 +6617,54 @@
             }
           },
           "400": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -5032,16 +6693,54 @@
             }
           },
           "400": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "Invalid request, identity or stale version"
+            "description": "Invalid request, identity or stale version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -5079,7 +6778,24 @@
             }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -5105,13 +6821,44 @@
             }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "400": {
-            "description": "数据格式错误"
+            "description": "数据格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "409": {
-            "description": "记录版本冲突"
+            "description": "记录版本冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -5149,7 +6896,24 @@
             }
           },
           "401": {
-            "description": "需要登录"
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -5204,7 +6968,113 @@
             }
           },
           "404": {
-            "description": "尚未找到操作结果"
+            "description": "尚未找到操作结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learning-records": {
+      "get": {
+        "operationId": "getLearningRecords",
+        "summary": "当前账号已确认的学习记录",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "chatSessionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "分页学习记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningRecords"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -5745,6 +7615,15 @@
           },
           "ruleVersion": {
             "type": "string"
+          },
+          "topicGroupId": {
+            "type": "string"
+          },
+          "topicGroupName": {
+            "type": "string"
+          },
+          "topicGroupConfidence": {
+            "type": "number"
           }
         }
       },
@@ -5801,6 +7680,12 @@
             "type": "object",
             "additionalProperties": {
               "type": "string"
+            }
+          },
+          "topicGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopicGroup"
             }
           }
         }
@@ -5931,6 +7816,25 @@
             "type": "string"
           },
           "dueDate": {
+            "type": "string"
+          },
+          "baseDurationMinutes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "extraMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 60,
+            "multipleOf": 5
+          },
+          "allocationReason": {
+            "type": "string"
+          },
+          "scheduledDate": {
+            "type": "string"
+          },
+          "dueAt": {
             "type": "string"
           }
         }
@@ -6639,15 +8543,14 @@
       "AuthRegisterRequest": {
         "type": "object",
         "required": [
-          "nickname",
-          "phone"
+          "phone",
+          "password"
         ],
         "properties": {
           "nickname": {
             "type": "string",
-            "minLength": 1,
             "maxLength": 16,
-            "description": "昵称，去除首尾空白后不能为空"
+            "description": "选填的展示昵称；省略时服务端生成默认昵称，不参与身份匹配。"
           },
           "grade": {
             "type": "string",
@@ -6667,14 +8570,12 @@
           },
           "phone": {
             "type": "string",
-            "description": "Required phone number; may be bound to multiple independent accounts."
+            "description": "必填且归一化后在活跃账号中唯一。"
           },
           "password": {
             "type": "string",
-            "nullable": true,
             "minLength": 6,
-            "maxLength": 72,
-            "description": "可选。设置后该账号可用密码登录；服务端只保存 Werkzeug 生成的加盐哈希，明文不落库也不回传。未设置（例如走验证码建号）时，该账号的密码登录会被如实拒绝并提示改用验证码登录 —— 不会接受任意密码。"
+            "maxLength": 72
           },
           "seedDemoData": {
             "type": "boolean",
@@ -6685,30 +8586,40 @@
         }
       },
       "AuthLoginRequest": {
-        "type": "object",
-        "required": [],
-        "properties": {
-          "userId": {
-            "type": "string"
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "phone": {
+                "type": "string"
+              },
+              "password": {
+                "type": "string",
+                "minLength": 6,
+                "maxLength": 72
+              }
+            },
+            "required": [
+              "phone",
+              "password"
+            ]
           },
-          "token": {
-            "type": "string"
-          },
-          "nickname": {
-            "type": "string",
-            "nullable": true,
-            "description": "按昵称登录。与 userId/token 二选一；两者都提供时优先按凭据恢复。账号设过密码时需同时提供 password。昵称本身不是秘密，此形式仅适用于演示/单机场景。"
-          },
-          "phone": {
-            "type": "string",
-            "description": "按手机号登录。与 userId/token、nickname 三选一；分派优先级：凭据 > 手机号 > 昵称。"
-          },
-          "password": {
-            "type": "string",
-            "nullable": true,
-            "description": "配合 phone / nickname 使用。账号设过密码时**必须**正确，否则返回 401 UNAUTHORIZED；从未设过密码的账号会被拒绝并提示改用「验证码登录」。"
+          {
+            "type": "object",
+            "properties": {
+              "userId": {
+                "type": "string"
+              },
+              "token": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "userId",
+              "token"
+            ]
           }
-        }
+        ]
       },
       "AuthUser": {
         "type": "object",
@@ -6754,6 +8665,9 @@
             "type": "string",
             "maxLength": 180000,
             "description": "空串表示默认头像；否则为 JPEG/PNG data URI，解码后不超过128KiB，正方形且边长不超过512px。"
+          },
+          "needsPasswordSetup": {
+            "type": "boolean"
           }
         },
         "description": "对外用户视图。绝不包含 token 或第三方 authSubject——手机号等敏感信息不落明文。"
@@ -6781,6 +8695,9 @@
             "type": "boolean",
             "nullable": true,
             "description": "仅**建号类**接口（register / login-or-register / verify-code / login-with-huawei）返回：本次是否真的写入了演示数据。true 才代表给这个新账号预置了示例知识点与起始计划；省略或 false 表示只建了空画像（登录已有账号的响应不带该字段）。"
+          },
+          "needsPasswordSetup": {
+            "type": "boolean"
           }
         }
       },
@@ -6837,7 +8754,16 @@
               "CODE_EXPIRED",
               "CODE_NOT_FOUND",
               "SMS_NOT_CONFIGURED",
-              "SMS_PROVIDER_UNAVAILABLE"
+              "SMS_PROVIDER_UNAVAILABLE",
+              "PHONE_ALREADY_REGISTERED",
+              "ACCOUNT_MIGRATION_REQUIRED",
+              "ACCOUNT_SWITCH_DISABLED",
+              "PASSWORD_SETUP_REQUIRED",
+              "AUTH_INVALID",
+              "PASSWORD_REQUIRED",
+              "PASSWORD_INVALID",
+              "OLD_PASSWORD_REQUIRED",
+              "ACCOUNT_NOT_FOUND"
             ]
           },
           "message": {
@@ -6887,8 +8813,7 @@
         "required": [
           "user",
           "token",
-          "expiresAt",
-          "created"
+          "expiresAt"
         ],
         "properties": {
           "user": {
@@ -6901,9 +8826,8 @@
             "type": "string",
             "format": "date-time"
           },
-          "created": {
-            "type": "boolean",
-            "description": "true=本次新建账号；false=登录了已有账号"
+          "needsPasswordSetup": {
+            "type": "boolean"
           }
         }
       },
@@ -7975,6 +9899,21 @@
           "unscheduledMinutes": {
             "type": "integer",
             "minimum": 0
+          },
+          "baseTotalMinutes": {
+            "type": "integer"
+          },
+          "allocationMode": {
+            "type": "string",
+            "enum": [
+              "under_budget",
+              "exact_budget",
+              "surplus_model",
+              "surplus_fallback"
+            ]
+          },
+          "allocationReason": {
+            "type": "string"
           }
         }
       },
@@ -9096,7 +11035,7 @@
           "actions": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ReviewAction"
             }
           },
           "source": {
@@ -9112,17 +11051,43 @@
           "snapshot": {
             "type": "object",
             "description": "生成时使用的课程画像、测评证据、历史和考试日期快照"
+          },
+          "conclusion": {
+            "type": "string"
+          },
+          "evidenceSummary": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sourceFacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "examMode": {
+            "type": "string"
+          },
+          "fallbackReason": {
+            "type": "string"
           }
         },
         "required": [
-          "reviewId",
-          "userId",
-          "courseName",
           "summary",
-          "actions",
-          "source",
+          "evidenceSummary",
+          "courseName",
           "createdAt",
-          "snapshot"
+          "snapshot",
+          "conclusion",
+          "reviewId",
+          "examMode",
+          "fallbackReason",
+          "source",
+          "sourceFacts",
+          "userId",
+          "actions"
         ]
       },
       "ReviewTasks": {
@@ -9386,6 +11351,21 @@
           },
           "durationMinutes": {
             "type": "integer"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetParams": {
+            "type": "object"
+          },
+          "snoozedUntil": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string"
           }
         },
         "required": [
@@ -9441,6 +11421,12 @@
           },
           "modelCalls": {
             "type": "integer"
+          },
+          "allTasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderEvent"
+            }
           }
         },
         "required": [
@@ -9451,7 +11437,8 @@
           "tasks",
           "pendingCount",
           "guidance",
-          "modelCalls"
+          "modelCalls",
+          "allTasks"
         ]
       },
       "ReminderList": {
@@ -9482,9 +11469,10 @@
           "action": {
             "type": "string",
             "enum": [
-              "start",
+              "open",
               "snooze",
-              "ignore"
+              "ignore",
+              "start"
             ]
           },
           "version": {
@@ -9498,11 +11486,9 @@
           },
           "minutes": {
             "type": "integer",
-            "enum": [
-              15,
-              30,
-              60
-            ]
+            "minimum": 5,
+            "maximum": 1440,
+            "multipleOf": 5
           }
         },
         "required": [
@@ -9902,6 +11888,320 @@
             "type": "string"
           }
         }
+      },
+      "TopicMember": {
+        "type": "object",
+        "properties": {
+          "knowledgePointId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "masteryScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "evidenceQuestionCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "knowledgePointId",
+          "name",
+          "masteryScore",
+          "evidenceQuestionCount"
+        ]
+      },
+      "TopicGroup": {
+        "type": "object",
+        "properties": {
+          "topicGroupId": {
+            "type": "string"
+          },
+          "topicGroupName": {
+            "type": "string"
+          },
+          "sourceCourse": {
+            "type": "string"
+          },
+          "memberCount": {
+            "type": "integer"
+          },
+          "memberPointIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "masteryScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "recentAccuracy": {
+            "type": "number",
+            "nullable": true
+          },
+          "evidenceQuestionCount": {
+            "type": "integer"
+          },
+          "memberPoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopicMember"
+            }
+          }
+        },
+        "required": [
+          "topicGroupId",
+          "topicGroupName",
+          "sourceCourse",
+          "memberCount",
+          "memberPointIds",
+          "masteryScore",
+          "recentAccuracy",
+          "evidenceQuestionCount",
+          "memberPoints"
+        ]
+      },
+      "ReviewAction": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": 15,
+            "maximum": 60,
+            "multipleOf": 5
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 3
+          },
+          "doneWhen": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "targetPage": {
+            "type": "string",
+            "enum": [
+              "pages/ExercisePractice",
+              "pages/StudyPlan",
+              "pages/LearningSetup"
+            ]
+          },
+          "knowledgePointId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionId",
+          "title",
+          "why",
+          "durationMinutes",
+          "steps",
+          "doneWhen",
+          "priority",
+          "targetPage",
+          "knowledgePointId"
+        ]
+      },
+      "LearningRecord": {
+        "type": "object",
+        "required": [
+          "goalId",
+          "sessionId",
+          "traceId",
+          "assessmentTraceId",
+          "goal",
+          "status",
+          "currentAgent",
+          "waitingFor",
+          "nextAction",
+          "decisionSource",
+          "knowledgePointId",
+          "knowledgePointName",
+          "planId",
+          "sourceMode",
+          "kbId",
+          "assessmentStatus",
+          "stateVersion",
+          "profileVersion",
+          "planVersion",
+          "assessedQuestionCount",
+          "action",
+          "handoffs",
+          "recordId",
+          "chatSessionId",
+          "updatedAt",
+          "createdAt",
+          "completedAt",
+          "courseName",
+          "learningContext"
+        ],
+        "properties": {
+          "goalId": {
+            "type": "string",
+            "description": "Equals sessionId: one durable workflow is one learning goal; a new chat establishes a new goal."
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "assessmentTraceId": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "completed",
+              "ended",
+              "waiting"
+            ]
+          },
+          "currentAgent": {
+            "type": "string"
+          },
+          "waitingFor": {
+            "type": "string",
+            "description": "knowledge_points, available_time, answers, exercise_generation, or empty."
+          },
+          "nextAction": {
+            "type": "string"
+          },
+          "decisionSource": {
+            "type": "string",
+            "enum": [
+              "rules"
+            ]
+          },
+          "knowledgePointId": {
+            "type": "string"
+          },
+          "knowledgePointName": {
+            "type": "string"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "sourceMode": {
+            "type": "string"
+          },
+          "kbId": {
+            "type": "string"
+          },
+          "assessmentStatus": {
+            "type": "string"
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "planVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "assessedQuestionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Recorded assessment question count, including repeated practice; not unique questions or proof of learning effectiveness."
+          },
+          "action": {
+            "type": "object",
+            "required": [
+              "label",
+              "targetPage"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "targetPage": {
+                "type": "string"
+              }
+            }
+          },
+          "handoffs": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "$ref": "#/components/schemas/LearningHandoff"
+            }
+          },
+          "needsConfirmation": {
+            "type": "boolean"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "chatSessionId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "courseName": {
+            "type": "string"
+          },
+          "learningContext": {
+            "$ref": "#/components/schemas/LearningContext"
+          }
+        }
+      },
+      "LearningRecords": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningRecord"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "records",
+          "nextCursor"
+        ]
       }
     },
     "responses": {

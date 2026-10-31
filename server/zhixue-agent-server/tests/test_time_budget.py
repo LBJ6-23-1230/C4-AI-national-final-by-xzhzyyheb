@@ -102,7 +102,7 @@ def test_same_budget_key_is_scoped_to_login_and_cannot_target_other_account(tmp_
     client = create_app(tmp_path / "owners.json").test_client()
     users = []
     for phone in ("13900007801", "13900007802"):
-        result = client.post("/api/v1/auth/register", json={"phone": phone, "nickname": phone,
+        result = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', "phone": phone, "nickname": phone,
             "seedDemoData": True}).get_json()
         users.append((result["user"]["userId"], {"Authorization": f"Bearer {result['token']}"}))
     owner_a, auth_a = users[0]

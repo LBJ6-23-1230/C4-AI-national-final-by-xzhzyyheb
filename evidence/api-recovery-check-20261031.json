@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-10-31T14:51:23.933588+08:00",
+  "results": [
+    {
+      "path": "/ready",
+      "status": 200,
+      "fields": [
+        "status"
+      ],
+      "errorCode": null
+    },
+    {
+      "path": "/api/v1/plans/current",
+      "status": 401,
+      "fields": [
+        "details",
+        "errorCode",
+        "message"
+      ],
+      "errorCode": "UNAUTHORIZED"
+    },
+    {
+      "path": "/api/v1/profile/demo-user",
+      "status": 401,
+      "fields": [
+        "details",
+        "errorCode",
+        "message"
+      ],
+      "errorCode": "UNAUTHORIZED"
+    },
+    {
+      "path": "/api/v1/auth/status",
+      "status": 404,
+      "fields": [
+        "details",
+        "errorCode",
+        "message"
+      ],
+      "errorCode": "NOT_FOUND"
+    }
+  ]
+}

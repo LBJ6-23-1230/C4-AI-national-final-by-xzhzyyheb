@@ -77,6 +77,10 @@ export class FixtureApiTransport {
   static async request<T>(method: string, path: string, body?: Object): Promise<ApiResult<T>> {
     // 统一用去查询串的路径匹配：`?userId=` 之类不能再让精确比较失效。
     const route: string = FixtureApiTransport.basePath(path);
+    if (route === '/api/v1/learning-records' || route === '/api/v1/learning-course-settings' ||
+      route.startsWith('/api/v1/learning-reviews') || route.startsWith('/api/v1/learning-review-tasks')) {
+      return apiFailure('OFFLINE', '该功能需要连接服务端读取学习记录，请联网后使用。离线演示不会生成或覆盖服务器数据。', true, 'fixture') as ApiResult<T>;
+    }
     if (route === '/api/v1/learning-data' && method === 'GET') return apiSuccess<LearningSnapshot>({
       userId: ClientCache.currentOwnerUserId(), revision: 0, courses: [], homeworkDDLs: [] }, 'fixture') as ApiResult<T>;
     if (route === '/api/v1/learning-effect') return apiSuccess<LearningEffect>({

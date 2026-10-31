@@ -57,7 +57,7 @@ export const learningFlowPages: DemoPage[] = [
     subtitle: 'Agent 主动理解学习环境，发现学习需求并主动提供帮助',
     step: '1 / 8',
     primaryAction: '查看今日建议',
-    nextUrl: 'pages/StudySuggestion',
+    nextUrl: 'pages/StudyPlan',
     cards: [
       {
         title: '你好，我是小知',
@@ -124,7 +124,7 @@ export const learningFlowPages: DemoPage[] = [
 export const PAGE_ROUTES: PageRoutes = {
   hub: 'pages/Index',
   courseImport: 'pages/CourseImport',
-  studySuggestion: 'pages/StudySuggestion',
+  studySuggestion: 'pages/StudyPlan',
   wrongQuestion: 'pages/WrongQuestion',
   studyTags: 'pages/StudyTags',
   partnerMatch: 'pages/PartnerMatch',

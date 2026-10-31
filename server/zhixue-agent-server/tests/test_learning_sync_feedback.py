@@ -141,7 +141,7 @@ def test_two_devices_http_restore_conflict_and_explicit_delete(tmp_path):
     from app import create_app
     app = create_app(tmp_path / 'two-devices.json')
     a, b = app.test_client(), app.test_client()
-    auth = a.post('/api/v1/auth/register', json=dict(nickname='同步测试', phone='13900008881', seedDemoData=False)).get_json()
+    auth = a.post('/api/v1/auth/register', json=dict(nickname='同步测试', phone='13900008881', seedDemoData=False, password='test-pw-123456')).get_json()
     headers = {'Authorization': 'Bearer ' + auth['token']}
     first = a.post('/api/v1/learning-data', headers=headers, json=change('first', courses=[course()], homeworkDDLs=[ddl()]))
     assert first.status_code == 200

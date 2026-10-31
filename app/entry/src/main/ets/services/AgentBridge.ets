@@ -637,7 +637,7 @@ export class AgentBridge {
 
   private static safeTargetPage(cardType: ChatCardType, targetPage: string): string {
     const safePages: string[] = [
-      'pages/Index', 'pages/StudySuggestion', 'pages/WrongQuestion', 'pages/StudyTags',
+      'pages/Index', 'pages/StudyPlan', 'pages/WrongQuestion', 'pages/StudyTags',
       'pages/ExercisePractice', 'pages/AgentTrace', 'pages/PartnerMatch', 'pages/StudyPlan',
       'pages/ReviewSummary', 'pages/FocusSetup'
     ];
@@ -649,7 +649,7 @@ export class AgentBridge {
     if (cardType === 'partner') return 'pages/PartnerMatch';
     if (cardType === 'wrong') return 'pages/WrongQuestion';
     if (cardType === 'tasks') return 'pages/StudyPlan';
-    return 'pages/StudySuggestion';
+    return 'pages/StudyPlan';
   }
 
   /** 卡片底部按钮文案：统一说"查看哪个页面"，与 chip 名称同一套口径。 */
@@ -725,7 +725,7 @@ export class AgentBridge {
   static createLocalCardForIntent(intent: ChatIntent): ChatCard | undefined {
     if (intent === 'get_suggestion') {
       return AgentBridge.createLocalCard('suggestion', '今日学习建议',
-        '按课程紧迫度、近期复习状态与薄弱点算出的下一步动作。', 'pages/StudySuggestion');
+        '按课程紧迫度、近期复习状态与薄弱点算出的下一步动作。', 'pages/StudyPlan');
     }
     if (intent === 'analyze_wrong') {
       return AgentBridge.createLocalCard('wrong', '错题诊断',

@@ -14,7 +14,7 @@ def setup(tmp_path):
     headers = []
     ids = []
     for index in range(3):
-        response = client.post('/api/v1/auth/register', json={
+        response = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 
             'nickname': f'协作同学{index}', 'phone': f'1380013880{index}', 'seedDemoData': False})
         assert response.status_code == 201
         data = response.get_json()
@@ -71,7 +71,8 @@ def test_review_without_evidence_and_task_isolation(setup):
         {'knowledgePointId': 'a', 'knowledgePointName': '树', 'sourceCourse': '数据结构', 'masteryScore': 0, 'confidence': 0}]})
     payload = dict(courseName='数据结构')
     response = client.post('/api/v1/learning-reviews', json=payload, headers=headers[0]).get_json()
-    assert '缺少有效测评' in response['summary']
+    assert '证据不足' in response['summary']
+    assert all(a['why'] and a['steps'] and a['doneWhen'] and a['durationMinutes'] for a in response['actions'])
     assert response['source'] == 'rules'
     assert response['snapshot']['unassessedCount'] == 1
     assert client.post('/api/v1/learning-reviews', json=payload, headers=headers[0]).get_json()['reviewId'] == response['reviewId']
@@ -99,7 +100,8 @@ def test_course_settings_and_scoped_exercises(setup):
     assert result.get_json()['courses'][0]['reviewDue'] is True
     report = client.post('/api/v1/learning-reviews', headers=headers[0], json={'courseName': '数据结构'}).get_json()
     assert report['snapshot']['daysUntilExam'] == 3
-    assert '核心概念' in report['summary']
+    assert '证据不足' in report['summary']
+    assert report['examMode'] == 'near_exam'
     url = '/api/v1/exercises/exercise-set-demo-001'
     from app.api.exercises import DEMO_EXERCISE_SET_ID
     url = '/api/v1/exercises/' + DEMO_EXERCISE_SET_ID

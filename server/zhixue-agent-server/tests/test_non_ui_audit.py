@@ -30,7 +30,7 @@ def tool(name):
 
 def test_proactive_uses_session_owner_and_rejects_guest_spoofing(tmp_path):
     client = create_app(tmp_path / 'identity.json').test_client()
-    registered = client.post('/api/v1/auth/register', json={'nickname': 'audit', 'phone': '13900008401'}).get_json()
+    registered = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 'nickname': 'audit', 'phone': '13900008401'}).get_json()
     owner = registered['user']['userId']
     headers = {'Authorization': 'Bearer ' + registered['token']}
     assert client.post('/api/v1/agent/proactive', json={'userId': owner}).status_code == 404
@@ -49,11 +49,11 @@ def test_account_session_and_profile_publish_together(tmp_path, monkeypatch, bac
     try:
         monkeypatch.setattr(service, 'provision_starter_profile', fail)
         with pytest.raises(OSError):
-            service.register_and_provision(repo, 'audit', phone='13900008402')
+            service.register_and_provision(repo, 'audit', phone='13900008402', password='test-pw-123456')
         for collection in ('users', 'sessions', 'profiles'):
             assert repo.list(collection) == []
         monkeypatch.setattr(service, 'provision_starter_profile', original)
-        result = service.register_and_provision(repo, 'audit', phone='13900008402')
+        result = service.register_and_provision(repo, 'audit', phone='13900008402', password='test-pw-123456')
         assert repo.get('profiles', result['user']['userId'])
         assert service.resolve_session(repo, result['token'])
     finally:
@@ -218,7 +218,7 @@ def test_configuration_check_does_not_create_runtime_database(tmp_path):
     assert not path.exists()
 
 
-@pytest.mark.parametrize('action,expected', [('register', [201, 201]), ('code', [200, 429])])
+@pytest.mark.parametrize('action,expected', [('register', [201, 409]), ('code', [200, 429])])
 def test_auth_workers_serialize_uniqueness_and_code_cooldown(tmp_path, action, expected):
     database = tmp_path / 'auth.sqlite'
     SQLiteRepository(database).close()
@@ -246,7 +246,7 @@ repo.get = lambda collection, key: pause(collection, original_get(collection, ke
 (directory / (role + '.started')).write_text('ready')
 try:
     if action == 'register':
-        service.register_and_provision(repo, 'audit', phone='13900008403')
+        service.register_and_provision(repo, 'audit', phone='13900008403', password='test-pw-123456')
         status = 201
     else:
         service.send_verification_code(repo, '13900008403')

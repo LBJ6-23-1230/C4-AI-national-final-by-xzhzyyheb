@@ -18,7 +18,7 @@ from app import create_app
 def _register(client, nickname: str, phone: str) -> str:
     """注册并返回 Bearer token。"""
     response = client.post("/api/v1/auth/register",
-                           json={"nickname": nickname, "phone": phone})
+                           json={'password': 'test-pw-123456', "nickname": nickname, "phone": phone})
     assert response.status_code in (200, 201), response.get_data(as_text=True)
     return response.get_json()["token"]
 

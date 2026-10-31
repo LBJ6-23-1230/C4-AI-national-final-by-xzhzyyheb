@@ -1,0 +1,123 @@
+{
+  "checkedAt": "2026-10-31T14:50:22.468586+08:00",
+  "configuration": {
+    "host": "10.77.203.46",
+    "port": 5432,
+    "database": "zhixue_dev",
+    "username": "zhixue_dev_app",
+    "driver": "postgresql+psycopg",
+    "passwordConfigured": true,
+    "source": "server .env",
+    "matchesProvidedEndpoint": true
+  },
+  "results": [
+    {
+      "probe": "ssl_request",
+      "target": "10.77.203.46:5432",
+      "tcpConnected": true,
+      "localAddress": "10.77.112.129",
+      "reply": "N",
+      "postgresqlResponded": true,
+      "seconds": 0.313
+    },
+    {
+      "probe": "plain_startup",
+      "target": "10.77.203.46:5432",
+      "tcpConnected": true,
+      "localAddress": "10.77.112.129",
+      "reply": "R",
+      "postgresqlResponded": true,
+      "seconds": 0.316
+    },
+    {
+      "probe": "postgresql_login",
+      "sslmode": "prefer",
+      "gssencmode": "disable",
+      "ok": true,
+      "database": "zhixue_dev",
+      "user": "zhixue_dev_app",
+      "serverAddress": "172.17.0.2/32",
+      "serverPort": 5432,
+      "seconds": 0.304
+    },
+    {
+      "probe": "postgresql_login",
+      "sslmode": "disable",
+      "gssencmode": "disable",
+      "ok": true,
+      "database": "zhixue_dev",
+      "user": "zhixue_dev_app",
+      "serverAddress": "172.17.0.2/32",
+      "serverPort": 5432,
+      "seconds": 0.304
+    },
+    {
+      "probe": "postgresql_login",
+      "sslmode": "require",
+      "gssencmode": "disable",
+      "ok": false,
+      "error": "OperationalError",
+      "sqlstate": null,
+      "timeout": false,
+      "seconds": 0.018
+    },
+    {
+      "probe": "backend_http",
+      "path": "/",
+      "url": "http://127.0.0.1:5000/",
+      "status": 200,
+      "body": {
+        "service": "知学 Mate · 统一后端",
+        "contractVersion": "api-contract-v0.3",
+        "llm": {
+          "model": "qwen3.8-flash",
+          "ready": true
+        }
+      },
+      "seconds": 0.125
+    },
+    {
+      "probe": "backend_http",
+      "path": "/health",
+      "url": "http://127.0.0.1:5000/health",
+      "status": 200,
+      "body": {
+        "status": "ok"
+      },
+      "seconds": 0.123
+    },
+    {
+      "probe": "backend_http",
+      "path": "/ready",
+      "url": "http://127.0.0.1:5000/ready",
+      "status": 200,
+      "body": {
+        "status": "ready"
+      },
+      "seconds": 0.524
+    },
+    {
+      "probe": "backend_http",
+      "path": "/api/agent/health",
+      "url": "http://127.0.0.1:5000/api/agent/health",
+      "status": 200,
+      "body": {
+        "status": "ok",
+        "contractVersion": "api-contract-v0.3",
+        "model": "qwen3.8-flash"
+      },
+      "seconds": 0.12
+    },
+    {
+      "probe": "backend_http",
+      "path": "/api/v1/auth/me",
+      "url": "http://127.0.0.1:5000/api/v1/auth/me",
+      "status": 401,
+      "body": {
+        "errorCode": "UNAUTHORIZED",
+        "message": "请先登录"
+      },
+      "seconds": 0.073
+    }
+  ]
+}

@@ -138,7 +138,7 @@ def test_demo_reset_does_not_invalidate_auth_sessions(tmp_path):
     client = create_app(tmp_path / "guard-sessions.json").test_client()
 
     registered = client.post("/api/v1/auth/register",
-                             json={"nickname": "会话保持", "grade": "大二",
+                             json={'password': 'test-pw-123456', "nickname": "会话保持", "grade": "大二",
                                    "phone": "13800009999"}).get_json()
     token = registered["token"]
     headers = {"Authorization": f"Bearer {token}"}

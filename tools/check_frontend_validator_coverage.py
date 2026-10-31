@@ -196,6 +196,16 @@ def main() -> int:
     print("=" * 78)
     print("③ 联调闸门覆盖率（审计 R1 的核心问题）")
     print("=" * 78)
+    actual_report = ROOT / 'evidence/feedback3-http-coverage.json'
+    if actual_report.exists():
+        actual = json.loads(actual_report.read_text(encoding='utf-8'))
+        print("  实际 HTTP 请求数: %d；失败数: %d" % (actual['requestCount'], actual['failureCount']))
+        print("  成功场景操作: %d；仅负向场景操作: %d" % (len(actual['positiveOperations']), len(actual['negativeOnlyOperations'])))
+        print("  负向覆盖不代表完整业务通过；逐操作范围见 evidence/feedback3-http-coverage.json")
+        print("  新闸门使用实际 ApiResponseValidator.ets，而非 Python 校验副本。")
+        failed = bool(gaps or contract_gaps or actual['failureCount'])
+        print("结论：%s" % ('FAIL' if failed else 'PASS'))
+        return int(strict and failed)
     gate_src = GATE.read_text(encoding="utf-8") if GATE.exists() else ""
     gate_paths = set(re.findall(r"['\"](/api/[^'\"]+)['\"]", gate_src))
     gate_missing = sorted(

@@ -554,8 +554,12 @@ struct Account {
             .onClick(() => this.showSignOutConfirm = true)
           Text(this.signedIn
             ? '退出后会回到登录页；账号数据仍保留在服务端。'
-            : '返回登录页可以改用昵称建立账号，或以演示身份重新进入。')
+            : '返回登录页可以使用手机号登录或注册，或以演示身份重新进入。')
             .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
+
+          if (AuthStore.encryptionDegraded()) {
+            Text('本机加密服务不可用，本次登录仅在内存中保留，重启后请重新登录。').fontSize(12).fontColor('#B45309').width('100%')
+          }
 
           // ---------- 注销账号 ----------
           if (this.signedIn) {

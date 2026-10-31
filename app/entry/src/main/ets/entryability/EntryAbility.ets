@@ -109,7 +109,7 @@ export default class EntryAbility extends UIAbility {
       }
       if (AuthStore.encryptionDegraded()) {
         hilog.warn(DOMAIN, 'testTag', '%{public}s',
-          'Token encryption unavailable; credentials fall back to plaintext storage.');
+          'Token encryption unavailable; credentials remain in memory for this session.');
       }
     } catch (error) {
       // 凭据恢复失败不应阻断启动：按未登录继续，由 restoreIdentity 决定去登录页
@@ -204,6 +204,10 @@ export default class EntryAbility extends UIAbility {
       const result: AuthResult = await AuthClient.restore();
       if (result.ok && result.user !== null) {
         appState.applyLogin(result.user, result.source);
+        if (result.needsPasswordSetup === true) {
+          await windowStage.loadContent('pages/PasswordSetup');
+          return;
+        }
         hilog.info(DOMAIN, 'testTag', 'Restored identity: %{public}s', result.user.userId);
       } else {
         appState.applyLogout();

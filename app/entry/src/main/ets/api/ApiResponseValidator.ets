@@ -57,6 +57,7 @@ export class ApiResponseValidator {
       ApiResponseValidator.hasString(data, 'dataTime') && ApiResponseValidator.hasString(data, 'version') &&
       ApiResponseValidator.hasNumber(data, 'pendingCount') && ApiResponseValidator.hasString(data, 'guidance') &&
       ApiResponseValidator.hasArray(data, 'tasks') && (data['tasks'] as Object[]).every((item: Object) => ApiResponseValidator.isReminder(item)) &&
+      (data['allTasks'] === undefined || (ApiResponseValidator.hasArray(data, 'allTasks') && (data['allTasks'] as Object[]).every((item: Object) => ApiResponseValidator.isReminder(item)))) &&
       (data['highlight'] === null || ApiResponseValidator.isReminder(data['highlight']));
     if (route === '/api/v1/reminders') return ApiResponseValidator.hasArray(data, 'events') &&
       (data['events'] as Object[]).every((item: Object) => ApiResponseValidator.isReminder(item)) &&
@@ -83,7 +84,15 @@ export class ApiResponseValidator {
     }
     if (method === 'POST' && route.indexOf('/api/v1/partners/') === 0) return ApiResponseValidator.isRecordField(data, 'message');
     if (route === '/api/v1/wrong-book/scanned') return ApiResponseValidator.isRecordField(data, 'item');
-    if (route === '/api/v1/learning-reviews') return ApiResponseValidator.hasString(data, 'reviewId') && ApiResponseValidator.hasString(data, 'summary') && ApiResponseValidator.hasArray(data, 'actions');
+    if (route === '/api/v1/learning-records') return ApiResponseValidator.hasArray(data, 'records') &&
+      (data['nextCursor'] === null || ApiResponseValidator.isString(data, 'nextCursor')) &&
+      (data['records'] as Object[]).every((item: Object) => ApiResponseValidator.isRecord(item) &&
+        ['recordId', 'goalId', 'chatSessionId', 'updatedAt', 'status', 'nextAction'].every((key: string) => ApiResponseValidator.hasString(item as Record<string, Object>, key)) &&
+        ApiResponseValidator.isLearningContext((item as Record<string, Object>)['learningContext']));
+    if (route === '/api/v1/learning-reviews') return ApiResponseValidator.hasString(data, 'reviewId') && ApiResponseValidator.hasString(data, 'summary') &&
+      ApiResponseValidator.hasString(data, 'conclusion') && ApiResponseValidator.hasArray(data, 'evidenceSummary') && ApiResponseValidator.hasArray(data, 'sourceFacts') &&
+      ApiResponseValidator.hasString(data, 'examMode') && ApiResponseValidator.isString(data, 'fallbackReason') &&
+      ApiResponseValidator.hasArray(data, 'actions') && (data['actions'] as Object[]).every((item: Object) => ApiResponseValidator.isReviewAction(item));
     if (route === '/api/v1/learning-review-tasks') return ApiResponseValidator.hasArray(data, 'tasks');
     if (route === '/api/v1/learning-review-tasks/complete') return ApiResponseValidator.hasArray(data, 'tasks');
     if (method === 'POST' && route.indexOf('/api/v1/learning-reviews/') === 0) return ApiResponseValidator.hasArray(data, 'tasks');
@@ -139,13 +148,13 @@ export class ApiResponseValidator {
       return ApiResponseValidator.hasNumber(data, 'profileVersion') &&
         ApiResponseValidator.hasArray(data, 'mastery') &&
         ApiResponseValidator.hasArray(data, 'history') &&
-        ApiResponseValidator.hasArray(data, 'evidence');
+        ApiResponseValidator.hasArray(data, 'evidence') && ApiResponseValidator.validTopics(data);
     }
     if (method === 'GET' && route.indexOf('/api/v1/profile/') === 0) {
       return ApiResponseValidator.hasNumber(data, 'profileVersion') &&
         ApiResponseValidator.hasArray(data, 'mastery') &&
         ApiResponseValidator.hasArray(data, 'history') &&
-        ApiResponseValidator.hasArray(data, 'evidence');
+        ApiResponseValidator.hasArray(data, 'evidence') && ApiResponseValidator.validTopics(data);
     }
     if (method === 'GET' && route === '/api/v1/plans/current') {
       return ApiResponseValidator.isPlan(data);
@@ -396,7 +405,8 @@ export class ApiResponseValidator {
     }
     return ApiResponseValidator.isAuthUserField(data, 'user') &&
       ApiResponseValidator.hasString(data, 'token') &&
-      ApiResponseValidator.hasString(data, 'expiresAt');
+      ApiResponseValidator.hasString(data, 'expiresAt') &&
+      (data['needsPasswordSetup'] === undefined || typeof data['needsPasswordSetup'] === 'boolean');
   }
 
   /**
@@ -419,14 +429,66 @@ export class ApiResponseValidator {
     }
     const user: Record<string, Object> = data[key] as Record<string, Object>;
     return ApiResponseValidator.hasString(user, 'userId') &&
-      ApiResponseValidator.hasString(user, 'nickname');
+      ApiResponseValidator.hasString(user, 'nickname') &&
+      (user['needsPasswordSetup'] === undefined || typeof user['needsPasswordSetup'] === 'boolean');
   }
 
+  private static validBudget(payload: Object): boolean {
+    if (!ApiResponseValidator.isRecord(payload)) return false;
+    const data: Record<string, Object> = payload as Record<string, Object>;
+    return ['availableMinutes','scheduledMinutes','unallocatedMinutes','unscheduledMinutes'].every((key: string) => ApiResponseValidator.hasNumber(data, key)) &&
+      (data['allocationMode'] === undefined || ['under_budget','exact_budget','surplus_model','surplus_fallback'].includes(data['allocationMode'] as string)) &&
+      (data['baseTotalMinutes'] === undefined || ApiResponseValidator.hasNumber(data, 'baseTotalMinutes')) &&
+      (data['allocationReason'] === undefined || ApiResponseValidator.isString(data, 'allocationReason'));
+  }
+  private static validTopics(data: Record<string, Object>): boolean {
+    if (!ApiResponseValidator.isRecordField(data, 'profile')) return true;
+    const profile: Record<string, Object> = data['profile'] as Record<string, Object>;
+    if (profile['topicGroups'] === undefined) return true;
+    return ApiResponseValidator.hasArray(profile, 'topicGroups') && (profile['topicGroups'] as Object[]).every((value: Object) => {
+      if (!ApiResponseValidator.isRecord(value)) return false;
+      const group: Record<string, Object> = value as Record<string, Object>;
+      return ['topicGroupId','topicGroupName','sourceCourse'].every((key: string) => ApiResponseValidator.hasString(group, key)) &&
+        ['memberCount','evidenceQuestionCount'].every((key: string) => ApiResponseValidator.hasNumber(group, key)) &&
+        (group['masteryScore'] === null || ApiResponseValidator.hasNumber(group, 'masteryScore')) &&
+        (group['recentAccuracy'] === null || ApiResponseValidator.hasNumber(group, 'recentAccuracy')) &&
+        ApiResponseValidator.hasArray(group, 'memberPointIds') && (group['memberPointIds'] as Object[]).every((id: Object) => typeof id === 'string') &&
+        ApiResponseValidator.hasArray(group, 'memberPoints') &&
+        (group['memberPoints'] as Object[]).every((member: Object) => ApiResponseValidator.isRecord(member) &&
+          ['knowledgePointId','name'].every((key: string) => ApiResponseValidator.hasString(member as Record<string, Object>, key)) &&
+          ApiResponseValidator.hasNumber(member as Record<string, Object>, 'evidenceQuestionCount') &&
+          ((member as Record<string, Object>)['masteryScore'] === null || ApiResponseValidator.hasNumber(member as Record<string, Object>, 'masteryScore')));
+    });
+  }
+  private static isReviewAction(payload: Object): boolean {
+    if (!ApiResponseValidator.isRecord(payload)) return false;
+    const item: Record<string, Object> = payload as Record<string, Object>;
+    return ['actionId','title','why','doneWhen','priority','targetPage'].every((key: string) => ApiResponseValidator.hasString(item, key)) &&
+      ApiResponseValidator.isString(item, 'knowledgePointId') && ApiResponseValidator.hasNumber(item, 'durationMinutes') &&
+      Number.isInteger(item['durationMinutes'] as number) && (item['durationMinutes'] as number) >= 15 && (item['durationMinutes'] as number) <= 60 && (item['durationMinutes'] as number) % 5 === 0 &&
+      ['pages/ExercisePractice','pages/StudyPlan','pages/LearningSetup'].includes(item['targetPage'] as string) &&
+      ApiResponseValidator.hasArray(item, 'steps') && (item['steps'] as Object[]).length > 0 && (item['steps'] as Object[]).length <= 3 &&
+      (item['steps'] as Object[]).every((step: Object) => typeof step === 'string' && (step as string).length > 0);
+  }
   private static isPlan(data: Record<string, Object>): boolean {
     return ApiResponseValidator.isNullableString(data, 'planId') &&
       ApiResponseValidator.hasNumber(data, 'version') &&
       ApiResponseValidator.hasNumber(data, 'generatedFromProfileVersion') &&
-      ApiResponseValidator.hasArray(data, 'tasks');
+      ApiResponseValidator.hasArray(data, 'tasks') && (data['tasks'] as Object[]).every((task: Object) => ApiResponseValidator.isPlanTask(task)) &&
+      (data['unscheduledTasks'] === undefined || (ApiResponseValidator.hasArray(data, 'unscheduledTasks') &&
+        (data['unscheduledTasks'] as Object[]).every((task: Object) => ApiResponseValidator.isPlanTask(task)))) &&
+      (data['budgetSummary'] === undefined || ApiResponseValidator.validBudget(data['budgetSummary']));
+  }
+
+  private static isPlanTask(payload: Object): boolean {
+    if (!ApiResponseValidator.isRecord(payload)) return false;
+    const task: Record<string, Object> = payload as Record<string, Object>;
+    return ['taskId', 'knowledgePointId', 'knowledgePointName', 'status'].every((key: string) => ApiResponseValidator.hasString(task, key)) &&
+      ApiResponseValidator.hasNumber(task, 'durationMinutes') &&
+      ['dueAt','scheduledDate','allocationReason'].every((key: string) => task[key] === undefined || ApiResponseValidator.isString(task, key)) &&
+      (task['baseDurationMinutes'] === undefined || (ApiResponseValidator.hasNumber(task, 'baseDurationMinutes') && (task['baseDurationMinutes'] as number) > 0)) &&
+      (task['extraMinutes'] === undefined || (ApiResponseValidator.hasNumber(task, 'extraMinutes') && Number.isInteger(task['extraMinutes'] as number) &&
+        (task['extraMinutes'] as number) >= 0 && (task['extraMinutes'] as number) <= 60 && (task['extraMinutes'] as number) % 5 === 0));
   }
 
   private static hasString(data: Record<string, Object>, key: string): boolean {

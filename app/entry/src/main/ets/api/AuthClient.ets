@@ -198,7 +198,7 @@ export class AuthClient {
     if (AgentApiClient.getConfig().useFixture) {
       return AuthClient.offlineUnavailable();
     }
-    const invalid: string = AuthClient.validateNickname(nickname);
+    const invalid: string = nickname.trim().length > 0 ? AuthClient.validateNickname(nickname) : '';
     if (invalid.length > 0) {
       return { ok: false, user: null, source: 'local', message: invalid };
     }
@@ -206,7 +206,7 @@ export class AuthClient {
     const result = await AgentApiClient.authRegister({
       nickname: nickname.trim(),
       phone: phone.trim(),
-      password: password,
+      password: password ?? '',
       grade: grade !== undefined && grade.length > 0 ? grade : undefined,
       seedDemoData: false
     });
@@ -248,7 +248,7 @@ export class AuthClient {
     if (AgentApiClient.getConfig().useFixture) {
       return AuthClient.offlineUnavailable();
     }
-    const invalid: string = AuthClient.validateNickname(nickname);
+    const invalid: string = nickname.trim().length > 0 ? AuthClient.validateNickname(nickname) : '';
     if (invalid.length > 0) {
       return { ok: false, user: null, source: 'local', message: invalid };
     }
@@ -278,6 +278,7 @@ export class AuthClient {
       user: result.data.user,
       source: 'local',
       message: AuthClient.registerMessage(result.data.user.nickname, created, seeded),
+      needsPasswordSetup: result.data.needsPasswordSetup === true,
       createdAccount: created,
       demoDataSeeded: seeded
     };
@@ -415,6 +416,7 @@ export class AuthClient {
       user: result.data.user,
       source: 'local',
       message: AuthClient.registerMessage(result.data.user.nickname, created, seeded),
+      needsPasswordSetup: result.data.needsPasswordSetup === true,
       createdAccount: created,
       demoDataSeeded: seeded
     };
@@ -463,7 +465,7 @@ export class AuthClient {
     if (AgentApiClient.getConfig().useFixture) {
       return AuthClient.offlineUnavailable();
     }
-    const invalid: string = AuthClient.validateNickname(nickname);
+    const invalid: string = nickname.trim().length > 0 ? AuthClient.validateNickname(nickname) : '';
     if (invalid.length > 0) {
       return { ok: false, user: null, source: 'local', message: invalid };
     }
@@ -530,7 +532,8 @@ export class AuthClient {
     if (result.ok) {
       // 用服务端返回的权威信息刷新本地缓存（昵称/年级可能被后续功能修改）
       AuthStore.save(result.data.user, session.token, session.expiresAt);
-      return { ok: true, user: result.data.user, source: 'restored', message: '' };
+      return { ok: true, user: result.data.user, source: 'restored', message: '',
+        needsPasswordSetup: result.data.user.needsPasswordSetup === true };
     }
 
     const failure = result as ApiFailure;

@@ -170,6 +170,9 @@ def bind_submission(repository, workflow, result, events):
     state.update({"handoffs": tasks[-20:], "boundSubmissionId": result["submissionId"],
                   "assessmentTraceId": result["traceId"]})
     workflow["stateVersion"] = version
+    workflow["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    if workflow.get("status") == "completed":
+        workflow["completedAt"] = workflow["updatedAt"]
     repository.save("workflows", workflow["sessionId"], workflow)
 
 

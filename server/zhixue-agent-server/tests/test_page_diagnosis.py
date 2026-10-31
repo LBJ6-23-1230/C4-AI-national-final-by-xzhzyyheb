@@ -135,7 +135,7 @@ def test_http_preserves_all_diagnoses_and_numbered_followup(tmp_path, monkeypatc
     monkeypatch.setenv('DASHSCOPE_API_KEY', 'test-only')
     monkeypatch.setattr(chat_llm, '_call_llm_with_image', lambda *a, **k: json.dumps(page()))
     client = create_app(tmp_path / 'pages.json').test_client()
-    auth = client.post('/api/v1/auth/register', json={'nickname': '整页测试', 'phone': '13900009801',
+    auth = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 'nickname': '整页测试', 'phone': '13900009801',
         'grade': '大二', 'seedDemoData': False}).get_json()
     headers = {'Authorization': 'Bearer ' + auth['token']}
     result = client.post('/api/agent/chat', headers=headers, json={'message': '整页分析', 'image': png(),

@@ -454,6 +454,10 @@ def _run_saved_workflow(session_id: str, answers: list[dict] | None = None,
 	for transient in ("profile", "exercises", "answers", "answerKeys"):
 		updated["state"].pop(transient, None)
 	if _repository:
+		from datetime import datetime, timezone
+		updated["updatedAt"] = datetime.now(timezone.utc).isoformat()
+		if updated.get("status") == "completed":
+			updated["completedAt"] = updated["updatedAt"]
 		_repository.save("workflows", session_id, updated)
 	return _workflow_response(updated)
 
@@ -557,7 +561,9 @@ def manage_chat_goals(chat_session_id):
                 if action == "end" and (current["sessionId"] if current else (_repository.get("chat_goal_links", base) or {}).get("activeGoalId", base)) != goal_id:
                     return _error("CONFLICT", "当前目标已变化，请刷新", None, 409)
                 if action == "end":
-                    goal = dict(goal, userEnded=True, stateVersion=goal.get("stateVersion", 1) + 1)
+                    from datetime import datetime, timezone
+                    goal = dict(goal, userEnded=True, stateVersion=goal.get("stateVersion", 1) + 1,
+                                updatedAt=datetime.now(timezone.utc).isoformat())
                     _repository.save("workflows", goal_id, goal)
                 _repository.save("chat_goal_links", base, {"userId": owner, "chatSessionId": chat_session_id,
                     "activeGoalId": goal_id, "ended": action == "end"})

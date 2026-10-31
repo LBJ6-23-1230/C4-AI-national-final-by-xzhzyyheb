@@ -8,7 +8,7 @@ from sqlalchemy import (MetaData, Table, Column, Text, Integer, DateTime, Index,
                         CheckConstraint, UniqueConstraint, ForeignKeyConstraint, func)
 from sqlalchemy.dialects.postgresql import JSONB
 
-REVISION = "20261030_03"
+REVISION = "20261031_01"
 metadata = MetaData()
 COLLECTIONS = {
     "users": "users", "sessions": "auth_sessions",
@@ -60,6 +60,8 @@ def domain_table(name, compatibility=False):
     if name == "users":
         Index("ix_users_nickname", table.c.nickname_normalized)
         Index("ix_users_phone", table.c.phone)
+        Index("uq_users_active_phone", table.c.phone, unique=True,
+              postgresql_where=(table.c.status == 'active') & table.c.phone.is_not(None) & (table.c.phone != ''))
     if name == "jobs":
         Index("ix_jobs_claim", table.c.status, table.c.run_after, table.c.locked_until)
     return table

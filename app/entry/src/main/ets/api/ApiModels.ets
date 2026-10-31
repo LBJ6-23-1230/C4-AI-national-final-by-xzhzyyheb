@@ -175,7 +175,12 @@ export interface Evidence {
   reliability: number;
 }
 
+export interface TopicMember { knowledgePointId: string; name: string; masteryScore: number | null; evidenceQuestionCount: number; }
+export interface TopicGroup { topicGroupId: string; topicGroupName: string; sourceCourse: string; memberCount: number; memberPointIds: string[]; masteryScore: number | null; recentAccuracy: number | null; evidenceQuestionCount: number; memberPoints: TopicMember[]; }
 export interface KnowledgeMastery {
+  topicGroupId?: string;
+  topicGroupName?: string;
+  topicGroupConfidence?: number;
   topicGroup?: string;
   assessmentStatus?: string;
   effectiveQuestionCount?: number;
@@ -205,6 +210,7 @@ export interface MasteryHistory {
 }
 
 export interface LearnerProfile {
+  topicGroups?: TopicGroup[];
   targetCourses?: string[];
   targetCourse?: string;
   userId: string;
@@ -261,6 +267,8 @@ export interface LearningContextAction {
 }
 
 export interface LearningContext {
+  chatSessionId?: string;
+  updatedAt?: string;
   needsConfirmation?: boolean;
   assessmentStatus: string;
   assessedQuestionCount: number;
@@ -377,6 +385,11 @@ export interface ProactiveResponse {
 }
 
 export interface PlanTask {
+  scheduledDate?: string;
+  dueAt?: string;
+  baseDurationMinutes?: number;
+  extraMinutes?: number;
+  allocationReason?: string;
   taskId: string;
   knowledgePointId: string;
   knowledgePointName: string;
@@ -418,6 +431,9 @@ export interface PlanTaskScheduleRequest {
 }
 
 export interface PlanBudgetSummary {
+  baseTotalMinutes?: number;
+  allocationMode?: string;
+  allocationReason?: string;
   availableMinutes: number;
   scheduledMinutes: number;
   unallocatedMinutes: number;
@@ -825,6 +841,8 @@ export interface DocumentPointsRequest {
 
 export interface GoalActionRequest { action: string; goalId?: string; diagnosisId?: string; knowledgePoint?: string; }
 export interface GoalActionResponse { status: string; learningContext?: LearningContext; }
+export interface LearningRecord extends LearningContext { recordId: string; chatSessionId: string; updatedAt: string; learningContext: LearningContext; }
+export interface LearningRecords { records: LearningRecord[]; nextCursor: string | null; }
 export interface GoalHistoryResponse { goals: LearningContext[]; }
 
 export interface KnowledgePointEvidence { name: string; excerpt: string; headingPath: string; chunkId: string; }

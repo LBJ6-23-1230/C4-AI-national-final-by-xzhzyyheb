@@ -16,11 +16,17 @@ export interface PartnerMessageResult { message: PartnerMessage; }
 export interface ScannedQuestionRequest { stem: string; courseName: string; knowledgePointName: string; explanation: string; }
 export interface SavedScannedQuestion { item: Object; }
 export interface ReviewRequest { courseName: string; }
+export interface ReviewAction { actionId: string; title: string; why: string; durationMinutes: number; steps: string[]; doneWhen: string; priority: string; targetPage: string; knowledgePointId: string; }
 export interface LearningReview {
+  conclusion: string;
+  evidenceSummary: string[];
+  examMode: string;
+  sourceFacts: string[];
+  fallbackReason: string;
   reviewId: string;
   courseName: string;
   summary: string;
-  actions: string[];
+  actions: ReviewAction[];
   source: string;
   createdAt: string;
 }

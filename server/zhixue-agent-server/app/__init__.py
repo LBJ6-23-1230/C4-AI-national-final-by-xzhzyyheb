@@ -198,6 +198,8 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
     app.register_blueprint(wrong_book_api)
     from app.api.learning_upgrade import learning_upgrade_api
     app.register_blueprint(learning_upgrade_api)
+    from app.api.learning_records import learning_records_api
+    app.register_blueprint(learning_records_api)
     from app.api.partner_inbox import partner_inbox_api
     app.register_blueprint(partner_inbox_api)
     app.register_blueprint(focus_api)
@@ -223,6 +225,10 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
             if user is not None:
                 g.current_user = user
                 g.auth_token = token
+                if (not user.get("passwordHash") and request.path.startswith("/api/")
+                        and request.path not in {"/api/v1/auth/me", "/api/v1/auth/logout",
+                            "/api/v1/auth/change-password", "/api/v1/auth/account", "/api/v1/auth/status"}):
+                    return {"errorCode": "PASSWORD_SETUP_REQUIRED", "message": "请先设置登录密码", "details": None}, 403
         if not demo_enabled() and request.path.startswith("/api/"):
             public = {"/api/agent/health", "/api/v1/auth/status", "/api/v1/auth/register",
                       "/api/v1/auth/login", "/api/v1/auth/phone/login", "/api/v1/auth/login-or-register",

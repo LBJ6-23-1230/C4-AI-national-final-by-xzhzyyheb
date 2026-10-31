@@ -27,6 +27,7 @@ function runtime() {
     if (file === path.join(root, 'api/AgentApiClient.ets')) {
       module.exports.AgentApiClient = {
         getConfig: () => ({ useFixture: false }),
+        getLearningData: async () => ({ ok: false, error: { statusCode: 0, message: 'offline test' } }),
         getCurrentPlan: async () => network.loadPlan(),
         updatePlanBudget: async request => network.updateBudget(request),
         getFocusHistory: async () => network.online

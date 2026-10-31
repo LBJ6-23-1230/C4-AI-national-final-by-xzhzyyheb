@@ -30,7 +30,7 @@ def test_partner_match_uses_deterministic_backend_scoring(tmp_path):
 
 def test_real_accounts_replace_demo_people_when_available(tmp_path):
 	client = create_app(tmp_path / "partner-real-accounts.json").test_client()
-	created = client.post("/api/v1/auth/register", json={
+	created = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
 		"nickname": "真实测试同学", "grade": "大二", "phone": "13800138001",
 		"seedDemoData": False,
 	})
@@ -59,7 +59,7 @@ def test_target_course_requires_explicit_preferences(tmp_path, monkeypatch):
 	client = create_app(tmp_path / "partner-target-course.json").test_client()
 
 	def register(nick, phone):
-		return client.post("/api/v1/auth/register", json={
+		return client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
 			"nickname": nick, "grade": "大三", "phone": phone,
 			"seedDemoData": False}).get_json()
 
@@ -107,13 +107,13 @@ def test_online_match_never_falls_back_to_demo_candidates(tmp_path):
 
 def test_chat_and_detail_page_share_same_real_account_winner(tmp_path):
 	client = create_app(tmp_path / "partner-shared-ranking.json").test_client()
-	alice = client.post("/api/v1/auth/register", json={
+	alice = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
 		"nickname": "甲", "grade": "大二", "phone": "13800138101", "seedDemoData": False,
 	}).get_json()
-	client.post("/api/v1/auth/register", json={
+	client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
 		"nickname": "低年级候选", "grade": "大一", "phone": "13800138102", "seedDemoData": False,
 	})
-	best = client.post("/api/v1/auth/register", json={
+	best = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
 		"nickname": "同年级最高分", "grade": "大二", "phone": "13800138103", "seedDemoData": False,
 	}).get_json()
 	headers = {"Authorization": f"Bearer {alice['token']}"}

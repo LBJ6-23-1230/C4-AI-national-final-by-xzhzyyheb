@@ -23,7 +23,7 @@ import { TokenCipher } from './TokenCipher';
  * ⚠️ **仍然存在的边界（如实记录，不夸大）**：
  *   · 密钥是**软件密钥**，不是 HUKS 硬件密钥（HUKS 需要多轮异步交互，
  *     与本类的同步 preferences 范式不兼容）。
- *   · 加密不可用时会**降级为明文**，同时把 `AuthStore.encryptionDegraded()`
+ *   · 加密不可用时会**仅在内存保留凭据**，同时把 `AuthStore.encryptionDegraded()`
  *     置为 true，由账号页如实提示用户 —— 不静默假装安全。
  */
 export class AuthStore {
@@ -38,7 +38,7 @@ export class AuthStore {
 
   private static context: common.UIAbilityContext | null = null;
   private static session: StoredSession | null = null;
-  /** 本次运行是否处于"加密不可用 → 明文降级"状态。 */
+  /** 本次运行是否处于"加密不可用 → 不持久化"状态。 */
   private static degraded: boolean = false;
   private static keepSignedIn: boolean = true;
   private static recentAccount: string = '';
@@ -62,7 +62,7 @@ export class AuthStore {
    */
   static async initialize(context: common.UIAbilityContext): Promise<boolean> {
     AuthStore.context = context;
-    // 加密不可用不应阻断启动：失败只是降级为明文，并标记 degraded
+    // 加密不可用不应阻断启动：失败只是仅在内存保留凭据，并标记 degraded
     try {
       await TokenCipher.initialize();
     } catch (error) {
@@ -119,35 +119,35 @@ export class AuthStore {
   }
 
   /**
-   * token 是否处于明文降级状态。
+   * token 是否处于不持久化状态。
    *
-   * 账号页应当据此提示用户（`true` 表示设备加密不可用、凭据以明文保存）。
+   * 账号页应当据此提示用户（`true` 表示设备加密不可用、凭据仅在本次内存会话中保留）。
    */
   static encryptionDegraded(): boolean {
     return AuthStore.degraded;
   }
 
-  /** 把落盘的 token 还原成明文；识别不出密文格式时按"本就是旧的明文"处理。 */
+  /** 把落盘的 token 还原成明文；拒绝旧明文凭据并要求重新登录。 */
   private static decodeToken(stored: string): string {
     if (TokenCipher.isReady() && TokenCipher.looksEncrypted(stored)) {
       const plain: string | null = TokenCipher.decrypt(stored);
       return plain !== null ? plain : '';
     }
-    // 加密未就绪，或存量数据是升级前写入的明文 —— 原样返回，保证老用户不掉线
-    return stored;
+    // 加密未就绪，或存量数据是升级前写入的明文 —— 不恢复旧凭据，要求重新登录
+    return ''; // Legacy plaintext credentials are removed; require a fresh login.
   }
 
-  /** 把明文 token 编码成待落盘的形式（加密可用则密文，否则明文 + 降级标记）。 */
+  /** 把明文 token 编码成待落盘的形式（加密可用则密文，否则返回空值并停止持久化）。 */
   private static encodeToken(plain: string): string {
     if (!TokenCipher.isReady()) {
       AuthStore.degraded = true;
-      return plain;
+      return '';
     }
     const encoded: string | null = TokenCipher.encrypt(plain);
     if (encoded === null) {
-      // 加密失败：降级为明文，但**如实标记**，不假装已加密
+      // 加密失败：仅在内存保留凭据，但**如实标记**，不假装已加密
       AuthStore.degraded = true;
-      return plain;
+      return '';
     }
     AuthStore.degraded = false;
     return encoded;
@@ -204,6 +204,11 @@ export class AuthStore {
       store.putSync('recent_account', AuthStore.recentAccount);
       store.putSync('remember_account', AuthStore.rememberAccount);
       store.putSync('keep_signed_in', AuthStore.keepSignedIn);
+      const encodedToken: string = AuthStore.session !== null && AuthStore.keepSignedIn ? AuthStore.encodeToken(AuthStore.session.token) : '';
+      if (AuthStore.session !== null && AuthStore.keepSignedIn && encodedToken.length === 0) {
+        AuthStore.keepSignedIn = false;
+        store.putSync('keep_signed_in', false);
+      }
       const session: StoredSession | null = AuthStore.keepSignedIn ? AuthStore.session : null;
       if (session === null) {
         store.deleteSync(AuthStore.KEY_USER_ID);
@@ -216,8 +221,8 @@ export class AuthStore {
         store.deleteSync(AuthStore.KEY_SAVED_AT);
       } else {
         store.putSync(AuthStore.KEY_USER_ID, session.userId);
-        // token 加密后落盘（见类注释）。`encodeToken` 失败时会降级为明文并置 degraded。
-        store.putSync(AuthStore.KEY_TOKEN, AuthStore.encodeToken(session.token));
+        // token 加密后落盘（见类注释）。`encodeToken` 失败时会仅在内存保留凭据并置 degraded。
+        store.putSync(AuthStore.KEY_TOKEN, encodedToken);
         store.putSync(AuthStore.KEY_EXPIRES_AT, session.expiresAt);
         store.putSync(AuthStore.KEY_NICKNAME, session.nickname);
         store.putSync('avatar', session.avatar ?? '');

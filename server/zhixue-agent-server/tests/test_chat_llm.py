@@ -86,7 +86,7 @@ def test_missing_llm_keeps_source_metadata_without_configuration_in_reply(client
 
 def test_real_user_without_evidence_never_receives_demo_weakness(client):
     """真实账号空画像不能回退到小雅链表作业等演示数据。"""
-    account = client.post("/api/v1/auth/register", json={"phone": "13900009003", "nickname": "新账号"}).get_json()
+    account = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', "phone": "13900009003", "nickname": "新账号"}).get_json()
     body = client.post("/api/agent/chat", headers={"Authorization": f"Bearer {account['token']}"}, json={
         "message": "帮我看看我的薄弱知识点",
         "userId": "real-user-with-empty-profile",

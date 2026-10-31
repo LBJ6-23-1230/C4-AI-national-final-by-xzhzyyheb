@@ -104,10 +104,12 @@ Python 3.12 完整锁定安装可用 `pip install -r requirements-lock-py312.txt
 
 ## 测试
 
-```bash
-python -m pytest tests -q -p no:cacheprovider
-python ../../integration/run_liantiao5.py --llm-mode offline  # 本地隔离数据，契约、单测及 HTTP 检查
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run_tests.ps1
 ```
+
+此入口固定工作目录并隔离 `.env`、数据库和模型变量。从项目根目录运行时使用 `server/zhixue-agent-server/tools/run_tests.ps1`。
+2026-10-31 修改、实际数据库核验、签名环境及 HTTP 覆盖范围见项目根目录 `修改交付说明-20261031.md`；连接示例为 `examples/backend_connection.py`。
 
 ## 契约
 

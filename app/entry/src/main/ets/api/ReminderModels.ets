@@ -14,6 +14,10 @@ export interface ReminderEvent {
   knowledgePointId: string;
   durationMinutes: number;
   targetPage: string;
+  sourceType?: string;
+  sourceId?: string;
+  deadline?: string;
+  snoozedUntil?: string;
   dataTime: string;
 }
 export interface TodayOverview {
@@ -22,6 +26,7 @@ export interface TodayOverview {
   version: string;
   highlight: ReminderEvent | null;
   tasks: ReminderEvent[];
+  allTasks?: ReminderEvent[];
   pendingCount: number;
   guidance: string;
   modelCalls: number;

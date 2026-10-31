@@ -134,11 +134,13 @@ def test_batch_rollback_on_database_constraint_failure(pg):
     assert repository.get("profiles", "rollback") is None
 
 
-def test_database_allows_shared_phone_and_rejects_cross_owner_document(pg):
+def test_database_enforces_active_phone_and_rejects_cross_owner_document(pg):
     _, repository = pg
-    repository.save("users", "one", {"userId": "one", "phone": "13900000001"})
-    repository.save("users", "two", {"userId": "two", "phone": "13900000001"})
-    assert repository.get('users', 'two')['phone'] == '13900000001'
+    repository.save("users", "one", {"userId": "one", "phone": "13900000001", "status": "active"})
+    with pytest.raises(Exception):
+        repository.save("users", "two", {"userId": "two", "phone": "13900000001", "status": "active"})
+    repository.save("users", "merged", {"userId": "merged", "phone": "13900000001", "status": "merged"})
+    assert repository.get('users', 'two') is None
     repository.save("knowledge_bases", "kb", {"kbId": "kb", "userId": "one"})
     with pytest.raises(Exception):
         repository.save("documents", "doc", {"documentId": "doc", "kbId": "kb", "userId": "two"})

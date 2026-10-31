@@ -21,7 +21,7 @@ def setup(tmp_path, monkeypatch):
     client = create_app(tmp_path / "grounding.json").test_client()
     users = []
     for phone in ("13900008801", "13900008802"):
-        body = client.post("/api/v1/auth/register", json={
+        body = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
             "phone": phone, "nickname": phone, "seedDemoData": True}).get_json()
         users.append((body["user"]["userId"], {"Authorization": f"Bearer {body['token']}"}))
     owner, headers = users[0]

@@ -27,6 +27,8 @@
     "pages/PartnerInbox",
     "pages/PartnerDetail",
     "pages/Reminders",
-    "pages/UpcomingExams"
+    "pages/UpcomingExams",
+    "pages/LearningRecords",
+    "pages/PasswordSetup"
   ]
 }

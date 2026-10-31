@@ -3,7 +3,7 @@ import { ApiFailure } from '../api/ApiResult';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { KnowledgeMastery } from '../api/ApiModels';
-import { LearningReview, ReviewTask } from '../api/LearningUpgradeModels';
+import { ReviewAction, LearningReview, ReviewTask } from '../api/LearningUpgradeModels';
 import { appState } from '../data/AppState';
 
 @Entry
@@ -23,6 +23,7 @@ struct LearningReviewPage {
   aboutToDisappear(): void { this.active = false; }
   private ownsPage(): boolean { return this.active && this.owner === appState.currentUser.userId; }
   private async load(): Promise<void> {
+    if (AgentApiClient.getConfig().useFixture) this.notice = '离线演示：阶段复盘需要联网读取学习记录和课程设置。';
     const profile = await AgentApiClient.getProfile(this.owner);
     if (!this.ownsPage()) return;
     if (profile.ok) {
@@ -87,7 +88,17 @@ struct LearningReviewPage {
             Column({ space: 14 }) {
               Text('本阶段建议').fontSize(18).fontWeight(FontWeight.Medium).width('100%')
               Text(this.review.summary).fontSize(15).lineHeight(25).fontColor('#344054').width('100%')
-              ForEach(this.review.actions, (action: string) => { Text('• ' + action).fontSize(14).fontColor('#475467').width('100%') }, (action: string) => action)
+              ForEach(this.review.evidenceSummary, (fact: string) => { Text(fact).fontSize(13).fontColor('#667085').width('100%') })
+              ForEach(this.review.actions, (action: ReviewAction) => {
+                Column({ space: 8 }) {
+                  Text(`${action.title} · ${action.durationMinutes}分钟`).fontSize(16).fontWeight(FontWeight.Medium)
+                  Text('依据：' + action.why).fontSize(13).fontColor('#667085')
+                  ForEach(action.steps, (step: string) => { Text('• ' + step).fontSize(14).fontColor('#475467').width('100%') })
+                  Text('完成条件：' + action.doneWhen).fontSize(13).fontColor('#0F766E')
+                  Button('开始行动').onClick(() => router.pushUrl({ url: action.targetPage, params: { knowledgePointId: action.knowledgePointId, courseName: this.course } }))
+                }.width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(10).alignItems(HorizontalAlign.Start)
+              }, (action: ReviewAction) => action.actionId)
+              if (this.review.fallbackReason) { Text(this.review.fallbackReason).fontSize(12).fontColor('#B54708') }
               Text(this.review.source === 'model' ? '结合学习记录生成' : '基础建议 · 可继续练习补充测评记录').fontSize(12).fontColor('#98A2B3')
               Text('采纳建议，加入复习清单 ›').fontSize(14).fontColor('#475467').padding({ top: 8, bottom: 8 }).onClick(() => this.accept())
             }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(12).alignItems(HorizontalAlign.Start)

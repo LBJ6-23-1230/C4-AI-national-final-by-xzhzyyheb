@@ -10,7 +10,7 @@ from app.tools.profile_merge import merge_points_into_profile
 @pytest.mark.parametrize("budget", [None, 30])
 def test_second_course_changes_existing_plan_preserving_ids_and_progress(tmp_path, budget):
     client = create_app(tmp_path / "incremental.json").test_client()
-    auth = client.post("/api/v1/auth/register", json={"phone": "13900007901", "nickname": "课程测试",
+    auth = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', "phone": "13900007901", "nickname": "课程测试",
                         "seedDemoData": False}).get_json()
     owner = auth["user"]["userId"]
     headers = {"Authorization": f"Bearer {auth['token']}"}

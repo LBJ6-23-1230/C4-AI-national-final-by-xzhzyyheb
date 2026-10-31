@@ -948,7 +948,7 @@ struct Index {
                 }, (item: AgentSpec) => item.key)
               }.width('100%')
 
-              Text('多智能体自治学习引擎：诊断 → 规划 → 练习 → 测评，由秘书智能体统筹编排。')
+              Text('多智能体自治学习引擎：诊断 → 规划 → 练习 → 测评，由内部流程节点协调。')
                 .fontSize(11).fontColor('#94A3B8').lineHeight(17).width('100%')
             }
 
@@ -977,7 +977,6 @@ struct Index {
                 this.PanelCard('建立课程与学习目标', '导入课程表与作业截止时间，安排自己的学习任务。', '去上传 / 导入数据', 'pages/CourseImport')
               }
               CourseReviewReminder({ revision: this.refreshKey })
-              this.PanelRow($r('app.media.feature_review'), '阶段复盘与考前建议', '结合本课程记录，整理下一步复习行动', 'pages/LearningReview')
               if (this.agentPlanMessage.length > 0) this.PlanLoadNotice()
             }
 
@@ -1027,7 +1026,7 @@ struct Index {
               Row() {
                 Text('学习数据').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#0F172A')
                 Blank()
-                Text('明细 ›').fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+                Text('详情 ›').fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
                   .onClick(() => router.pushUrl({ url: 'pages/LearningHistory' }))
               }.width('100%').margin({ top: 4 })
 
@@ -1039,7 +1038,7 @@ struct Index {
 
               Row({ space: 10 }) {
                 this.StatCard(`${appState.getFocusSummary().streakDays}`, '连续学习天数')
-                this.StatCard(`${Math.round(appState.getFocusSummary().completionRate)}%`, '专注完成率')
+                this.StatCard(`${Math.round(appState.getFocusSummary().completionRate)}%`, '时间完成度')
                 // 同 Account 页：这里是**全部**待处理作业。用只数 7 天内的
                 // getUrgentDDLs() 会让"导入 N 条却显示 N-1 条"（实测反馈的数字对不上）。
                 this.StatCard(`${appState.getPendingDDLs().length}`, '待处理作业', 'pages/CourseImport')
@@ -1130,11 +1129,10 @@ const AGENT_SPECS: AgentSpec[] = [
   },
   {
     key: 'planner', icon: $r('app.media.feature_planner'), name: '规划智能体', category: '路径规划',
-    role: '决定今天先学什么',
-    desc: '按五因子（掌握度/错误强度/重要性/紧迫度/先修影响）算出最优任务，并随掌握度变化自动重规划。',
+    role: '生成并调整学习计划',
+    desc: '根据目标、课程与DDL、可用时间和掌握度生成学习计划；练习完成或时间改变后重新安排任务。',
     routes: [
-      { label: '今日学习建议', target: 'pages/StudySuggestion', prompt: '' },
-      { label: 'Agent 学习计划', target: 'pages/StudyPlan', prompt: '' }
+      { label: '学习计划', target: 'pages/StudyPlan', prompt: '' }
     ],
     ready: true
   },
@@ -1157,11 +1155,11 @@ const AGENT_SPECS: AgentSpec[] = [
     ready: true
   },
   {
-    key: 'secretary', icon: $r('app.media.feature_secretary'), name: '秘书智能体', category: '总控编排',
-    role: '统筹上面四个',
-    desc: '判断「下一步该叫哪个智能体」，并在对的时刻主动提醒你。全程留痕、可复核，不含模型思维链。',
+    key: 'secretary', icon: $r('app.media.feature_secretary'), name: '秘书智能体', category: '阶段复盘',
+    role: '复盘学习记录并安排下一步',
+    desc: '读取阶段学习记录、错题和考试日期，生成有依据、有时长、有完成条件的复习行动。',
     routes: [
-      { label: 'Agent 决策过程', target: 'pages/AgentTrace', prompt: '' }
+      { label: '阶段复盘与考前建议', target: 'pages/LearningReview', prompt: '' }
     ],
     ready: true
   }
@@ -1171,4 +1169,4 @@ const AGENT_SPECS: AgentSpec[] = [
 const QUICK_AGENTS: AgentSpec[] = AGENT_SPECS;
 
 /** 能力分类筛选项。 */
-const AGENT_CATEGORIES: string[] = ['全部', '学情诊断', '路径规划', '推送练习', '效果评估', '总控编排'];
+const AGENT_CATEGORIES: string[] = ['全部', '学情诊断', '路径规划', '推送练习', '效果评估', '阶段复盘'];

@@ -13,7 +13,7 @@ def accounts(tmp_path):
     client = create_app(path).test_client()
     users = []
     for phone in ("13900009001", "13900009002"):
-        response = client.post("/api/v1/auth/register", json={
+        response = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
             "phone": phone, "nickname": phone, "seedDemoData": True})
         assert response.status_code == 201
         body = response.get_json()

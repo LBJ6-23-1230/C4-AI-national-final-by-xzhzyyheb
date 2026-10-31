@@ -14,7 +14,7 @@ from app.api import exercises, profile as profile_api
 def setup(tmp_path):
     app = create_app(tmp_path / 'final.json')
     client = app.test_client()
-    auth = client.post('/api/v1/auth/register', json={
+    auth = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 
         'nickname': '最终验收', 'phone': '13812345678', 'seedDemoData': False}).get_json()
     user = auth['user']['userId']
     headers = {'Authorization': 'Bearer ' + auth['token']}

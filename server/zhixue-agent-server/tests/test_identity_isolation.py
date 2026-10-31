@@ -35,7 +35,7 @@ def _register(client, nickname: str) -> dict:
     见 `tests/test_auth.py::test_register_defaults_to_empty_profile`。
     """
     body = client.post("/api/v1/auth/register",
-                       json={"nickname": nickname, "phone": _phone(),
+                       json={'password': 'test-pw-123456', "nickname": nickname, "phone": _phone(),
                              "seedDemoData": True},
                        headers=H).get_json()
     return {"userId": body["user"]["userId"], "token": body["token"],

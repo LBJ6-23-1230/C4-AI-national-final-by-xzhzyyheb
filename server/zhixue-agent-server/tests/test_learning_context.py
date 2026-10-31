@@ -18,7 +18,7 @@ def setup(tmp_path, monkeypatch, request):
     client = create_app(tmp_path / "context.json").test_client()
     users = []
     for phone in ("13900007701", "13900007702"):
-        body = client.post("/api/v1/auth/register", json={
+        body = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', 
             "phone": phone, "nickname": phone, "seedDemoData": True}).get_json()
         users.append((body["user"]["userId"], {"Authorization": "Bearer " + body["token"]}))
     monkeypatch.setattr(chat_llm, "chat", lambda **kwargs: {

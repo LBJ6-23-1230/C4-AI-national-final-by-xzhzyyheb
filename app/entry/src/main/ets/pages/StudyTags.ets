@@ -5,7 +5,7 @@ import { common } from '@kit.AbilityKit';
 import { appState } from '../data/AppState';
 import { AIFloatButton } from '../components/AIFloatButton';
 import { RadarChart } from '../components/RadarChart';
-import { Evidence, KnowledgeMastery, MasteryHistory } from '../api/ApiModels';
+import { TopicGroup, TopicMember, Evidence, KnowledgeMastery, MasteryHistory } from '../api/ApiModels';
 import { DemoSnapshot } from '../cache/DemoSnapshot';
 import { ProfileViewModel } from '../viewmodels/ProfileViewModel';
 import { WorkflowViewModel } from '../viewmodels/WorkflowViewModel';
@@ -22,6 +22,8 @@ struct StudyTags {
   @State userId: string = '';
   @State goal: string = '';
   @State profileVersion: number = 0;
+  @State topicGroups: TopicGroup[] = [];
+  @State selectedTopic: string = '';
   @State mastery: KnowledgeMastery[] = [];
   private allMastery: KnowledgeMastery[] = [];
   @State courseNames: string[] = [];
@@ -155,6 +157,7 @@ struct StudyTags {
     this.goal = state.goal;
     this.profileVersion = state.profileVersion;
     this.allMastery = state.mastery;
+    this.topicGroups = state.topicGroups;
     const names: string[] = [];
     state.mastery.forEach((p: KnowledgeMastery) => {
       const name: string = p.sourceCourse || '待分类';
@@ -205,40 +208,18 @@ struct StudyTags {
   }
 
   private buildChartData(): void {
-    // 最多 6 个维度：雷达图再密就看不清标签了；优先展示最薄弱的维度，
-    // 避免接口返回顺序把真正需要关注的知识点挤出图表。
-    const items: KnowledgeMastery[] = this.mastery.filter((p: KnowledgeMastery) => this.assessed(p) && LearningEvidence.hasAccuracy(p)).sort((a: KnowledgeMastery, b: KnowledgeMastery): number => LearningEvidence.score(a) - LearningEvidence.score(b) || a.knowledgePointId.localeCompare(b.knowledgePointId)).slice(0, 6);
-    this.chartDims = [];
-    this.chartCurrent = [];
-    this.chartTarget = [];
-    this.chartWeak = [];
-    this.chartStrong = [];
-
-    for (let index: number = 0; index < items.length; index++) {
-      this.chartDims.push(items[index].knowledgePointName);
-      this.chartCurrent.push(LearningEvidence.score(items[index]));
+    const groups: TopicGroup[] = this.courseTopics().filter((g: TopicGroup) => g.masteryScore !== null).slice(0, 6);
+    this.chartDims = []; this.chartCurrent = []; this.chartTarget = []; this.chartWeak = []; this.chartStrong = [];
+    if (groups.length > 0) {
+      groups.forEach((g: TopicGroup) => { this.chartDims.push(g.topicGroupName); this.chartCurrent.push(g.masteryScore ?? 0); });
+    } else {
+      this.mastery.filter((p: KnowledgeMastery) => LearningEvidence.hasAccuracy(p)).slice(0, 6).forEach((p: KnowledgeMastery) => {
+        this.chartDims.push(p.knowledgePointName); this.chartCurrent.push(LearningEvidence.score(p));
+      });
     }
-
-    // 最薄弱 / 最强：按本次展示的维度里取极值。
-    // 只在维度数 >= 2 时才标 —— 单点时"最弱"和"最强"是同一个，标红没有信息量。
-    if (items.length >= 2) {
-      let weakest: number = 0;
-      let strongest: number = 0;
-      for (let index: number = 1; index < items.length; index++) {
-        if (LearningEvidence.score(items[index]) < LearningEvidence.score(items[weakest])) {
-          weakest = index;
-        }
-        if (LearningEvidence.score(items[index]) > LearningEvidence.score(items[strongest])) {
-          strongest = index;
-        }
-      }
-      // 掌握度全相同（并列）时不标任何点，避免随便挑一个标红造成误导
-      if (LearningEvidence.score(items[weakest]) !== LearningEvidence.score(items[strongest])) {
-        this.chartWeak = [weakest];
-        this.chartStrong = [strongest];
-      }
-    }
+    this.chartCurrent.forEach((score: number, index: number) => { if (score < 60) this.chartWeak.push(index); else if (score >= 80) this.chartStrong.push(index); });
   }
+  private courseTopics(): TopicGroup[] { return this.topicGroups.filter((g: TopicGroup) => g.sourceCourse === this.selectedCourse); }
 
   /**
    * 从学习目标文案里取目标分数。
@@ -405,11 +386,25 @@ struct StudyTags {
               .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
               .shadow({ radius: 8, color: '#10000000', offsetX: 0, offsetY: 4 })
 
+              ForEach(this.courseTopics(), (group: TopicGroup) => {
+                Column({ space: 8 }) {
+                  Text(`${group.topicGroupName} · ${group.masteryScore === null ? '待测评' : group.masteryScore + '%'} · ${group.evidenceQuestionCount}道有效题 ${this.selectedTopic === group.topicGroupId ? '↑' : '↓'}`)
+                    .fontSize(15).fontColor(group.masteryScore === null ? '#667085' : group.masteryScore < 60 ? '#C2410C' : group.masteryScore < 80 ? '#2563EB' : '#0F766E')
+                    .width('100%').onClick(() => this.selectedTopic = this.selectedTopic === group.topicGroupId ? '' : group.topicGroupId)
+                  if (this.selectedTopic === group.topicGroupId) {
+                    ForEach(group.memberPoints, (member: TopicMember) => {
+                      Text(`${member.name} · ${member.masteryScore === null ? '待测评' : member.masteryScore + '%'} · 开始专项练习 ›`)
+                        .fontSize(13).fontColor('#475467').width('100%').padding(8)
+                        .onClick(() => router.pushUrl({ url: 'pages/ExercisePractice', params: { knowledgePointId: member.knowledgePointId, courseName: group.sourceCourse } }))
+                    }, (member: TopicMember) => member.knowledgePointId)
+                  }
+                }.width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(12)
+              }, (group: TopicGroup) => group.topicGroupId)
               if (this.mastery.length > 0) {
                 if (this.chartDims.length >= 3) {
                   Column({ space: 8 }) {
-                    Text(this.selectedCourse + ' · 近期练习表现').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
-                    Text(`展示本课程已评估知识点中最薄弱的 ${this.chartDims.length} 项（最多 6 项），显示近期练习正确率；全部知识点见下方列表。`)
+                    Text(this.selectedCourse + ' · 课程主题掌握度').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
+                    Text(`显示本课程最需要关注的 ${this.chartDims.length} 个主题；点击下方主题查看细分知识点。`)
                       .fontSize(13).fontColor('#6B7280')
                     RadarChart({
                       dimensions: this.chartDims,

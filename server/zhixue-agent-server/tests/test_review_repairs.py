@@ -20,7 +20,7 @@ from app.repositories.sqlite_repository import SQLiteRepository
 def test_invitation_requires_real_sender_and_reaches_real_recipient(tmp_path):
     client = create_app(tmp_path / 'real-invitations.json').test_client()
     def register(phone):
-        response = client.post('/api/v1/auth/register', json={'phone': phone, 'nickname': phone})
+        response = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 'phone': phone, 'nickname': phone})
         assert response.status_code == 201
         data = response.get_json()
         return data['user']['userId'], {'Authorization': 'Bearer ' + data['token']}

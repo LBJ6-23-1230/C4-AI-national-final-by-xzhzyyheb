@@ -142,6 +142,9 @@ def replan_learning_path(old_plan: dict[str, Any], state: dict[str, Any]) -> dic
 		task_id = task.get("taskId")
 		if distribution is not None and task_id in distribution:
 			task["durationMinutes"] = distribution[task_id]
+			if "baseDurationMinutes" in task:
+				task["baseDurationMinutes"] = distribution[task_id]
+			task.pop("extraMinutes", None)
 			changed.append(dict(task))
 			continue
 		baseline = _BASELINE_DURATIONS.get(task_id, task.get("durationMinutes", 30))
@@ -153,6 +156,9 @@ def replan_learning_path(old_plan: dict[str, Any], state: dict[str, Any]) -> dic
 			new_duration = baseline
 		if task.get("durationMinutes") != new_duration:
 			task["durationMinutes"] = new_duration
+			if "baseDurationMinutes" in task:
+				task["baseDurationMinutes"] = new_duration
+			task.pop("extraMinutes", None)
 			changed.append(dict(task))
 
 	reasons = ";".join(decision["reasons"])

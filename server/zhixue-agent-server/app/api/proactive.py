@@ -51,7 +51,9 @@ def _weakest_knowledge(user_id: str) -> dict | None:
 
 @proactive_api.post("/api/v1/agent/proactive")
 def post_proactive():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
     if not isinstance(data, dict):
         return jsonify({
             "errorCode": "BAD_REQUEST",

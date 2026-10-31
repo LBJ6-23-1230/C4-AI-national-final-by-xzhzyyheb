@@ -100,7 +100,8 @@ def statistics(repo, owner, now=None):
 
 def projected_mastery(repo, owner, rows, now=None):
     stats = statistics(repo, owner, now)
-    return [dict(row, topicGroup=topic(row.get('knowledgePointName', '')),
+    from app.services.topic_groups import membership
+    return [dict(row, **membership(repo, owner, row), topicGroup=topic(row.get('knowledgePointName', '')),
         **stats.get(row['knowledgePointId'], dict(assessmentStatus='unassessed', effectiveQuestionCount=0,
             correctCount=0, recentAccuracy=None, lastAssessedAt='', assessmentRoundCount=0,
             performanceChange=None, retentionStatus='not_tested', ruleVersion=RULE_VERSION))) for row in rows]

@@ -8,6 +8,7 @@ import { AuthSource, AuthUser } from './AuthModels';
  * 而「注册失败」需要同时携带可展示的中文原因与可回退的建议。
  */
 export interface AuthResult {
+  needsPasswordSetup?: boolean;
   accounts?: AuthUser[];
   selectionToken?: string;
   /** 是否可进入 App。true = 可以继续（含游客兜底）。 */

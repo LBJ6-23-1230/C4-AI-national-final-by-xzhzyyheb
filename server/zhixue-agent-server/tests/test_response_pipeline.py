@@ -109,7 +109,7 @@ def test_stream_feedback_precedes_blocked_model_and_saves_once(tmp_path, monkeyp
 def test_stream_identity_errors_and_legacy_contract(tmp_path):
     client = create_app(tmp_path / "identity.json").test_client()
     demo_before = chat_llm.get_history('demo-user')
-    account = client.post('/api/v1/auth/register', json={"phone": "13900007891", "nickname": "测试"}).get_json()
+    account = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', "phone": "13900007891", "nickname": "测试"}).get_json()
     headers = {"Accept": "text/event-stream", "Authorization": "Bearer " + account['token']}
     result = events(client.post('/api/agent/chat', headers=headers,
         json={"message": "帮我看看我的薄弱知识点", "sessionId": "owned", "userId": "demo-user"}))

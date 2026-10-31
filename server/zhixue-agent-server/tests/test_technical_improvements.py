@@ -223,7 +223,7 @@ def test_404_still_json_after_handler_additions(client):
 # 3) 对话历史按用户隔离
 # ===========================================================================
 def _history_headers(client, phone):
-    result = client.post("/api/v1/auth/register", json={"nickname": phone, "phone": phone}).get_json()
+    result = client.post("/api/v1/auth/register", json={'password': 'test-pw-123456', "nickname": phone, "phone": phone}).get_json()
     return {"Authorization": f"Bearer {result['token']}"}
 
 

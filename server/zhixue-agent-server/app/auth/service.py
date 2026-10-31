@@ -288,6 +288,7 @@ def _public_user(user: dict[str, Any]) -> dict[str, Any]:
         "authProvider": user.get("authProvider", "guest"),
         "phoneMasked": mask_phone(user.get("phone", "")),
         "hasPhone": bool(user.get("phone")),
+        "needsPasswordSetup": not bool(user.get("passwordHash")),
         "createdAt": user.get("createdAt", ""),
         "lastLoginAt": user.get("lastLoginAt", ""),
     }
@@ -378,25 +379,8 @@ def find_users_by_nickname(repository: Repository, nickname: Any) -> list[dict[s
 
 
 @atomic_auth
-def login_by_nickname(repository: Repository, nickname: Any,
-                      password: Any = None) -> dict[str, Any]:
-    """按昵称登录；新账号若设置了密码则必须校验，旧账号保持兼容。"""
-    matches = find_users_by_nickname(repository, nickname)
-    if not matches:
-        raise AuthError("UNAUTHORIZED", "该昵称还没有账号，请先注册", 401)
-    if len(matches) > 1:
-        raise AuthError("CONFLICT",
-                        f"昵称「{normalize_nickname(nickname)}」对应 {len(matches)} 个账号，"
-                        "请改用更精确的昵称或使用手机号登录", 409)
-
-    user = matches[0]
-    _verify_password(user, password)
-    user_id = user["userId"]
-    session = create_session(repository, user_id)
-    user["lastLoginAt"] = _iso(_now())
-    repository.save(USERS, user_id, user)
-    return {"user": _public_user(user), "token": session["token"],
-            "expiresAt": session["expiresAt"]}
+def login_by_nickname(repository: Repository, nickname: Any, password: Any = None) -> dict:
+    raise AuthError("VALIDATION_ERROR", "请使用手机号和密码登录，昵称仅用于展示", 400)
 
 
 def find_users_by_phone(repository: Repository, phone: Any) -> list[dict[str, Any]]:
@@ -423,63 +407,30 @@ def _account_choices(repository: Repository, users: list[dict], *, sms: bool = F
 
 @atomic_auth
 def select_account(repository: Repository, token: Any, account_id: Any, password: Any = None) -> dict:
-    if not isinstance(token, str) or not token:
-        raise AuthError("UNAUTHORIZED", "请重新验证手机号", 401)
-    key = hashlib.sha256(token.encode()).hexdigest()
-    choice = repository.get("account_choices", key)
-    if not choice or choice.get("used") or _parse_optional_time(choice.get("expiresAt")) <= _now():
-        raise AuthError("UNAUTHORIZED", "账号选择已过期，请重新登录", 401)
-    if account_id not in choice["userIds"]:
-        raise AuthError("UNAUTHORIZED", "请选择该手机号绑定的账号", 401)
-    user = repository.get(USERS, account_id)
-    if not user or user.get("status") != "active":
-        raise AuthError("UNAUTHORIZED", "账号已注销，请重新登录", 401)
-    if not choice["sms"]:
-        _verify_password(user, password)
-    choice["used"] = True
-    repository.save("account_choices", key, choice)
-    session = create_session(repository, account_id)
-    user["lastLoginAt"] = _iso(_now())
-    repository.save(USERS, account_id, user)
-    return {"user": _public_user(user), "token": session["token"], "expiresAt": session["expiresAt"]}
+    raise AuthError("ACCOUNT_SWITCH_DISABLED", "账号选择已停用，请使用手机号和密码登录；历史重复账号需先迁移", 409)
 
 
 @atomic_auth
-def login_by_phone(repository: Repository, phone: Any,
-                   password: Any = None, *, verify_secret: bool = True) -> dict[str, Any]:
-    """手机号登录（**免验证码版本**）。
-
-    ⚠️ 这不是完整的手机号登录：真实场景必须先验证短信验证码，
-    证明"这个号是本人的"。本函数只做"号存在即登录"，
-    适用于演示 / 内网环境。
-
-    完整验证码链路（含限流、锁定、哈希存储）见
-    `docs/11-用户登录体系方案.md` §5.2。
-    """
-    users = find_users_by_phone(repository, phone)
-    user = users[0] if users else None
-    if user is None:
-        raise AuthError("UNAUTHORIZED", "该手机号还没有账号，请先注册", 401)
-    if len(users) > 1:
-        if verify_secret:
-            valid = False
-            for candidate in users:
-                try:
-                    _verify_password(candidate, password)
-                    valid = True
-                except AuthError:
-                    pass
-            if not valid:
-                raise AuthError("UNAUTHORIZED", "手机号或密码不正确", 401)
-        return _account_choices(repository, users, sms=not verify_secret)
+def login_by_phone(repository: Repository, phone: Any, password: Any = None, *, verify_secret: bool = True) -> dict:
+    clean_phone = normalize_phone(phone)
     if verify_secret:
-        _verify_password(user, password)
-    user_id = user["userId"]
-    session = create_session(repository, user_id)
-    user["lastLoginAt"] = _iso(_now())
-    repository.save(USERS, user_id, user)
-    return {"user": _public_user(user), "token": session["token"],
-            "expiresAt": session["expiresAt"]}
+        normalize_password(password)
+    users = find_users_by_phone(repository, clean_phone)
+    if not users:
+        raise AuthError("AUTH_INVALID", "手机号或密码不正确", 401)
+    if len(users) != 1:
+        raise AuthError("ACCOUNT_MIGRATION_REQUIRED", "该手机号有历史重复账号，请先由管理员确认主账号并迁移", 409)
+    user = users[0]
+    if verify_secret:
+        try:
+            _verify_password(user, password)
+        except AuthError:
+            raise AuthError("AUTH_INVALID", "手机号或密码不正确", 401)
+    session = create_session(repository, user['userId'])
+    user['lastLoginAt'] = _iso(_now())
+    repository.save(USERS, user['userId'], user)
+    return dict(user=_public_user(user), token=session['token'], expiresAt=session['expiresAt'],
+                needsPasswordSetup=not bool(user.get('passwordHash')))
 
 
 def _avatar_dimensions(raw: bytes) -> tuple[int, int]:
@@ -771,7 +722,7 @@ def verify_verification_code(repository: Repository, phone: Any, code: Any,
         clean_grade = None
         if existing is None:
             clean_nickname = normalize_nickname(
-                nickname if nickname else f"用户{clean_phone[-4:]}")
+                nickname if nickname else "知学用户-" + secrets.token_hex(2).upper())
             clean_grade = normalize_grade(grade)
 
         # 一次性消费：立即清空哈希与过期时间，但保留限流窗口元数据。
@@ -787,16 +738,16 @@ def verify_verification_code(repository: Repository, phone: Any, code: Any,
             result = login_by_phone(repository, clean_phone, verify_secret=False)
             return {**result, "created": False}
 
-        result = register_user(repository, clean_nickname, clean_grade, clean_phone)
+        result = register_user(repository, clean_nickname, clean_grade, clean_phone, verified_phone=True)
         seeded = provision_starter_profile(
             repository, result["user"]["userId"], result["user"]["nickname"],
             with_demo_data=with_demo_data)
-        return {**result, "created": True, "demoDataSeeded": seeded}
+        return {**result, "created": True, "demoDataSeeded": seeded, "needsPasswordSetup": True}
 
 
 @atomic_auth
 def register_user(repository: Repository, nickname: Any, grade: Any = None,
-                  phone: Any = None, password: Any = None) -> dict[str, Any]:
+                  phone: Any = None, password: Any = None, *, verified_phone: bool = False) -> dict[str, Any]:
     """创建账号：昵称 + 年级 + 手机号 + 可选密码 → userId + token。
 
     同一手机号可以创建多个独立账号；手机号登录时通过选择凭据确认具体账号。
@@ -805,10 +756,12 @@ def register_user(repository: Repository, nickname: Any, grade: Any = None,
     但调用方若要避免"用户以为在登录、实际在新建账号"，应先走
     `login_by_phone()` / `login_by_nickname()`，只在确实查无此账号时才注册。
     """
-    clean_nickname = normalize_nickname(nickname)
+    clean_nickname = normalize_nickname(nickname if nickname is not None and nickname != '' else '知学用户-' + secrets.token_hex(2).upper())
     clean_grade = normalize_grade(grade)
-    clean_phone = normalize_phone(phone, required=_PHONE_REQUIRED)
-    clean_password = normalize_password(password, required=False)
+    clean_phone = normalize_phone(phone, required=True)
+    clean_password = normalize_password(password, required=not verified_phone)
+    if find_users_by_phone(repository, clean_phone):
+        raise AuthError('PHONE_ALREADY_REGISTERED', '该手机号已注册，请直接登录或找回密码', 409)
 
     user_id = _new_user_id()
     while repository.get(USERS, user_id) is not None:  # 概率极低，防御性处理
@@ -1045,7 +998,7 @@ def register_and_provision(repository: Repository, nickname: Any, grade: Any = N
     result = register_user(repository, nickname, grade, phone, password)
     seeded = provision_starter_profile(repository, result["user"]["userId"], result["user"]["nickname"],
                                        with_demo_data=with_demo_data)
-    return {**result, "demoDataSeeded": seeded}
+    return {**result, "demoDataSeeded": seeded, "needsPasswordSetup": False}
 
 
 # --------------------------------------------------------------------------- 供中间件使用
