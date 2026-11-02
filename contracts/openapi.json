@@ -7078,6 +7078,182 @@
           }
         }
       }
+    },
+    "/api/v1/profile/{userId}/knowledge-points/classification": {
+      "put": {
+        "summary": "手动匹配知识点课程与主题",
+        "operationId": "confirmKnowledgeClassification",
+        "tags": [
+          "学习"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PointClassificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "404": {
+            "description": "记录不存在"
+          },
+          "409": {
+            "description": "版本冲突"
+          }
+        },
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "in": "path"
+          }
+        ]
+      }
+    },
+    "/api/v1/plans/current/calendar": {
+      "post": {
+        "summary": "按确认的每日可用时长排期",
+        "operationId": "scheduleCalendar",
+        "tags": [
+          "学习"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "404": {
+            "description": "记录不存在"
+          },
+          "409": {
+            "description": "版本冲突"
+          }
+        }
+      }
+    },
+    "/api/v1/plans/current/recommendation": {
+      "post": {
+        "operationId": "acceptAssessmentAction",
+        "summary": "采纳15分钟知识点巩固行动",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessmentActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "已加入待安排计划",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入无效"
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "404": {
+            "description": "知识点不存在"
+          },
+          "409": {
+            "description": "请先匹配课程"
+          }
+        }
+      }
+    },
+    "/api/v1/plans/current/tasks/split": {
+      "post": {
+        "operationId": "splitPlanTask",
+        "summary": "确认任务步骤并保持总工作量",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskSplitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "步骤已保存",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "步骤输入无效"
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "404": {
+            "description": "计划不存在"
+          },
+          "409": {
+            "description": "任务已变化"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7624,6 +7800,9 @@
           },
           "topicGroupConfidence": {
             "type": "number"
+          },
+          "classificationRequired": {
+            "type": "boolean"
           }
         }
       },
@@ -7836,6 +8015,15 @@
           },
           "dueAt": {
             "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parentTaskId": {
+            "type": "string"
           }
         }
       },
@@ -7905,6 +8093,16 @@
           },
           "targetCourse": {
             "type": "string"
+          },
+          "calendarDays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarDay"
+            }
+          },
+          "calendarUnscheduledMinutes": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -10886,6 +11084,9 @@
               "practice",
               "settings"
             ]
+          },
+          "practiceVerified": {
+            "type": "boolean"
           }
         }
       },
@@ -11011,6 +11212,9 @@
           "courseName": {
             "type": "string",
             "maxLength": 120
+          },
+          "retry": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -12202,6 +12406,139 @@
           "records",
           "nextCursor"
         ]
+      },
+      "PointClassificationRequest": {
+        "type": "object",
+        "properties": {
+          "knowledgePointId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "courseName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "topicName": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 100
+          },
+          "expectedProfileVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "knowledgePointId",
+          "courseName",
+          "expectedProfileVersion"
+        ],
+        "additionalProperties": false
+      },
+      "CalendarDay": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "scheduledMinutes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "date",
+          "minutes"
+        ],
+        "additionalProperties": false
+      },
+      "CalendarRequest": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 14,
+            "items": {
+              "$ref": "#/components/schemas/CalendarDay"
+            }
+          },
+          "expectedPlanVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "days",
+          "expectedPlanVersion"
+        ],
+        "additionalProperties": false
+      },
+      "AssessmentActionRequest": {
+        "type": "object",
+        "required": [
+          "knowledgePointId"
+        ],
+        "properties": {
+          "knowledgePointId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskSplitRequest": {
+        "type": "object",
+        "required": [
+          "taskId",
+          "expectedPlanVersion",
+          "steps"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expectedPlanVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "required": [
+                "title",
+                "minutes"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "minutes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1440
+                }
+              }
+            }
+          }
+        }
       }
     },
     "responses": {

@@ -1259,7 +1259,7 @@ export class AppState {
       studyDays.add(dayKey);
       if (dayKey === todayKey) {
         todayMinutes += session.actualMinutes;
-        totalCompletion += session.completionRate;
+        totalCompletion += session.plannedMinutes > 0 ? Math.min(100, Math.round(session.actualMinutes / session.plannedMinutes * 100)) : 0;
         todaySessionCount++;
       }
     }

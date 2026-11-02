@@ -23,6 +23,12 @@ def snapshot(repo, owner):
     result = {'userId': owner, 'courses': [], 'homeworkDDLs': [], 'deletedCourses': [], 'deletedDDLs': []}
     completed = {t.get('taskId') for p in repo.query('plans', {'userId': owner})
         for t in p.get('tasks', []) + p.get('unscheduledTasks', []) if t.get('source') == 'ddl' and t.get('status') == 'completed'}
+    for plan in repo.query('plans', {'userId': owner}):
+        statuses = {t['taskId']: t.get('status') for t in plan.get('tasks', []) + plan.get('unscheduledTasks', [])}
+        for parent, detail in plan.get('taskDecompositions', {}).items():
+            if detail.get('original', {}).get('source') == 'ddl' and detail['childIds'] and all(statuses.get(c) == 'completed' for c in detail['childIds']):
+                completed.add(parent)
+
     for collection, field in [('courses', 'courses'), ('assignments', 'homeworkDDLs')]:
         for row in records(repo, owner, collection):
             if row.get('deleted'):

@@ -3,14 +3,24 @@ import hashlib
 
 
 def membership(repo, owner, point):
-    course = point.get('sourceCourse') or '待分类'
+    course = point.get('sourceCourse') or ''
     name = point.get('knowledgePointName') or point['knowledgePointId']
-    # Conservative textbook groups. Unknown topics remain independent.
+    existing = repo.get('topic_memberships', owner + ':' + point['knowledgePointId'])
+    if existing and existing.get('confirmed') and existing.get('sourceCourse') == course:
+        return {k: existing[k] for k in ('topicGroupId', 'topicGroupName', 'topicGroupConfidence')}
+    # Only concrete matches become topics. Unknowns are confirmed by the user.
     rules = [('树的遍历', ('先序', '中序', '后序', '层序', '树遍历', '树的遍历')),
-             ('排序算法', ('冒泡排序', '插入排序', '选择排序', '快速排序', '归并排序', '堆排序')),
+             ('排序算法', ('冒泡排序', '插入排序', '选择排序', '快速排序', '归并排序', '堆排序', '排序算法')),
              ('线性结构', ('栈', '队列')), ('链表操作', ('链表',)),
-             ('图的遍历', ('广度优先', '深度优先', '图遍历'))]
-    label = next((label for label, terms in rules if any(t in name for t in terms)), name)
+             ('图的遍历', ('广度优先', '深度优先', '图遍历')),
+             ('应用层协议', ('HTTP', 'http', 'DNS', 'dns')),
+             ('传输层协议', ('TCP', 'tcp', 'UDP', 'udp', '三次握手', '四次挥手')),
+             ('操作系统内核', ('宏内核', '微内核', '内核结构')),
+             ('进程管理', ('进程', '线程', '死锁')),
+             ('内存管理', ('内存管理', '内存分页', '页面置换', '虚拟内存')),
+             ('微积分', ('导数', '微分', '积分', '极限')),
+             ('线性表', ('线性表',)), ('二叉树', ('二叉树', '二叉搜索树')), ('图算法', ('图算法', '最短路径'))]
+    label = next((label for label, terms in rules if any(t in name for t in terms)), '')
     identity = hashlib.sha256((course + '\0' + label).encode()).hexdigest()[:20]
     key = owner + ':' + point['knowledgePointId']
     record = dict(userId=owner, knowledgePointId=point['knowledgePointId'], sourceCourse=course,
@@ -24,6 +34,8 @@ def membership(repo, owner, point):
 def aggregate(points):
     groups = {}
     for p in points:
+        if not p.get('sourceCourse') or not p.get('topicGroupName'):
+            continue
         group = groups.setdefault(p['topicGroupId'], dict(topicGroupId=p['topicGroupId'],
             topicGroupName=p['topicGroupName'], sourceCourse=p.get('sourceCourse') or '待分类',
             memberPoints=[], evidenceQuestionCount=0, weighted=0))

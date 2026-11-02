@@ -3,7 +3,6 @@ import { LearningEvidence } from '../utils/LearningEvidence';
 import router from '@ohos.router';
 import { common } from '@kit.AbilityKit';
 import { appState } from '../data/AppState';
-import { AIFloatButton } from '../components/AIFloatButton';
 import { RadarChart } from '../components/RadarChart';
 import { TopicGroup, TopicMember, Evidence, KnowledgeMastery, MasteryHistory } from '../api/ApiModels';
 import { DemoSnapshot } from '../cache/DemoSnapshot';
@@ -77,7 +76,9 @@ struct StudyTags {
     const points: KnowledgeMastery[] = this.mastery.filter((point: KnowledgeMastery) => this.assessed(point))
       .sort((left: KnowledgeMastery, right: KnowledgeMastery): number =>
         LearningEvidence.score(left) - LearningEvidence.score(right));
-    if (points.length > 0) {
+    if (points.length > 0 && points[0].classificationRequired) {
+      router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } });
+    } else if (points.length > 0) {
       router.pushUrl({ url: 'pages/ExercisePractice', params: { knowledgePointId: points[0].knowledgePointId } });
     } else {
       router.pushUrl({ url: 'pages/ExercisePractice' });
@@ -161,7 +162,7 @@ struct StudyTags {
     const names: string[] = [];
     state.mastery.forEach((p: KnowledgeMastery) => {
       const name: string = p.sourceCourse || '待分类';
-      if (names.indexOf(name) < 0) names.push(name);
+      if (name && name !== '待分类' && name !== '待确认科目' && names.indexOf(name) < 0) names.push(name);
     });
     this.courseNames = names;
     this.selectCourse(names.indexOf(this.selectedCourse) >= 0 ? this.selectedCourse : (names[0] || ''));
@@ -277,7 +278,7 @@ struct StudyTags {
 
   private visibleMastery(): KnowledgeMastery[] {
     const items: KnowledgeMastery[] = this.sortedMastery();
-    return this.showAllMastery ? items : items.slice(0, MASTERY_PREVIEW_COUNT);
+    return items.slice(0, 3);
   }
 
   private weakMasteryCount(): number {
@@ -378,17 +379,15 @@ struct StudyTags {
               Text('查看各课程的练习表现与验证记录。')
                 .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
 
-              Column({ space: 8 }) {
-                Text('当前学习目标').fontSize(13).fontColor('#64748B')
-                Text(this.goal.length > 0 ? this.goal : '尚未建立学习目标')
-                  .fontSize(18).fontWeight(FontWeight.Bold).fontColor('#111827')
+              Select(this.courseNames.map((name: string): SelectOption => { return { value: name }; }))
+                .value(this.selectedCourse || '选择课程').width('100%').onSelect((index: number) => this.selectCourse(this.courseNames[index]))
+              if (this.allMastery.some((point: KnowledgeMastery) => point.classificationRequired === true)) {
+                Text('有内容尚未识别出所属课程，请手动匹配 ›').fontSize(13).fontColor('#B45309').width('100%')
+                  .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } }))
               }
-              .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
-              .shadow({ radius: 8, color: '#10000000', offsetX: 0, offsetY: 4 })
-
-              ForEach(this.courseTopics(), (group: TopicGroup) => {
+              ForEach(this.courseTopics().slice(0, 3), (group: TopicGroup) => {
                 Column({ space: 8 }) {
-                  Text(`${group.topicGroupName} · ${group.masteryScore === null ? '待测评' : group.masteryScore + '%'} · ${group.evidenceQuestionCount}道有效题 ${this.selectedTopic === group.topicGroupId ? '↑' : '↓'}`)
+                  Text(`${group.topicGroupName} · ${group.masteryScore === null ? '未测评' : '近期正确率 ' + group.masteryScore + '%'} · ${group.evidenceQuestionCount}道有效题 ${this.selectedTopic === group.topicGroupId ? '↑' : '↓'}`)
                     .fontSize(15).fontColor(group.masteryScore === null ? '#667085' : group.masteryScore < 60 ? '#C2410C' : group.masteryScore < 80 ? '#2563EB' : '#0F766E')
                     .width('100%').onClick(() => this.selectedTopic = this.selectedTopic === group.topicGroupId ? '' : group.topicGroupId)
                   if (this.selectedTopic === group.topicGroupId) {
@@ -403,7 +402,7 @@ struct StudyTags {
               if (this.mastery.length > 0) {
                 if (this.chartDims.length >= 3) {
                   Column({ space: 8 }) {
-                    Text(this.selectedCourse + ' · 课程主题掌握度').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
+                    Text(this.selectedCourse + ' · 课程主题近期正确率').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
                     Text(`显示本课程最需要关注的 ${this.chartDims.length} 个主题；点击下方主题查看细分知识点。`)
                       .fontSize(13).fontColor('#6B7280')
                     RadarChart({
@@ -417,38 +416,8 @@ struct StudyTags {
                   .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
                   .shadow({ radius: 8, color: '#10000000', offsetX: 0, offsetY: 4 })
                 } else {
-                  Column({ space: 10 }) {
-                    Text('当前练习表现').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
-                    // 雷达图**不是没触发，而是维度不够**：至少要三个轴才成形，
-                    // 两个点连起来只是一条线。实测反馈「之前初赛版本在学情画像内有
-                    // 雷达图的，现在始终没有触发」—— 根因在这里（以及演示画像里
-                    // 原先只预置了 1 个知识点，见 server 的 `app/api/demo.py`）。
-                    // 与其让用户以为坏了，不如说清触发条件与达成路径。
-                    Text('先查看近期练习结果，更多知识点可在下方展开。')
-                      .fontSize(13).fontColor('#6B7280')
-                    ForEach(this.mastery.slice(0, 3), (item: KnowledgeMastery) => {
-                      Column({ space: 8 }) {
-                        Row() {
-                          Text(item.knowledgePointName).fontSize(15).fontWeight(FontWeight.Medium).fontColor('#1F2937').layoutWeight(1)
-                          Text(this.assessed(item) ? LearningEvidence.accuracyText(item) : '未测评').fontSize(17).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-                        }.width('100%')
-                        if (LearningEvidence.hasAccuracy(item)) { Progress({ value: LearningEvidence.score(item), total: 100, type: ProgressType.Linear })
-                          .color('#7C9FA0').backgroundColor('#ECEFF3').height(8).borderRadius(8) }
-                      }.width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(12)
-                    }, (item: KnowledgeMastery) => item.knowledgePointId)
-                  }
-                  .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
-                  .shadow({ radius: 8, color: '#10000000', offsetX: 0, offsetY: 4 })
+                  Text(`当前有 ${this.chartDims.length} 个已测维度，至少3个才展示雷达图；下方可查看具体作答证据。`).fontSize(13).fontColor('#667085').width('100%')
                 }
-
-                Flex({ wrap: FlexWrap.Wrap }) {
-                  ForEach(this.courseNames, (course: string) => {
-                    Button(course).fontSize(13).margin(4)
-                      .backgroundColor(course === this.selectedCourse ? '#E4E7EC' : '#F9FAFB')
-                      .fontColor(course === this.selectedCourse ? '#344054' : '#667085')
-                      .onClick(() => this.selectCourse(course))
-                  }, (course: string) => course)
-                }.width('100%')
 
                 Column({ space: 10 }) {
                   Row() {
@@ -456,7 +425,7 @@ struct StudyTags {
                     Blank()
                     Text(`共 ${this.mastery.length} 个知识点`).fontSize(12).fontColor('#667085')
                   }.width('100%')
-                  Text(`按近期练习表现排列，默认只展示最需要提升的 ${Math.min(MASTERY_PREVIEW_COUNT, this.mastery.length)} 项。`)
+                  Text(`按近期练习表现排列，默认只展示最需要提升的 ${Math.min(3, this.mastery.length)} 项。`)
                     .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
                   Row({ space: 8 }) {
                     Text(`待提升 ${this.weakMasteryCount()}`)
@@ -486,11 +455,11 @@ struct StudyTags {
                     .width('100%').padding(12).backgroundColor('#F8FAFC')
                     .border({ width: 1, color: '#E2E8F0' }).borderRadius(12)
                   }, (item: KnowledgeMastery) => item.knowledgePointId)
-                  if (this.mastery.length > MASTERY_PREVIEW_COUNT) {
-                    Button(this.showAllMastery ? '收起，只看优先项 ↑' : `查看全部 ${this.mastery.length} 项 ↓`)
+                  if (this.mastery.length > 0) {
+                    Button(`已展示 ${Math.min(3, this.mastery.length)} 项 · 查看全部 ${this.mastery.length} 项 ›`)
                       .width('100%').height(40).fontSize(13).fontColor('#2563EB')
                       .backgroundColor('#EFF6FF').borderRadius(10)
-                      .onClick(() => { this.showAllMastery = !this.showAllMastery; })
+                      .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { courseName: this.selectedCourse } }))
                   }
                 }
                 .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
@@ -619,8 +588,7 @@ struct StudyTags {
         .layoutWeight(1).backgroundColor('#F3F6FA')
       }
       .width('100%').height('100%')
-      AIFloatButton()
-    }.width('100%').height('100%')
+      }.width('100%').height('100%')
   }
 }
 

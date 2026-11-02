@@ -572,7 +572,7 @@ struct Index {
 
   /** 页头副标题：按标签切换，说明这一页能做什么。 */
   private headerSubtitle(): string {
-    if (this.activeTab === 1) return '多智能体助学团：诊断 → 规划 → 练习 → 测评。';
+    if (this.activeTab === 1) return '多智能体助学团：学情诊断 · 学习规划 · 专项练习 · 效果测评 · 阶段复盘。';
     // 学习标签只做"任务从哪来、时间怎么安排"，能力类入口一律去「智能体」页，避免重复。
     if (this.activeTab === 2) return '上传作业 DDL、安排专注任务。';
     return '账号与密码管理、学习数据、我的搭子。';
@@ -1038,13 +1038,14 @@ struct Index {
 
               Row({ space: 10 }) {
                 this.StatCard(`${appState.getFocusSummary().streakDays}`, '连续学习天数')
-                this.StatCard(`${Math.round(appState.getFocusSummary().completionRate)}%`, '时间完成度')
+                this.StatCard(`${Math.round(appState.getFocusSummary().completionRate)}%`, '计划时长达成率')
                 // 同 Account 页：这里是**全部**待处理作业。用只数 7 天内的
                 // getUrgentDDLs() 会让"导入 N 条却显示 N-1 条"（实测反馈的数字对不上）。
                 this.StatCard(`${appState.getPendingDDLs().length}`, '待处理作业', 'pages/CourseImport')
               }.width('100%')
 
-              this.PanelRow($r('app.media.feature_review'), '学习复盘', '汇总任务、知识点与下一步建议', 'pages/ReviewSummary')
+              this.PanelRow($r('app.media.feature_review'), '提醒设置', '通知权限与免打扰时段', 'pages/Reminders')
+              this.PanelRow($r('app.media.feature_review'), '学习报告', '查看学习投入、作答证据与改进动作', 'pages/ReviewSummary')
 
               Row() {
                 Text('我的学习搭子').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#0F172A')
@@ -1055,13 +1056,13 @@ struct Index {
             }
 
             Blank().height(12)
-          }.width('100%').padding(20)
-        }.layoutWeight(1)
+          }.width('100%').padding({ left: 20, right: 20, top: 16, bottom: 20 })
+        }.align(Alignment.TopStart).layoutWeight(1)
 
         this.TabBar()
       }
       .width('100%').height('100%').backgroundColor('#F7F8FA')
-      AIFloatButton()
+      AIFloatButton({ bottomGap: 100 })
       // 多入口智能体的选择浮层（覆盖在最上层）
       if (this.showRouteSheet) {
         this.RouteSheet()
@@ -1150,7 +1151,7 @@ const AGENT_SPECS: AgentSpec[] = [
     role: '评估练习表现',
     desc: '汇总练习记录，查看需巩固与待复测的知识点；做题和解析统一进入练习智能体。',
     routes: [
-      { label: '练习表现与复盘', target: 'pages/ReviewSummary', prompt: '' }
+      { label: '学习报告', target: 'pages/ReviewSummary', prompt: '' }
     ],
     ready: true
   },

@@ -12,6 +12,25 @@ def schedule_deferred_task(old_plan: dict, task_id: str) -> dict:
         raise LookupError("任务已不在待安排列表，请刷新计划")
     if task.get("status") == "completed":
         raise ValueError("该任务已完成，请刷新计划")
+    if plan.get('calendarDays'):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
+        current = next((d for d in plan['calendarDays'] if d['date'] == today), dict(date=today, minutes=0))
+        used = sum(t['durationMinutes'] for t in plan.get('tasks', []) if t.get('status') != 'completed' and t.get('scheduledDate') == today)
+        available = max(current['minutes'], used + task['durationMinutes'])
+        if available > 1440:
+            raise ValueError('加入后超过一天的可用时间，请先调整安排')
+        task.update(status='pending', scheduledDate=today)
+        task.pop('deferredReason', None)
+        plan['tasks'].append(task)
+        plan['unscheduledTasks'] = [t for t in deferred if t['taskId'] != task_id]
+        plan['calendarDays'] = [d for d in plan['calendarDays'] if d['date'] != today] + [dict(date=today, minutes=available, scheduledMinutes=used + task['durationMinutes'])]
+        plan['calendarDays'].sort(key=lambda d: d['date'])
+        plan['constraints'] = dict(plan.get('constraints', {}), availableMinutes=available)
+        plan['budgetSummary'] = dict(availableMinutes=available, scheduledMinutes=used + task['durationMinutes'],
+            unallocatedMinutes=available-used-task['durationMinutes'], unscheduledMinutes=sum(t['durationMinutes'] for t in plan['unscheduledTasks']))
+        return plan
     pending = [t for t in plan.get("tasks", []) if t.get("status") != "completed"]
     if any(type(t.get("durationMinutes")) is not int or t["durationMinutes"] <= 0
            for t in [*pending, task]):

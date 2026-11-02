@@ -15,7 +15,7 @@ export interface PartnerMessageRequest { clientId: string; text: string; image: 
 export interface PartnerMessageResult { message: PartnerMessage; }
 export interface ScannedQuestionRequest { stem: string; courseName: string; knowledgePointName: string; explanation: string; }
 export interface SavedScannedQuestion { item: Object; }
-export interface ReviewRequest { courseName: string; }
+export interface ReviewRequest { courseName: string; retry?: boolean; }
 export interface ReviewAction { actionId: string; title: string; why: string; durationMinutes: number; steps: string[]; doneWhen: string; priority: string; targetPage: string; knowledgePointId: string; }
 export interface LearningReview {
   conclusion: string;
@@ -30,7 +30,7 @@ export interface LearningReview {
   source: string;
   createdAt: string;
 }
-export interface ReviewTask { actionType?: string; knowledgePointId: string; taskId: string; title: string; courseName: string; status: string; }
+export interface ReviewTask { practiceVerified?: boolean; actionType?: string; knowledgePointId: string; taskId: string; title: string; courseName: string; status: string; }
 export interface ReviewTasks { tasks: ReviewTask[]; }
 export interface ReviewTaskRequest { taskId: string; }
 

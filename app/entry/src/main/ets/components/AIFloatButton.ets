@@ -16,6 +16,7 @@ import { appState } from '../data/AppState';
  */
 @Component
 export struct AIFloatButton {
+  @Prop bottomGap: number = 24;
   @State showPanel: boolean = false;
   @State translateX: number = 0;
   @State translateY: number = 0;
@@ -303,7 +304,7 @@ export struct AIFloatButton {
         })
       }
       .width('100%')
-      .padding({ right: 20, bottom: 24 })
+      .padding({ right: 20, bottom: this.bottomGap })
       .hitTestBehavior(HitTestMode.Transparent)
     }
     .width('100%')

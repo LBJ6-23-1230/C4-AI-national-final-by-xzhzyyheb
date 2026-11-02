@@ -15,7 +15,7 @@ export class LearningEvidence {
   }
   static detail(point: KnowledgeMastery): string {
     if (point.assessmentStatus === 'unassessed') return '完成一轮诊断，了解当前表现';
-    if (point.effectiveQuestionCount !== undefined) return `近期有效作答 ${point.correctCount ?? 0}/${point.effectiveQuestionCount} 正确`;
+    if (point.effectiveQuestionCount !== undefined) return `近期答对 ${point.correctCount ?? 0}/${point.effectiveQuestionCount} 题${point.recentAccuracy !== null && point.recentAccuracy !== undefined ? ' · 正确率 ' + point.recentAccuracy + '%' : ''}`;
     return '完成新题练习，补充验证记录';
   }
   static assessed(point: KnowledgeMastery, evidence: Evidence[], history: MasteryHistory[]): boolean {

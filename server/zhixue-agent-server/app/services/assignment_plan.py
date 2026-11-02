@@ -39,9 +39,22 @@ def reconcile(plan, rows, selected_id=None, *, authoritative=False):
             completed=t.get('status') == 'completed') for t in existing.values()
             if t.get('source') == 'ddl' and t['taskId'] not in present]
     scheduled_ids = {t["taskId"] for t in plan.get("tasks", [])}
-    regular = [t for t in plan.get("tasks", []) if t.get("source") != "ddl"]
-    deferred = [t for t in plan.get("unscheduledTasks", []) if t.get("source") != "ddl"]
+    regular = deepcopy([t for t in plan.get("tasks", []) if t.get("source") != "ddl"])
+    deferred = deepcopy([t for t in plan.get("unscheduledTasks", []) if t.get("source") != "ddl"])
+    decomposed = plan.get('taskDecompositions', {})
+    present = {r['id'] for r in rows}
+    if authoritative and decomposed:
+        removed = {child for parent, detail in decomposed.items() if detail.get('original', {}).get('source') == 'ddl' and parent not in present for child in detail['childIds']}
+        regular = [t for t in regular if t['taskId'] not in removed]
+        deferred = [t for t in deferred if t['taskId'] not in removed]
+        result['taskDecompositions'] = {parent: detail for parent, detail in decomposed.items() if detail.get('original', {}).get('source') != 'ddl' or parent in present}
     for row in sorted(rows, key=lambda r: (r["dueDate"], r["id"])):
+        if row['id'] in decomposed:
+            for child in regular + deferred:
+                if child.get('parentTaskId') == row['id']:
+                    child.update(sourceCourse=row['courseName'], dueDate=row['dueDate'])
+                    if row.get('completed'): child['status'] = 'completed'
+            continue
         previous = existing.get(row["id"], {})
         task = dict(previous, taskId=row["id"], knowledgePointId=f"ddl:{row['id']}",
                     knowledgePointName=row["title"], source="ddl", sourceCourse=row["courseName"],
@@ -59,7 +72,7 @@ def reconcile(plan, rows, selected_id=None, *, authoritative=False):
     # In particular a page refresh must preserve the user's explicit selection.
     current_ddls = {key: task for key, task in existing.items() if task.get("source") == "ddl"}
     next_ddls = {t["taskId"]: t for t in regular + deferred if t.get("source") == "ddl"}
-    if not selected_id and current_ddls == next_ddls:
+    if not selected_id and current_ddls == next_ddls and result == plan:
         return deepcopy(plan)
     budget = plan.get("constraints", {}).get("availableMinutes")
     if selected_id:
@@ -68,7 +81,15 @@ def reconcile(plan, rows, selected_id=None, *, authoritative=False):
         if budget > 1440:
             raise ValueError("当前安排超过一天，请先调整计划时间")
     # Reading an unchanged DDL snapshot must not re-fit a deliberate task selection.
-    if budget is not None and result != plan:
+    if result != plan and plan.get('calendarDays'):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from app.services.calendar_plan import schedule
+        today = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
+        days = [dict(date=d['date'], minutes=d['minutes']) for d in plan['calendarDays'] if d['date'] >= today]
+        if days:
+            result = schedule(result, days)
+    elif budget is not None and result != plan:
         result = fit_plan_to_budget(result, budget)["plan"]
     if result != plan:
         result["version"] = plan["version"] + 1

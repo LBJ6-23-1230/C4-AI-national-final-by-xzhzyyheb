@@ -29,6 +29,8 @@
     "pages/Reminders",
     "pages/UpcomingExams",
     "pages/LearningRecords",
-    "pages/PasswordSetup"
+    "pages/PasswordSetup",
+    "pages/KnowledgeCatalog",
+    "pages/TaskDetail"
   ]
 }

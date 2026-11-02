@@ -31,7 +31,7 @@ def question_facts(questions, correct_ids):
 def topic(name):
     groups = [('二叉树', '二叉树'), ('栈', '栈'), ('队列', '队列'), ('链表', '链表'),
               ('排序', '排序'), ('图算法', '图'), ('最短路径', '图'), ('死锁', '死锁'), ('进程', '进程')]
-    return next((group for term, group in groups if term in name), '其他知识点')
+    return next((group for term, group in groups if term in name), '')
 
 
 def statistics(repo, owner, now=None):
@@ -101,10 +101,15 @@ def statistics(repo, owner, now=None):
 def projected_mastery(repo, owner, rows, now=None):
     stats = statistics(repo, owner, now)
     from app.services.topic_groups import membership
-    return [dict(row, **membership(repo, owner, row), topicGroup=topic(row.get('knowledgePointName', '')),
-        **stats.get(row['knowledgePointId'], dict(assessmentStatus='unassessed', effectiveQuestionCount=0,
-            correctCount=0, recentAccuracy=None, lastAssessedAt='', assessmentRoundCount=0,
-            performanceChange=None, retentionStatus='not_tested', ruleVersion=RULE_VERSION))) for row in rows]
+    projected = []
+    for row in rows:
+        group = membership(repo, owner, row)
+        projected.append(dict(row, **group, topicGroup=group['topicGroupName'],
+            classificationRequired=not bool(row.get('sourceCourse')),
+            **stats.get(row['knowledgePointId'], dict(assessmentStatus='unassessed', effectiveQuestionCount=0,
+                correctCount=0, recentAccuracy=None, lastAssessedAt='', assessmentRoundCount=0,
+                performanceChange=None, retentionStatus='not_tested', ruleVersion=RULE_VERSION))))
+    return projected
 
 
 def summary(repo, owner, days=1, now=None):

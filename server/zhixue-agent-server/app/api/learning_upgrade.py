@@ -145,7 +145,8 @@ def save_scanned():
 def review_snapshot(owner, course):
     profile = repo().get('profiles', owner) or {}
     from app.services.subject_classification import normalized_mastery
-    points = [x for x in normalized_mastery(profile) if x.get('sourceCourse') == course]
+    from app.services.learning_effect import projected_mastery
+    points = [x for x in projected_mastery(repo(), owner, normalized_mastery(profile)) if x.get('sourceCourse') == course]
     point_ids = {x.get('knowledgePointId') for x in points}
     evidence = [x for x in repo().list('evidences') if x.get('userId') == owner
                 and x.get('knowledgePointId') in point_ids]
@@ -156,8 +157,10 @@ def review_snapshot(owner, course):
                 if x.get('sourceType') in ('exercise', 'assessment', 'exercise_submission', 'practice')}
     assessed.update(x.get('knowledgePointId') for x in (profile.get('history') or [])
                     if isinstance(x, dict) and x.get('source') == 'assessment' and x.get('questionCount', 0))
-    measured = [x for x in points if x.get('knowledgePointId') in assessed]
-    measured.sort(key=lambda x: x.get('masteryScore', 0))
+    measured = [x for x in points if x.get('knowledgePointId') in assessed or x.get('effectiveQuestionCount', 0)]
+    measured.sort(key=lambda x: x.get('recentAccuracy') if x.get('recentAccuracy') is not None else x.get('masteryScore', 0))
+    mistakes = [dict(knowledgePointId=q.get('knowledgePointId'), stem=str(q.get('stem', ''))[:500])
+                for q in repo().list('wrong_book') if q.get('userId') == owner and q.get('knowledgePointId') in point_ids and q.get('wrongCount', 0) > 0][:6]
     exam_date = (profile.get('courseExams') or {}).get(course)
     days = (datetime.strptime(exam_date, '%Y-%m-%d').date() - datetime.now(ZoneInfo('Asia/Shanghai')).date()).days if exam_date else None
     snapshot = dict(courseName=course, profileVersion=profile.get('profileVersion', 0),
@@ -165,7 +168,7 @@ def review_snapshot(owner, course):
                     daysUntilExam=days, freeTimeSlots=profile.get('freeTimeSlots', []),
                     history=[x for x in (profile.get('history') or []) if isinstance(x, dict) and set(x.get('evidenceIds') or []) & {e.get('id') or e.get('evidenceId') for e in evidence}][-20:],
                     measuredPoints=measured, unassessedCount=len(points) - len(measured),
-                    evidenceCount=len(evidence), evidence=evidence[-30:])
+                    evidenceCount=len(evidence), evidence=evidence[-30:], wrongQuestions=mistakes)
     return snapshot
 
 
@@ -175,14 +178,22 @@ def create_review():
     data = body()
     course = string(data, 'courseName', 120, True)
     snapshot = review_snapshot(owner, course)
+    from app.services.review_actions import REVIEW_VERSION
+    from app.services.llm_runtime import fingerprint as model_fingerprint
+    retry = data.get('retry', False)
+    if type(retry) is not bool:
+        abort(400)
     fingerprint = hashlib.sha256(json.dumps(snapshot, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
-    key = owner + ':' + course + ':' + datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat() + ':' + fingerprint
+    key = owner + ':' + course + ':' + datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat() + ':' + fingerprint + ':' + REVIEW_VERSION + ':' + model_fingerprint()
     old = repo().get('learning_reviews', key)
-    if old and old.get('actions') and isinstance(old['actions'][0], dict):
+    # Failure is not a successful cached generation. A retry always calls the model.
+    if old and not retry and (old.get('source') == 'model' or old.get('failureCode') in ('insufficient_evidence', 'not_configured')) and old.get('actions') and isinstance(old['actions'][0], dict):
         return jsonify(old)
+    if old:
+        repo().save('learning_reviews', 'archive:' + old['reviewId'], old)
     from app.services.review_actions import generate
     result, source, fallback = generate(snapshot)
-    record = dict(reviewId=hashlib.sha256(key.encode()).hexdigest(), userId=owner,
+    record = dict(reviewId=hashlib.sha256((key + now()).encode()).hexdigest(), userId=owner,
                   courseName=course, summary=result['conclusion'], **result, source=source,
                   fallbackReason=fallback, createdAt=now(), snapshot=snapshot)
     repo().save('learning_reviews', key, record)
@@ -209,13 +220,61 @@ def accept_review(review_id):
                     **({k: v for k, v in action.items() if k not in ('title', 'knowledgePointId')} if isinstance(action, dict) else {}),
                     actionType='settings' if isinstance(action, dict) and action.get('targetPage') == 'pages/LearningSetup' else 'practice',
                     status='pending', reviewId=review_id, createdAt=now()))
-    return jsonify(tasks=[x for x in repo().list('review_tasks') if x.get('userId') == owner])
+        from app.api.plans import plan_belongs_to
+        plan = next((p for p in repo().list('plans') if plan_belongs_to(p, owner)), None)
+        if not plan:
+            plan = dict(planId='plan-review-' + owner, userId=owner, version=1, generatedFromProfileVersion=review['snapshot'].get('profileVersion', 1), tasks=[], unscheduledTasks=[])
+        if plan:
+            existing = {t['taskId'] for t in plan.get('tasks', []) + plan.get('unscheduledTasks', [])}
+            added = []
+            for index, action in enumerate(review['actions']):
+                task_id = f'{owner}:{review_id}:{index}'
+                if not isinstance(action, dict) or action.get('targetPage') != 'pages/ExercisePractice' or task_id in existing:
+                    continue
+                added.append(dict(taskId=task_id, knowledgePointId=action.get('knowledgePointId', ''),
+                    knowledgePointName=action['title'], sourceCourse=review['courseName'], source='review',
+                    durationMinutes=action['durationMinutes'], status='pending', priority=action['priority'],
+                    steps=action['steps'], deferredReason='已采纳复盘行动，请在本周计划确认时间后排期'))
+            if added:
+                plan['unscheduledTasks'] = plan.get('unscheduledTasks', []) + added
+                plan['version'] += 1
+                repo().save('plans', plan['planId'], plan)
+    return jsonify(tasks=review_task_progress(owner))
+
+
+def review_task_progress(owner):
+    """Practice progress is derived from an actual later submission, never a checkbox."""
+    from app.services.learning_effect import timestamp
+    from app.api.exercises import _EXERCISE_BANK
+    bank = {q['exerciseId']: q.get('knowledgePointId') for q in _EXERCISE_BANK}
+    bank.update({q['exerciseId']: q.get('knowledgePointId') for q in repo().query('exercises', {'userId': owner}) if q.get('exerciseId')})
+    evidence = {}
+    current = datetime.now(timezone.utc)
+    for submission in repo().query('submissions', {'userId': owner}):
+        stamp = timestamp(submission.get('createdAt'))
+        if stamp is None or stamp > current:
+            continue
+        points = {fact.get('knowledgePointId') for fact in (submission.get('questionFacts') or []) if type(fact.get('correct')) is bool}
+        if not points:
+            points = {bank.get(row.get('exerciseId')) for row in submission.get('response', {}).get('review', []) if type(row.get('correct')) is bool}
+        for point in points - {None, ''}:
+            evidence.setdefault(point, []).append(stamp)
+    result = []
+    for task in repo().query('review_tasks', {'userId': owner}):
+        item = dict(task)
+        created = timestamp(item.get('createdAt'))
+        later = [stamp for stamp in evidence.get(item.get('knowledgePointId'), []) if created and stamp >= created]
+        item['practiceVerified'] = bool(later) and item.get('actionType') != 'settings'
+        if item['practiceVerified']:
+            item.update(status='practiced', completedAt=min(later).isoformat(), completionSource='exercise_submission')
+        result.append(item)
+    return result
 
 
 @learning_upgrade_api.get('/api/v1/learning-review-tasks')
 def review_tasks():
     owner = resolve_user_id()
-    return jsonify(tasks=[x for x in repo().list('review_tasks') if x.get('userId') == owner])
+    return jsonify(tasks=review_task_progress(owner))
 
 
 @learning_upgrade_api.post('/api/v1/learning-review-tasks/complete')
@@ -228,7 +287,7 @@ def complete_review_task():
             abort(404)
         task.update(status='completed', completedAt=now())
         repo().save('review_tasks', key, task)
-    return jsonify(tasks=[x for x in repo().list('review_tasks') if x.get('userId') == owner])
+    return jsonify(tasks=review_task_progress(owner))
 
 
 @learning_upgrade_api.route('/api/v1/learning-course-settings', methods=['GET', 'POST'])
@@ -270,7 +329,7 @@ def course_settings():
     courses.update(x['sourceCourse'] for x in normalized_mastery(profile))
     today = datetime.now(ZoneInfo('Asia/Shanghai')).date()
     settings = []
-    for course in sorted(courses):
+    for course in sorted(c for c in courses if c and c not in ('待确认科目', '待分类', '其他')):
         exam = (profile.get('courseExams') or {}).get(course)
         days = (datetime.strptime(exam, '%Y-%m-%d').date() - today).days if exam else None
         settings.append(dict(courseName=course, goal=(profile.get('courseGoals') or {}).get(course, ''),

@@ -1,3 +1,4 @@
+import { CourseLabels } from '../utils/CourseLabels';
 import { PageHeader } from '../components/PageHeader';
 import { ApiFailure } from '../api/ApiResult';
 import router from '@ohos.router';
@@ -29,14 +30,14 @@ struct LearningReviewPage {
     if (profile.ok) {
       const names: string[] = [];
       profile.data.mastery.forEach((p: KnowledgeMastery) => {
-        const name: string = (p.sourceCourse || '').trim(); if (name && names.indexOf(name) < 0) names.push(name);
+        const name: string = (p.sourceCourse || '').trim(); if (CourseLabels.valid(name) && names.indexOf(name) < 0) names.push(name);
       });
       this.courses = names; if (!this.course || names.indexOf(this.course) < 0) this.course = names[0] || '';
     } else this.notice = '课程读取失败，请返回后重试。';
     const settings = await AgentApiClient.courseSettings();
     if (this.ownsPage() && settings.ok) {
       settings.data.courses.forEach((item) => {
-        if (item.courseName.trim() && this.courses.indexOf(item.courseName) < 0) this.courses = this.courses.concat([item.courseName]);
+        if (CourseLabels.valid(item.courseName) && this.courses.indexOf(item.courseName) < 0) this.courses = this.courses.concat([item.courseName]);
         if (item.reviewDue) this.notice = this.notice + item.courseName + '距考试 ' + item.daysUntilExam + ' 天，建议进行考前复盘。';
       });
       if (!this.course) this.course = this.courses[0] || '';
@@ -49,7 +50,7 @@ struct LearningReviewPage {
   private async generate(): Promise<void> {
     if (this.busy || !this.course) return;
     this.busy = true; this.notice = '正在整理本课程的学习证据…';
-    const result = await AgentApiClient.learningReview({ courseName: this.course });
+    const result = await AgentApiClient.learningReview({ courseName: this.course, retry: true });
     if (!this.ownsPage()) return;
     this.busy = false;
     if (result.ok) { this.review = result.data; this.notice = ''; }
@@ -64,10 +65,6 @@ struct LearningReviewPage {
     if (result.ok) { this.tasks = result.data.tasks; this.notice = '已加入下方行动清单。'; }
     else this.notice = '加入失败，请重试。';
   }
-  private async complete(task: ReviewTask): Promise<void> {
-    const result = await AgentApiClient.completeReviewTask({ taskId: task.taskId });
-    if (this.ownsPage() && result.ok) this.tasks = result.data.tasks;
-  }
   build() {
     Column() {
       PageHeader({ title: '阶段复盘与考前建议' })
@@ -80,7 +77,7 @@ struct LearningReviewPage {
               .onSelect((index: number) => { if (!this.busy) { if (index === this.courses.length) router.pushUrl({ url: 'pages/LearningSetup', params: { newCourse: 'true' } }); else { this.course = this.courses[index]; this.review = null; this.notice = ''; } } })
           } else { Text('＋添加课程').fontSize(14).fontColor('#2563EB').onClick(() => router.pushUrl({ url: 'pages/LearningSetup', params: { newCourse: 'true' } })) }
           Text('结合已完成的练习、错题及考试日期，整理下一步复习重点。').fontSize(14).fontColor('#667085').lineHeight(22)
-          Button(this.busy ? '正在整理学习记录…' : '生成本课程建议', { type: ButtonType.Normal })
+          Button(this.busy ? '正在整理学习记录…' : this.review !== null ? '重新生成本课程建议' : '生成本课程建议', { type: ButtonType.Normal })
             .width('100%').height(44).borderRadius(10).backgroundColor('#2563EB').fontColor('#FFFFFF')
             .enabled(!this.busy && !!this.course).onClick(() => this.generate())
           if (this.notice) { Text(this.notice).fontSize(13).fontColor('#667085').lineHeight(21).width('100%') }
@@ -108,13 +105,15 @@ struct LearningReviewPage {
           ForEach(this.tasks.filter((task: ReviewTask) => task.courseName === this.course), (task: ReviewTask) => {
             Column({ space: 12 }) {
               Text(task.title).fontSize(15).fontColor('#344054').width('100%')
-              if (task.status === 'completed') { Text('已记录完成，可通过练习验证掌握情况').fontSize(12).fontColor('#98A2B3') }
-              else {
-                Row() {
-                  Text(task.actionType === 'settings' || task.title.indexOf('确认考试日期') >= 0 ? '完善设置 ›' : '开始练习 ›').fontSize(14).fontColor('#2563EB').onClick(() => router.pushUrl({ url: task.actionType === 'settings' || task.title.indexOf('确认考试日期') >= 0 ? 'pages/LearningSetup' : 'pages/ExercisePractice', params: { knowledgePointId: task.knowledgePointId, courseName: task.courseName } }))
-                  Blank()
-                  Text('标记完成').fontSize(13).fontColor('#667085').onClick(() => this.complete(task))
-                }.width('100%')
+              if (task.practiceVerified) {
+                Text('已提交对应练习；是否掌握请查看作答表现。').fontSize(12).fontColor('#0F766E').width('100%')
+                Text('查看学习报告 ›').fontSize(14).fontColor('#2563EB')
+                  .onClick(() => router.pushUrl({ url: 'pages/ReviewSummary' }))
+              } else {
+                if (task.status === 'completed') Text('此前手动勾选，尚无对应练习提交记录。').fontSize(12).fontColor('#667085').width('100%')
+                Text(task.actionType === 'settings' ? '保存课程设置后，可重新生成建议。' : '提交该知识点练习后，将自动显示已练习。').fontSize(12).fontColor('#667085').width('100%')
+                Text(task.actionType === 'settings' || task.title.indexOf('确认考试日期') >= 0 ? '完善设置 ›' : '开始本项练习 ›').fontSize(14).fontColor('#2563EB')
+                  .onClick(() => router.pushUrl({ url: task.actionType === 'settings' || task.title.indexOf('确认考试日期') >= 0 ? 'pages/LearningSetup' : 'pages/ExercisePractice', params: { knowledgePointId: task.knowledgePointId, courseName: task.courseName } }))
               }
             }.padding(18).width('100%').backgroundColor('#FFFFFF').borderRadius(12).alignItems(HorizontalAlign.Start)
           }, (task: ReviewTask) => task.taskId)

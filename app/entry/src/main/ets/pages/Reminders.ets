@@ -123,18 +123,16 @@ struct Reminders {
   }
   build() {
     Column() {
-      PageHeader({ title: '提醒与设置', detail: '今日事项', onBack: () => router.back() })
+      PageHeader({ title: '提醒设置', detail: '通知与免打扰', onBack: () => router.back() })
       Scroll() {
         Column({ space: 14 }) {
           Column({ space: 12 }) {
             Row() {
               Text('允许主动提醒').fontSize(16).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.settings.enabled }).enabled(!this.busy)
+              Toggle({ type: ToggleType.Switch, isOn: this.settings.enabled }).enabled(!this.busy && this.pushConfigured && this.permission)
                 .onChange((value: boolean) => { if (value !== this.settings.enabled) void this.save(value); })
             }.width('100%')
             Text(`通知权限：${this.permission ? '已授权' : '未授权'} · 云推送：${this.pushConfigured ? '已配置，待设备验证' : '尚未配置'}`)
-              .fontSize(12).fontColor('#667085').width('100%')
-            Text(this.lastSync ? `本机最后同步：${this.lastSync.slice(0, 19).replace('T', ' ')} UTC` : '本机尚无成功的设备同步记录')
               .fontSize(12).fontColor('#667085').width('100%')
             Text(`免打扰 ${this.settings.quietStart}:00—${this.settings.quietEnd}:00 · ${this.settings.timezone}`)
               .fontSize(12).fontColor('#475467').width('100%')
@@ -176,26 +174,9 @@ struct Reminders {
               }.width('100%')
             })
           }.padding(16).backgroundColor('#FFFFFF').borderRadius(12).width('100%')
-          this.SnoozeSelector()
-          if (this.message) { Text(this.message).fontSize(13).fontColor('#B54708').width('100%') }
-          if (this.busy) { LoadingProgress().width(28).height(28) }
-          if (!this.busy && this.events.length === 0) { Text('暂无提醒，可先导入课程并建立学习安排。').fontSize(14).fontColor('#667085') }
-          ForEach(this.events, (item: ReminderEvent) => {
-            Column({ space: 10 }) {
-              Text(`${this.statusLabel(item)} · ${item.courseName}`).fontSize(12).fontColor('#667085').width('100%')
-              Text(item.title).fontSize(17).fontWeight(FontWeight.Medium).width('100%')
-              Text(item.reason).fontSize(13).fontColor('#475467').width('100%')
-              if (item.status !== 'completed' && item.status !== 'invalid') {
-                Row({ space: 16 }) {
-                  Button(item.targetPage === 'pages/StudyPlan' ? '查看安排' : '查看任务').height(40).fontSize(14).backgroundColor('#2563EB').enabled(!this.busy).onClick(() => this.act(item, 'open'))
-                  Text('今天忽略').fontSize(13).fontColor('#667085').onClick(() => this.act(item, 'ignore'))
-                }.width('100%')
-                Button('稍后开始').enabled(!this.busy && item.status !== 'snoozed').onClick(() => this.chooseSnooze(item))
+          if (this.message) Text(this.message).fontSize(13).fontColor('#B54708').width('100%')
+          if (!this.pushConfigured) Text('当前云推送未配置，暂不能发送后台通知；首页待办仍可查看。').fontSize(13).fontColor('#667085').width('100%')
 
-              }
-            }.padding(16).backgroundColor('#FFFFFF').borderRadius(12).width('100%')
-          }, (item: ReminderEvent) => `${item.eventId}-${item.version}`)
-          Button(this.hasMore ? '加载更多' : '刷新提醒').enabled(!this.busy).onClick(() => this.load(this.hasMore))
         }.padding(16).width('100%').constraintSize({ maxWidth: 960 })
       }.layoutWeight(1).width('100%')
     }.height('100%').width('100%').backgroundColor('#F3F6FA')

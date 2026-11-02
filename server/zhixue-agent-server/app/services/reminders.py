@@ -66,6 +66,13 @@ def candidates(repo, owner, stamp):
     plan = plans[0] if plans else {}
     rows = []
     all_tasks = plan.get('tasks', []) + plan.get('unscheduledTasks', [])
+    # A split assignment remains one deadline item; its steps live in the plan.
+    decompositions = plan.get('taskDecompositions', {})
+    child_ids = {c for d in decompositions.values() if d.get('original', {}).get('source') == 'ddl' for c in d['childIds']}
+    by_id = {t['taskId']: t for t in all_tasks}
+    parents = [dict(d['original'], status='pending', durationMinutes=sum(by_id[c]['durationMinutes'] for c in d['childIds'] if c in by_id and by_id[c].get('status') != 'completed'))
+               for d in decompositions.values() if d.get('original', {}).get('source') == 'ddl' and any(c in by_id and by_id[c].get('status') != 'completed' for c in d['childIds'])]
+    all_tasks = [t for t in all_tasks if t['taskId'] not in child_ids] + parents
     tasks = {t['taskId']: t for t in all_tasks if t.get('taskId')}
     budget = plan.get('constraints', {}).get('availableMinutes')
     scheduled = sum(t.get('durationMinutes', 0) for t in plan.get('tasks', [])
@@ -78,6 +85,8 @@ def candidates(repo, owner, stamp):
             sourceVersion=plan.get('version', 1), planId=plan.get('planId', ''),
             knowledgePointId='', targetPage='pages/StudyPlan'))
     for task_id, task in tasks.items():
+        if task.get('scheduledDate') and task['scheduledDate'] > local.date().isoformat():
+            continue
         if task.get('status') in ('completed', 'deleted', 'cancelled'):
             continue
         course = task.get('sourceCourse') or task.get('courseName') or ''
@@ -188,7 +197,7 @@ def public(event):
 def overview(repo, owner, stamp=None):
     events = [e for e in repo.list('reminder_events') if e.get('userId') == owner and e['status'] not in TERMINAL]
     events.sort(key=lambda e: ({'urgent': 0, 'important': 1, 'normal': 2}[e['level']], e['due'], e['eventId']))
-    visible = [e for e in events if e['status'] == 'pending']
+    visible = [e for e in events if e['status'] == 'pending' and e.get('kind') in ('task', 'exam')]
     return dict(userId=owner, dataTime=(stamp or now()).isoformat(),
         version=digest(*(str((e['eventId'], e['version'], e['status'])) for e in events))[:20],
         highlight=public(visible[0]) if visible else None, tasks=[public(e) for e in visible[1:3]], allTasks=[public(e) for e in visible],

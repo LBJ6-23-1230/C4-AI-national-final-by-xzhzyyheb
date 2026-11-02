@@ -126,7 +126,12 @@ def submit_focus_session():
                 updated["unscheduledTasks"] = [t for t in updated.get("unscheduledTasks", []) if t.get("status") != "completed"]
                 if "budgetSummary" in updated:
                     summary = dict(updated["budgetSummary"])
-                    summary["scheduledMinutes"] = sum(t["durationMinutes"] for t in updated["tasks"] if t.get("status") != "completed")
+                    from zoneinfo import ZoneInfo
+                    today = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
+                    summary["scheduledMinutes"] = sum(t["durationMinutes"] for t in updated["tasks"] if t.get("status") != "completed" and (not updated.get('calendarDays') or t.get('scheduledDate') == today))
+                    if updated.get('calendarDays'):
+                        for day in updated['calendarDays']:
+                            day['scheduledMinutes'] = sum(t['durationMinutes'] for t in updated['tasks'] if t.get('status') != 'completed' and t.get('scheduledDate') == day['date'])
                     summary["unallocatedMinutes"] = summary["availableMinutes"] - summary["scheduledMinutes"]
                     summary["unscheduledMinutes"] = sum(t["durationMinutes"] for t in updated["unscheduledTasks"])
                     updated["budgetSummary"] = summary

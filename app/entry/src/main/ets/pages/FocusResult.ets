@@ -44,12 +44,7 @@ struct FocusResult {
     const planned: number = draft?.plannedMinutes ?? focusTask?.plannedMinutes ?? 30;
     const actual: number = draft?.actualMinutes ?? this.actualMinutes;
     const timedRate: number = planned <= 0 ? (actual > 0 ? 100 : 0) : Math.min(100, Math.round(actual / planned * 100));
-    let completionRate: number = 100;
-    if (this.assessment === 'partial') {
-      completionRate = Math.max(40, Math.min(89, timedRate));
-    } else if (this.assessment === 'not_completed') {
-      completionRate = Math.min(39, timedRate);
-    }
+    const completionRate: number = timedRate;
     const status = this.assessment === 'completed' ? 'completed' :
       ((draft?.status === 'interrupted' || this.interruptionCount > 0) ? 'interrupted' : 'not_completed');
     return {
@@ -204,7 +199,7 @@ struct FocusResult {
           Row({ space: 10 }) {
             this.StatCard(`${this.currentSession().plannedMinutes} 分钟`, '计划时长')
             this.StatCard(`${this.currentSession().actualMinutes} 分钟`, '实际专注')
-            this.StatCard(`${this.currentSession().completionRate}%`, '完成度')
+            this.StatCard(this.currentSession().plannedMinutes > 0 ? `${this.currentSession().plannedMinutes} 分钟` : '正计时', '计划时长')
           }.width('100%')
           Row({ space: 10 }) { this.StatCard(`${this.currentSession().pauseCount} 次`, '暂停'); this.StatCard(`${this.currentSession().interruptionCount} 次`, '中断') }.width('100%')
           Row({ space: 10 }) { this.StatCard(this.timerLabel(), '计时方式'); this.StatCard(this.statusLabel(), '记录状态') }.width('100%')

@@ -42,7 +42,7 @@ struct ReviewSummary {
   private courses(): string[] {
     const names: string[] = [];
     this.data?.points.forEach((p: KnowledgeMastery) => {
-      const name: string = p.sourceCourse || '待分类'; if (!names.includes(name)) names.push(name);
+      const name: string = p.sourceCourse || ''; if (name && !['待分类', '待确认科目'].includes(name) && !names.includes(name)) names.push(name);
     });
     return names;
   }
@@ -57,7 +57,7 @@ struct ReviewSummary {
     if ((point.effectiveQuestionCount ?? 0) > 0) return 2;
     return 3;
   }
-  private visiblePoints(): KnowledgeMastery[] { return this.pointsExpanded ? this.points() : this.points().slice(0, 3); }
+  private visiblePoints(): KnowledgeMastery[] { return this.points().slice(0, 3); }
   private hiddenCount(): number { return this.points().length - this.visiblePoints().length; }
   private selectCourse(course: string): void {
     this.course = course; this.pointsExpanded = false; this.detailPointIds = [];
@@ -75,14 +75,27 @@ struct ReviewSummary {
   }
   private pointAction(point: KnowledgeMastery): string {
     if (point.assessmentStatus === 'unassessed' || (point.effectiveQuestionCount ?? 0) === 0) return '做一组，了解当前表现 ›';
-    return point.assessmentStatus === 'retest_due' ? '用新题验证当前表现 ›' : '针对练习 ›';
+    return point.assessmentStatus === 'retest_due' ? '用新题验证当前表现 ›' : '巩固该知识点 ›';
   }
   private lastPractice(point: KnowledgeMastery): string {
     const date: Date = new Date(point.lastAssessedAt || '');
     if (Number.isNaN(date.getTime())) return '';
     return `最近练习 ${date.getMonth() + 1}月${date.getDate()}日`;
   }
+  private async addImprovement(point: KnowledgeMastery): Promise<void> {
+    if (point.classificationRequired) { router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } }); return; }
+    if (this.loading) return;
+    const owner: string = appState.currentUser.userId;
+    const version: number = ++this.requestVersion;
+    this.loading = true;
+    const result = await AgentApiClient.acceptAssessmentAction({ knowledgePointId: point.knowledgePointId });
+    if (!this.active || owner !== appState.currentUser.userId || version !== this.requestVersion) return;
+    this.loading = false;
+    if (result.ok) router.pushUrl({ url: 'pages/StudyPlan', params: { courseName: point.sourceCourse || '' } });
+    else this.notice = '加入失败，请刷新后重试。';
+  }
   private practice(point?: KnowledgeMastery): void {
+    if (point?.classificationRequired) { router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } }); return; }
     const params: Record<string, Object> = {};
     if (point !== undefined) {
       params['knowledgePointId'] = point.knowledgePointId; params['courseName'] = point.sourceCourse || '';
@@ -104,7 +117,7 @@ struct ReviewSummary {
       Row() {
         Text('← 返回').fontSize(14).fontColor('#64748B').onClick(() => router.back())
         Blank()
-        Text('练习表现与复盘').fontSize(14).fontColor('#2563EB')
+        Text('学习报告').fontSize(14).fontColor('#2563EB')
       }.width('100%').padding(20).backgroundColor('#FFFFFF')
       Scroll(this.scroller) {
         Column({ space: 16 }) {
@@ -138,7 +151,7 @@ struct ReviewSummary {
             Select(['全部课程'].concat(this.courses()).map((name: string): SelectOption => { return { value: name }; }))
               .value(this.course || '全部课程').width('100%').fontColor('#344054').backgroundColor('#FFFFFF')
               .onSelect((index: number) => this.selectCourse(index === 0 ? '' : this.courses()[index - 1]))
-            Text(this.hiddenCount() > 0 ? `已显示 ${this.visiblePoints().length} 个，另有 ${this.hiddenCount()} 个知识点已折叠` : `已显示全部 ${this.points().length} 个知识点`)
+            Text(this.hiddenCount() > 0 ? `已展示 ${this.visiblePoints().length} 项，共 ${this.points().length} 项，点击下方查看全部` : `已显示全部 ${this.points().length} 个知识点`)
               .fontSize(12).fontColor('#667085').width('100%')
             ForEach(this.visiblePoints(), (point: KnowledgeMastery) => {
               Column({ space: 9 }) {
@@ -146,23 +159,19 @@ struct ReviewSummary {
                 Text(LearningEvidence.label(point)).fontSize(12).fontColor('#2563EB').width('100%')
                 Text(LearningEvidence.detail(point)).fontSize(13).fontColor('#475467').width('100%')
                 if (this.lastPractice(point)) Text(this.lastPractice(point)).fontSize(12).fontColor('#667085').width('100%')
-                Text(this.detailPointIds.includes(point.knowledgePointId) ? '收起表现详情 ∧' : '表现详情 ∨')
-                  .fontSize(12).fontColor('#667085').width('100%').padding({ top: 4, bottom: 4 })
-                  .onClick(() => this.togglePointDetails(point.knowledgePointId))
-                if (this.detailPointIds.includes(point.knowledgePointId)) {
-                if (point.performanceChange !== undefined && point.performanceChange !== null) {
-                  Text(`与相近难度的首次记录相比，正确率变化 ${point.performanceChange! > 0 ? '+' : ''}${point.performanceChange} 个百分点（初步比较）。`)
-                    .fontSize(12).fontColor('#667085').width('100%')
-                } else Text('暂无可比前测，暂不判断提升。').fontSize(12).fontColor('#667085').width('100%')
-                Text(point.retentionStatus === 'preliminary_good' ? '延迟复测初步保持较好' : point.retentionStatus === 'needs_review' ? '延迟复测提示仍需巩固' : '保持情况待验证')
-                  .fontSize(12).fontColor('#667085').width('100%')
-                }
+                Text((point.effectiveQuestionCount ?? 0) === 0 ? '尚无作答证据，先完成诊断。' : point.assessmentStatus === 'retest_due' ? '已有记录距今较久，请用新题复测；这不表示已遗忘。' : point.assessmentStatus === 'stable' ? '当前作答表现较稳定，后续用相近难度新题验证保持情况。' : `下一步：核对该知识点的错题解析，写出具体出错步骤，再完成一轮新题。${point.assessmentStatus === 'evidence_limited' ? '题量较少，暂不判断已掌握或退步。' : ''}`)
+                  .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
+                Text(point.classificationRequired ? '先选择所属课程 ›' : '加入15分钟巩固计划 ›').fontSize(13).fontColor('#2563EB').width('100%')
+                  .onClick(() => this.addImprovement(point))
                 Text(this.pointAction(point))
                   .fontSize(14).fontColor('#2563EB').width('100%').padding({ top: 6, bottom: 6 }).onClick(() => this.practice(point))
               }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
             }, (point: KnowledgeMastery) => point.knowledgePointId)
-            if (this.points().length > 3) Button(this.pointsExpanded ? '收起知识点（保留3个） ∧' : `展开其余 ${this.hiddenCount()} 个知识点 ∨`)
-              .width('100%').fontSize(14).backgroundColor('#EFF6FF').fontColor('#2563EB').onClick(() => this.togglePoints())
+            if (this.points().length > 3) Button(`查看全部 ${this.points().length} 项 ›`)
+              .width('100%').fontSize(14).backgroundColor('#EFF6FF').fontColor('#2563EB')
+              .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { courseName: this.course } }))
+            Button('生成阶段复盘与具体行动 ›').width('100%').fontSize(14).backgroundColor('#FFFFFF').fontColor('#2563EB')
+              .onClick(() => router.pushUrl({ url: 'pages/LearningReview', params: { courseName: this.course } }))
             if (this.points().length === 0) Text('完成一组练习后，可在这里查看知识点表现。').fontSize(13).fontColor('#667085')
             Text(this.showDetails ? '收起评估依据 ∧' : '评估依据 ∨').fontSize(13).fontColor('#667085').width('100%').onClick(() => this.showDetails = !this.showDetails)
             if (this.showDetails) {

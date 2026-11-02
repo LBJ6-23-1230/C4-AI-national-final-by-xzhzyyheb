@@ -380,7 +380,7 @@ struct WrongBook {
               ForEach(this.courses, (course: WrongBookCourse) => {
                 Row({ space: 12 }) {
                   Column({ space: 6 }) {
-                    Text(course.courseName).fontSize(17).fontWeight(FontWeight.Medium).fontColor('#182230')
+                    Text(course.courseName === '待确认科目' ? '请手动匹配课程' : course.courseName).fontSize(17).fontWeight(FontWeight.Medium).fontColor('#182230')
                     Text(`${this.points(course).length} 个知识点 · ${course.items.length} 道题`).fontSize(13).fontColor('#667085')
                   }.alignItems(HorizontalAlign.Start).layoutWeight(1)
                   Text('›').fontSize(24).fontColor('#98A2B3')

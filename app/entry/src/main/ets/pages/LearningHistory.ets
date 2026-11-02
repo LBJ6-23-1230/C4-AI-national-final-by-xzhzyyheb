@@ -1,7 +1,7 @@
+import { ApiDisplayFormatter } from '../utils/ApiDisplayFormatter';
 import router from '@ohos.router';
 import { appState } from '../data/AppState';
 import { FocusSession, FocusSummary } from '../models/AgentModels';
-import { AIFloatButton } from '../components/AIFloatButton';
 
 @Entry
 @Component
@@ -42,7 +42,7 @@ struct LearningHistory {
           if (this.focusSyncMessage.length > 0) {
             Text(this.focusSyncMessage).fontSize(12).fontColor('#64748B').width('100%')
           }
-          Row({ space: 10 }) { this.Metric(`${this.summary.todayMinutes}`, '今日分钟'); this.Metric(`${this.summary.completionRate}%`, '平均时间完成度'); this.Metric(`${this.summary.streakDays}`, '连续天数') }.width('100%')
+          Row({ space: 10 }) { this.Metric(`${this.summary.todayMinutes}`, '今日分钟'); this.Metric(`${this.summary.recentSessions.length}`, '近期记录'); this.Metric(`${this.summary.streakDays}`, '连续天数') }.width('100%')
           Column({ space: 10 }) {
             Text('课程时长').fontSize(16).fontWeight(FontWeight.Medium).fontColor('#202522').width('100%')
             if (this.summary.courseMinutes.size === 0) Text('完成一次专注后，这里会记下你的投入。').fontSize(13).fontColor('#64748B')
@@ -55,7 +55,14 @@ struct LearningHistory {
             Text('最近专注').fontSize(16).fontWeight(FontWeight.Medium).fontColor('#202522').width('100%')
             if (this.summary.recentSessions.length === 0) Text('还没有记录。先从 25 分钟开始就很好。').fontSize(13).fontColor('#64748B')
             ForEach(this.summary.recentSessions, (session: FocusSession) => {
-              Column({ space: 4 }) { Row() { Text(session.task).fontSize(15).fontWeight(FontWeight.Medium).fontColor('#202522').layoutWeight(1); Text(`时间完成度${session.completionRate}%`).fontSize(14).fontColor('#2563EB') }; Text(`${session.course} · 实际${session.actualMinutes}分钟 / 计划${session.plannedMinutes}分钟 · 自评：${session.selfAssessment === 'completed' ? '完成' : session.selfAssessment === 'partial' ? '部分完成' : '未完成'} · ${session.endedAt}`).fontSize(12).fontColor('#64748B') }
+              Column({ space: 8 }) {
+                Text(session.task).fontSize(15).fontWeight(FontWeight.Medium).fontColor('#202522').width('100%')
+                Text(`${session.course} · 实际 ${session.actualMinutes} 分钟${session.plannedMinutes > 0 ? ' / 计划 ' + session.plannedMinutes + ' 分钟' : ' · 正计时'}`).fontSize(13).fontColor('#475467').width('100%')
+                Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+                  Text(`自评：${session.selfAssessment === 'completed' ? '完成' : session.selfAssessment === 'partial' ? '部分完成' : '未完成'}`).fontSize(12).fontColor('#64748B')
+                  Text(ApiDisplayFormatter.timestamp(session.endedAt)).fontSize(12).fontColor('#64748B')
+                }.width('100%')
+              }
                 .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14).border({ width: 1, color: '#F1F5F9' })
             }, (session: FocusSession) => session.taskId)
           }.width('100%').padding(18).backgroundColor('#F5F7FA').borderRadius(20)
@@ -63,7 +70,6 @@ struct LearningHistory {
         }.width('100%').padding(20)
       }.layoutWeight(1)
     }.width('100%').height('100%').backgroundColor('#FFFFFF')
-    AIFloatButton()
     }.width('100%').height('100%')
   }
 

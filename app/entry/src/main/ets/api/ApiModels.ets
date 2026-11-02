@@ -177,7 +177,9 @@ export interface Evidence {
 
 export interface TopicMember { knowledgePointId: string; name: string; masteryScore: number | null; evidenceQuestionCount: number; }
 export interface TopicGroup { topicGroupId: string; topicGroupName: string; sourceCourse: string; memberCount: number; memberPointIds: string[]; masteryScore: number | null; recentAccuracy: number | null; evidenceQuestionCount: number; memberPoints: TopicMember[]; }
+export interface PointClassification { knowledgePointId: string; courseName: string; topicName: string; expectedProfileVersion: number; }
 export interface KnowledgeMastery {
+  classificationRequired?: boolean;
   topicGroupId?: string;
   topicGroupName?: string;
   topicGroupConfidence?: number;
@@ -385,6 +387,8 @@ export interface ProactiveResponse {
 }
 
 export interface PlanTask {
+  parentTaskId?: string;
+  steps?: string[];
   scheduledDate?: string;
   dueAt?: string;
   baseDurationMinutes?: number;
@@ -448,7 +452,14 @@ export interface PlanBudgetResponse {
   eventId: string;
 }
 
+export interface AssessmentActionRequest { knowledgePointId: string; }
+export interface PlanStep { title: string; minutes: number; }
+export interface TaskSplitRequest { taskId: string; expectedPlanVersion: number; steps: PlanStep[]; }
+export interface CalendarDay { date: string; minutes: number; scheduledMinutes?: number; }
+export interface CalendarRequest { days: CalendarDay[]; expectedPlanVersion: number; }
 export interface LearningPlan {
+  calendarDays?: CalendarDay[];
+  calendarUnscheduledMinutes?: number;
   candidatePool?: KnowledgeMastery[];
   targetCourse?: string;
   planId: string | null;

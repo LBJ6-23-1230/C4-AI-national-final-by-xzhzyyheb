@@ -1,3 +1,5 @@
+import { ReminderNavigation } from '../services/ReminderNavigation';
+import { ReminderEvent } from '../api/ReminderModels';
 import router from '@ohos.router';
 import { picker } from '@kit.CoreFileKit';
 import { fileIo } from '@kit.CoreFileKit';
@@ -20,6 +22,12 @@ struct CourseImport {
   @StorageLink('learningSyncConflict') learningSyncConflict: boolean = false;
   @StorageLink('knowledgeSyncMessage') knowledgeSyncMessage: string = '';
   @StorageLink('learningDataRevision') @Watch('onLearningDataChanged') learningDataRevision: number = 0;
+  @State otherTasks: ReminderEvent[] = [];
+  private async loadOtherTasks(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const result = await AgentApiClient.getToday();
+    if (result.ok && owner === appState.currentUser.userId) this.otherTasks = (result.data.allTasks || []).filter((item: ReminderEvent) => item.sourceType !== 'ddl' && item.kind !== 'gap' && item.kind !== 'conflict');
+  }
   @State ddlFilter: string = 'all';
   @State addingAssignment: boolean = false;
   @State ddlDetailId: string = '';
@@ -31,10 +39,12 @@ struct CourseImport {
     if (params && params['focusDdlId']) { this.ddlDetailId = params['focusDdlId']; this.ddlFilter = 'all'; }
     if (params && params['ddlFilter'] === 'pending' && !params['focusDdlId']) this.ddlFilter = 'pending';
     this.refreshLearningData();
+    void this.loadOtherTasks();
     void appState.syncLearningData();
   }
 
   onPageShow(): void {
+    void this.loadOtherTasks();
     this.refreshLearningData();
     void appState.syncLearningData();
   }
@@ -73,7 +83,7 @@ struct CourseImport {
       if (this.ddlFilter === 'pending') return !done;
       if (this.ddlFilter === 'urgent') return !done && ddl.daysLeft <= 7;
       return true;
-    });
+    }).sort((a: HomeworkDDL, b: HomeworkDDL) => a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title));
   }
 
   private onLearningDataChanged(): void {
@@ -218,6 +228,19 @@ struct CourseImport {
 
   private openPlan(): void {
     router.pushUrl({ url: 'pages/StudyPlan' });
+  }
+
+  private async confirmAssignment(ddl: HomeworkDDL): Promise<void> {
+    const result = await AgentApiClient.getCurrentPlan();
+    if (!result.ok) { void this.addAssignment(ddl); return; }
+    const now: Date = new Date();
+    const today: string = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    const scheduled: number = result.data.tasks.filter((task) => task.status !== 'completed' && (!task.scheduledDate || task.scheduledDate <= today)).reduce((sum: number, task) => sum + task.durationMinutes, 0);
+    const available: number = result.data.budgetSummary?.availableMinutes ?? 0;
+    const total: number = Math.max(available, scheduled + ddl.estimatedMinutes);
+    if (total <= available) { void this.addAssignment(ddl); return; }
+    AlertDialog.show({ title: '确认增加可用学习时间', message: `加入「${ddl.title}」需要将本次预算从${available}分钟调整为${total}分钟。也可取消后在本周计划安排到其他日期。`,
+      primaryButton: { value: '暂不加入', action: () => {} }, secondaryButton: { value: '确认增加并加入', action: () => { void this.addAssignment(ddl); } } });
   }
 
   private async addAssignment(ddl: HomeworkDDL): Promise<void> {
@@ -498,7 +521,7 @@ struct CourseImport {
       }.alignItems(HorizontalAlign.Start).margin({ left: 12 }).layoutWeight(1)
 
       Column({ space: 6 }) {
-        Text(appState.isTaskCompleted(ddl.id, 'pending') ? '已完成' : (this.addingAssignment ? '正在加入…' : '加入计划')).fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Medium).onClick(() => { void this.addAssignment(ddl); })
+        Text(appState.isTaskCompleted(ddl.id, 'pending') ? '已完成' : (this.addingAssignment ? '正在加入…' : '加入计划')).fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Medium).onClick(() => { void this.confirmAssignment(ddl); })
         Text(ddl.priority).fontSize(12).fontColor('#FFFFFF').fontWeight(FontWeight.Bold)
           .backgroundColor(ddl.priority === '高' ? '#DC2626' : (ddl.priority === '中' ? '#F59E0B' : '#3B82F6'))
           .borderRadius(10).padding({ left: 10, right: 10, top: 4, bottom: 4 })
@@ -796,7 +819,7 @@ struct CourseImport {
           } else if (this.activeTab === 'ddls') {
             Column({ space: 4 }) {
               Row() {
-                Text('作业 DDL').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#202522').layoutWeight(1)
+                Text('全部待办').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#202522').layoutWeight(1)
                 // 读 @State 而不是直接调 appState（后者不在 ArkUI 依赖追踪里，删完不刷新）。
                 Text(`${this.urgentDdlCount} 项紧急`).fontSize(12).fontColor('#DC2626').fontWeight(FontWeight.Medium)
                   .backgroundColor('#FEF2F2').borderRadius(10).padding({ left: 10, right: 10, top: 4, bottom: 4 })
@@ -805,6 +828,14 @@ struct CourseImport {
               if (this.ddlDetailId.length > 0 && !this.ddlList.some((ddl: HomeworkDDL) => ddl.id === this.ddlDetailId)) {
                 Text('该提醒对应的作业已删除或尚未同步，请刷新作业列表。').fontSize(13).fontColor('#B45309')
               }
+              if (this.ddlFilter !== 'completed') ForEach(this.otherTasks.slice(0, 20), (item: ReminderEvent) => {
+                Column({ space: 8 }) {
+                  Text(item.title).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
+                  Text(`${item.courseName} · ${item.kind === 'exam' ? '复习任务' : '学习任务'}`).fontSize(12).fontColor('#667085').width('100%')
+                  Text(item.reason).fontSize(13).fontColor('#475467').width('100%')
+                  Text(item.kind === 'task' ? '任务详情 ›' : '开始本项复习 ›').fontSize(13).fontColor('#2563EB')
+                }.padding(14).width('100%').backgroundColor('#FFFFFF').borderRadius(12).onClick(() => ReminderNavigation.open(item))
+              }, (item: ReminderEvent) => item.eventId)
               if (this.ddlList.length === 0) {
                 Column({ space: 8 }) {
                   Text('📭').fontSize(36)
@@ -855,7 +886,6 @@ struct CourseImport {
       .width('100%')
     }
     .width('100%').height('100%').backgroundColor('#FFFFFF')
-    AIFloatButton()
     }.width('100%').height('100%')
   }
 }

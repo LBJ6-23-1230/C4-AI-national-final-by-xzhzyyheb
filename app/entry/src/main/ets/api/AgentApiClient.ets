@@ -1,3 +1,4 @@
+import { TaskSplitRequest, AssessmentActionRequest, CalendarRequest, PointClassification, ProfileResponse } from './ApiModels';
 import { PartnerInbox, PartnerSummary, PartnerReadRequest, PartnerReadResult } from './LearningUpgradeModels';
 import { CourseSettings, CourseSettingRequest } from './LearningUpgradeModels';
 import { PartnerMessages, PartnerMessageRequest, PartnerMessageResult, ScannedQuestionRequest, SavedScannedQuestion, LearningReview, ReviewRequest, ReviewTasks, ReviewTaskRequest } from './LearningUpgradeModels';
@@ -9,7 +10,7 @@ import { http } from '@kit.NetworkKit';
 import { LearningChanges, LearningSnapshot, LearningEffect } from './LearningSyncModels';
 import { ExerciseSourcesResponse } from './ApiModels';
 import { LearningContext } from './ApiModels';
-import { WrongBookClassifyRequest, WrongBookClassifyResponse, API_CONTRACT_VERSION, DemoResetResponse, PartnerContactListResponse, PartnerInvitationCreateRequest, PartnerInvitationListResponse, PartnerInvitationResponse, PartnerMatchRequest, PartnerMatchResponse, ExerciseQuery, ExerciseSetResponse, ExerciseSubmission, ExerciseSubmissionResult, KnowledgeBase, KnowledgeBaseCreateRequest, KnowledgeBaseDetail, KnowledgeBaseListResponse, KnowledgeDocument, KnowledgeDocumentDetail, KnowledgeDocumentUploadRequest, KnowledgeSearchRequest, KnowledgeSearchResponse, LearningPlan, PlanDiff, ProactiveRequest, ProactiveResponse, ProfileResponse, ScheduleRecognitionRequest, ScheduleRecognitionResponse, TraceResponse, WorkflowCreateRequest, WorkflowResponse, WorkflowRunRequest, WorkflowRunResponse, WorkflowStatusResponse, WrongBookAttemptRequest, WrongBookAttemptResponse, WrongBookResponse, WrongBookToggleRequest, WrongBookToggleResponse } from './ApiModels';
+import { WrongBookClassifyRequest, WrongBookClassifyResponse, API_CONTRACT_VERSION, DemoResetResponse, PartnerContactListResponse, PartnerInvitationCreateRequest, PartnerInvitationListResponse, PartnerInvitationResponse, PartnerMatchRequest, PartnerMatchResponse, ExerciseQuery, ExerciseSetResponse, ExerciseSubmission, ExerciseSubmissionResult, KnowledgeBase, KnowledgeBaseCreateRequest, KnowledgeBaseDetail, KnowledgeBaseListResponse, KnowledgeDocument, KnowledgeDocumentDetail, KnowledgeDocumentUploadRequest, KnowledgeSearchRequest, KnowledgeSearchResponse, LearningPlan, PlanDiff, ProactiveRequest, ProactiveResponse, ScheduleRecognitionRequest, ScheduleRecognitionResponse, TraceResponse, WorkflowCreateRequest, WorkflowResponse, WorkflowRunRequest, WorkflowRunResponse, WorkflowStatusResponse, WrongBookAttemptRequest, WrongBookAttemptResponse, WrongBookResponse, WrongBookToggleRequest, WrongBookToggleResponse } from './ApiModels';
 import { ApiFailure, ApiResult, apiFailure, apiSuccess } from './ApiResult';
 import { ApiDefaults } from './ApiDefaults';
 import { AuthChangePasswordRequest, AuthChangePasswordResponse, AuthHuaweiLoginRequest, AuthLoginOrRegisterRequest, AuthLoginOrRegisterResponse, AuthLoginRequest, AuthRegisterRequest, AuthSendCodeRequest, AuthSendCodeResponse, AuthSessionResponse, AuthStatusResponse, AuthUserResponse, AuthVerifyCodeRequest } from './AuthModels';
@@ -201,6 +202,22 @@ export class AgentApiClient {
   static async manageChatGoal(chatId: string, request: GoalActionRequest): Promise<ApiResult<GoalActionResponse>> {
     return AgentApiClient.request<GoalActionResponse>(http.RequestMethod.POST, `/api/v1/workflows/chat/${encodeURIComponent(chatId)}/goals`, request);
   }
+  static async acceptAssessmentAction(body: AssessmentActionRequest): Promise<ApiResult<LearningPlan>> {
+    return AgentApiClient.request<LearningPlan>(http.RequestMethod.POST, '/api/v1/plans/current/recommendation', body);
+  }
+
+  static async splitPlanTask(body: TaskSplitRequest): Promise<ApiResult<LearningPlan>> {
+    return AgentApiClient.request<LearningPlan>(http.RequestMethod.POST, '/api/v1/plans/current/tasks/split', body);
+  }
+
+  static async scheduleCalendar(body: CalendarRequest): Promise<ApiResult<LearningPlan>> {
+    return AgentApiClient.request<LearningPlan>(http.RequestMethod.POST, '/api/v1/plans/current/calendar', body);
+  }
+
+  static async classifyKnowledgePoint(userId: string, body: PointClassification): Promise<ApiResult<ProfileResponse>> {
+    return AgentApiClient.request<ProfileResponse>(http.RequestMethod.PUT, `/api/v1/profile/${encodeURIComponent(userId)}/knowledge-points/classification`, body);
+  }
+
   static async getProfile(userId: string): Promise<ApiResult<ProfileResponse>> {
     return AgentApiClient.request<ProfileResponse>(http.RequestMethod.GET, `/api/v1/profile/${encodeURIComponent(userId)}`);
   }

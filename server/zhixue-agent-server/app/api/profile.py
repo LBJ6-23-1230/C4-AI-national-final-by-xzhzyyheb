@@ -12,6 +12,51 @@ profile_api = Blueprint("profile", __name__)
 _repository: JsonRepository | None = None
 
 
+@profile_api.put('/api/v1/profile/<user_id>/knowledge-points/classification')
+def confirm_point_classification(user_id):
+	"""Keep unresolved material, let its owner explicitly choose course and topic."""
+	import hashlib
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+	user_id = resolve_user_id(user_id)
+	point_id, course = (data.get(k) for k in ('knowledgePointId', 'courseName'))
+	topic = data.get('topicName', '')
+	if any(not isinstance(v, str) or not v.strip() or len(v) > limit for v, limit in
+		((point_id, 128), (course, 80))) or not isinstance(topic, str) or len(topic) > 100:
+		return bad_request('请选择知识点与具体课程')
+	if course.strip() in ('待确认科目', '待分类', '其他') or topic.strip() in ('其他知识点', '待分类', '其他'):
+		return bad_request('请匹配具体课程和主题')
+	course, topic = course.strip(), topic.strip()
+	with PROFILE_LOCK, _repository.transaction():
+		profile = _repository.get('profiles', user_id)
+		if not profile:
+			return jsonify(errorCode='NOT_FOUND', message='画像不存在'), 404
+		if type(data.get('expectedProfileVersion')) is not int or data['expectedProfileVersion'] != profile.get('profileVersion', 1):
+			return jsonify(errorCode='CONFLICT', message='资料已有更新，请刷新后重新匹配'), 409
+		point = next((p for p in profile.get('mastery', []) if p.get('knowledgePointId') == point_id), None)
+		if point is None:
+			return jsonify(errorCode='NOT_FOUND', message='知识点不存在'), 404
+		point['sourceCourse'] = course
+		point['courseConfirmed'] = True
+		point['classificationRequired'] = False
+		profile['profileVersion'] = profile.get('profileVersion', 1) + 1
+		_repository.save('profiles', user_id, profile)
+		if topic:
+			_repository.save('topic_memberships', user_id + ':' + point_id, dict(userId=user_id,
+			knowledgePointId=point_id, sourceCourse=course, knowledgePointName=point['knowledgePointName'],
+			topicGroupId='topic-' + hashlib.sha256((course + '\0' + topic).encode()).hexdigest()[:20],
+			topicGroupName=topic, topicGroupConfidence=1.0, confirmed=True))
+		for collection in ('exercises', 'wrong_book'):
+			for record in _repository.list(collection):
+				if record.get('userId') == user_id and record.get('knowledgePointId') == point_id:
+					record['courseName'] = course
+					record['courseConfirmed'] = True
+					key = user_id + ':' + record['exerciseId'] if collection == 'wrong_book' else record['exerciseId']
+					_repository.save(collection, key, record)
+	return get_profile(user_id)
+
+
 def configure_profile_repository(repository: JsonRepository) -> None:
 	global _repository
 	_repository = repository

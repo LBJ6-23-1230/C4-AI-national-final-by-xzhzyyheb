@@ -13,6 +13,10 @@ vm.runInContext(ts.transpileModule(fs.readFileSync(path.join(root, 'services/Upc
   .replace(/^import[^\n]+\n/gm, '').replace('export class', 'class') + '\nglobalThis.Exams = UpcomingExamService;', {
     compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, examContext);
 const UpcomingExamService = examContext.Exams;
+const courseContext = vm.createContext({});
+vm.runInContext(ts.transpileModule(fs.readFileSync(path.join(root, 'utils/CourseLabels.ets'), 'utf8').replace('export class', 'class') + '\nglobalThis.CourseLabels = CourseLabels;', {compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText, courseContext);
+const CourseLabels = courseContext.CourseLabels;
+
 let passed = 0;
 const network = {};
 const appState = { currentUser: { userId: 'alice' }, chatSessionId: '', chatMessages: '', hasActiveChat: false };
@@ -93,7 +97,7 @@ function loadPage(name, directory = 'pages') {
       back: () => { network.backCalls = (network.backCalls || 0) + 1; }
     },
     LearningEvidence: { assessed: point => point.assessed === true, score: point => point.recentAccuracy ?? point.masteryScore, hasAccuracy: point => typeof point.recentAccuracy === 'number' },
-    UpcomingExamService,
+    UpcomingExamService, CourseLabels,
     Scroller: class { scrollTo(value) { network.lastScroll = value; } }, Edge: {},
     ExerciseViewModel: class {
       load(...args) { return network.load(...args); }
@@ -129,30 +133,68 @@ async function check(name, run) {
 }
 
 (async () => {
-  await check('review collapses only the filtered list and preserves underlying evidence', async () => {
+  await check('report previews three filtered points without discarding full evidence', async () => {
     const page = loadPage('ReviewSummary');
     page.data = { points: Array.from({ length: 9 }, (_, i) => ({ knowledgePointId: String(i), knowledgePointName: String(i),
       sourceCourse: i < 7 ? '数据结构' : '操作系统', assessmentStatus: 'unassessed' })) };
     assert.equal(page.visiblePoints().length, 3);
     assert.equal(page.hiddenCount(), 6);
-    page.pointsOffset = 123;
-    page.togglePoints();
-    assert.equal(page.visiblePoints().length, 9);
-    assert.equal(page.hiddenCount(), 0);
-    page.detailPointIds = ['0'];
     page.selectCourse('数据结构');
-    assert.equal(page.pointsExpanded, false);
-    assert.equal(page.hiddenCount(), 4);
-    assert.equal(page.detailPointIds.length, 0);
-    page.togglePoints(); page.togglePoints();
-    assert.equal(network.lastScroll.yOffset, 123);
+    assert.equal(page.visiblePoints().length, 3);
+    assert.equal(page.points().length, 7);
     page.selectCourse('操作系统');
     assert.equal(page.visiblePoints().length, 2);
-    assert.equal(page.hiddenCount(), 0);
     assert.equal(page.data.points.length, 9);
-    page.selectCourse('不存在');
-    assert.equal(page.visiblePoints().length, 0);
-    assert.equal(page.hiddenCount(), 0);
+  });
+  await check('catalog paging searches all points and retains unresolved material for manual matching', async () => {
+    const page = loadPage('KnowledgeCatalog');
+    page.points = Array.from({length: 45}, (_, i) => ({knowledgePointId: String(i), knowledgePointName: '知识点' + i,
+      sourceCourse: i < 30 ? '数据结构' : '', classificationRequired: i >= 30, masteryScore: i}));
+    assert.equal(page.filtered().length, 45);
+    assert.equal(page.filtered().slice(0, page.limit).length, 20);
+    page.limit += 20;
+    assert.equal(page.filtered().slice(0, page.limit).length, 40);
+    page.course = '数据结构'; assert.equal(page.filtered().length, 30);
+    page.search = '知识点29'; assert.equal(page.filtered()[0].knowledgePointId, '29');
+    page.search = ''; page.course = ''; page.status = '需要匹配';
+    assert.equal(page.filtered().length, 15);
+    assert(!page.courses().includes('待确认科目'));
+    assert.equal(page.points.length, 45);
+  });
+  await check('late catalog loading cannot expose previous account material', async () => {
+    const pending = deferred(); network.getProfile = () => pending.promise;
+    const page = loadPage('KnowledgeCatalog'); page.owner = 'alice'; page.active = true;
+    const loading = page.load(); appState.currentUser = {userId:'bob'};
+    pending.resolve(ok({profileVersion:1,mastery:[{knowledgePointId:'private'}]})); await loading;
+    assert.equal(page.points.length, 0); appState.currentUser = {userId:'alice'};
+  });
+  await check('calendar editor rolls forward and never reuses expired daily availability', async () => {
+    const page = loadPage('StudyPlan');
+    page.apiPlan = { calendarDays:[{date:'2000-01-01',minutes:999}],budgetSummary:{availableMinutes:999} };
+    page.prepareCalendar();
+    assert.equal(page.calendarDays.length, 7);
+    assert.equal(page.calendarDays[0].date, page.todayDate());
+    assert(page.calendarDays.every(day=>day.date>='2000-01-02' && day.minutes===0));
+  });
+  await check('plan selectors omit legacy placeholder courses from every data source', async () => {
+    const page = loadPage('StudyPlan');
+    appState.courses = [{courseName:'待确认科目'},{courseName:'数据结构'}];
+    appState.homeworkDDLs = [{courseName:'待分类'},{courseName:'操作系统'}];
+    page.apiPlan = {candidatePool:[{sourceCourse:'待确认科目'},{sourceCourse:'线性代数'}]};
+    assert.equal(page.courseChoices().join(','),'数据结构,操作系统,线性代数');
+    appState.courses=[];appState.homeworkDDLs=[];
+  });
+  await check('task details select the clicked task rather than the first item of the plan', async () => {
+    const page = loadPage('TaskDetail'); page.active=true;page.taskId='clicked';
+    network.getCurrentPlan = async () => ok({tasks:[{taskId:'first',knowledgePointName:'不是此任务'},{taskId:'clicked',knowledgePointName:'指定任务'}],unscheduledTasks:[]});
+    await page.load(); assert.equal(page.task.taskId,'clicked');assert.equal(page.scheduled,true);
+    page.taskId='removed';await page.load();assert.equal(page.task,null);assert(page.notice.includes('发生变化'));
+  });
+  await check('task detail responses cannot cross an account switch', async () => {
+    const pending=deferred();network.getCurrentPlan=()=>pending.promise;
+    const page=loadPage('TaskDetail');page.active=true;page.taskId='clicked';
+    const loading=page.load();appState.currentUser={userId:'bob'};
+    pending.resolve(ok({tasks:[{taskId:'clicked'}]}));await loading; assert.equal(page.task,null);
   });
   await check('review prioritizes retests and weak points without confusing historical and daily records', async () => {
     const page = loadPage('ReviewSummary');

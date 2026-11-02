@@ -74,13 +74,12 @@ export class ApiDisplayFormatter {
   }
 
   static timestamp(value: string): string {
-    const date: Date = new Date(value);
-    if (isNaN(date.getTime())) return value;
-    const month: number = date.getMonth() + 1;
-    const day: number = date.getDate();
-    const hour: number = date.getHours();
-    const minute: number = date.getMinutes();
-    return `${date.getFullYear()}年${month}月${day}日 ${ApiDisplayFormatter.pad(hour)}:${ApiDisplayFormatter.pad(minute)}`;
+    if (!value) return '时间未记录';
+    if (!/[zZ]$|[+-]\d{2}:?\d{2}$/.test(value)) return '历史时间待核对';
+    const parsed: Date = new Date(value);
+    if (isNaN(parsed.getTime())) return '时间待核对';
+    const date: Date = new Date(parsed.getTime() + 8 * 60 * 60 * 1000);
+    return `${date.getUTCFullYear()}-${ApiDisplayFormatter.pad(date.getUTCMonth() + 1)}-${ApiDisplayFormatter.pad(date.getUTCDate())} ${ApiDisplayFormatter.pad(date.getUTCHours())}:${ApiDisplayFormatter.pad(date.getUTCMinutes())}:${ApiDisplayFormatter.pad(date.getUTCSeconds())}`;
   }
 
   private static pad(value: number): string {

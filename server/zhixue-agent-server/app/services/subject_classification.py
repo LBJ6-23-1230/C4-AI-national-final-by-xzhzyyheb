@@ -8,7 +8,7 @@ from app.services.course_names import KNOWN_COURSES, ALIASES
 TOPICS = {
     '数据结构': ('栈', '队列', '链表', '二叉树', '哈希', '散列', '排序', '图算法', '线性表', '最短路径', 'push', 'pop', 'lifo'),
     '计算机网络': ('tcp', 'udp', 'http', 'ip协议', '路由', '网络协议', '三次握手', '四次挥手', '拥塞控制'),
-    '操作系统': ('进程', '线程', '死锁', '虚拟内存', '页面置换', '文件系统', '信号量'),
+    '操作系统': ('进程', '线程', '死锁', '虚拟内存', '页面置换', '文件系统', '信号量', '宏内核', '微内核', '内核结构'),
     '数据库原理': ('sql', '数据库', '事务隔离', '关系代数'),
     '高等数学': ('微积分', '导数', '极限', '积分'),
     '线性代数': ('矩阵', '特征值', '行列式'),
@@ -53,6 +53,8 @@ def normalized_mastery(profile):
         if not isinstance(row, dict):
             continue
         item = dict(row)
-        item['sourceCourse'] = subject(item.get('sourceCourse'), item.get('knowledgePointName'), profile=profile)
+        course = item.get('sourceCourse') if item.get('courseConfirmed') else subject(item.get('sourceCourse'), item.get('knowledgePointName'), profile=profile)
+        item['sourceCourse'] = '' if course in ('待确认科目', '待分类', '其他', None) else course
+        item['classificationRequired'] = not bool(item['sourceCourse'])
         rows.append(item)
     return rows

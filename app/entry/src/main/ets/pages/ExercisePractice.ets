@@ -1,3 +1,4 @@
+import { CourseLabels } from '../utils/CourseLabels';
 import { ActionButton } from '../components/ActionButton';
 import { Evidence, MasteryHistory } from '../api/ApiModels';
 import { LearningEvidence } from '../utils/LearningEvidence';
@@ -175,14 +176,15 @@ struct ExercisePractice {
   private pickerCourses(): string[] {
     const names: string[] = [];
     this.pickerOptions.forEach((p: KnowledgeMastery) => {
-      const name: string = p.sourceCourse || '待分类';
-      if (names.indexOf(name) < 0) names.push(name);
+      const name: string = p.sourceCourse || '';
+      if (CourseLabels.valid(name) && names.indexOf(name) < 0) names.push(name);
     });
     return names;
   }
 
   private coursePoints(): KnowledgeMastery[] {
     const points = this.pickerOptions.filter((p: KnowledgeMastery) => (p.sourceCourse || '待分类') === this.selectedCourse)
+      .filter((p: KnowledgeMastery) => !p.classificationRequired)
       .filter((p: KnowledgeMastery) => this.selectedTopic === '全部主题' || p.topicGroup === this.selectedTopic)
       .filter((p: KnowledgeMastery) => !this.pointSearch || p.knowledgePointName.includes(this.pointSearch))
       .filter((p: KnowledgeMastery) => this.pointFilter === '全部' || this.pointFilter === '推荐' ||
@@ -245,7 +247,8 @@ struct ExercisePractice {
 
   /** 选定知识点后开练。知识点由用户显式指定 → 允许题库覆盖不到时由服务端现场出题。 */
   private chooseKnowledgePoint(point: KnowledgeMastery): void {
-    this.selectedCourse = point.sourceCourse || '待分类';
+    if (point.classificationRequired) { router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } }); return; }
+    this.selectedCourse = point.sourceCourse || '';
     this.roundId = '';
     this.practiceKnowledgePoint = point.knowledgePointId;
     this.practiceFromRoute = true;
@@ -341,7 +344,7 @@ struct ExercisePractice {
     if (this.result !== null) this.scrollToTop();
     // 空选择器上只有一条路：去导入课程／资料。导入完返回本页时如果不再读一次画像，
     // 页面还是"还没有可练的知识点" —— 用户会以为导入没生效，只能反复上传。
-    if (this.showPicker && !this.pickerLoading && !this.practiceFromRoute && this.result === null && this.pickerOptions.length === 0) {
+    if (this.showPicker && !this.pickerLoading && !this.practiceFromRoute && this.result === null ) {
       void this.loadPickerOptions();
     }
   }
@@ -855,14 +858,15 @@ struct ExercisePractice {
           .padding(12).backgroundColor('#FFFBEB').borderRadius(10)
       }
 
-      Flex({ wrap: FlexWrap.Wrap }) {
-        ForEach(this.pickerCourses(), (course: string) => {
-          Button(course).fontSize(14).margin(4)
-            .backgroundColor(course === this.selectedCourse ? '#2563EB' : '#EFF6FF')
-            .fontColor(course === this.selectedCourse ? '#FFFFFF' : '#2563EB')
-            .onClick(() => { this.selectedCourse = course; this.selectedTopic = '全部主题'; this.pointFilter = '推荐'; })
-        }, (course: string) => course)
-      }.width('100%')
+      Select(this.pickerCourses().map((name: string): SelectOption => { return { value: name }; }))
+        .value(this.selectedCourse || '选择课程').width('100%')
+        .onSelect((index: number) => { this.selectedCourse = this.pickerCourses()[index]; this.selectedTopic = '全部主题'; this.pointFilter = '推荐'; })
+      Button('查看全部知识点或手动匹配归属 ›').fontSize(13).width('100%').backgroundColor('#EFF6FF').fontColor('#2563EB')
+        .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { courseName: this.selectedCourse } }))
+      if (this.pickerOptions.some((p: KnowledgeMastery) => p.classificationRequired === true)) {
+        Text('部分内容未能识别所属课程，请手动匹配后开始练习 ›').fontSize(13).fontColor('#B45309').width('100%')
+          .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } }))
+      }
       if (this.pickerOptions.length === 0) {
         Column({ space: 12 }) {
           Text('还没有可练的知识点').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
@@ -888,7 +892,7 @@ struct ExercisePractice {
         }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
       } else {
         TextInput({ text: this.pointSearch, placeholder: '搜索知识点' }).onChange((v: string) => this.pointSearch = v)
-        Select(this.topicChoices().map((name: string): SelectOption => { return { value: name }; }))
+        if (this.topicChoices().length > 1) Select(this.topicChoices().map((name: string): SelectOption => { return { value: name }; }))
           .value(this.selectedTopic).onSelect((index: number) => this.selectedTopic = this.topicChoices()[index])
         Scroll() {
         Row({ space: 4 }) {
@@ -901,7 +905,7 @@ struct ExercisePractice {
         Text('判定说明 ›').fontSize(12).fontColor('#667085').width('100%').textAlign(TextAlign.End)
           .padding({ top: 4, bottom: 4 }).onClick(() => this.showCriteria())
         if (this.coursePoints().length === 0) Text('暂无符合条件的知识点，请调整筛选。').fontSize(13).fontColor('#667085')
-        ForEach(this.coursePoints(), (item: KnowledgeMastery, index: number) => {
+        ForEach(this.coursePoints().slice(0, 20), (item: KnowledgeMastery, index: number) => {
           Column({ space: 8 }) {
             Row({ space: 8 }) {
               Text(item.knowledgePointName)

@@ -16,6 +16,110 @@ def configure_plans_repository(repository: JsonRepository) -> None:
 	_repository = repository
 
 
+@plans_api.post('/api/v1/plans/current/tasks/split')
+def split_task():
+	from app.tools.profile_merge import PROFILE_LOCK
+	from copy import deepcopy
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+	owner = resolve_user_id(data.get('userId'))
+	steps = data.get('steps')
+	if not isinstance(steps, list) or not 2 <= len(steps) <= 10 or any(not isinstance(s, dict) or
+		not isinstance(s.get('title'), str) or not 1 <= len(s['title'].strip()) <= 200 or
+		type(s.get('minutes')) is not int or not 1 <= s['minutes'] <= 1440 for s in steps):
+		return jsonify(errorCode='BAD_REQUEST', message='请填写2至10个明确步骤和整数分钟'), 400
+	with PROFILE_LOCK, _repository.transaction():
+		plan = next((p for p in _repository.list('plans') if plan_belongs_to(p, owner)), None)
+		if plan is None:
+			return jsonify(errorCode='NOT_FOUND', message='计划不存在'), 404
+		if type(data.get('expectedPlanVersion')) is not int or data['expectedPlanVersion'] != plan['version']:
+			return jsonify(errorCode='CONFLICT', message='计划已有变化，请刷新后重试'), 409
+		task = next((t for t in plan.get('tasks', []) + plan.get('unscheduledTasks', []) if t['taskId'] == data.get('taskId')), None)
+		if task is None or task.get('status') in ('completed', 'running', 'in_progress') or task.get('parentTaskId'):
+			return jsonify(errorCode='CONFLICT', message='该任务已变化或不支持继续拆分'), 409
+		if sum(s['minutes'] for s in steps) != task['durationMinutes']:
+			return jsonify(errorCode='BAD_REQUEST', message='步骤时长之和必须等于原任务预计时长'), 400
+		children = [dict(task, taskId='step-' + hashlib.sha256((task['taskId'] + ':' + str(i)).encode()).hexdigest()[:24],
+			parentTaskId=task['taskId'], source='ddl_step' if task.get('source') == 'ddl' else 'study_step',
+			knowledgePointName=task['knowledgePointName'] + ' · ' + s['title'].strip(),
+			durationMinutes=s['minutes'], status='pending', steps=[s['title'].strip()],
+			deferredReason='已按你确认的步骤拆分，请确认每日时长后排期') for i, s in enumerate(steps)]
+		for child in children:
+			child.pop('scheduledDate', None)
+		plan.setdefault('taskDecompositions', {})[task['taskId']] = dict(original=deepcopy(task), childIds=[t['taskId'] for t in children])
+		plan['tasks'] = [t for t in plan.get('tasks', []) if t['taskId'] != task['taskId']]
+		plan['unscheduledTasks'] = [t for t in plan.get('unscheduledTasks', []) if t['taskId'] != task['taskId']] + children
+		plan['version'] += 1
+		plan['reason'] = '已按确认的步骤拆分，原预计工作量保持不变；请在本周计划排期'
+		_repository.save('plans', plan['planId'], plan)
+	return jsonify(plan)
+
+
+@plans_api.post('/api/v1/plans/current/recommendation')
+def accept_assessment_action():
+	from app.tools.profile_merge import PROFILE_LOCK
+	from app.services.subject_classification import normalized_mastery
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+	owner = resolve_user_id(data.get('userId'))
+	point_id = data.get('knowledgePointId')
+	if not isinstance(point_id, str) or not 1 <= len(point_id) <= 128:
+		return jsonify(errorCode='BAD_REQUEST', message='请选择具体知识点'), 400
+	with PROFILE_LOCK, _repository.transaction():
+		profile = _repository.get('profiles', owner) or {}
+		point = next((p for p in normalized_mastery(profile) if p.get('knowledgePointId') == point_id), None)
+		if point is None:
+			return jsonify(errorCode='NOT_FOUND', message='知识点不存在'), 404
+		if not point.get('sourceCourse'):
+			return jsonify(errorCode='CONFLICT', message='请先手动匹配课程'), 409
+		plan = next((p for p in _repository.list('plans') if plan_belongs_to(p, owner)), None)
+		plan = plan or dict(planId='plan-improve-' + owner, userId=owner, version=1,
+			generatedFromProfileVersion=profile.get('profileVersion', 1), tasks=[], unscheduledTasks=[])
+		from zoneinfo import ZoneInfo
+		day = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
+		task_id = 'improve-' + hashlib.sha256((owner + '\0' + point_id + '\0' + day).encode()).hexdigest()[:24]
+		if not any(t['taskId'] == task_id for t in plan.get('tasks', []) + plan.get('unscheduledTasks', [])):
+			plan.setdefault('unscheduledTasks', []).append(dict(taskId=task_id, knowledgePointId=point_id,
+				knowledgePointName='巩固' + point['knowledgePointName'], sourceCourse=point['sourceCourse'],
+				source='assessment', durationMinutes=15, status='pending', priority='high',
+				steps=['核对该知识点的错题解析，写出具体出错步骤', '完成相近难度新题并在学习报告查看结果'],
+				deferredReason='已采纳测评改进动作，请在本周计划确认时间并排期'))
+			plan['version'] += 1
+			_repository.save('plans', plan['planId'], plan)
+	return jsonify(plan)
+
+
+@plans_api.post('/api/v1/plans/current/calendar')
+def confirm_calendar():
+	from app.services.calendar_plan import schedule
+	from app.tools.profile_merge import PROFILE_LOCK
+	from app.tools.plan_tools import create_plan_history
+	data, guard = json_object()
+	if guard is not None:
+		return guard
+	owner = resolve_user_id(data.get('userId'))
+	with PROFILE_LOCK, _repository.transaction():
+		plan = next((p for p in _repository.list('plans') if plan_belongs_to(p, owner)), None)
+		if plan is None:
+			return jsonify(errorCode='NOT_FOUND', message='请先建立学习任务'), 404
+		if type(data.get('expectedPlanVersion')) is not int or data['expectedPlanVersion'] != plan['version']:
+			return jsonify(errorCode='CONFLICT', message='计划已有变化，请刷新后重新排期'), 409
+		try:
+			updated = schedule(plan, data.get('days'))
+		except ValueError as error:
+			return jsonify(errorCode='BAD_REQUEST', message=str(error)), 400
+		updated['version'] = plan['version'] + 1
+		history = create_plan_history(plan, updated, updated['reason'], [])
+		history.update(planId=plan['planId'], adjustmentReason=updated['reason'], triggerEvidence=[])
+		_repository.save('plans', plan['planId'], updated)
+		_repository.save('plan_histories', f"{plan['planId']}:v{updated['version']}", history)
+		from app.services.reminders import reconcile
+		reconcile(_repository, owner)
+	return jsonify(updated)
+
+
 @plans_api.post("/api/v1/plans/current/assignments")
 def sync_assignments():
 	from app.services.assignment_plan import validate_assignments, reconcile

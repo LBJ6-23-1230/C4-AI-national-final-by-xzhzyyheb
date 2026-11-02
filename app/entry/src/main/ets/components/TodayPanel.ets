@@ -64,7 +64,12 @@ export struct TodayPanel {
     this.busy = false;
     if (!result.ok) { this.actionMessage = (result as ApiFailure).error.code === 'RESULT_UNCONFIRMED' ? '暂未确认，请重试' : '操作失败，请重试'; return; }
     this.actionMessage = action === 'snooze' ? '已稍后提醒' : action === 'ignore' ? '今日已忽略' : '';
-    if (action === 'open') ReminderNavigation.open(event);
+    if (action === 'open') {
+      this.busy = true;
+      const message: string = await ReminderNavigation.start(result.data.event);
+      if (!this.active || owner !== appState.currentUser.userId) return;
+      this.busy = false; this.actionMessage = message;
+    }
     void this.refresh();
   }
   @State snoozeItem: ReminderEvent | null = null;
@@ -101,8 +106,8 @@ export struct TodayPanel {
   build() {
     Column({ space: 8 }) {
       Row() {
-        Text(this.data?.pendingCount ? `! 今日有 ${this.data!.pendingCount} 项待处理` : '今日安排')
-          .fontSize(14).fontWeight(FontWeight.Bold).fontColor(this.data?.highlight?.level === 'urgent' ? '#B42318' : '#101828').layoutWeight(1).maxLines(1)
+        Text(this.data?.pendingCount ? `今日有 ${this.data!.pendingCount} 项待办` : '今日安排')
+          .fontSize(14).fontWeight(FontWeight.Bold).fontColor('#101828').layoutWeight(1).maxLines(1)
         Blank()
         Text(this.panelOpen ? '收起 ∧' : '展开 ∨').fontSize(12).fontColor('#2563EB').padding(8)
           .onClick(() => this.panelOpen = !this.panelOpen)
@@ -110,29 +115,20 @@ export struct TodayPanel {
       if (this.panelOpen) {
       if (this.data?.highlight) {
         Text(this.data!.highlight!.title).fontSize(18).fontWeight(FontWeight.Medium)
-          .fontColor(this.data!.highlight!.level === 'urgent' ? '#B42318' : '#101828').width('100%').maxLines(2)
+          .fontColor('#B42318').width('100%').maxLines(2)
         Text(`${this.data!.highlight!.courseName}${this.data!.highlight!.durationMinutes > 0 ? ' · ' + this.data!.highlight!.durationMinutes + ' 分钟' : ''}`)
           .fontSize(12).fontColor('#667085').width('100%')
+        Text(this.data!.highlight!.reason).fontSize(12).fontColor('#B42318').width('100%')
         Row({ space: 16 }) {
-          Button(this.data!.highlight!.targetPage === 'pages/StudyPlan' ? '查看安排' : '查看任务').height(40).fontSize(14).backgroundColor('#2563EB').enabled(!this.busy)
+          Button('立即开始').height(40).fontSize(14).backgroundColor('#2563EB').enabled(!this.busy)
             .onClick(() => this.act(this.data!.highlight!, 'open'))
-          Text('稍后开始').fontSize(12).fontColor('#475467').onClick(() => this.chooseSnooze(this.data!.highlight!))
-          Text('今天忽略').fontSize(12).fontColor('#667085').onClick(() => this.act(this.data!.highlight!, 'ignore'))
+
         }.width('100%')
-        Text(this.expanded ? '收起本任务依据 ∧' : '为什么建议现在做 ›').fontSize(12).fontColor('#667085').width('100%')
-          .onClick(() => this.toggleReason())
-        if (this.expanded) {
-          Column({ space: 5 }) {
-            Text(`「${this.data!.highlight!.title}」的建议依据`).fontSize(12).fontWeight(FontWeight.Medium).fontColor('#475467').width('100%')
-            Text(this.data!.highlight!.reason).fontSize(12).fontColor('#667085').width('100%')
-          }.width('100%').padding(10).backgroundColor('#F8FAFC').borderRadius(8)
-        }
       } else {
         Text(this.loading ? '正在读取今日安排…' : this.data?.guidance ?? '今日安排暂未读取').fontSize(13).fontColor('#667085').width('100%')
         Text('查看今日安排 ›').fontSize(13).fontColor('#2563EB').width('100%').onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
       }
-      Text(`展开全部 · 还有 ${Math.max(0, (this.data?.pendingCount ?? 0) - 1)} 项 ›`).fontSize(13).fontColor('#2563EB').onClick(() => router.pushUrl({ url: 'pages/Reminders' }))
-      Text('提醒与设置 ›').fontSize(12).fontColor('#475467').width('100%').onClick(() => router.pushUrl({ url: 'pages/Reminders' }))
+      Text('查看全部待办 ›').fontSize(13).fontColor('#2563EB').onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'ddls', ddlFilter: 'pending', unifiedTasks: 'true' } }))
       }
       this.SnoozeSelector()
       if (this.actionMessage) Text(this.actionMessage).fontSize(12).fontColor('#667085').width('100%')

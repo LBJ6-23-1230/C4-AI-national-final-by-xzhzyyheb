@@ -14,6 +14,25 @@ class PlannerAgent:
 		self.registry = registry or create_default_registry()
 
 	def run(self, state: Mapping[str, Any]) -> AgentResult:
+		if state.get('plan', {}).get('calendarDays'):
+			from datetime import datetime
+			from zoneinfo import ZoneInfo
+			from app.services.calendar_plan import schedule
+			from app.tools.plan_tools import replan_learning_path, build_plan_diff
+			old = state['plan']
+			today = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
+			days = [dict(date=d['date'], minutes=d['minutes']) for d in old['calendarDays'] if d['date'] >= today]
+			if days:
+				base = old
+				if 'availableMinutes' in state:
+					days = [dict(d, minutes=state['availableMinutes']) if d['date'] == today else d for d in days]
+				elif state.get('needReplan'):
+					base = replan_learning_path(dict(old, tasks=old.get('tasks', []) + old.get('unscheduledTasks', []), unscheduledTasks=[]), state.get('replanState', {}))['plan']
+				updated = schedule(base, days)
+				diff = build_plan_diff(old, updated)
+				changed = bool(diff['changedTasks']) or old.get('calendarDays') != updated['calendarDays']
+				updated['version'] = old['version'] + int(changed)
+				return AgentResult(self.name, dict(plan=updated, changed=changed, changedTasks=diff['changedTasks']), ('schedule_calendar', 'build_plan_diff'))
 		if state.get("plan") is not None and "availableMinutes" in state:
 			result = self.registry.execute("fit_plan_to_budget", self.name, {
 				"old_plan": state["plan"], "available_minutes": state["availableMinutes"]})

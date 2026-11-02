@@ -75,6 +75,10 @@ export class ApiResponseValidator {
     }
     if (route === '/api/v1/reminder-devices') return method === 'GET' ? ApiResponseValidator.hasArray(data, 'devices') :
       method === 'DELETE' ? ApiResponseValidator.hasString(data, 'status') : ApiResponseValidator.hasString(data, 'deviceId') && ApiResponseValidator.hasBoolean(data, 'active');
+    if (route === '/api/v1/plans/current/tasks/split') return ApiResponseValidator.isPlan(data);
+    if (route === '/api/v1/plans/current/recommendation') return ApiResponseValidator.isPlan(data);
+    if (route === '/api/v1/plans/current/calendar') return ApiResponseValidator.isPlan(data);
+    if (method === 'PUT' && route.indexOf('/api/v1/profile/') === 0 && route.endsWith('/knowledge-points/classification')) return ApiResponseValidator.hasNumber(data, 'profileVersion') && ApiResponseValidator.hasArray(data, 'mastery');
     if (route === '/api/v1/learning-course-settings') return ApiResponseValidator.hasArray(data, 'courses');
     if (route === '/api/v1/partner-conversations') return ApiResponseValidator.hasArray(data, 'conversations') && ApiResponseValidator.hasNumber(data, 'totalUnread');
     if (route.endsWith('/summary') && route.indexOf('/api/v1/partners/') === 0) return ApiResponseValidator.isRecordField(data, 'conversation');

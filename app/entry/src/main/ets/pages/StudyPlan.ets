@@ -1,7 +1,8 @@
+import { CourseLabels } from '../utils/CourseLabels';
+import { PlanStep, CalendarDay } from '../api/ApiModels';
 import router from '@ohos.router';
 import { appState } from '../data/AppState';
 import { CourseInfo, FocusTask, HomeworkDDL } from '../models/AgentModels';
-import { AIFloatButton } from '../components/AIFloatButton';
 import { KnowledgeMastery, LearningPlan, PlanTask, PlanBudgetRequest, PlanTaskScheduleRequest, PlanDiff } from '../api/ApiModels';
 import { PlanViewModel } from '../viewmodels/PlanViewModel';
 import { PlanDiffCard } from '../components/PlanDiffCard';
@@ -22,6 +23,9 @@ struct StudyPlan {
   @State showDeferred: boolean = true;
   @State showCandidates: boolean = false;
   @State activeView: string = 'today';
+  @State splitTaskId: string = '';
+  @State splitText: string = '';
+  @State calendarDays: CalendarDay[] = [];
   @State budgetText: string = '60';
   @State budgetMessage: string = '';
   @State budgetSaving: boolean = false;
@@ -45,6 +49,8 @@ struct StudyPlan {
     this.conversationTasks = appState.homeworkDDLs.filter((task: HomeworkDDL): boolean =>
       task.id.startsWith('chat-ddl-') ||
       (task.origin === 'chat' && !task.id.startsWith('ddl-csv-') && !task.id.startsWith('ddl-json-')));
+    const params = router.getParams() as Record<string, string>;
+    if (params?.['courseName'] && CourseLabels.valid(params['courseName'])) this.selectedCourse = params['courseName'];
     this.loadCurrentPlan();
   }
 
@@ -96,13 +102,60 @@ struct StudyPlan {
     const state = await this.planViewModel.load(forceRefresh);
     if (!this.isPageActive || requestVersion !== this.planRequestVersion) return;
     this.apiPlan = state.plan;
-    if (this.selectedCourse.length === 0) this.selectedCourse = state.plan?.targetCourse ?? '';
+    this.prepareCalendar();
+    if (!CourseLabels.valid(this.selectedCourse)) this.selectedCourse = CourseLabels.valid(state.plan?.targetCourse ?? '') ? state.plan!.targetCourse! : '';
     this.planKind = state.kind;
     if (this.pendingBudget === null && state.plan?.budgetSummary !== undefined) {
       this.budgetText = state.plan.budgetSummary.availableMinutes.toString();
     }
     this.apiPlanMessage = state.errorMessage;
     this.isApiPlanLoading = false;
+  }
+
+  private prepareCalendar(): void {
+    const days: CalendarDay[] = [];
+    for (let i: number = 0; i < 7; i++) {
+      const date: Date = new Date(); date.setDate(date.getDate() + i);
+      const key: string = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      const saved: CalendarDay | undefined = this.apiPlan?.calendarDays?.find((day: CalendarDay) => day.date === key);
+      days.push({ date: key, minutes: saved?.minutes ?? (this.apiPlan?.calendarDays?.length ? 0 : i === 0 ? this.apiPlan?.budgetSummary?.availableMinutes ?? 0 : 0) });
+    }
+    this.calendarDays = days;
+  }
+  private updateDay(index: number, value: string): void {
+    const minutes: number = Number(value);
+    if (!Number.isInteger(minutes) || minutes < 0 || minutes > 1440) { this.budgetMessage = '每日时长须为0到1440的整数'; return; }
+    const days: CalendarDay[] = this.calendarDays.slice();
+    days[index] = { date: days[index].date, minutes: minutes }; this.calendarDays = days;
+  }
+  private async splitTask(task: PlanTask): Promise<void> {
+    if (this.apiPlan === null || this.budgetSaving) return;
+    const steps: PlanStep[] = this.splitText.split('\n').filter((line: string) => line.trim().length > 0).map((line: string): PlanStep => {
+      const parts: string[] = line.split('|'); return { title: parts[0].trim(), minutes: parts.length === 2 ? Number(parts[1]) : 0 };
+    });
+    if (steps.length < 2 || steps.some((step: PlanStep) => !step.title || !Number.isInteger(step.minutes) || step.minutes <= 0) || steps.reduce((sum: number, step: PlanStep) => sum + step.minutes, 0) !== task.durationMinutes) {
+      this.deferredMessage = `请填写至少两个步骤，时长合计须为${task.durationMinutes}分钟。`; return;
+    }
+    const owner: string = appState.currentUser.userId;
+    const version: number = ++this.planRequestVersion;
+    this.budgetSaving = true;
+    const result = await AgentApiClient.splitPlanTask({ taskId: task.taskId, expectedPlanVersion: this.apiPlan.version, steps: steps });
+    this.budgetSaving = false;
+    if (!this.isPageActive || owner !== appState.currentUser.userId || version !== this.planRequestVersion) return;
+    if (result.ok) { this.apiPlan = result.data; this.splitTaskId = ''; this.deferredMessage = '步骤已保存，请确认上方每日时长后生成排期。'; }
+    else this.deferredMessage = (result as ApiFailure).error.message;
+  }
+
+  private async saveCalendar(): Promise<void> {
+    if (this.apiPlan === null || this.budgetSaving) return;
+    const owner: string = appState.currentUser.userId;
+    const version: number = ++this.planRequestVersion;
+    this.budgetSaving = true;
+    const result = await AgentApiClient.scheduleCalendar({ days: this.calendarDays, expectedPlanVersion: this.apiPlan.version });
+    if (!this.isPageActive || owner !== appState.currentUser.userId || version !== this.planRequestVersion) return;
+    this.budgetSaving = false;
+    if (result.ok) { this.apiPlan = result.data; this.budgetMessage = '已按每日时长排期，未安排内容与原因保留在下方。'; }
+    else this.budgetMessage = (result as ApiFailure).error.message;
   }
 
   private visibleTasks(): PlanTask[] {
@@ -133,7 +186,7 @@ struct StudyPlan {
       const name: string = point.sourceCourse ?? '';
       if (name.length > 0 && choices.indexOf(name) < 0) choices.push(name);
     });
-    return choices;
+    return choices.filter((name: string, index: number) => CourseLabels.valid(name) && choices.indexOf(name) === index);
   }
 
   private startTask(task: PlanTask): void {
@@ -184,7 +237,7 @@ struct StudyPlan {
   }
 
   private scheduledMinutes(): number {
-    return (this.apiPlan?.tasks ?? []).filter((task: PlanTask): boolean => task.status !== 'completed')
+    return (this.apiPlan?.tasks ?? []).filter((task: PlanTask): boolean => task.status !== 'completed' && (!task.scheduledDate || task.scheduledDate <= this.todayDate()))
       .reduce((total: number, task: PlanTask): number => total + task.durationMinutes, 0);
   }
 
@@ -202,6 +255,13 @@ struct StudyPlan {
     if (total > 1440) return '加入后超过一天，请先调整当前计划';
     const extra: number = total - (this.apiPlan?.budgetSummary?.availableMinutes ?? 0);
     return extra > 0 ? `加入后本次可用时间为${total}分钟（增加${extra}分钟）` : '本次剩余时间足够，无需增加时间预算';
+  }
+
+  private confirmSchedule(task: PlanTask): void {
+    const extra: number = this.budgetAfterAdding(task) - (this.apiPlan?.budgetSummary?.availableMinutes ?? 0);
+    if (extra <= 0) { void this.scheduleDeferredTask(task); return; }
+    AlertDialog.show({ title: '确认增加可用学习时间', message: `当前预算不足。加入「${task.knowledgePointName}」需要增加${extra}分钟，调整为${this.budgetAfterAdding(task)}分钟。`,
+      primaryButton: { value: '暂不加入', action: () => {} }, secondaryButton: { value: '确认增加并加入', action: () => { void this.scheduleDeferredTask(task); } } });
   }
 
   private async scheduleDeferredTask(task: PlanTask): Promise<void> {
@@ -285,11 +345,13 @@ struct StudyPlan {
       Row() {
         Column({ space: 4 }) {
           Text(task.knowledgePointName).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#1F2937').maxLines(2)
-          Text(`${task.durationMinutes} 分钟专项练习`).fontSize(12).fontColor('#667085')
+          Text(`${task.source === 'ddl' ? '作业' : '专项学习'} · ${task.durationMinutes} 分钟${task.scheduledDate ? ' · ' + task.scheduledDate : ''}`).fontSize(12).fontColor('#667085')
         }.layoutWeight(1).alignItems(HorizontalAlign.Start)
         Text(this.taskStatusLabel(task)).fontSize(11).fontWeight(FontWeight.Medium)
-          .fontColor('#2563EB').backgroundColor('#EFF6FF').borderRadius(10).padding({ left: 8, right: 8, top: 4, bottom: 4 })
+          .fontColor('#2563EB').backgroundColor('#FFFFFF').borderRadius(10).padding({ left: 8, right: 8, top: 4, bottom: 4 })
       }.width('100%')
+      if (task.allocationReason) Text(task.allocationReason).fontSize(12).fontColor('#475467').width('100%')
+      if (task.steps) ForEach(task.steps, (step: string) => { Text('· ' + step).fontSize(13).fontColor('#475467').width('100%') })
       if (task.priority !== undefined) {
         Text(task.priority === 'high' ? '优先处理' : task.priority === 'medium' ? '优先级：中' : task.priority === 'low' ? '优先级：低' : `优先级：${task.priority}`)
           .fontSize(12).fontColor('#475467').width('100%')
@@ -310,7 +372,7 @@ struct StudyPlan {
           Text(task.title).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937').maxLines(2)
           Text(`${task.courseName} · ${task.estimatedMinutes} 分钟`).fontSize(12).fontColor('#667085')
         }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-        Text(task.priority).fontSize(11).fontColor('#2563EB').backgroundColor('#EFF6FF')
+        Text(task.priority).fontSize(11).fontColor('#2563EB').backgroundColor('#FFFFFF')
           .borderRadius(10).padding({ left: 8, right: 8, top: 4, bottom: 4 })
       }.width('100%')
       Text(task.dueDate.length > 0 ? `截止：${task.dueDate}` : '暂未设置截止时间')
@@ -337,29 +399,45 @@ struct StudyPlan {
               Blank()
               if (this.apiPlan !== null) {
                 Text(`计划版本 ${this.apiPlan.version}`).fontSize(12).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-                  .backgroundColor('#EFF6FF').borderRadius(9).padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                  .backgroundColor('#FFFFFF').borderRadius(9).padding({ left: 8, right: 8, top: 4, bottom: 4 })
               }
             }.width('100%')
-            Text('这里展示规划智能体根据你的目标、时间和学习证据生成的计划；今日安排是这份计划的当天视图。')
+            Text('今日安排只显示当天执行任务；本周计划按你确认的每日时长安排，并保留冲突与未安排内容。')
               .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
             Row({ space: 12 }) {
               Button('今日安排').backgroundColor(this.activeView === 'today' ? '#2563EB' : '#94A3B8').onClick(() => this.activeView = 'today')
-              Button('完整计划').backgroundColor(this.activeView === 'full' ? '#2563EB' : '#94A3B8').onClick(() => this.activeView = 'full')
+              Button('本周计划').backgroundColor(this.activeView === 'full' ? '#2563EB' : '#94A3B8').onClick(() => this.activeView = 'full')
             }.width('100%')
             Text(appState.getChatTaskContext()).fontSize(12).fontColor('#2563EB')
-              .width('100%').padding(10).backgroundColor('#EFF6FF').borderRadius(10)
+              .width('100%').padding(10).backgroundColor('#FFFFFF').borderRadius(10)
             if (this.activeView === 'today') {
-              Text('今日提醒与全部待办 ›').fontSize(14).fontColor('#2563EB').onClick(() => router.pushUrl({ url: 'pages/Reminders' }))
+              Text('查看全部待办 ›').fontSize(14).fontColor('#2563EB').onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'ddls', ddlFilter: 'pending' } }))
               if (this.pendingTodayDDLs().length > 0) {
-                Text('到期作业 · 尚未安排到本次计划').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#92400E')
-                ForEach(this.pendingTodayDDLs(), (ddl: HomeworkDDL) => {
-                  Column({ space: 6 }) {
-                    Text(`${ddl.courseName} · ${ddl.title}`).fontSize(15).fontWeight(FontWeight.Medium)
-                    Text(`截止 ${ddl.dueDate} · 预计${ddl.estimatedMinutes}分钟`).fontSize(12).fontColor('#667085')
-                    Button('查看作业与安排').onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'ddls', focusDdlId: ddl.id } }))
-                  }.width('100%').padding(14).backgroundColor('#FFFBEB').borderRadius(12).alignItems(HorizontalAlign.Start)
-                }, (ddl: HomeworkDDL) => ddl.id)
+                Column({ space: 10 }) {
+                  Text(`需安排的到期作业 · ${this.pendingTodayDDLs().length} 项`).fontSize(16).fontWeight(FontWeight.Bold).width('100%')
+                  ForEach(this.pendingTodayDDLs().slice(0, 3), (ddl: HomeworkDDL) => {
+                    Text(`${ddl.title} · ${ddl.courseName} · 截止 ${ddl.dueDate} · ${ddl.estimatedMinutes}分钟`).fontSize(13).fontColor('#475467').width('100%')
+                      .onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'ddls', focusDdlId: ddl.id } }))
+                  }, (ddl: HomeworkDDL) => ddl.id)
+                }.padding(14).width('100%').backgroundColor('#FFFFFF').borderRadius(12)
               }
+            }
+            if (this.activeView === 'full' && this.apiPlan !== null) {
+              Column({ space: 10 }) {
+                Text('确认未来7天可用时间').fontSize(17).fontWeight(FontWeight.Bold).width('100%')
+                Text('未填写的日期为0分钟；不虚构每日空档。任务按截止日期排期，无法容纳的长作业请先拆成明确步骤或调整时长。').fontSize(13).fontColor('#667085').width('100%')
+                ForEach(this.calendarDays, (day: CalendarDay, index: number) => {
+                  Row({ space: 12 }) {
+                    Text(day.date).fontSize(13).layoutWeight(1)
+                    TextInput({ text: day.minutes.toString(), placeholder: '可用分钟' }).width(100).type(InputType.Number).onChange((value: string) => this.updateDay(index, value))
+                    Text('分钟').fontSize(12)
+                  }.width('100%')
+                }, (day: CalendarDay) => day.date)
+                Button('按每日时间生成本周计划').width('100%').enabled(!this.budgetSaving).onClick(() => this.saveCalendar())
+                if (this.apiPlan.calendarDays) ForEach(this.apiPlan.calendarDays, (day: CalendarDay) => {
+                  Text(`${day.date} · 已安排${day.scheduledMinutes ?? 0}/${day.minutes}分钟`).fontSize(13).fontColor('#475467').width('100%')
+                }, (day: CalendarDay) => day.date)
+              }.padding(16).backgroundColor('#FFFFFF').borderRadius(12).width('100%')
             }
             if (this.activeView === 'full' && this.conversationTasks.length > 0) {
               Column({ space: 6 }) {
@@ -417,7 +495,7 @@ struct StudyPlan {
                     .fontSize(13).fontColor('#0F766E').width('100%')
                 }
                 if (this.budgetMessage.length > 0) Text(this.budgetMessage).fontSize(12).fontColor('#475467').width('100%')
-              }.width('100%').padding(14).backgroundColor('#EFF6FF').borderRadius(14)
+              }.width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
               if (this.budgetDiff !== null) PlanDiffCard({ value: this.budgetDiff })
               if (this.apiPlan.reason !== undefined) {
                 Column({ space: 6 }) {
@@ -426,12 +504,12 @@ struct StudyPlan {
                   Text(this.apiPlan.reason).fontSize(13).fontColor('#475467').lineHeight(20)
                   Text(`基于画像版本 ${this.apiPlan.generatedFromProfileVersion} 生成`).fontSize(12).fontColor('#667085')
                   }
-                }.width('100%').padding(16).backgroundColor('#EFF6FF').borderRadius(16)
+                }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
               }
               }
               Text(`${this.visibleTasks().length} 项${this.activeView === 'today' ? '今日安排' : '计划任务'}`).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
               if (this.visibleTasks().length === 0) {
-                Text(this.activeView === 'today' ? '今天没有待执行的计划任务，可查看完整计划或到期作业。' : '先选择主攻课程，再确认本次学习时长，即可从候选池安排任务。').fontSize(14).fontColor('#667085')
+                Text(this.activeView === 'today' ? '今天没有待执行的计划任务，可查看本周计划或到期作业。' : '先选择主攻课程，再确认本次学习时长，即可从候选池安排任务。').fontSize(14).fontColor('#667085')
                   .width('100%').padding(22).backgroundColor('#FFFFFF').borderRadius(14)
               } else {
                 ForEach(this.visibleTasks(), (task: PlanTask) => {
@@ -440,12 +518,12 @@ struct StudyPlan {
               }
               if (this.deferredMessage.length > 0) {
                 Text(this.deferredMessage).fontSize(13).fontColor('#475467').lineHeight(20)
-                  .width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(12)
+                  .width('100%').padding(12).backgroundColor('#FFFFFF').borderRadius(12)
               }
               if (this.activeView === 'full' && this.apiPlan.unscheduledTasks !== undefined && this.apiPlan.unscheduledTasks.length > 0) {
                 Text(`暂未安排 ${this.apiPlan.unscheduledTasks.length} 项 ${this.showDeferred ? '↑' : '↓'}`).onClick(() => this.showDeferred = !this.showDeferred).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#92400E').width('100%')
                 if (this.showDeferred) {
-                Text('这些任务尚未计入本次学习安排，会保留供后续选择。点击“加入本次计划”仅加入所选任务，时间不足时会增加本次时间预算。')
+                Text('这些任务尚未计入本次学习安排，会保留供后续选择。点击“加入本次计划”仅加入所选任务，时间不足时会先征求你的确认，不会自动增加可用时间。')
                   .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
                 ForEach(this.apiPlan.unscheduledTasks, (task: PlanTask) => {
                   Column({ space: 8 }) {
@@ -454,12 +532,22 @@ struct StudyPlan {
                       .fontSize(12).fontColor('#667085').width('100%')
                     Text(task.deferredReason ?? '等待后续安排').fontSize(12).fontColor('#667085').width('100%')
                     Text(this.scheduleHint(task)).fontSize(12).fontColor('#92400E').width('100%')
+                    if (task.source !== 'ddl_step' && task.source !== 'study_step') {
+                      Text('拆分为明确步骤 ›').fontSize(13).fontColor('#2563EB').width('100%').onClick(() => { this.splitTaskId = task.taskId; this.splitText = ''; })
+                      if (this.splitTaskId === task.taskId) {
+                        Text(`每行填写 步骤名称|分钟，合计${task.durationMinutes}分钟；完成全部步骤后才完成原任务。`).fontSize(12).fontColor('#667085').width('100%')
+                        TextArea({ text: this.splitText, placeholder: '阅读要求|15\n完成实现|45\n检查与提交|30' }).height(140).onChange((value: string) => this.splitText = value)
+                        Button('确认步骤并保存').enabled(!this.budgetSaving).onClick(() => this.splitTask(task))
+                        Text('取消拆分').fontSize(13).fontColor('#667085').onClick(() => this.splitTaskId = '')
+                      }
+                    }
+
                     Button(this.schedulingTaskId === task.taskId ? '正在加入…' : '加入本次计划')
                       .width('100%').height(40).fontSize(13).fontWeight(FontWeight.Bold)
                       .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(10)
                       .enabled(!this.budgetSaving && !this.isApiPlanLoading && this.canScheduleTask(task))
-                      .onClick(() => { void this.scheduleDeferredTask(task); })
-                  }.width('100%').padding(14).backgroundColor('#FFFBEB').borderRadius(12)
+                      .onClick(() => this.confirmSchedule(task))
+                  }.width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(12)
                 }, (task: PlanTask) => task.taskId)
                 }
               }
@@ -481,7 +569,7 @@ struct StudyPlan {
                       }, (point: KnowledgeMastery) => point.knowledgePointId)
                     }.width('100%')
                   }
-                }.width('100%').alignItems(HorizontalAlign.Start).padding(16).backgroundColor('#EFF6FF').borderRadius(16)
+                }.width('100%').alignItems(HorizontalAlign.Start).padding(16).backgroundColor('#FFFFFF').borderRadius(16)
               }
             } else {
               Column({ space: 10 }) {
@@ -505,7 +593,7 @@ struct StudyPlan {
                     .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
                     .onClick(() => this.openChatGoal())
                 }
-              }.width('100%').padding(18).backgroundColor('#FFFBEB').borderRadius(14)
+              }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(14)
             }
             Button(this.isApiPlanLoading ? '正在刷新…' : '刷新当前计划').width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold)
               .fontColor('#2563EB').backgroundColor('#FFFFFF').border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
@@ -517,7 +605,6 @@ struct StudyPlan {
           }.width('100%').padding({ left: 20, right: 20, top: 20, bottom: 96 })
         }.layoutWeight(1).backgroundColor('#F7F8FA')
       }.width('100%').height('100%')
-      AIFloatButton()
-    }.width('100%').height('100%')
+      }.width('100%').height('100%')
   }
 }
