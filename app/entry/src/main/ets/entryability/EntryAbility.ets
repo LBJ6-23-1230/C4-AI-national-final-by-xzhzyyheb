@@ -14,6 +14,7 @@ import { DistributedStateService } from '../services/DistributedStateService';
 import { ProactiveSurfaceService } from '../services/ProactiveSurfaceService';
 import { ProactiveSettingsStore } from '../services/ProactiveSettingsStore';
 import { DeviceLayout } from '../utils/DeviceLayout';
+import { FocusLifecycleService } from '../services/FocusLifecycleService';
 import { FocusTask } from '../models/AgentModels';
 
 const DOMAIN = 0x0000;
@@ -59,6 +60,7 @@ export default class EntryAbility extends UIAbility {
     // 课程与 DDL 是账号维度的本地数据。必须先绑定 context，随后 applyLogout/applyLogin
     // 才能分别恢复 demo-user 或真实 userId 对应的快照。
     LearningDataStore.initialize(this.context);
+    FocusLifecycleService.initialize();
 
     // 启动时先把 AppState 对齐到已知身份，避免首页在异步校验完成前读到空身份。
     appState.applyLogout();
@@ -238,6 +240,7 @@ export default class EntryAbility extends UIAbility {
   onWindowStageDestroy(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
     this.activeWindowStage = null;
+    FocusLifecycleService.destroy();
     // ★ 退出分布式会话。
     //
     // `DistributedStateService.leave()` 此前**一个调用点都没有**（它自己的注释还写着
@@ -250,12 +253,14 @@ export default class EntryAbility extends UIAbility {
 
   onForeground(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
+    FocusLifecycleService.onForeground();
     void appState.syncFocusSessions();
     void ProactiveSurfaceService.refresh(this.context, true);
   }
 
   onBackground(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+    FocusLifecycleService.onBackground();
     void ProactiveSurfaceService.refresh(this.context, false);
   }
 

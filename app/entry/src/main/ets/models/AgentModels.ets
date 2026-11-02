@@ -300,6 +300,7 @@ export interface LearningReview {
 export type FocusSource = 'agent' | 'manual' | 'course' | 'collaborative';
 export type FocusMode = 'normal' | 'strict';
 export type FocusTimerType = 'countdown' | 'stopwatch';
+export type FocusDepartureReason = 'navigation' | 'background' | 'screenOff';
 export type FocusSelfAssessment = 'completed' | 'partial' | 'not_completed';
 export type FocusSessionStatus = 'completed' | 'not_completed' | 'interrupted';
 
@@ -312,6 +313,7 @@ export interface FocusTask {
   timerType?: FocusTimerType;
   planTaskId?: string;
   parentTaskId?: string;
+  allowBackgroundTiming?: boolean;
 }
 
 export interface FocusSession {
@@ -337,6 +339,8 @@ export interface FocusRuntime {
   elapsedMs: number;
   lastUpdatedAt: number;
   finishedAt?: number;
+  autoPaused?: boolean;
+  backgroundReason?: 'screenOff' | 'background';
   paused: boolean;
   pauseCount: number;
   interruptionCount: number;
@@ -350,7 +354,6 @@ export interface AgentFeedback {
 
 export interface FocusSummary {
   todayMinutes: number;
-  completionRate: number;
   streakDays: number;
   courseMinutes: Map<string, number>;
   recentSessions: FocusSession[];

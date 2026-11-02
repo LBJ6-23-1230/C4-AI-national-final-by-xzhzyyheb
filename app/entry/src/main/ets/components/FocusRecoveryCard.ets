@@ -10,7 +10,9 @@ export struct FocusRecoveryCard {
 
   private refresh(): void {
     this.label = appState.focusResultDraft !== null ? '上次专注尚未结算，可以继续保存。' :
-      (appState.focusRuntime !== null ? '有一项未结束的专注，可以恢复计时。' : '');
+      (appState.focusRuntime !== null ? (appState.focusRuntime.paused
+        ? '上次专注已暂停，恢复后点击“继续专注”再计时。' :
+        (appState.focusRuntime.task.allowBackgroundTiming ? '后台计时已开启，专注仍在计时。' : '专注仍在计时，可返回查看息屏期间的进度。')) : '');
   }
 
   build() {

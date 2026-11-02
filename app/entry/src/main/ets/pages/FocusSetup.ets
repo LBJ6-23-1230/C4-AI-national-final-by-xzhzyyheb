@@ -16,6 +16,7 @@ struct FocusSetup {
   @State customMinutesText: string = '45';
   @State selectedDuration: string = '30';
   @State mode: FocusMode = 'normal';
+  @State allowBackgroundTiming: boolean = false;
   @State source: FocusSource = 'manual';
   @State timerType: FocusTimerType = 'countdown';
 
@@ -46,6 +47,7 @@ struct FocusSetup {
       this.task = imported.task;
       this.minutes = imported.plannedMinutes > 0 ? imported.plannedMinutes : 30;
       this.mode = imported.mode;
+      this.allowBackgroundTiming = appState.focusRuntime !== null && imported.allowBackgroundTiming === true;
       this.source = imported.source;
       this.timerType = imported.timerType ?? 'countdown';
       this.selectedDuration = imported.timerType === 'stopwatch' ? 'stopwatch' : this.durationKey(this.minutes);
@@ -104,6 +106,7 @@ struct FocusSetup {
       }
     }
     this.mode = remote.mode;
+    this.allowBackgroundTiming = remote.allowBackgroundTiming === true;
     this.timerType = remote.timerType ?? 'countdown';
     this.source = remote.source;
   }
@@ -172,6 +175,7 @@ struct FocusSetup {
       source: this.source,
       mode: this.mode,
       timerType: this.timerType,
+      allowBackgroundTiming: this.mode === 'normal' && this.allowBackgroundTiming,
       planTaskId: planTaskId
     };
     if (!appState.beginFocusRuntime(focusTask)) {
@@ -191,7 +195,7 @@ struct FocusSetup {
   private refreshRecovery(): void {
     this.recoveryDescription = appState.focusResultDraft !== null
       ? `上次专注“${appState.focusResultDraft.task}”还没有保存结算。`
-      : (appState.focusRuntime !== null ? `可恢复专注“${appState.focusRuntime.task.task}”。暂停状态会保留，未暂停时间继续累计。` : '');
+      : (appState.focusRuntime !== null ? `可恢复专注“${appState.focusRuntime.task.task}”。${appState.focusRuntime.paused ? '已暂停，恢复后点击继续才重新计时。' : '计时仍在进行，返回后可查看进度。'}` : '');
   }
 
   private resumeRecovery(): void {
@@ -216,7 +220,7 @@ struct FocusSetup {
     if (this.mode === 'strict') {
       return '严格专注会隐藏暂停；提前退出需要确认，并留下中断记录。';
     }
-    return '普通专注可以暂停、继续，也可以把未完成的记录保存下来。';
+    return '息屏继续计时；返回或切换应用是否暂停由下方开关决定。';
   }
 
   private timerHint(): string {
@@ -373,6 +377,15 @@ struct FocusSetup {
                 .border({ width: 1, color: '#93A3C0' }).onClick(() => this.mode = 'strict')
             }.width('100%')
             Text(this.modeHint()).fontSize(12).fontColor('#64748B').width('100%')
+            if (this.mode === 'normal') {
+              Row() {
+                Text('允许后台计时').fontSize(15).fontColor('#202522').layoutWeight(1)
+                Toggle({ type: ToggleType.Switch, isOn: this.allowBackgroundTiming })
+                  .onChange((value: boolean) => this.allowBackgroundTiming = value)
+              }.width('100%')
+              Text(this.allowBackgroundTiming ? '已开启：返回或切换应用后继续计时。' : '默认关闭：返回或切换应用后暂停，回来点击继续。')
+                .fontSize(12).fontColor('#64748B').width('100%')
+            }
           }.width('100%').padding(18).backgroundColor(this.mode === 'strict' ? '#F0F4FF' : '#FFFFFF')
             .borderRadius(8).border({ width: 1, color: this.mode === 'strict' ? '#94A3B8' : '#F1F5F9' })
 

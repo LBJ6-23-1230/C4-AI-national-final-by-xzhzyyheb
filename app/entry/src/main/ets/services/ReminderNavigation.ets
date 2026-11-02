@@ -75,7 +75,7 @@ export class ReminderNavigation {
   }
 
   static async confirmFocus(taskId: string, minutes: number, mode: FocusMode, owner: string,
-    isActive: () => boolean): Promise<string> {
+    isActive: () => boolean, allowBackgroundTiming: boolean = false): Promise<string> {
     if (!isActive()) return '';
     if (owner !== appState.currentUser.userId) return '账号已切换，请重新打开任务。';
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 180) return '请输入1到180之间的整数分钟。';
@@ -89,13 +89,14 @@ export class ReminderNavigation {
       .find((item: PlanTask) => item.taskId === taskId);
     if (!task) return '这项任务已发生变化，请关闭面板并刷新待办。';
     return ReminderNavigation.startTask(task, (selected: PlanTask): string =>
-      ReminderNavigation.beginTaskFocus(selected, minutes, mode));
+      ReminderNavigation.beginTaskFocus(selected, minutes, mode, allowBackgroundTiming));
   }
 
-  private static beginTaskFocus(task: PlanTask, minutes: number, mode: FocusMode): string {
+  private static beginTaskFocus(task: PlanTask, minutes: number, mode: FocusMode, allowBackgroundTiming: boolean): string {
     const focusTask: FocusTask = { course: task.sourceCourse || '学习任务', task: task.knowledgePointName,
       plannedMinutes: minutes, planTaskId: task.taskId, parentTaskId: task.parentTaskId,
       source: 'agent', mode: mode, timerType: 'countdown' };
+    focusTask.allowBackgroundTiming = mode === 'normal' && allowBackgroundTiming;
     if (!appState.beginFocusRuntime(focusTask)) return '计时记录未能保存，请重试。';
     appState.setFocusTask(focusTask);
     appState.updatePlanTaskStatus(task.taskId, 'in_progress');

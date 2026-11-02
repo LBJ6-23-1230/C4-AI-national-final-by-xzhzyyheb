@@ -1,6 +1,6 @@
-import { FocusRuntime, FocusTask } from '../models/AgentModels';
+import { FocusDepartureReason, FocusRuntime, FocusTask } from '../models/AgentModels';
 
-/** Persistable timing facts; running background time counts, paused time does not. */
+/** Persistable timing facts. Normal focus is paused by departure/recovery hooks. */
 export class FocusClock {
   static create(ownerId: string, task: FocusTask, now: number = Date.now()): FocusRuntime {
     return { sessionId: `focus-${now}-${Math.random().toString(36).substring(2, 10)}`,
@@ -16,7 +16,28 @@ export class FocusClock {
     return { sessionId: value.sessionId, ownerId: value.ownerId, task: value.task,
       elapsedMs: Math.min(limit, elapsed), lastUpdatedAt: Math.max(now, value.lastUpdatedAt),
       paused: value.paused, pauseCount: value.pauseCount, interruptionCount: value.interruptionCount,
-      finishedAt: finishedAt };
+      finishedAt: finishedAt, autoPaused: value.autoPaused, backgroundReason: value.backgroundReason };
+  }
+
+  static pauseOnDeparture(value: FocusRuntime, now: number = Date.now()): FocusRuntime {
+    if (value.task.mode === 'strict' || value.paused) return value;
+    const next: FocusRuntime = FocusClock.advance(value, now);
+    next.paused = true;
+    next.autoPaused = true;
+    next.backgroundReason = undefined;
+    next.pauseCount++;
+    return next;
+  }
+
+  static depart(value: FocusRuntime, reason: FocusDepartureReason, now: number = Date.now()): FocusRuntime {
+    if (value.paused) return value;
+    if (reason !== 'screenOff' && value.task.mode !== 'strict' && value.task.allowBackgroundTiming !== true) {
+      return FocusClock.pauseOnDeparture(value, now);
+    }
+    const next: FocusRuntime = FocusClock.advance(value, now);
+    if (value.task.mode === 'strict' && reason !== 'screenOff' && value.backgroundReason !== 'background') next.interruptionCount++;
+    next.backgroundReason = reason === 'screenOff' ? 'screenOff' : 'background';
+    return next;
   }
 
   static valid(value: FocusRuntime | undefined, ownerId: string): boolean {

@@ -10,6 +10,7 @@ export struct TaskFocusSheet {
   isOpen: () => boolean = () => true;
   @State private minutes: string = '30';
   @State private mode: FocusMode = 'normal';
+  @State private allowBackgroundTiming: boolean = false;
   @State private error: string = '';
   @State private busy: boolean = false;
   private owner: string = '';
@@ -31,6 +32,7 @@ export struct TaskFocusSheet {
     const suggested: number = this.task?.durationMinutes ?? 30;
     this.minutes = (Number.isInteger(suggested) && suggested >= 1 ? Math.min(180, suggested) : 30).toString();
     this.mode = 'normal';
+    this.allowBackgroundTiming = false;
     this.error = '';
     this.busy = false;
     this.requestVersion++;
@@ -49,7 +51,8 @@ export struct TaskFocusSheet {
     const version: number = ++this.requestVersion;
     try {
       const message: string = await ReminderNavigation.confirmFocus(this.task.taskId, Number(this.minutes), this.mode,
-        this.owner, (): boolean => this.active && this.isOpen() && version === this.requestVersion);
+        this.owner, (): boolean => this.active && this.isOpen() && version === this.requestVersion,
+        this.mode === 'normal' && this.allowBackgroundTiming);
       if (!this.active || version !== this.requestVersion) return;
       this.busy = false;
       if (message.length > 0) this.error = message;
@@ -111,8 +114,17 @@ export struct TaskFocusSheet {
             .backgroundColor(this.mode === 'strict' ? '#1E3A5F' : '#F5F7FA')
             .onClick(() => this.mode = 'strict')
         }.width('100%')
-        Text(this.mode === 'strict' ? '不可暂停；提前退出需确认，并记录为中断。' : '可以暂停、继续，也可以保存未完成记录。')
+        Text(this.mode === 'strict' ? '不可暂停；切换应用计为中断，息屏继续计时。' : '息屏继续计时；返回或切换应用是否暂停由下方开关决定。')
           .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
+        if (this.mode === 'normal') {
+          Row() {
+            Text('允许后台计时').fontSize(15).layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.allowBackgroundTiming }).enabled(!this.busy)
+              .onChange((value: boolean) => this.allowBackgroundTiming = value)
+          }.width('100%')
+          Text(this.allowBackgroundTiming ? '已开启：返回或切换应用后继续计时。' : '默认关闭：返回或切换应用后暂停，回来点击继续。')
+            .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
+        }
       }.width('100%')
       if (this.error.length > 0) Text(this.error).fontSize(13).fontColor('#B42318').width('100%')
       Button(this.busy ? '正在确认…' : '开始专注').width('100%').height(48).fontSize(16)

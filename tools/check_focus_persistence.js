@@ -160,6 +160,68 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(clock.advance(savedClock, savedClock.lastUpdatedAt + 3600000).finishedAt,
     savedClock.lastUpdatedAt + 1800000);
   assert.equal(clock.advance(savedClock, savedClock.lastUpdatedAt - 1000).elapsedMs, 0);
+  const departing = clock.pauseOnDeparture(savedClock, savedClock.lastUpdatedAt + 120000);
+  assert.equal(departing.elapsedMs, 120000);
+  assert.equal(departing.paused, true);
+  assert.equal(departing.autoPaused, true);
+  assert.equal(clock.advance(departing, departing.lastUpdatedAt + 3600000).elapsedMs, 120000);
+  assert.equal(clock.pauseOnDeparture(departing).pauseCount, departing.pauseCount);
+
+  // Abrupt process loss restores a normal timer paused at its last saved checkpoint.
+  const running = clock.advance(savedClock, savedClock.lastUpdatedAt + 90000);
+  assert.equal(state.checkpointFocusRuntime(running), true);
+  ({ state, store } = runtime());
+  state.applyLogin(user('a'), 'restored');
+  await settle();
+  assert.equal(state.focusRuntime.paused, true);
+  assert.equal(state.focusRuntime.autoPaused, true);
+  assert.equal(state.focusRuntime.elapsedMs, 90000);
+  assert.equal(clock.advance(state.focusRuntime, Date.now() + 3600000).elapsedMs, 90000);
+  const pausedCount = state.focusRuntime.pauseCount;
+  assert.equal(state.pauseFocusOnDeparture(), true);
+  assert.equal(state.focusRuntime.pauseCount, pausedCount);
+  // A departure write failure must still freeze the live timer instead of counting time away.
+  const resumed = {...state.focusRuntime, paused: false, autoPaused: false, lastUpdatedAt: Date.now()};
+  assert.equal(state.checkpointFocusRuntime(resumed), true);
+  failWrite = true;
+  assert.equal(state.pauseFocusOnDeparture(), false);
+  assert.equal(state.focusRuntime.paused, true);
+  assert.equal(clock.advance(state.focusRuntime, Date.now() + 3600000).elapsedMs, state.focusRuntime.elapsedMs);
+  failWrite = false;
+  assert.equal(state.pauseFocusOnDeparture(), true);
+  assert.equal(store.load('a').focusRuntime.paused, true);
+  // A persistence guard may restore another environment; do not overwrite that restored state.
+  const checkpoint = state.checkpointFocusRuntime;
+  const currentRuntime = state.focusRuntime;
+  state.checkpointFocusRuntime = () => { state.focusRuntime = null; return false; };
+  assert.equal(state.pauseFocusOnDeparture(), false);
+  assert.equal(state.focusRuntime, null);
+  state.checkpointFocusRuntime = checkpoint;
+  state.focusRuntime = currentRuntime;
+  // Screen-off continuation is an explicit persisted reason, including default-off tasks.
+  const screenRuntime = {...currentRuntime, task: {...task, allowBackgroundTiming: false}, paused: false,
+    autoPaused: false, backgroundReason: 'screenOff', elapsedMs: 120000, lastUpdatedAt: Date.now() - 60000};
+  assert.equal(state.checkpointFocusRuntime(screenRuntime), true);
+  ({ state, store } = runtime()); state.applyLogin(user('a'), 'restored'); await settle();
+  assert.equal(state.focusRuntime.paused, false);
+  assert.equal(state.focusRuntime.backgroundReason, 'screenOff');
+  assert(clock.advance(state.focusRuntime).elapsedMs >= 180000);
+  assert.equal(state.handleFocusDeparture('background'), true);
+  assert.equal(state.focusRuntime.paused, true);
+  assert.equal(state.focusRuntime.backgroundReason, undefined);
+
+  const backgroundRuntime = {...screenRuntime, task: {...task, allowBackgroundTiming: true}, backgroundReason: 'background'};
+  assert.equal(state.checkpointFocusRuntime(backgroundRuntime), true);
+  ({ state, store } = runtime()); state.applyLogin(user('a'), 'restored'); await settle();
+  assert.equal(state.focusRuntime.task.allowBackgroundTiming, true);
+  assert.equal(state.focusRuntime.paused, false);
+  assert(clock.advance(state.focusRuntime).elapsedMs >= 180000);
+  const manuallyPaused = clock.pauseOnDeparture(state.focusRuntime);
+  manuallyPaused.autoPaused = false;
+  assert.equal(state.checkpointFocusRuntime(manuallyPaused), true);
+  ({ state, store } = runtime()); state.applyLogin(user('a'), 'restored'); await settle();
+  assert.equal(state.focusRuntime.paused, true);
+  assert.equal(state.focusRuntime.autoPaused, false);
   network.owner = 'b';
   state.applyLogin(user('b'), 'restored');
   await settle();

@@ -100,6 +100,13 @@ const deferred = () => {
   assert.equal(await confirm(60, 'normal'), '');
   assert.equal(appState.activeFocusTask.mode, 'normal');
   assert.equal(appState.activeFocusTask.plannedMinutes, 60);
+  assert.equal(appState.activeFocusTask.allowBackgroundTiming, false);
+  reset();
+  assert.equal(await nav.confirmFocus('ddl-one', 40, 'normal', 'alice', () => true, true), '');
+  assert.equal(appState.activeFocusTask.allowBackgroundTiming, true);
+  reset();
+  assert.equal(await nav.confirmFocus('ddl-one', 40, 'strict', 'alice', () => true, true), '');
+  assert.equal(appState.activeFocusTask.allowBackgroundTiming, false);
 
   for (const minutes of [0, -1, 181, 1.5, NaN, Infinity]) {
     reset();
@@ -207,6 +214,7 @@ const deferred = () => {
   sheet.aboutToAppear();
   assert.equal(sheet.minutes, '90');
   assert.equal(sheet.mode, 'normal');
+  assert.equal(sheet.allowBackgroundTiming, false);
   sheet.minutes = '0';
   await sheet.start();
   assert(sheet.error.includes('整数分钟'));
@@ -224,6 +232,7 @@ const deferred = () => {
   assert.equal(sheet.mode, 'normal');
   assert.equal(sheet.minutes, '90');
   assert.equal(sheet.error, '');
+  assert.equal(sheet.allowBackgroundTiming, false);
   pending = deferred(); loadPlan = () => pending.promise;
   saving = sheet.start();
   await sheet.start(); // The second tap is ignored while confirmation is pending.

@@ -213,6 +213,11 @@ export class AppState {
     if (this.focusResultDraft !== null && this.focusSessions.some(
       (item: FocusSession) => item.taskId === this.focusResultDraft?.taskId)) this.focusResultDraft = null;
     if (this.focusResultDraft !== null) this.focusRuntime = null;
+    if (this.focusRuntime !== null && this.focusRuntime.task.mode !== 'strict' &&
+      this.focusRuntime.task.allowBackgroundTiming !== true && this.focusRuntime.backgroundReason !== 'screenOff') {
+      // Cold recovery never assumes that time away was spent studying.
+      this.focusRuntime = FocusClock.pauseOnDeparture(this.focusRuntime, this.focusRuntime.lastUpdatedAt);
+    }
     if (this.focusRuntime !== null) this.activeFocusTask = this.focusRuntime.task;
     this.taskStatusOverrides.clear();
     (saved.taskStatuses ?? []).forEach((entry: StoredTaskStatus) => {
@@ -1125,6 +1130,22 @@ export class AppState {
     return true;
   }
 
+  public pauseFocusOnDeparture(): boolean {
+    return this.handleFocusDeparture('navigation');
+  }
+
+  public handleFocusDeparture(reason: 'navigation' | 'background' | 'screenOff', now: number = Date.now()): boolean {
+    const runtime: FocusRuntime | null = this.focusRuntime;
+    if (runtime === null || runtime.ownerId !== this.currentUser.userId) return true;
+    const environment: string = this.learningEnvironment;
+    const next: FocusRuntime = FocusClock.depart(runtime, reason, now);
+    const saved: boolean = this.checkpointFocusRuntime(next);
+    // Even when disk writes fail, do not keep counting hidden time in memory.
+    if (!saved && this.learningEnvironment === environment && this.focusRuntime?.sessionId === runtime.sessionId) this.focusRuntime = next;
+    this.notifyFocusDataChanged();
+    return saved;
+  }
+
   public setFocusResultDraft(session: FocusSession): boolean {
     const previousRuntime: FocusRuntime | null = this.focusRuntime;
     const previousDraft: FocusSession | null = this.focusResultDraft;
@@ -1239,8 +1260,6 @@ export class AppState {
   public getFocusSummary(): FocusSummary {
     const courseMinutes: Map<string, number> = new Map();
     let todayMinutes: number = 0;
-    let totalCompletion: number = 0;
-    let todaySessionCount: number = 0;
     const todayKey: string = DateHelper.todayKey();
     // 收集"有专注记录"的日期键，用于计算连续天数。
     const studyDays: Set<string> = new Set<string>();
@@ -1259,13 +1278,10 @@ export class AppState {
       studyDays.add(dayKey);
       if (dayKey === todayKey) {
         todayMinutes += session.actualMinutes;
-        totalCompletion += session.plannedMinutes > 0 ? Math.min(100, Math.round(session.actualMinutes / session.plannedMinutes * 100)) : 0;
-        todaySessionCount++;
       }
     }
     return {
       todayMinutes: todayMinutes,
-      completionRate: todaySessionCount === 0 ? 0 : Math.round(totalCompletion / todaySessionCount),
       streakDays: AppState.countStreakDays(studyDays, todayKey),
       courseMinutes: courseMinutes,
       recentSessions: this.focusSessions.slice(-7).reverse()

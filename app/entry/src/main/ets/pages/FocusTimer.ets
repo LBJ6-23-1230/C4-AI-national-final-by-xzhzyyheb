@@ -3,6 +3,7 @@ import { appState } from '../data/AppState';
 import { FocusSession, FocusSessionStatus, FocusTask, FocusRuntime } from '../models/AgentModels';
 import { FocusClock } from '../utils/FocusClock';
 import { AIFloatButton } from '../components/AIFloatButton';
+import { FocusLifecycleService } from '../services/FocusLifecycleService';
 
 @Entry
 @Component
@@ -18,9 +19,12 @@ struct FocusTimer {
   private timerId: number = -1;
   private runtime: FocusRuntime | null = null;
   private ownerId: string = '';
+  private lastCheckpointAt: number = 0;
+  private pageHidden: boolean = false;
 
   aboutToAppear(): void {
     this.ownerId = appState.currentUser.userId;
+    FocusLifecycleService.enterPage();
     this.resetFromTask();
     if (this.runtime === null) return;
     this.startTimer();
@@ -28,46 +32,30 @@ struct FocusTimer {
   }
 
   aboutToDisappear(): void {
-    if (this.timerId >= 0 && this.runtime !== null && this.ownerId === appState.currentUser.userId) {
-      this.updateClock();
-      appState.checkpointFocusRuntime(this.runtime);
-    }
+    this.onPageHide();
     this.stopTimer();
   }
 
-  /**
-   * 页面隐藏时触发：既包括应用切到后台，也包括被别的页面路由覆盖。
-   *
-   * 原缺陷：全文件没有 onPageHide，`interruptionCount` 除了 resetFromTask() 清零之外
-   * 再无自增（buildSession 只在 status === 'interrupted' 时 +1），
-   * 于是切后台完全不记录，结算页「中断 N 次」严格模式恒为 1、普通模式恒为 0。
-   *
-   * 这里只把"专注真的被打断"记一次，**必须排除两类情况**：
-   *
-   * 1. **正常跳转**：进结算页（openResult）和"不保存返回"（leaveWithoutRecord）
-   *    都会先 `stopTimer()`，此时 `timerId < 0`。计时仍在跑说明这次隐藏
-   *    不是我们自己发起的跳转，而是切后台/被动离开。
-   * 2. **已暂停**：`paused` 为真时计时并没有在推进，用户是**主动**停下的，
-   *    这次停下已经记进 `pauseCount` 了。若再计一次中断，同一件事会被数两遍
-   *    （严格模式下暂停被 `togglePause()` 直接禁用，所以只有普通模式会遇到）。
-   *
-   * 判据组合起来就是"计时真的在往前走的时候被隐藏了"。
-   */
+  /** Classify screen-off separately from navigation/background lifecycle callbacks. */
   onPageHide(): void {
-    if (this.timerId < 0 || this.paused) {
-      return;
-    }
-    this.interruptionCount++;
-    this.updateClock();
-    if (this.runtime !== null) {
-      this.runtime.interruptionCount = this.interruptionCount;
-      if (!appState.checkpointFocusRuntime(this.runtime)) this.saveError = '中断状态保存失败，请重试。';
-    }
+    if (this.timerId < 0 || this.pageHidden || this.runtime === null || this.ownerId !== appState.currentUser.userId) return;
+    this.pageHidden = true;
+    FocusLifecycleService.pageHidden();
+    this.stopTimer();
   }
 
   onPageShow(): void {
-    if (this.timerId < 0) return;
+    if (this.runtime === null || this.ownerId !== appState.currentUser.userId) return;
+    FocusLifecycleService.enterPage();
+    this.pageHidden = false;
+    if (appState.focusRuntime?.sessionId !== this.runtime.sessionId) return;
+    this.runtime = appState.focusRuntime;
+    if (this.runtime === null) return;
+    this.paused = this.runtime.paused;
+    this.pauseCount = this.runtime.pauseCount;
+    this.interruptionCount = this.runtime.interruptionCount;
     this.updateClock();
+    this.startTimer();
     if (!this.isStopwatch() && this.remainingSeconds <= 0) this.completeSession();
   }
 
@@ -89,7 +77,7 @@ struct FocusTimer {
     this.updateClock();
   }
 
-  /** Timer callbacks redraw; elapsed time comes from timestamps, including background gaps. */
+  /** Elapsed time advances only while the runtime is running. */
   private updateClock(): void {
     if (this.runtime === null || this.ownerId !== appState.currentUser.userId) return;
     this.runtime = FocusClock.advance(this.runtime);
@@ -101,10 +89,15 @@ struct FocusTimer {
 
   private startTimer(): void {
     this.stopTimer();
+    this.lastCheckpointAt = Date.now();
     this.timerId = setInterval(() => {
       this.updateClock();
       if (this.paused) {
         return;
+      }
+      if (this.runtime !== null && Date.now() - this.lastCheckpointAt >= 5000) {
+        if (!appState.checkpointFocusRuntime(this.runtime)) this.saveError = '计时记录暂未保存成功，请稍后重试。';
+        this.lastCheckpointAt = Date.now();
       }
       if (this.isStopwatch()) {
         return;
@@ -219,6 +212,8 @@ struct FocusTimer {
     if (this.runtime === null) return;
     const next: FocusRuntime = FocusClock.advance(this.runtime);
     next.paused = !this.paused;
+    next.autoPaused = false;
+    next.backgroundReason = undefined;
     if (next.paused) next.pauseCount++;
     if (!appState.checkpointFocusRuntime(next)) {
       this.saveError = '暂停状态保存失败，请重试。';
@@ -235,7 +230,18 @@ struct FocusTimer {
       this.showExitConfirm = true;
       return;
     }
+    FocusLifecycleService.leavePage();
+    this.onPageHide();
+    router.back();
+  }
+
+  onBackPress(): boolean {
+    if (!this.isStrict()) {
+      FocusLifecycleService.leavePage();
+      return false;
+    }
     this.showExitConfirm = true;
+    return true;
   }
 
   private showCompleteConfirmDialog(): void {
@@ -288,7 +294,7 @@ struct FocusTimer {
       return '严格专注进行中';
     }
     if (this.paused) {
-      return '已暂停，准备好后继续';
+      return this.runtime?.autoPaused ? '离开后已自动暂停，点击继续' : '已暂停，准备好后继续';
     }
     return this.isStopwatch() ? '从现在开始，往前多走一点' : '只专注这一件事';
   }
@@ -297,7 +303,9 @@ struct FocusTimer {
     if (this.isStrict()) {
       return '严格模式：没有暂停，提前退出会记录为中断。';
     }
-    return '普通模式：可以暂停、继续，也可以提前保存未完成记录。';
+    return appState.activeFocusTask?.allowBackgroundTiming === true
+      ? '后台计时已开启：返回、切换应用和息屏后继续计时。'
+      : '后台计时已关闭：返回或切换应用会暂停；息屏继续计时。';
   }
 
   build() {
@@ -307,10 +315,10 @@ struct FocusTimer {
           Text(this.saveError).fontSize(13).fontColor('#B42318').width('90%')
         }
         Row() {
-          Text(this.isStrict() ? '中断专注' : '← 返回设置').fontSize(14).fontColor(this.isStrict() ? '#8A3A2B' : '#2563EB').fontWeight(FontWeight.Medium)
+          Text(this.isStrict() ? '中断专注' : '← 返回').fontSize(14).fontColor(this.isStrict() ? '#8A3A2B' : '#2563EB').fontWeight(FontWeight.Medium)
             .onClick(() => this.goBackToSetup())
           Blank()
-          Text(this.isStrict() ? '严格' : '普通').fontSize(13).fontColor(this.isStrict() ? '#FFFFFF' : '#2563EB').fontWeight(FontWeight.Bold)
+          Text(this.isStrict() ? '严格' : (appState.activeFocusTask?.allowBackgroundTiming ? '普通 · 后台计时' : '普通')).fontSize(13).fontColor(this.isStrict() ? '#FFFFFF' : '#2563EB').fontWeight(FontWeight.Bold)
             .backgroundColor(this.isStrict() ? '#1E3A5F' : '#EFF6FF').borderRadius(8).padding({ left: 10, right: 10, top: 4, bottom: 4 })
         }
         .width('100%').padding({ left: 20, right: 20, top: 12, bottom: 8 })

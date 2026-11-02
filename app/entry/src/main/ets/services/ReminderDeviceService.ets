@@ -29,7 +29,7 @@ export class ReminderDeviceService {
       if (permission) { try { token = await pushService.getToken(); } catch (_) { token = ''; } }
       if (owner !== appState.currentUser.userId) return;
       const result = await AgentApiClient.bindReminderDevice({ deviceId: id, pushToken: token, permission: permission,
-        foreground: foreground, focusing: appState.focusRuntime !== null });
+        foreground: foreground, focusing: appState.focusRuntime !== null && !appState.focusRuntime.paused });
       if (result.ok && owner === appState.currentUser.userId) ReminderDeviceService.lastSync = result.data.lastActive;
     } catch (_) { /* Settings show permission and cloud configuration separately. */ }
   }
