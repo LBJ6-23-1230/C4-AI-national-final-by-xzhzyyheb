@@ -53,6 +53,7 @@ build/
 !deliverables/proactive-practice-20261030/*.hap
 !deliverables/document-feedback-20261102/*.hap
 !deliverables/screenshot-feedback-20261102/*.hap
+!deliverables/task-focus-choice-20261102/*.hap
 !hap/知学Mate-signed.hap
 !03-演示文件与源代码/hap/知学Mate-signed.hap
 *.har

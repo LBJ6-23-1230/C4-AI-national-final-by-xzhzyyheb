@@ -311,6 +311,7 @@ export interface FocusTask {
   mode: FocusMode;
   timerType?: FocusTimerType;
   planTaskId?: string;
+  parentTaskId?: string;
 }
 
 export interface FocusSession {

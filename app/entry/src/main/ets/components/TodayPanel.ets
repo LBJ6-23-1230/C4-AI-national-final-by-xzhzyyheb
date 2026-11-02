@@ -6,7 +6,8 @@ import { ReminderEvent, TodayOverview } from '../api/ReminderModels';
 import { ApiFailure } from '../api/ApiResult';
 import { appState } from '../data/AppState';
 import { TodayStore } from '../services/TodayStore';
-import { FocusTask } from '../models/AgentModels';
+import { PlanTask } from '../api/ApiModels';
+import { TaskFocusSheet } from './TaskFocusSheet';
 import { LearningCardService } from '../services/LearningCardService';
 import { ReminderDeviceService } from '../services/ReminderDeviceService';
 
@@ -20,6 +21,9 @@ export struct TodayPanel {
   @State expanded: boolean = false;
   @State panelOpen: boolean = false;
   @State actionMessage: string = '';
+  @State private focusSheetVisible: boolean = false;
+  @State private focusTask: PlanTask | null = null;
+  @StorageLink('focusDataRevision') focusDataRevision: number = 0;
   private displayOwner: string = '';
   private requestVersion: number = 0;
   private active: boolean = true;
@@ -36,6 +40,7 @@ export struct TodayPanel {
       this.displayOwner = owner;
       this.panelOpen = appState.isSignedIn && TodayStore.firstDisplay(getContext(this) as common.Context, owner);
       this.expanded = false; this.actionMessage = ''; this.busy = false;
+      this.focusSheetVisible = false; this.focusTask = null;
     }
     if (this.data?.userId !== owner) this.data = null;
     const version: number = ++this.requestVersion;
@@ -66,7 +71,12 @@ export struct TodayPanel {
     this.actionMessage = action === 'snooze' ? '已稍后提醒' : action === 'ignore' ? '今日已忽略' : '';
     if (action === 'open') {
       this.busy = true;
-      const message: string = await ReminderNavigation.start(result.data.event);
+      const message: string = await ReminderNavigation.start(result.data.event, (task: PlanTask): string => {
+        if (!this.active || owner !== appState.currentUser.userId) return '请重新打开任务。';
+        this.focusTask = task;
+        this.focusSheetVisible = true;
+        return '';
+      });
       if (!this.active || owner !== appState.currentUser.userId) return;
       this.busy = false; this.actionMessage = message;
     }
@@ -81,6 +91,16 @@ export struct TodayPanel {
     const item: ReminderEvent | null = this.snoozeItem;
     this.snoozeItem = null;
     if (item !== null) void this.act(item, 'snooze', minutes);
+  }
+  private startLabel(): string {
+    // Read the revision so a saved/restored runtime also refreshes this label.
+    const revision: number = this.focusDataRevision;
+    return this.data?.highlight ? ReminderNavigation.actionLabel(this.data!.highlight!) : '开始任务';
+  }
+  @Builder
+  FocusSheet() {
+    TaskFocusSheet({ task: this.focusTask, onClose: () => this.focusSheetVisible = false,
+      isOpen: () => this.focusSheetVisible })
   }
   @Builder
   SnoozeSelector() {
@@ -120,7 +140,7 @@ export struct TodayPanel {
           .fontSize(12).fontColor('#667085').width('100%')
         Text(this.data!.highlight!.reason).fontSize(12).fontColor('#B42318').width('100%')
         Row({ space: 16 }) {
-          Button('立即开始').height(40).fontSize(14).backgroundColor('#2563EB').enabled(!this.busy)
+          Button(this.startLabel()).height(40).fontSize(14).backgroundColor('#2563EB').enabled(!this.busy)
             .onClick(() => this.act(this.data!.highlight!, 'open'))
 
         }.width('100%')
@@ -138,5 +158,9 @@ export struct TodayPanel {
       }
     }.padding(14).width('100%').backgroundColor('#FFFFFF').borderRadius(12)
       .border({ width: 1, color: '#E4E7EC' })
+      .bindSheet($$this.focusSheetVisible, this.FocusSheet(), {
+        height: SheetSize.FIT_CONTENT, showClose: false, dragBar: true, backgroundColor: '#FFFFFF',
+        onWillDismiss: (action: DismissSheetAction) => { this.focusSheetVisible = false; action.dismiss(); }
+      })
   }
 }

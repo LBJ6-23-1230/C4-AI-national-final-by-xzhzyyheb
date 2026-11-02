@@ -5,6 +5,7 @@ import { ApiFailure } from '../api/ApiResult';
 import { appState } from '../data/AppState';
 import { PageHeader } from '../components/PageHeader';
 import { ReminderNavigation } from '../services/ReminderNavigation';
+import { TaskFocusSheet } from '../components/TaskFocusSheet';
 
 @Entry
 @Component
@@ -14,6 +15,8 @@ struct TaskDetail {
   @State scheduled: boolean = false;
   @State busy: boolean = false;
   @State notice: string = '';
+  @State private focusSheetVisible: boolean = false;
+  @State private focusTask: PlanTask | null = null;
   private active: boolean = false;
   private version: number = 0;
   private taskId: string = '';
@@ -45,7 +48,18 @@ struct TaskDetail {
     }
     if (this.task === null) this.notice = '这项任务已完成、移除或发生变化，请返回全部待办刷新。';
   }
-  private start(task: PlanTask): void { this.notice = ReminderNavigation.startTask(task); }
+  private start(task: PlanTask): void {
+    this.notice = ReminderNavigation.startTask(task, (selected: PlanTask): string => {
+      this.focusTask = selected;
+      this.focusSheetVisible = true;
+      return '';
+    });
+  }
+  @Builder
+  FocusSheet() {
+    TaskFocusSheet({ task: this.focusTask, onClose: () => this.focusSheetVisible = false,
+      isOpen: () => this.focusSheetVisible })
+  }
   build() {
     Column() {
       PageHeader({ title: '任务详情', detail: '查看与开始本项任务' })
@@ -68,14 +82,14 @@ struct TaskDetail {
                 Column({ space: 10 }) {
                   Text(step.knowledgePointName).fontSize(16).width('100%')
                   Text(`${step.durationMinutes}分钟${step.scheduledDate ? ' · ' + step.scheduledDate : ' · 尚未排期'}`).fontSize(13).fontColor('#667085').width('100%')
-                  if (step.status !== 'completed') Button('开始这一步').onClick(() => this.start(step))
+                  if (step.status !== 'completed') Button(ReminderNavigation.taskActionLabel(step) === '继续专注' ? '继续专注' : '开始这一步').onClick(() => this.start(step))
                   else Text('已完成此步骤').fontSize(13).fontColor('#0F766E')
                 }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
               }, (step: PlanTask) => step.taskId)
             } else if (this.task!.status !== 'completed') {
-              Text(ReminderNavigation.practiceTask(this.task!) ? '开始后直接进入这个知识点的练习，提交后查看解析和学习报告。' : '开始后直接进入这项作业的专注计时，结束时记录实际用时和完成情况。')
+              Text(ReminderNavigation.practiceTask(this.task!) ? '开始后直接进入这个知识点的练习，提交后查看解析和学习报告。' : '先选择本次时长与专注模式，确认后开始计时；结束时记录实际用时和完成情况。')
                 .fontSize(14).fontColor('#475467').lineHeight(23).width('100%')
-              Button(ReminderNavigation.practiceTask(this.task!) ? '开始本项练习' : '立即开始专注').width('100%').height(48).backgroundColor('#2563EB').onClick(() => this.start(this.task!))
+              Button(ReminderNavigation.taskActionLabel(this.task!)).width('100%').height(48).backgroundColor('#2563EB').onClick(() => this.start(this.task!))
             }
             Text('查看整体学习计划 ›').fontSize(14).fontColor('#2563EB').width('100%')
               .onClick(() => router.pushUrl({ url: 'pages/StudyPlan', params: { courseName: this.task!.sourceCourse || '' } }))
@@ -84,5 +98,9 @@ struct TaskDetail {
         }.padding(20).width('100%').alignItems(HorizontalAlign.Start)
       }.align(Alignment.TopStart).layoutWeight(1).width('100%')
     }.width('100%').height('100%').backgroundColor('#F7F8FA')
+      .bindSheet($$this.focusSheetVisible, this.FocusSheet(), {
+        height: SheetSize.FIT_CONTENT, showClose: false, dragBar: true, backgroundColor: '#FFFFFF',
+        onWillDismiss: (action: DismissSheetAction) => { this.focusSheetVisible = false; action.dismiss(); }
+      })
   }
 }
