@@ -80,4 +80,6 @@ def devices():
             raise ValueError('缺少设备标识')
         service.unbind(repo(), owner, device_id)
         return jsonify(status='unbound')
-    return jsonify(devices=[{k: v for k, v in d.items() if k != 'pushToken'} for d in repo().list('reminder_devices') if d.get('userId') == owner])
+    return jsonify(devices=[dict({k: v for k, v in d.items() if k != 'pushToken'},
+                                hasToken=bool(d.get('pushToken')))
+                            for d in repo().list('reminder_devices') if d.get('userId') == owner])

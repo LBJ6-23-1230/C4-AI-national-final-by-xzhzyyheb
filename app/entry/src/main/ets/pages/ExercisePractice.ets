@@ -967,8 +967,8 @@ struct ExercisePractice {
               this.ResultPanel(this.result)
             } else if (this.exercises.length === 0) {
               Column({ space: 14 }) {
-                Text('暂无可用练习题').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#111827')
-                Text((this.errorMessage || '暂未取得题目，请稍后重试。') + `（本次等待 ${this.waitSeconds} 秒）`)
+                Text('练习题暂未加载成功').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#111827')
+                Text(this.errorMessage || '暂未取得题目，请稍后重试。')
                   .fontSize(14).fontColor('#667085').lineHeight(21).textAlign(TextAlign.Center)
                 Button('重新加载')
                   .height(44).fontSize(15).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)

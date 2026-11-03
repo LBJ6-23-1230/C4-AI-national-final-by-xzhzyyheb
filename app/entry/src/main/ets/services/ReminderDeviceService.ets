@@ -7,6 +7,7 @@ import { appState } from '../data/AppState';
 
 export class ReminderDeviceService {
   static lastSync: string = '';
+  static status: string = 'unknown';
   private static timer: number = -1;
   static heartbeat(context: common.Context, foreground: boolean): void {
     if (ReminderDeviceService.timer !== -1) clearInterval(ReminderDeviceService.timer);
@@ -16,6 +17,7 @@ export class ReminderDeviceService {
   }
   static async sync(context: common.Context, foreground: boolean): Promise<void> {
     const owner: string = appState.currentUser.userId;
+    ReminderDeviceService.status = 'unknown';
     if (owner === 'demo-user' || AgentApiClient.getConfig().useFixture) return;
     try {
       const store = preferences.getPreferencesSync(context, { name: 'reminder_installation' });
@@ -30,7 +32,11 @@ export class ReminderDeviceService {
       if (owner !== appState.currentUser.userId) return;
       const result = await AgentApiClient.bindReminderDevice({ deviceId: id, pushToken: token, permission: permission,
         foreground: foreground, focusing: appState.focusRuntime !== null && !appState.focusRuntime.paused });
-      if (result.ok && owner === appState.currentUser.userId) ReminderDeviceService.lastSync = result.data.lastActive;
-    } catch (_) { /* Settings show permission and cloud configuration separately. */ }
+      if (owner !== appState.currentUser.userId) return;
+      if (result.ok) {
+        ReminderDeviceService.lastSync = result.data.lastActive;
+        ReminderDeviceService.status = result.data.active && result.data.hasToken && permission ? 'ready' : 'unavailable';
+      } else ReminderDeviceService.status = 'failed';
+    } catch (_) { if (owner === appState.currentUser.userId) ReminderDeviceService.status = 'failed'; }
   }
 }

@@ -8207,7 +8207,14 @@
             "enum": [
               "INSUFFICIENT_MATERIALS",
               "GENERATION_FAILED",
-              "SOURCE_CHANGED"
+              "SOURCE_CHANGED",
+              "MODEL_NOT_CONFIGURED",
+              "MODEL_AUTH_FAILED",
+              "MODEL_BUSY",
+              "MODEL_TIMEOUT",
+              "MODEL_UNAVAILABLE",
+              "INVALID_QUESTION",
+              "INVALID_RESPONSE"
             ]
           }
         }
@@ -11761,6 +11768,26 @@
                 "conflict"
               ]
             }
+          },
+          "quietEnabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "studyGapEnabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "quietStartMinute": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 59,
+            "default": 0
+          },
+          "quietEndMinute": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 59,
+            "default": 0
           }
         },
         "required": [

@@ -16,7 +16,14 @@ class PushFailure(RuntimeError):
 
 
 def configured():
-    return bool(os.getenv('HUAWEI_PUSH_PROJECT_ID') and os.getenv('HUAWEI_PUSH_JWT_FILE'))
+    project = os.getenv('HUAWEI_PUSH_PROJECT_ID', '')
+    filename = os.getenv('HUAWEI_PUSH_JWT_FILE', '')
+    if not project.isdigit() or not filename:
+        return False
+    try:
+        return bool(Path(filename).read_text(encoding='utf-8').strip())
+    except (OSError, ValueError, UnicodeError):
+        return False
 
 
 def send(event, device, delivery):

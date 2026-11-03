@@ -147,6 +147,7 @@ def _generate_and_store(knowledge_point_name: str, count: int, excluded_ids=(), 
 	cache_key = exercise_cache.key(_repository, owner, knowledge_point_name, count,
 		{"pointId": point_id, "course": course})
 	with exercise_cache.guard(cache_key):
+		exercise_gen.generation_failure.set('')
 		items = None if fresh else exercise_cache.get(cache_key, _repository, excluded_ids)
 		if items is None:
 			items = exercise_gen.generate_exercises(knowledge_point_name, count)
@@ -264,6 +265,8 @@ def _course_exercises_locked(set_id, owner, course, raw_point, difficulty, count
 		else '本次出题未成功，请重新加载或换一个知识点重试。' if generate else '本课程暂无可用题目，请启用现场出题。')
 	response = {"setId": set_id, "exercises": exercises, "courseName": course,
 		"knowledgePointId": target, "generationFailed": not bool(exercises), "message": message}
+	if not exercises and generate:
+		response.update(exercise_gen.failure_details())
 	if round_id and exercises:
 		with _repository.transaction():
 			previous = _repository.get('practice_rounds', round_key)
@@ -389,7 +392,7 @@ def get_exercise_set(set_id: str):
 					"setId": set_id,
 					"exercises": [],
 					"generationFailed": True,
-					"message": "针对该知识点现场出题失败，请重试。",
+					**exercise_gen.failure_details(),
 				})
 			exercises = select_exercises(_EXERCISE_BANK, knowledge_point_id, difficulty, count, excluded_ids)
 	response = {"setId": set_id, "exercises": exercises}

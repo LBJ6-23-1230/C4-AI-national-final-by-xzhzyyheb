@@ -18,6 +18,7 @@ struct Reminders {
   @State busy: boolean = false;
   @State permission: boolean = false;
   @State pushConfigured: boolean = false;
+  @State deviceReady: boolean = false;
   @State cursor: string = '';
   @State hasMore: boolean = false;
   @State lastSync: string = '';
@@ -58,11 +59,15 @@ struct Reminders {
     await ReminderDeviceService.sync(getContext(this) as common.Context, true);
     if (this.active && owner === appState.currentUser.userId && version === this.version) {
       this.lastSync = ReminderDeviceService.lastSync;
+      this.deviceReady = ReminderDeviceService.status === 'ready';
       this.busy = false;
     }
   }
   private snapshot(): ReminderPreferences {
     return { enabled: this.settings.enabled, timezone: this.settings.timezone,
+      quietEnabled: this.settings.quietEnabled ?? true,
+      quietStartMinute: this.settings.quietStartMinute ?? 0, quietEndMinute: this.settings.quietEndMinute ?? 0,
+      studyGapEnabled: this.settings.studyGapEnabled ?? true,
       quietStart: this.settings.quietStart, quietEnd: this.settings.quietEnd, dailyLimit: this.settings.dailyLimit,
       minimumGapMinutes: this.settings.minimumGapMinutes, urgentException: this.settings.urgentException, summaryHour: this.settings.summaryHour,
       categories: (this.settings.categories ?? ['task', 'exam', 'gap', 'conflict']).slice() };
@@ -110,11 +115,53 @@ struct Reminders {
     request.enabled = enabled;
     void this.persist(request);
   }
-  private chooseQuiet(start: number, end: number): void {
+  private timeLabel(hour: number, minute: number = 0): string {
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  }
+  private quietLabel(): string {
+    const start: number = this.settings.quietStart * 60 + (this.settings.quietStartMinute ?? 0);
+    const end: number = this.settings.quietEnd * 60 + (this.settings.quietEndMinute ?? 0);
+    return `${this.timeLabel(this.settings.quietStart, this.settings.quietStartMinute ?? 0)} 至${end <= start ? '次日 ' : ' '}${this.timeLabel(this.settings.quietEnd, this.settings.quietEndMinute ?? 0)}`;
+  }
+  private chooseQuiet(start: number, end: number, startMinute: number = 0, endMinute: number = 0): void {
+    if (start === end && startMinute === endMinute) {
+      this.saved = false;
+      this.message = '开始和结束时间不能相同。如无需免打扰，请关闭免打扰开关。';
+      return;
+    }
     const request: ReminderPreferences = this.snapshot();
     request.quietStart = start;
     request.quietEnd = end;
-    void this.persist(request, `已保存：${start}:00 至次日 ${end}:00 免打扰。`);
+    request.quietStartMinute = startMinute;
+    request.quietEndMinute = endMinute;
+    void this.persist(request, '免打扰时间已保存。');
+  }
+  private editQuiet(isStart: boolean): void {
+    if (this.busy || !this.settingsReady) return;
+    const owner: string = appState.currentUser.userId;
+    const version: number = this.version;
+    const selected: Date = new Date();
+    selected.setHours(isStart ? this.settings.quietStart : this.settings.quietEnd,
+      isStart ? (this.settings.quietStartMinute ?? 0) : (this.settings.quietEndMinute ?? 0), 0, 0);
+    TimePickerDialog.show({ selected: selected, useMilitaryTime: true,
+      onAccept: (value: TimePickerResult) => {
+        if (!this.active || owner !== appState.currentUser.userId || version !== this.version) return;
+        const hour: number = value.hour ?? 0;
+        const minute: number = value.minute ?? 0;
+        this.chooseQuiet(isStart ? hour : this.settings.quietStart, isStart ? this.settings.quietEnd : hour,
+          isStart ? minute : (this.settings.quietStartMinute ?? 0), isStart ? (this.settings.quietEndMinute ?? 0) : minute);
+      }
+    });
+  }
+  private chooseQuietEnabled(value: boolean): void {
+    const request: ReminderPreferences = this.snapshot();
+    request.quietEnabled = value;
+    void this.persist(request, value ? '免打扰已开启。' : '免打扰已关闭。');
+  }
+  private chooseStudyGap(value: boolean): void {
+    const request: ReminderPreferences = this.snapshot();
+    request.studyGapEnabled = value;
+    void this.persist(request, value ? '已开启首页学习提醒。' : '已关闭首页学习提醒。');
   }
   private chooseUrgent(value: boolean): void {
     const request: ReminderPreferences = this.snapshot();
@@ -136,6 +183,9 @@ struct Reminders {
       const permission: boolean = await ProactiveSurfaceService.requestPermission(getContext(this) as common.UIAbilityContext);
       if (!this.active || owner !== appState.currentUser.userId || version !== this.version) return;
       this.permission = permission;
+      await ReminderDeviceService.sync(getContext(this) as common.Context, true);
+      if (!this.active || owner !== appState.currentUser.userId || version !== this.version) return;
+      this.deviceReady = ReminderDeviceService.status === 'ready';
       this.saved = permission;
       this.message = permission ? '系统通知权限已开启。' : '尚未开启通知权限，可在系统设置中允许通知。';
       void ProactiveSurfaceService.refresh(getContext(this) as common.UIAbilityContext, true);
@@ -228,21 +278,23 @@ struct Reminders {
       Scroll() {
         Column({ space: 14 }) {
           Column({ space: 8 }) {
-            Text(this.pushConfigured && this.permission ? '后台通知设置' : '后台通知暂不可用')
+            Text(!this.settingsReady ? '正在检查通知状态…' : !this.pushConfigured ? '通知服务暂未开通' : !this.permission ? '请允许系统通知' : !this.deviceReady ? '此设备尚未连接通知服务' : '学习通知')
               .fontSize(17).fontWeight(FontWeight.Bold).fontColor('#101828').width('100%')
             Text(this.permission ? '系统通知权限：已开启' : '系统通知权限未开启：需要你允许应用发送通知。')
               .fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
-            Text(this.pushConfigured ? '后台提醒服务：已配置，通知送达仍需设备验证。' : '后台提醒服务尚未接通：应用关闭后暂时收不到通知。')
+            Text(!this.settingsReady ? '检查完成后会显示当前可用的提醒方式。' : !this.pushConfigured ? '需要由知学 Mate 的开发团队开通推送服务，你无需额外配置。开通前，离开应用后暂时收不到学习通知。' : !this.deviceReady ? '尚未完成设备连接，请确认网络正常后重试。' : '开启下方开关后，离开应用也能接收学习提醒。实际送达受网络和系统设置影响。')
               .fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
-            Text(this.pushConfigured && this.permission ? '打开下方开关后，可按你的设置发送提醒。' : '首页待办仍可正常查看。下方偏好可先保存，后台通知具备条件后生效。')
+            Text('首页待办可照常查看，提醒时间和偏好也可以先保存。')
               .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
             if (!this.permission) Button('开启系统通知').height(40).fontSize(14).backgroundColor('#2563EB')
               .enabled(!this.busy).onClick(() => this.requestPermission())
+            if (this.permission && this.pushConfigured && !this.deviceReady) Button('重新连接').height(44).fontSize(14)
+              .enabled(!this.busy).onClick(() => this.load())
           }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
           Column({ space: 12 }) {
             Row() {
               Text('允许后台通知').fontSize(16).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.settings.enabled }).enabled(!this.busy && this.settingsReady && this.pushConfigured && this.permission)
+              Toggle({ type: ToggleType.Switch, isOn: this.settings.enabled }).enabled(!this.busy && this.settingsReady && (this.settings.enabled || (this.pushConfigured && this.permission && this.deviceReady)))
                 .onChange((value: boolean) => { if (value !== this.settings.enabled) void this.save(value); })
             }.width('100%')
             Text('每天提醒开始时间').fontSize(15).fontWeight(FontWeight.Medium).width('100%')
@@ -259,21 +311,26 @@ struct Reminders {
               Text(this.message).fontSize(13).fontColor(this.saved ? '#067647' : '#B54708')
                 .width('100%').padding(10).backgroundColor(this.saved ? '#ECFDF3' : '#FFFAEB').borderRadius(8)
             }
-            Text(`免打扰：${this.settings.quietStart}:00 至次日 ${this.settings.quietEnd}:00`)
-              .fontSize(15).fontWeight(FontWeight.Medium).width('100%').margin({ top: 4 })
-            Row({ space: 10 }) {
-              Button(`${this.settings.quietStart === 22 && this.settings.quietEnd === 8 ? '✓ ' : ''}22:00—8:00`)
-                .layoutWeight(1).height(38).fontSize(13).borderRadius(10)
-                .backgroundColor(this.settings.quietStart === 22 && this.settings.quietEnd === 8 ? '#EFF6FF' : '#F2F4F7').fontColor('#2563EB')
-                .enabled(!this.busy && this.settingsReady).onClick(() => this.chooseQuiet(22, 8))
-              Button(`${this.settings.quietStart === 23 && this.settings.quietEnd === 9 ? '✓ ' : ''}23:00—9:00`)
-                .layoutWeight(1).height(38).fontSize(13).borderRadius(10)
-                .backgroundColor(this.settings.quietStart === 23 && this.settings.quietEnd === 9 ? '#EFF6FF' : '#F2F4F7').fontColor('#2563EB')
-                .enabled(!this.busy && this.settingsReady).onClick(() => this.chooseQuiet(23, 9))
+            Row() {
+              Text('免打扰').fontSize(15).fontWeight(FontWeight.Medium).layoutWeight(1)
+              Toggle({ type: ToggleType.Switch, isOn: this.settings.quietEnabled ?? true }).enabled(!this.busy && this.settingsReady)
+                .onChange((value: boolean) => { if (value !== (this.settings.quietEnabled ?? true)) this.chooseQuietEnabled(value); })
             }.width('100%')
+            if (this.settings.quietEnabled ?? true) {
+              Text(this.quietLabel()).fontSize(14).fontColor('#344054').width('100%')
+              Row({ space: 10 }) {
+                Button(`开始 ${this.timeLabel(this.settings.quietStart, this.settings.quietStartMinute ?? 0)}`)
+                  .layoutWeight(1).height(44).fontSize(14).borderRadius(10).backgroundColor('#EFF6FF').fontColor('#2563EB')
+                  .enabled(!this.busy && this.settingsReady).onClick(() => this.editQuiet(true))
+                Button(`结束 ${this.timeLabel(this.settings.quietEnd, this.settings.quietEndMinute ?? 0)}`)
+                  .layoutWeight(1).height(44).fontSize(14).borderRadius(10).backgroundColor('#EFF6FF').fontColor('#2563EB')
+                  .enabled(!this.busy && this.settingsReady).onClick(() => this.editQuiet(false))
+              }.width('100%')
+              Text('点击时间可自由调整，免打扰期间不发送常规学习通知。').fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
+            }
             Row() {
               Text('紧急截止提醒可在免打扰时发送').fontSize(14).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.settings.urgentException }).enabled(!this.busy && this.settingsReady)
+              Toggle({ type: ToggleType.Switch, isOn: this.settings.urgentException }).enabled(!this.busy && this.settingsReady && (this.settings.quietEnabled ?? true))
                 .onChange((value: boolean) => { if (value !== this.settings.urgentException) this.chooseUrgent(value); })
             }.width('100%')
             Text(`每天最多${this.settings.dailyLimit}次，常规提醒最多1次；两次提醒至少间隔${Math.round(this.settings.minimumGapMinutes / 60)}小时。`)
@@ -296,9 +353,15 @@ struct Reminders {
             })
           }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
           Column({ space: 8 }) {
-            Text('久未学习提醒 · 应用内提示').fontSize(15).fontWeight(FontWeight.Medium).width('100%')
-            Text('两天没有新的专注记录，且没有更优先的待办时，在首页提示继续学习。无需开启系统通知。')
-              .fontSize(12).fontColor('#667085').lineHeight(20).width('100%')
+            Row() {
+              Text('首页学习提醒').fontSize(15).fontWeight(FontWeight.Medium).layoutWeight(1)
+              Toggle({ type: ToggleType.Switch, isOn: this.settings.studyGapEnabled ?? true }).enabled(!this.busy && this.settingsReady)
+                .onChange((value: boolean) => { if (value !== (this.settings.studyGapEnabled ?? true)) this.chooseStudyGap(value); })
+            }.width('100%')
+            Text('已有专注记录，但连续两天没有新记录时，打开首页并展开“今日安排”，会看到继续学习的提示。有其他待办时优先显示待办。')
+              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
+            Text('只在首页显示，不发送手机通知。关闭后不再显示这条提示。')
+              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
           }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
         }.padding(16).width('100%').constraintSize({ maxWidth: 960 })
       }.layoutWeight(1).width('100%').align(Alignment.TopStart)

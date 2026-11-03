@@ -336,7 +336,7 @@ struct Account {
       if (this.showSignOutConfirm) {
         this.confirmOverlay(this.signedIn ? '退出登录？' : '返回登录页？',
           this.signedIn
-            ? '将退出当前账号（服务端凭据同时失效）并回到登录页。账号数据仍保留在服务端，随时可以再登录。'
+            ? '退出后会回到登录页，学习记录会保留。下次登录可继续使用。'
             : '将回到登录页。你可以用昵称建立自己的账号，或再次以演示身份进入。',
           this.signedIn ? '退出并返回登录页' : '返回登录页', '#2563EB',
           (): void => { this.doSignOut(); },
@@ -344,7 +344,7 @@ struct Account {
       }
       if (this.showDeleteConfirm) {
         this.confirmOverlay('注销账号？',
-          '该账号将立即停用，全部登录会话失效。云端账号的学习记录、聊天和资料将被清除，上传原文件会进入删除队列。此操作不可撤销。',
+          '注销后，这个账号将无法再登录，所有设备上的登录也会失效。账号中的学习记录、聊天和资料会被清除，已上传的原文件会安排删除。此操作无法撤销。',
           '确认注销', '#EF4444',
           (): void => { this.doDeleteAccount(); },
           (): void => { this.showDeleteConfirm = false; })
@@ -414,26 +414,8 @@ struct Account {
               .borderRadius(10)
           }
 
-          Row() {
-            Column({ space: 5 }) {
-              Text('提醒与设备设置').fontSize(15).fontWeight(FontWeight.Bold).width('100%')
-              Text('今日事项、稍后提醒、免打扰与通知授权').fontSize(12).fontColor('#667085').width('100%')
-            }.layoutWeight(1)
-            Text('›').fontSize(22).fontColor('#667085')
-          }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-            .onClick(() => router.pushUrl({ url: 'pages/Reminders' }))
-
-          // ---------- 登录态说明 / 降低门槛 ----------
-          if (this.signedIn) {
-            Column({ space: 8 }) {
-              Text('当前是独立账号').fontSize(15).fontWeight(FontWeight.Bold)
-                .fontColor('#1F2937').width('100%')
-              Text('你的掌握度、错题与学习计划都归到这个账号下，不会被其他身份读到。')
-                .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-            }
-            .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-            .border({ width: 1, color: '#E2E8F0' })
-          } else {
+          // 账号安全页只保留账号相关操作；提醒设置统一从“我的”进入。
+          if (!this.signedIn) {
             Column({ space: 10 }) {
               Text('你正在用体验身份').fontSize(15).fontWeight(FontWeight.Bold)
                 .fontColor('#1F2937').width('100%')
@@ -553,7 +535,7 @@ struct Account {
             .enabled(!this.busy)
             .onClick(() => this.showSignOutConfirm = true)
           Text(this.signedIn
-            ? '退出后会回到登录页；账号数据仍保留在服务端。'
+            ? '退出后，学习记录会保留，下次登录可继续使用。'
             : '返回登录页可以使用手机号登录或注册，或以演示身份重新进入。')
             .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
 
@@ -568,7 +550,7 @@ struct Account {
               .backgroundColor('#FFFFFF').border({ width: 1, color: '#FECACA' }).borderRadius(12)
               .enabled(!this.busy)
               .onClick(() => this.showDeleteConfirm = true)
-            Text('注销后该账号将无法再登录，全部登录会话立即失效。此操作不可撤销。')
+            Text('注销后将无法再登录，账号中的学习记录、聊天和资料会被清除。此操作无法撤销。')
               .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
           }
 
@@ -580,14 +562,18 @@ struct Account {
             // 与实现**相反**：注册强制手机号、后端也存完整号码，并且实现了
             // 手机验证码与密码登录。合规声明与实现不一致比功能缺失更减分，
             // 这里改成如实描述。
-            Text('· 手机号用于登录与账号识别（对外只展示脱敏形式）；密码仅保存加盐哈希，不存明文。')
-              .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-            Text('· 位置仅用于映射学习情境（如"在图书馆"），不上传坐标。')
-              .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-            Text('· 账号、学习画像、计划、练习结果、聊天与上传资料会发送至后端保存。AI 功能会将必要的问题、资料片段或图片发送给模型服务处理。')
-              .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-            Text('· 可随时返回登录页、退出登录或注销账号，注销后服务端凭据立即失效。')
-              .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
+            Text('登录与账号').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%')
+            Text('手机号用于登录，展示时会隐藏中间几位。密码经过安全处理后保存，不会以原文保存。')
+              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
+            Text('学习记录与 AI 功能').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%').margin({ top: 8 })
+            Text('学习记录、计划、练习结果、聊天和上传的资料会保存在云端，方便下次登录继续使用。使用 AI 时，相关问题、资料内容或图片会发送给 AI 服务进行分析。')
+              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
+            Text('位置与提醒').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%').margin({ top: 8 })
+            Text('学习情境只使用“图书馆”等场所描述，不上传具体坐标。允许通知后，会保存接收提醒所需的设备信息，你可以在提醒设置中关闭通知。')
+              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
+            Text('退出与注销').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%').margin({ top: 8 })
+            Text('退出登录会保留学习记录。注销后，账号中的学习记录、聊天和资料会被清除，已上传的原文件会安排删除，所有设备上的登录会失效；注销无法撤销。')
+              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
           }
           .width('100%').padding(16).backgroundColor('#F8FAFC').borderRadius(14)
 

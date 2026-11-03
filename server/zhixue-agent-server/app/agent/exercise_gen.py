@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import uuid
 from contextvars import ContextVar
@@ -42,6 +43,29 @@ from app.services.exercise_quality import is_subject_question
 #: 一次最多生成几道（防止一句 prompt 要 20 道，既慢又容易出废题）
 MAX_GENERATE_COUNT = 6
 avoid_questions = ContextVar('exercise_avoid_questions', default=())
+generation_failure = ContextVar('exercise_generation_failure', default='')
+logger = logging.getLogger('zhixue.exercise')
+
+
+def _failure(reason):
+	# Stable reason codes only; never log prompts, responses or exception messages.
+	generation_failure.set(reason)
+	logger.warning('exercise_generation_failed reason=%s', reason)
+	return None
+
+
+def failure_details():
+	reason = generation_failure.get() or ('MODEL_NOT_CONFIGURED' if not generation_available() else 'GENERATION_FAILED')
+	messages = {
+		'MODEL_NOT_CONFIGURED': '出题服务尚未配置完成，请联系开发团队开通。',
+		'MODEL_AUTH_FAILED': '出题服务连接异常，需要开发团队检查服务配置。',
+		'MODEL_BUSY': '出题服务繁忙，请稍后重试。',
+		'MODEL_TIMEOUT': '出题等待超时，请重新加载。',
+		'MODEL_UNAVAILABLE': '暂时无法连接出题服务，请稍后重试。',
+		'INVALID_QUESTION': '这次生成的题目未通过检查，请重新加载。',
+		'INVALID_RESPONSE': '这次未能生成完整题目，请重新加载。',
+	}
+	return dict(failureReason=reason, message=messages.get(reason, '这次未能生成可用的新题，请重新加载或换个知识点。'))
 #: 选项必须是 A-D 四个
 _OPTION_LETTERS = ("A", "B", "C", "D")
 _OPTION_RE = re.compile(r"^\s*([A-D])\s*[.、．:：]\s*(\S.*)$")
@@ -226,12 +250,13 @@ def generate_exercises(knowledge_point_name: str, count: int) -> list[dict[str, 
 	不抛异常：出题失败不该把练习页打挂。
 	"""
 	point = (knowledge_point_name or "").strip()
+	generation_failure.set('')
 	from app.agent.knowledge import valid_knowledge_term
 	if not point or not valid_knowledge_term(point) or count < 1:
-		return None
+		return _failure('INVALID_QUESTION')
 	wanted = min(count, MAX_GENERATE_COUNT)
 	if not generation_available():
-		return None
+		return _failure('MODEL_NOT_CONFIGURED')
 
 	try:
 		content = chat_llm._call_llm(
@@ -241,19 +266,23 @@ def generate_exercises(knowledge_point_name: str, count: int) -> list[dict[str, 
 			json.dumps(list(avoid_questions.get())[-40:], ensure_ascii=False),
 			temperature=0.6,
 			# 4 道题 × (题干+4 选项+解析) 的中文量，800 会截断
-			max_tokens=1600,
+			max_tokens=min(4000, 900 + wanted * 500),
 			response_json=True,
 			request_type="exercise",
 		)
-	except Exception:  # noqa: BLE001  —— 网络/额度/超时都不该把页面打挂
-		return None
+	except Exception as error:  # No raw provider errors go to the client or logs.
+		status = getattr(error, 'status_code', None)
+		reason = ('MODEL_AUTH_FAILED' if status in (401, 403) else 'MODEL_BUSY' if status == 429
+			else 'MODEL_TIMEOUT' if isinstance(error, TimeoutError) or type(error).__name__ == 'APITimeoutError'
+			else 'MODEL_UNAVAILABLE')
+		return _failure(reason)
 
 	parsed = chat_llm.extract_json(content)
 	if not isinstance(parsed, dict):
-		return None
+		return _failure('INVALID_RESPONSE')
 	raw_items = parsed.get("exercises")
 	if not isinstance(raw_items, list):
-		return None
+		return _failure('INVALID_RESPONSE')
 
 	items: list[dict[str, Any]] = []
 	seen_stems: set[str] = set()
@@ -271,4 +300,4 @@ def generate_exercises(knowledge_point_name: str, count: int) -> list[dict[str, 
 			break
 
 	# 一道都没通过校验 → 当作失败，让调用方回落题库
-	return items if items else None
+	return items if items else _failure('INVALID_QUESTION')

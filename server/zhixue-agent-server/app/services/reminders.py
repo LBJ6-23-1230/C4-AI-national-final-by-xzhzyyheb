@@ -7,6 +7,7 @@ import uuid
 
 DEFAULTS = dict(enabled=False, timezone='Asia/Shanghai', quietStart=22, quietEnd=8,
                 dailyLimit=2, minimumGapMinutes=240, urgentException=False, summaryHour=9,
+                quietEnabled=True, quietStartMinute=0, quietEndMinute=0, studyGapEnabled=True,
                 categories=['task', 'exam', 'gap', 'conflict'])
 TERMINAL = {'completed', 'invalid'}
 
@@ -36,7 +37,7 @@ def save_preferences(repo, owner, data):
     if set(data) - set(DEFAULTS):
         raise ValueError('未知提醒设置')
     result.update(data)
-    for key in ('enabled', 'urgentException'):
+    for key in ('enabled', 'urgentException', 'quietEnabled', 'studyGapEnabled'):
         if type(result[key]) is not bool:
             raise ValueError('提醒开关须为布尔值')
     categories = result['categories']
@@ -44,11 +45,15 @@ def save_preferences(repo, owner, data):
             or len(categories) != len(set(categories))):
         raise ValueError('提醒类别无效')
     for key, maximum in (('quietStart', 23), ('quietEnd', 23), ('summaryHour', 23),
+                         ('quietStartMinute', 59), ('quietEndMinute', 59),
                          ('dailyLimit', 2), ('minimumGapMinutes', 1440)):
         if type(result[key]) is not int or not 0 <= result[key] <= maximum:
             raise ValueError('提醒时间或次数超出范围')
     if result['minimumGapMinutes'] < 240:
         raise ValueError('两次主动提醒至少间隔240分钟')
+    if (result['quietEnabled'] and result['quietStart'] == result['quietEnd']
+            and result['quietStartMinute'] == result['quietEndMinute']):
+        raise ValueError('免打扰开始与结束时间不能相同；如无需免打扰，请关闭开关')
     try:
         ZoneInfo(result['timezone'])
     except (KeyError, TypeError, ValueError):
@@ -139,7 +144,8 @@ def candidates(repo, owner, stamp):
             targetPage='pages/ExercisePractice'))
     sessions = [parse(r.get('session', {}).get('endedAt')) for r in repo.list('focus_sessions') if r.get('userId') == owner]
     last = max((s for s in sessions if s and s <= stamp), default=None)
-    if last and (local.date() - last.astimezone(local.tzinfo).date()).days >= 2 and not rows:
+    if (preferences(repo, owner)['studyGapEnabled'] and last
+            and (local.date() - last.astimezone(local.tzinfo).date()).days >= 2 and not rows):
         rows.append(dict(kind='gap', objectId='study', courseName='', title='继续学习', level='normal',
             reason='最近一次专注记录：' + last.astimezone(local.tzinfo).strftime('%m月%d日'), due='9999',
             deadline='', durationMinutes=0, evidenceIds=[], sourceVersion=1, planId='', knowledgePointId='',
@@ -198,10 +204,12 @@ def overview(repo, owner, stamp=None):
     events = [e for e in repo.list('reminder_events') if e.get('userId') == owner and e['status'] not in TERMINAL]
     events.sort(key=lambda e: ({'urgent': 0, 'important': 1, 'normal': 2}[e['level']], e['due'], e['eventId']))
     visible = [e for e in events if e['status'] == 'pending' and e.get('kind') in ('task', 'exam')]
+    gap = next((e for e in events if e['status'] == 'pending' and e.get('kind') == 'gap'), None)
     return dict(userId=owner, dataTime=(stamp or now()).isoformat(),
         version=digest(*(str((e['eventId'], e['version'], e['status'])) for e in events))[:20],
         highlight=public(visible[0]) if visible else None, tasks=[public(e) for e in visible[1:3]], allTasks=[public(e) for e in visible],
-        pendingCount=len(visible), guidance='先导入课程或完成一次知识点诊断，建立学情。' if not events else '今天的事项已处理，可查看安排。',
+        pendingCount=len(visible), guidance=('已有两天没有新的专注记录了，打开学习计划，选一项继续吧。' if gap
+            else '先导入课程或完成一次知识点诊断，建立学情。' if not events else '今天的事项已处理，可查看安排。'),
         modelCalls=0)
 
 
@@ -270,13 +278,19 @@ def bind(repo, owner, data):
 
 def allowed(repo, event, stamp, current_id=None):
     prefs = preferences(repo, event['userId'])
+    # The homepage learning nudge never becomes a system notification, even
+    # when an old client explicitly snoozed this event.
+    if event['kind'] == 'gap':
+        return False
     if not prefs['enabled'] or event['status'] != 'pending':
         return False
     if event['kind'] not in prefs['categories']:
         return False
     local = stamp.astimezone(ZoneInfo(prefs['timezone']))
-    start, end = prefs['quietStart'], prefs['quietEnd']
-    quiet = start == end or (start <= local.hour < end if start < end else local.hour >= start or local.hour < end)
+    start = prefs['quietStart'] * 60 + prefs['quietStartMinute']
+    end = prefs['quietEnd'] * 60 + prefs['quietEndMinute']
+    minute = local.hour * 60 + local.minute
+    quiet = prefs['quietEnabled'] and (start == end or (start <= minute < end if start < end else minute >= start or minute < end))
     if quiet and not (event['level'] == 'urgent' and prefs['urgentException']):
         return False
     devices = [d for d in repo.list('reminder_devices') if d.get('userId') == event['userId'] and d.get('active')]

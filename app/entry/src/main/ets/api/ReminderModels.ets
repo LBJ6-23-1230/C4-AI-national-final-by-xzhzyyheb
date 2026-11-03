@@ -39,6 +39,10 @@ export interface ReminderPreferences {
   timezone: string;
   quietStart: number;
   quietEnd: number;
+  quietEnabled?: boolean;
+  quietStartMinute?: number;
+  quietEndMinute?: number;
+  studyGapEnabled?: boolean;
   dailyLimit: number;
   minimumGapMinutes: number;
   urgentException: boolean;

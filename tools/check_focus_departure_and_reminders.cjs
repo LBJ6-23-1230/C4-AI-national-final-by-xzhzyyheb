@@ -12,6 +12,7 @@ let screenEvent;
 let timerId = 0;
 let backs = 0;
 let route = null;
+let timePicker;
 const network = {};
 const state = {currentUser: {userId: 'alice'}, focusRuntime: null, activeFocusTask: null, focusResultDraft: null,
   beginFocusRuntime(task) { this.focusRuntime = context.FocusClock.create('alice', task); return true; },
@@ -41,6 +42,7 @@ const context = vm.createContext({console, Promise, Number, Math,
   appState: state, AgentApiClient: network,
   router: {back() { backs++; }, pushUrl(value) { route = value; }},
   notificationManager: {isNotificationEnabled: async () => false},
+  TimePickerDialog: {show(options) { timePicker = options; }},
   ReminderDeviceService: {sync: async () => {}, lastSync: ''},
   getContext: () => ({}),
   ProactiveSurfaceService: {requestPermission: async () => false, refresh: async () => {}}
@@ -228,6 +230,27 @@ function focus(mode = 'normal', timerType = 'countdown', allowBackgroundTiming =
   assert.equal(page.saved, true);
   assert(page.message.includes('已保存') && page.message.includes('12:00'));
 
+  // The native time picker persists arbitrary minutes; a failed save leaves the
+  // previous interval intact, and a picker opened by another account cannot save.
+  network.saveReminderSettings = async value => ({ok: true, data: {preferences: value}});
+  page.editQuiet(true);
+  timePicker.onAccept({hour: 21, minute: 35});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.settings.quietStart, 21);
+  assert.equal(page.settings.quietStartMinute, 35);
+  assert(page.quietLabel().includes('21:35') && page.quietLabel().includes('次日'));
+  page.editQuiet(false);
+  timePicker.onAccept({hour: 22, minute: 45});
+  await new Promise(resolve => setImmediate(resolve));
+  assert(!page.quietLabel().includes('次日'));
+  page.chooseQuiet(10, 10, 30, 30);
+  assert(page.message.includes('不能相同'));
+  page.editQuiet(true);
+  state.currentUser.userId = 'bob';
+  timePicker.onAccept({hour: 20, minute: 15});
+  assert.equal(page.settings.quietStart, 21);
+  state.currentUser.userId = 'alice';
+
   network.saveReminderSettings = async () => ({ok: false, error: {message: '网络异常'}});
   await page.chooseHour(18);
   assert.equal(page.selectedHour, 12);
@@ -235,6 +258,9 @@ function focus(mode = 'normal', timerType = 'countdown', allowBackgroundTiming =
   assert.equal(page.pendingHour, -1);
   assert.equal(page.saved, false);
   assert(page.message.includes('保存失败'));
+  page.chooseQuiet(23, 8, 55, 10);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.settings.quietStartMinute, 35);
   network.saveReminderSettings = async () => { throw Error('offline'); };
   await page.chooseHour(9);
   assert.equal(page.selectedHour, 12);
