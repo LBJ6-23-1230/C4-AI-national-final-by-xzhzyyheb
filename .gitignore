@@ -57,6 +57,7 @@ build/
 !deliverables/focus-reminder-clarity-20261102/*.hap
 !deliverables/focus-background-20261102/*.hap
 !deliverables/settings-feedback-20261103/*.hap
+!deliverables/learning-records-links-20261103/*.hap
 !hap/知学Mate-signed.hap
 !03-演示文件与源代码/hap/知学Mate-signed.hap
 *.har

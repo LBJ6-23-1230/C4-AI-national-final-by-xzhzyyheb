@@ -41,9 +41,10 @@ def learning_records():
         if status and state != status:
             continue
         point = next((p for p in (repo.get('profiles', owner) or {}).get('mastery', []) if p.get('knowledgePointId') == context['knowledgePointId']), {})
-        updated = w.get('updatedAt') or w.get('createdAt', '')
+        created = w.get('createdAt') or ''
+        updated = w.get('updatedAt') or created
         record = dict(context, recordId=context['goalId'], chatSessionId=chat,
-            courseName=point.get('sourceCourse', ''), status=state, createdAt=w.get('createdAt', ''),
+            courseName=point.get('sourceCourse', ''), status=state, createdAt=created,
             updatedAt=updated, completedAt=w.get('completedAt'), learningContext=context)
         if after is None or (updated, context['goalId']) < tuple(after):
             rows.append(record)

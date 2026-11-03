@@ -45,7 +45,11 @@ def test_chat_goal_submission_and_planning_are_one_chain(setup):
     assert context["handoffs"][0]["receiver"] == "exercise"
     assert context["handoffs"][0]["toolCalls"] == ["select_exercises"]
     assert context["planId"] and context["planVersion"] == 1
+    workflow = repo.get('workflows', context['goalId'])
+    created_at = workflow.get('createdAt')
+    assert created_at and created_at <= workflow['updatedAt']
     response = submit(setup, context, answer="B")
+    assert repo.get('workflows', context['goalId'])['createdAt'] == created_at
     assert response.status_code == 200, response.get_json()
     result = response.get_json()
     assert result["goalId"] == context["goalId"] and result["needReplan"]

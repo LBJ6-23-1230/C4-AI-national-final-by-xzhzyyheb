@@ -132,6 +132,16 @@ def test_learning_records_scopes_cursor_status_and_restart(client, monkeypatch):
     assert len(restored.get('/api/v1/learning-records',headers=auth[0]).get_json()['records']) == 3
     for query in ('limit=0', 'cursor=!bad', 'status=deleted'):
         assert c.get('/api/v1/learning-records?'+query,headers=auth[0]).status_code == 400
+    # Old workflow serialization dropped dates. Keep these records readable
+    # without assigning the read time as a fabricated learning timestamp.
+    old_id = page['records'][0]['goalId']
+    old = repo.get('workflows', old_id)
+    old.pop('updatedAt', None)
+    old['createdAt'] = None
+    repo.save('workflows', old_id, old)
+    legacy = next(row for row in c.get('/api/v1/learning-records', headers=auth[0]).get_json()['records'] if row['goalId'] == old_id)
+    assert legacy['createdAt'] == legacy['updatedAt'] == ''
+    assert repo.get('workflows', old_id) == old  # Listing does not mutate history.
 
 
 @pytest.mark.parametrize('value', [[], '', 0, False])

@@ -91,7 +91,8 @@ export class ApiResponseValidator {
     if (route === '/api/v1/learning-records') return ApiResponseValidator.hasArray(data, 'records') &&
       (data['nextCursor'] === null || ApiResponseValidator.isString(data, 'nextCursor')) &&
       (data['records'] as Object[]).every((item: Object) => ApiResponseValidator.isRecord(item) &&
-        ['recordId', 'goalId', 'chatSessionId', 'updatedAt', 'status', 'nextAction'].every((key: string) => ApiResponseValidator.hasString(item as Record<string, Object>, key)) &&
+        ['recordId', 'goalId', 'chatSessionId', 'status', 'nextAction'].every((key: string) => ApiResponseValidator.hasString(item as Record<string, Object>, key)) &&
+        ApiResponseValidator.isString(item as Record<string, Object>, 'updatedAt') &&
         ApiResponseValidator.isLearningContext((item as Record<string, Object>)['learningContext']));
     if (route === '/api/v1/learning-reviews') return ApiResponseValidator.hasString(data, 'reviewId') && ApiResponseValidator.hasString(data, 'summary') &&
       ApiResponseValidator.hasString(data, 'conclusion') && ApiResponseValidator.hasArray(data, 'evidenceSummary') && ApiResponseValidator.hasArray(data, 'sourceFacts') &&

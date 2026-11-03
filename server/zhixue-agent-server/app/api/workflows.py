@@ -432,6 +432,10 @@ def _run_saved_workflow(session_id: str, answers: list[dict] | None = None,
 		model_decider=model_decider if model_adapter else None,
 		trace_recorder=lambda **event: append_trace_event(_repository, trace_id, **event))
 	updated = result.to_dict()
+	# WorkflowSession serializes execution state; preserve the goal's creation
+	# time as metadata so subsequent runs do not erase its learning-record date.
+	if workflow.get("createdAt"):
+		updated["createdAt"] = workflow["createdAt"]
 	updated["traceId"] = trace_id
 	updated["nextAction"] = updated.get("finalAction")
 	if coordinated:
