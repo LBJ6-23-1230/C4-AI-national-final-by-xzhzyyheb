@@ -1,3 +1,7 @@
+import { KnowledgePointPanel } from '../components/KnowledgePointPanel';
+import { AIFloatButton } from '../components/AIFloatButton';
+import { UiTheme } from '../utils/UiTheme';
+import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { LearningEffect } from '../api/LearningSyncModels';
@@ -57,7 +61,7 @@ struct ReviewSummary {
     if ((point.effectiveQuestionCount ?? 0) > 0) return 2;
     return 3;
   }
-  private visiblePoints(): KnowledgeMastery[] { return this.points().slice(0, 3); }
+  private visiblePoints(): KnowledgeMastery[] { return this.pointsExpanded ? this.points() : this.points().slice(0, 3); }
   private hiddenCount(): number { return this.points().length - this.visiblePoints().length; }
   private selectCourse(course: string): void {
     this.course = course; this.pointsExpanded = false; this.detailPointIds = [];
@@ -94,12 +98,12 @@ struct ReviewSummary {
     if (result.ok) router.pushUrl({ url: 'pages/StudyPlan', params: { courseName: point.sourceCourse || '' } });
     else this.notice = '加入失败，请刷新后重试。';
   }
-  private practice(point?: KnowledgeMastery): void {
+  private practice(point?: KnowledgeMastery, fresh: boolean = false): void {
     if (point?.classificationRequired) { router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } }); return; }
     const params: Record<string, Object> = {};
     if (point !== undefined) {
       params['knowledgePointId'] = point.knowledgePointId; params['courseName'] = point.sourceCourse || '';
-      if (point.assessmentStatus === 'retest_due') params['forceGenerate'] = true;
+      if (fresh || point.assessmentStatus === 'retest_due') params['forceGenerate'] = true;
     } else if (this.course) {
       params['courseName'] = this.course;
     }
@@ -107,83 +111,82 @@ struct ReviewSummary {
   }
   @Builder
   Metric(value: string, label: string) {
-    Column({ space: 6 }) {
-      Text(value).fontSize(21).fontWeight(FontWeight.Bold).fontColor('#1F2937')
-      Text(label).fontSize(12).fontColor('#667085')
-    }.layoutWeight(1).padding(14).backgroundColor('#FFFFFF').borderRadius(14)
+    Column({ space: 8 }) {
+      Text(value).fontSize(22).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+      Text(label).fontSize(12).fontColor(UiTheme.secondary)
+    }.layoutWeight(1).padding({ top: 12, bottom: 12 })
   }
   build() {
+    Stack() {
     Column() {
-      Row() {
-        Text('← 返回').fontSize(14).fontColor('#64748B').onClick(() => router.back())
-        Blank()
-        Text('学习报告').fontSize(14).fontColor('#2563EB')
-      }.width('100%').padding(20).backgroundColor('#FFFFFF')
+      PageHeader({ title: '学习报告', assistant: true })
       Scroll(this.scroller) {
-        Column({ space: 16 }) {
-          Text('练习负责做题与解析，这里汇总作答记录，查看表现变化和复测建议。').fontSize(13).fontColor('#667085').lineHeight(21).width('100%')
-          Text(this.days === 1 ? '今日学习概况' : '近7天学习概况').fontSize(18).fontWeight(FontWeight.Bold).width('100%')
-          Row({ space: 12 }) {
-            Button('今天').backgroundColor(this.days === 1 ? '#2563EB' : '#EFF6FF')
-              .fontColor(this.days === 1 ? '#FFFFFF' : '#2563EB').onClick(() => { this.days = 1; void this.load(); })
-            Button('近7天').backgroundColor(this.days === 7 ? '#2563EB' : '#EFF6FF')
-              .fontColor(this.days === 7 ? '#FFFFFF' : '#2563EB').onClick(() => { this.days = 7; void this.load(); })
-          }.width('100%')
-          if (this.loading) Text('正在读取学习记录…').fontSize(14).fontColor('#667085')
-          if (this.notice) Text(this.notice).fontSize(14).fontColor('#667085').onClick(() => this.load())
-          if (this.data !== null) {
-            Text(this.data!.answeredCount === 0 && this.data!.focusMinutes === 0 ?
-              (this.days === 1 ? '今天还没有学习记录' : '近7天还没有学习记录') : this.data!.conclusion)
-              .fontSize(20).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
-            Row({ space: 10 }) {
-              this.Metric(`${this.data!.focusMinutes} 分钟`, '实际专注')
-              this.Metric(this.data!.practiceAccuracy === null ? '—' : `${this.data!.practiceAccuracy}%`, '作答正确率')
-              this.Metric(`${this.data!.completedFocusSessions}`, '自评完成次数')
-            }.width('100%')
-            Text(`本${this.days === 1 ? '日' : '期'}作答 ${this.data!.answeredCount} 题，答对 ${this.data!.correctCount} 题。专注与自评记录用于了解投入，掌握情况需通过作答验证。`)
-              .fontSize(13).fontColor('#667085').lineHeight(21).width('100%')
-            Button(this.practiceLabel()).width('100%').height(46).fontSize(14).backgroundColor('#2563EB').onClick(() => this.practice())
-            Row() {
-              Text(`历史知识点表现 · ${this.points().length} 个`).fontSize(18).fontWeight(FontWeight.Bold).layoutWeight(1)
-              if (this.pointsExpanded) Text('收起 ∧').fontSize(13).fontColor('#2563EB').padding(8).onClick(() => this.togglePoints())
-            }.width('100%').onAreaChange((_old: Area, area: Area) => this.pointsOffset = Number(area.position.y))
-            Text('包含以往练习结果；每个知识点取最近20道不同题目的首次作答，重复原题不增加验证记录。').fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
+        Column({ space: 18 }) {
+          Row({ space: 8 }) {
+            Button('今天', { type: ButtonType.Normal }).layoutWeight(1).height(40).fontSize(14)
+              .fontColor(this.days === 1 ? UiTheme.accent : UiTheme.secondary).backgroundColor(this.days === 1 ? UiTheme.tint : UiTheme.surface)
+              .borderRadius(8).onClick(() => { this.days = 1; void this.load(); })
+            Button('近7天', { type: ButtonType.Normal }).layoutWeight(1).height(40).fontSize(14)
+              .fontColor(this.days === 7 ? UiTheme.accent : UiTheme.secondary).backgroundColor(this.days === 7 ? UiTheme.tint : UiTheme.surface)
+              .borderRadius(8).onClick(() => { this.days = 7; void this.load(); })
             Select(['全部课程'].concat(this.courses()).map((name: string): SelectOption => { return { value: name }; }))
-              .value(this.course || '全部课程').width('100%').fontColor('#344054').backgroundColor('#FFFFFF')
+              .value(this.course || '全部课程').font({ size: 13 }).layoutWeight(1).backgroundColor(UiTheme.surface)
               .onSelect((index: number) => this.selectCourse(index === 0 ? '' : this.courses()[index - 1]))
-            Text(this.hiddenCount() > 0 ? `已展示 ${this.visiblePoints().length} 项，共 ${this.points().length} 项，点击下方查看全部` : `已显示全部 ${this.points().length} 个知识点`)
-              .fontSize(12).fontColor('#667085').width('100%')
-            ForEach(this.visiblePoints(), (point: KnowledgeMastery) => {
-              Column({ space: 9 }) {
-                Text(point.knowledgePointName).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
-                Text(LearningEvidence.label(point)).fontSize(12).fontColor('#2563EB').width('100%')
-                Text(LearningEvidence.detail(point)).fontSize(13).fontColor('#475467').width('100%')
-                if (this.lastPractice(point)) Text(this.lastPractice(point)).fontSize(12).fontColor('#667085').width('100%')
-                Text((point.effectiveQuestionCount ?? 0) === 0 ? '尚无作答证据，先完成诊断。' : point.assessmentStatus === 'retest_due' ? '已有记录距今较久，请用新题复测；这不表示已遗忘。' : point.assessmentStatus === 'stable' ? '当前作答表现较稳定，后续用相近难度新题验证保持情况。' : `下一步：核对该知识点的错题解析，写出具体出错步骤，再完成一轮新题。${point.assessmentStatus === 'evidence_limited' ? '题量较少，暂不判断已掌握或退步。' : ''}`)
-                  .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
-                Text(point.classificationRequired ? '先选择所属课程 ›' : '加入15分钟巩固计划 ›').fontSize(13).fontColor('#2563EB').width('100%')
-                  .onClick(() => this.addImprovement(point))
-                Text(this.pointAction(point))
-                  .fontSize(14).fontColor('#2563EB').width('100%').padding({ top: 6, bottom: 6 }).onClick(() => this.practice(point))
-              }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-            }, (point: KnowledgeMastery) => point.knowledgePointId)
-            if (this.points().length > 3) Button(`查看全部 ${this.points().length} 项 ›`)
-              .width('100%').fontSize(14).backgroundColor('#EFF6FF').fontColor('#2563EB')
-              .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { courseName: this.course } }))
-            Button('生成阶段复盘与具体行动 ›').width('100%').fontSize(14).backgroundColor('#FFFFFF').fontColor('#2563EB')
-              .onClick(() => router.pushUrl({ url: 'pages/LearningReview', params: { courseName: this.course } }))
-            if (this.points().length === 0) Text('完成一组练习后，可在这里查看知识点表现。').fontSize(13).fontColor('#667085')
-            Text(this.showDetails ? '收起评估依据 ∧' : '评估依据 ∨').fontSize(13).fontColor('#667085').width('100%').onClick(() => this.showDetails = !this.showDetails)
-            if (this.showDetails) {
-              Text(this.data!.timeAttribution ?? '').fontSize(12).fontColor('#667085').width('100%')
-              Text('首次少量作答只提供初步结果。至少两轮、8道不同题、包含基础与应用且正确率达到80%，标为当前表现较稳定；24—72小时后的相近难度新题用于初步观察保持情况。以上是试行规则，仍需结合真实课程校准。没有可比前测时不计算提升。')
-                .fontSize(12).fontColor('#667085').lineHeight(21).width('100%')
+          }.width('100%')
+          if (this.loading) { LoadingProgress().width(28).height(28) }
+          if (this.notice) { Text(this.notice).fontSize(14).fontColor(UiTheme.danger).onClick(() => this.load()) }
+          if (this.data !== null) {
+            if (this.data.answeredCount === 0 && this.data.focusMinutes === 0) {
+              Text(this.days === 1 ? '今天还没有学习记录' : '近7天还没有学习记录').fontSize(18).fontColor(UiTheme.ink).width('100%')
             }
-            Button('查看当前学习安排').width('100%').backgroundColor('#EFF6FF').fontColor('#2563EB')
-              .onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+            Row() {
+              this.Metric(`${this.data.focusMinutes}分钟`, '专注时长')
+              this.Metric(this.data.practiceAccuracy === null ? '—' : `${this.data.practiceAccuracy}%`, '正确率')
+              this.Metric(`${this.data.completedFocusSessions}次`, '自评次数')
+            }.width('100%')
+            Divider().color(UiTheme.line)
+            Row() { this.Metric(`${this.data.answeredCount}题`, '作答数量'); this.Metric(`${this.data.correctCount}题`, '答对数') }.width('100%')
+            Text('专注和自评用于了解投入；掌握情况由实际作答验证。').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+            Text('课程知识点').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+            KnowledgePointPanel({ initialCourse: this.course })
+            if (this.points().length > 0) {
+              Divider().color(UiTheme.line)
+              Text('下一步练习').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+              Text(this.points()[0].knowledgePointName).fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+              Text((this.points()[0].effectiveQuestionCount ?? 0) > 0 ? `${LearningEvidence.detail(this.points()[0])}。先巩固，再用新题验证当前表现。` : '还没有作答记录，先用新题了解当前表现。')
+                .fontSize(13).fontColor(UiTheme.secondary).lineHeight(21).width('100%')
+              Row({ space: 10 }) {
+                Button('加入15分钟巩固计划', { type: ButtonType.Normal }).layoutWeight(1).constraintSize({ minHeight: 44 }).fontSize(13)
+                  .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).border({ width: 1, color: UiTheme.accent }).borderRadius(8)
+                  .enabled(!this.loading).onClick(() => this.addImprovement(this.points()[0]))
+                Button('开始3道新题', { type: ButtonType.Normal }).layoutWeight(1).constraintSize({ minHeight: 44 }).fontSize(13)
+                  .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).border({ width: 1, color: UiTheme.accent }).borderRadius(8)
+                  .onClick(() => this.practice(this.points()[0], true))
+              }.width('100%')
+            } else {
+              Button(this.practiceLabel(), { type: ButtonType.Normal }).width('100%').height(46).fontSize(14)
+                .backgroundColor(UiTheme.accent).fontColor('#FFFFFF').borderRadius(8).onClick(() => this.practice())
+            }
+            Button('生成阶段复盘', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15)
+              .backgroundColor(UiTheme.accent).fontColor('#FFFFFF').borderRadius(8)
+              .onClick(() => router.pushUrl({ url: 'pages/LearningReview', params: { courseName: this.course } }))
+            Row() {
+              Text('查看当前安排 ›').fontSize(13).fontColor(UiTheme.accent).padding({ top: 12, bottom: 12 })
+                .onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+              Blank()
+              Text(this.showDetails ? '收起评估依据' : '评估依据 ›').fontSize(13).fontColor(UiTheme.accent)
+                .padding({ top: 12, bottom: 12 }).onClick(() => this.showDetails = !this.showDetails)
+            }.width('100%')
+            if (this.showDetails) {
+              Text(this.data.timeAttribution || '').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+              Text('每个知识点使用最近20道不同题目的首次作答；重复原题不增加验证记录。少量样本只提供初步结果；新题用于复核当前表现，没有可比前测时不计算提升。')
+                .fontSize(12).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
+            }
           }
-        }.width('100%').padding(20).alignItems(HorizontalAlign.Start)
-      }.layoutWeight(1).width('100%')
-    }.width('100%').height('100%').backgroundColor('#F5F6F8')
+        }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding(20).alignItems(HorizontalAlign.Start)
+      }.width('100%').layoutWeight(1).scrollBar(BarState.Off).align(Alignment.TopStart)
+    }.width('100%').height('100%').backgroundColor(UiTheme.surface)
+    AIFloatButton()
+    }.width('100%').height('100%')
   }
 }

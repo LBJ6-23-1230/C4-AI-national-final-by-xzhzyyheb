@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { ActionButton } from './ActionButton';
 import router from '@ohos.router';
 
@@ -54,14 +55,13 @@ export struct FollowUpCard {
   build() {
     Column({ space: 12 }) {
       Row({ space: 8 }) {
-        Text('◎').fontSize(15).fontColor('#2563EB')
-        Text(this.title).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+        Text(this.title).fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
         Blank()
       }.width('100%')
 
       if (this.reason.length > 0) {
         Text(this.reason)
-          .fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
+          .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
       }
 
       if (this.primaryText.length > 0 && this.outlinedActions) {
@@ -69,7 +69,7 @@ export struct FollowUpCard {
       } else if (this.primaryText.length > 0) {
         Button(this.primaryText)
           .width('100%').height(48).fontSize(15).fontWeight(FontWeight.Bold)
-          .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+          .fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
           .onClick(() => {
             if (this.onPrimary !== undefined) {
               this.onPrimary();
@@ -83,8 +83,8 @@ export struct FollowUpCard {
         ActionButton({ label: this.secondaryText, onAction: () => { if (this.onSecondary) this.onSecondary(); else this.go(this.secondaryTarget); } })
       } else if (this.secondaryText.length > 0) {
         Button(this.secondaryText)
-          .width('100%').height(44).fontSize(14).fontColor('#2563EB')
-          .backgroundColor('#FFFFFF').border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
+          .width('100%').height(44).fontSize(14).fontColor(UiTheme.accent)
+          .backgroundColor(UiTheme.surface).border({ width: 1, color: '#BFDBFE' }).borderRadius(8)
           .onClick(() => {
             if (this.onSecondary !== undefined) {
               this.onSecondary();
@@ -96,14 +96,14 @@ export struct FollowUpCard {
 
       if (this.showAgentTraceLink) {
         Row({ space: 4 }) {
-          Text('想知道它为什么这么安排？').fontSize(12).fontColor('#667085')
-          Text('看 Agent 决策过程 →').fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+          Text('想知道它为什么这么安排？').fontSize(12).fontColor(UiTheme.secondary)
+          Text('看 Agent 决策过程 →').fontSize(12).fontWeight(FontWeight.Medium).fontColor(UiTheme.accent)
         }
         .width('100%')
         .onClick(() => this.go('pages/AgentTrace'))
       }
     }
-    .width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(18)
+    .width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
     .border({ width: 1, color: '#BFDBFE' })
   }
 }

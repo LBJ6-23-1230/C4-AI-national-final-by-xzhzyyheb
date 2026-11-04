@@ -27,7 +27,7 @@ def validate_assignments(rows):
         seen.add(row["id"])
 
 
-def reconcile(plan, rows, selected_id=None, *, authoritative=False):
+def reconcile(plan, rows, selected_id=None, *, authoritative=False, selected_date=None):
     result = deepcopy(plan)
     existing = {t["taskId"]: t for t in plan.get("tasks", []) + plan.get("unscheduledTasks", [])}
     if not authoritative:
@@ -68,6 +68,14 @@ def reconcile(plan, rows, selected_id=None, *, authoritative=False):
             task["deferredReason"] = previous.get("deferredReason") or "作业已同步，选择可用时间或点击加入计划后安排"
             deferred.append(task)
     result.update(tasks=regular, unscheduledTasks=deferred)
+    if selected_id and selected_date:
+        children = [t for t in deferred if t.get('parentTaskId') == selected_id]
+        regular.extend(children)
+        deferred[:] = [t for t in deferred if t.get('parentTaskId') != selected_id]
+        for task in regular:
+            if task.get('status') != 'completed' and (task['taskId'] == selected_id or task.get('parentTaskId') == selected_id):
+                task['scheduledDate'] = selected_date
+                task.pop('deferredReason', None)
     # Ignore snapshot ordering when nothing about the actual assignments changed.
     # In particular a page refresh must preserve the user's explicit selection.
     current_ddls = {key: task for key, task in existing.items() if task.get("source") == "ddl"}
@@ -77,11 +85,35 @@ def reconcile(plan, rows, selected_id=None, *, authoritative=False):
     budget = plan.get("constraints", {}).get("availableMinutes")
     if selected_id:
         # Adding a specific assignment is an explicit commitment to its duration.
-        budget = max(budget or 0, sum(t["durationMinutes"] for t in regular if t.get("status") != "completed"))
+        budget = max(budget or 0, sum(t["durationMinutes"] for t in regular if t.get("status") != "completed"
+                     and (not selected_date or not t.get('scheduledDate') or t['scheduledDate'] <= selected_date)))
         if budget > 1440:
             raise ValueError("当前安排超过一天，请先调整计划时间")
     # Reading an unchanged DDL snapshot must not re-fit a deliberate task selection.
-    if result != plan and plan.get('calendarDays'):
+    if selected_id and selected_date:
+        # This explicit action commits the selected assignment to today without
+        # moving unrelated future tasks or re-running the automatic scheduler.
+        scheduled = sum(t['durationMinutes'] for t in regular if t.get('status') != 'completed'
+                        and (not t.get('scheduledDate') or t['scheduledDate'] <= selected_date))
+        result['constraints'] = dict(result.get('constraints', {}), availableMinutes=budget)
+        result['budgetSummary'] = dict(availableMinutes=budget, scheduledMinutes=scheduled,
+            unallocatedMinutes=max(0, budget - scheduled),
+            unscheduledMinutes=sum(t['durationMinutes'] for t in deferred if t.get('status') != 'completed'))
+        if result.get('calendarDays') is not None:
+            days = result['calendarDays']
+            current = next((day for day in days if day['date'] == selected_date), None)
+            if current is None:
+                current = dict(date=selected_date, minutes=0)
+                days.append(current)
+                days.sort(key=lambda day: day['date'])
+            current.update(minutes=max(current['minutes'], scheduled), scheduledMinutes=scheduled)
+            for day in days:
+                if day['date'] != selected_date:
+                    day['scheduledMinutes'] = sum(t['durationMinutes'] for t in regular
+                        if t.get('status') != 'completed' and t.get('scheduledDate') == day['date'])
+            if 'calendarUnscheduledMinutes' in result:
+                result['calendarUnscheduledMinutes'] = result['budgetSummary']['unscheduledMinutes']
+    elif result != plan and plan.get('calendarDays'):
         from datetime import datetime
         from zoneinfo import ZoneInfo
         from app.services.calendar_plan import schedule

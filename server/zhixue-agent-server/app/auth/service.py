@@ -904,6 +904,26 @@ def deactivate_user(repository: Repository, user_id: str) -> bool:
     user = repository.get(USERS, user_id)
     if user is None:
         return False
+    # A shared arrangement belongs to both participants. Remove its counterpart
+    # plan entries before purging the departing account's private data.
+    for shared in repository.list('shared_study_tasks'):
+        if user_id not in shared.get('members', []):
+            continue
+        for plan in repository.list('plans'):
+            if plan.get('userId') not in shared['members']:
+                continue
+            before = len(plan.get('tasks', [])) + len(plan.get('unscheduledTasks', []))
+            for field in ('tasks', 'unscheduledTasks'):
+                plan[field] = [t for t in plan.get(field, []) if t['taskId'] != shared['taskId']]
+            if before != len(plan['tasks']) + len(plan['unscheduledTasks']):
+                plan['version'] = plan.get('version', 0) + 1
+                plan.pop('budgetSummary', None)
+                repository.save('plans', plan['planId'], plan)
+        repository.delete('shared_study_tasks', shared['taskId'])
+    for task in repository.query('study_tasks', {'userId': user_id}):
+        repository.delete('study_tasks', task['taskId'])
+    from app.services.chat_documents import clear as clear_documents
+    clear_documents(repository, user_id)
     user["status"] = "deactivated"
     user["deactivatedAt"] = _iso(_now())
     repository.save(USERS, user_id, user)

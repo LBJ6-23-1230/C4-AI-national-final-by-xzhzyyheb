@@ -7254,6 +7254,544 @@
           }
         }
       }
+    },
+    "/api/v1/device-collaboration": {
+      "post": {
+        "summary": "同账号设备连接、前台在线状态与专注任务接收确认",
+        "operationId": "deviceCollaboration",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "仅在服务端已认证的账号内发现设备。register需deviceLabel；invite需targetDeviceId；accept/reject/disconnect需invitationId；publish需messageId和task；clear需messageId；ack需invitationId和messageId，且只能确认对端消息。25秒无心跳失效，邀请60秒过期。offline主动断开；重返前台不会恢复旧连接。仅同步任务设置，不迁移计时进度。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CollaborationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "当前账号本机可见快照",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollaborationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效设备请求或任务",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录或会话失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "设备凭据不符或试图自确认",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "本机未登记或邀请不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "对端离线、请求过期或任务已更新",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "请求超过8KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "只支持POST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/study-tasks": {
+      "post": {
+        "operationId": "saveManualTask",
+        "summary": "新增、修改或删除自己的未开始任务，校验计划版本",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualTaskRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shared-study-tasks": {
+      "get": {
+        "operationId": "getSharedTasks",
+        "summary": "读取当前账号协同任务及双方进度",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedTasks"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "sharedTaskAction",
+        "summary": "发起、确认、拒绝、完成协同安排或提醒搭子；确认后原子写入双方计划",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedTasks"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedTaskRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat-files": {
+      "post": {
+        "operationId": "readChatFile",
+        "summary": "解析聊天附件（最大8MB），返回最多12000字文本及截断标识",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatFile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "无效输入、身份、权限、状态冲突或重复提醒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFileRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plans/current/today-items": {
+      "post": {
+        "summary": "将复习或学习待办加入今日计划",
+        "operationId": "addTodayItem",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "仅按当前账号的服务端待办生成任务；校验计划版本及用户确认的今日预算，同一知识点已有今日任务时不重复创建。其他日期任务保留。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TodayItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "所选待办已加入今日计划；已加入的任务不重复创建",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningPlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效请求、未登录、待办不存在、计划或时间确认发生变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "无效请求、未登录、待办不存在、计划或时间确认发生变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "无效请求、未登录、待办不存在、计划或时间确认发生变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "无效请求、未登录、待办不存在、计划或时间确认发生变化",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7345,6 +7883,10 @@
             "type": "boolean",
             "default": false,
             "description": "Opt in to one owner-scoped goal per chat session. Requires sessionId. Existing goals persist across follow-up intents."
+          },
+          "document": {
+            "$ref": "#/components/schemas/ChatFile",
+            "description": "已解析的文件引用资料，与用户问题分开传输；需sessionId，仅在同账号同会话中供后续追问。"
           }
         }
       },
@@ -10987,6 +11529,11 @@
           "selectedId": {
             "type": "string",
             "description": "Explicitly add one pending assignment to the scheduled plan."
+          },
+          "scheduleToday": {
+            "type": "boolean",
+            "default": false,
+            "description": "将所选作业明确加入本日计划，保留其他任务日期；需要selectedId"
           }
         }
       },
@@ -12564,6 +13111,500 @@
                 }
               }
             }
+          }
+        }
+      },
+      "DeviceFocusTask": {
+        "type": "object",
+        "properties": {
+          "course": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "task": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "plannedMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 180
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "strict"
+            ]
+          },
+          "timerType": {
+            "type": "string",
+            "enum": [
+              "countdown",
+              "stopwatch"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "allowBackgroundTiming": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "course",
+          "task",
+          "plannedMinutes",
+          "mode"
+        ]
+      },
+      "CollaborationDevice": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "deviceLabel": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "lastSeen": {
+            "type": "integer",
+            "description": "上次前台心跳的Unix毫秒时间"
+          }
+        },
+        "required": [
+          "deviceId",
+          "deviceLabel",
+          "online",
+          "lastSeen"
+        ]
+      },
+      "CollaborationMessage": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string"
+          },
+          "task": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DeviceFocusTask"
+              }
+            ],
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "number",
+            "description": "服务端发送时间，Unix秒"
+          },
+          "ackedAt": {
+            "type": "number",
+            "description": "接收端确认时间，Unix秒；0为未确认"
+          }
+        },
+        "required": [
+          "messageId",
+          "task",
+          "sentAt",
+          "ackedAt"
+        ]
+      },
+      "CollaborationLink": {
+        "type": "object",
+        "properties": {
+          "invitationId": {
+            "type": "string"
+          },
+          "peerDeviceId": {
+            "type": "string"
+          },
+          "peerDeviceLabel": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "connected",
+              "expired",
+              "rejected",
+              "disconnected"
+            ]
+          },
+          "incoming": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "integer",
+            "description": "请求到期时间，Unix毫秒"
+          },
+          "received": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CollaborationMessage"
+              }
+            ],
+            "nullable": true
+          },
+          "sentMessageId": {
+            "type": "string"
+          },
+          "acknowledgedAt": {
+            "type": "integer",
+            "description": "对方确认本机最新消息的Unix毫秒时间；0为未确认"
+          }
+        },
+        "required": [
+          "invitationId",
+          "peerDeviceId",
+          "peerDeviceLabel",
+          "state",
+          "incoming",
+          "expiresAt",
+          "received",
+          "sentMessageId",
+          "acknowledgedAt"
+        ]
+      },
+      "CollaborationRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "register",
+              "heartbeat",
+              "invite",
+              "accept",
+              "reject",
+              "disconnect",
+              "publish",
+              "clear",
+              "ack",
+              "offline"
+            ]
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "deviceKey": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 128,
+            "writeOnly": true,
+            "description": "本机生成并保存在应用沙箱的随机凭据。服务端仅保存哈希；响应和设备列表不返回。"
+          },
+          "deviceLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "targetDeviceId": {
+            "type": "string"
+          },
+          "invitationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "task": {
+            "$ref": "#/components/schemas/DeviceFocusTask"
+          }
+        },
+        "required": [
+          "action",
+          "deviceId",
+          "deviceKey"
+        ]
+      },
+      "CollaborationResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "serverTime": {
+            "type": "integer"
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CollaborationDevice"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CollaborationLink"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "deviceId",
+          "serverTime",
+          "devices",
+          "links"
+        ]
+      },
+      "ManualTaskRequest": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "courseName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "save",
+              "delete"
+            ]
+          },
+          "expectedPlanVersion": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "taskId",
+          "action",
+          "expectedPlanVersion"
+        ]
+      },
+      "SharedTask": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "courseName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "declined"
+            ]
+          },
+          "fromUserId": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string"
+          },
+          "partnerName": {
+            "type": "string"
+          },
+          "myStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed"
+            ]
+          },
+          "partnerStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed"
+            ]
+          },
+          "myPart": {
+            "type": "string"
+          },
+          "partnerPart": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId",
+          "title",
+          "courseName",
+          "scheduledDate",
+          "durationMinutes",
+          "status",
+          "fromUserId",
+          "partnerId",
+          "partnerName",
+          "myStatus",
+          "partnerStatus",
+          "myPart",
+          "partnerPart"
+        ]
+      },
+      "SharedTasks": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedTask"
+            }
+          }
+        },
+        "required": [
+          "tasks"
+        ]
+      },
+      "SharedTaskRequest": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "courseName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "create",
+              "accept",
+              "decline",
+              "complete",
+              "remind"
+            ]
+          },
+          "partnerId": {
+            "type": "string"
+          },
+          "myPart": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "partnerPart": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "action",
+          "taskId"
+        ]
+      },
+      "ChatFileRequest": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "contentBase64": {
+            "type": "string",
+            "maxLength": 12000000
+          }
+        },
+        "required": [
+          "fileName",
+          "contentBase64"
+        ]
+      },
+      "ChatFile": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 12000
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "fileName",
+          "text",
+          "truncated"
+        ]
+      },
+      "TodayItemRequest": {
+        "type": "object",
+        "required": [
+          "eventId",
+          "expectedPlanVersion",
+          "availableMinutes"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expectedPlanVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "availableMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440
           }
         }
       }

@@ -1,3 +1,6 @@
+import { DeviceSummary } from '../components/DeviceSummary';
+import { AppBottomBar } from '../components/AppBottomBar';
+import { UiTheme } from '../utils/UiTheme';
 import { CourseReviewReminder } from '../components/CourseReviewReminder';
 import router from '@ohos.router';
 import { UserAvatar } from '../components/UserAvatar';
@@ -26,9 +29,16 @@ import { AuthStore } from '../api/AuthStore';
 @Component
 struct Index {
   @StorageLink('learningDataRevision') @Watch('onLearningDataChanged') learningDataRevision: number = 0;
+  @StorageLink('focusDataRevision') @Watch('onFocusDataChanged') focusDataRevision: number = 0;
   @StorageLink('knowledgeSyncMessage') knowledgeSyncMessage: string = '';
+  @State wrongBookCount: number = -1;
   @State courseCount: number = 0;
   @State urgentCount: number = 0;
+  @State pendingCount: number = 0;
+  @State planProgress: number = 0;
+  @State todayMinutes: number = 0;
+  @State recentFocusCount: number = 0;
+  @State streakDays: number = 0;
   @State refreshKey: number = 0;
   @State profileNickname: string = appState.authNickname;
   @State profileAvatar: string = appState.authAvatar;
@@ -37,13 +47,25 @@ struct Index {
     this.profileNickname = appState.authNickname;
     this.profileAvatar = appState.authAvatar;
     this.courseCount = appState.courses.length;
+    this.pendingCount = appState.getPendingDDLs().length;
+    this.onFocusDataChanged();
+    if (this.activeTab === 2) void this.loadWrongBookCount();
     this.urgentCount = appState.getUrgentDDLs().length;
     this.refreshKey++;
     if (this.isPageActive) this.ensurePlan();
   }
 
+  private onFocusDataChanged(): void {
+    const summary = appState.getFocusSummary();
+    this.planProgress = appState.getPlanProgress();
+    this.todayMinutes = summary.todayMinutes;
+    this.recentFocusCount = summary.recentSessions.length;
+    this.streakDays = summary.streakDays;
+  }
+
   onPageShow(): void {
     this.isPageActive = true;
+    this.applyInitialTab();
     this.onLearningDataChanged();
     if (!this.hasShownOnce) {
       this.hasShownOnce = true;
@@ -79,6 +101,7 @@ struct Index {
   private isPageActive: boolean = false;
   /** 首帧 onPageShow 与 aboutToAppear 属于同一次进入，避免重复请求。 */
   private hasShownOnce: boolean = false;
+  private lastRequestedTab: number = -1;
 
   aboutToAppear(): void {
     this.isPageActive = true;
@@ -104,8 +127,10 @@ struct Index {
         return;
       }
       const value: Object | undefined = params['initialTab'] as Object | undefined;
-      if (typeof value === 'number' && value >= 0 && value <= 3) {
-        this.activeTab = value as number;
+      const requested: number = typeof value === 'number' ? value as number : typeof value === 'string' ? Number(value) : -1;
+      if (Number.isInteger(requested) && requested >= 0 && requested <= 3 && requested !== this.lastRequestedTab) {
+        this.activeTab = requested;
+        this.lastRequestedTab = requested;
       }
     } catch (error) {
       // 无参数（正常启动）时保持默认标签，不抛错
@@ -147,7 +172,7 @@ struct Index {
     this.isProactiveLoading = true;
     this.proactiveMessage = '';
     const requestVersion: number = ++this.proactiveRequestVersion;
-    // ⚠️ 不要用 `?? 30` 编一个倒计时：没有课程/考试日期时**如实传 undefined**，
+    //  不要用 `?? 30` 编一个倒计时：没有课程/考试日期时**如实传 undefined**，
     // 由 `ProactiveViewModel.buildRequest` 决定不下发该字段（后端会跳过考试类判断）。
     // 原来编的 30 会让卡片文案写成"考试剩 30 天（紧迫度贡献 0.000）"，
     // 与计划页的后端口径（5 天 → 0.83）互相矛盾。
@@ -201,14 +226,16 @@ struct Index {
     if (this.agentPlan === null || this.agentPlan.tasks.length === 0) return null;
     for (let index: number = 0; index < this.agentPlan.tasks.length; index++) {
       const task: PlanTask = this.agentPlan.tasks[index];
-      if (!appState.isTaskCompleted(task.taskId, task.status)) return task;
+      const now: Date = new Date();
+      const today: string = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+      if (!appState.isTaskCompleted(task.taskId, task.status) && (!task.scheduledDate || task.scheduledDate <= today)) return task;
     }
     return null;
   }
 
   private startAgentTask(task: PlanTask): void {
     appState.setFocusTask({
-      course: '专项学习',
+      course: task.sourceCourse || '专项学习',
       task: task.knowledgePointName,
       plannedMinutes: task.durationMinutes,
       source: 'agent',
@@ -247,7 +274,7 @@ struct Index {
         appState.currentUser.learningGoal.goal,
         appState.currentUser.userId
       );
-      // ⚠️ 建完必须**持久化**这个会话。
+      //  建完必须**持久化**这个会话。
       //
       // 原来只有 `StudyTags`（启动诊断那条路径）会 `WorkflowSessionStore.save`，
       // 而这里是首页每次冷启动都会走的路径：它建完就丢，
@@ -267,7 +294,7 @@ struct Index {
       } else {
         await this.workflowViewModel.refreshStatus(true);
       }
-      // ★ 自愈：本地缓存的会话在服务端已不存在（典型触发：刚跑过 `demo/reset`，
+      //  自愈：本地缓存的会话在服务端已不存在（典型触发：刚跑过 `demo/reset`，
       //   它会把演示名下的 workflows 清掉）。
       //
       //   光清 `ClientCache` 不够 —— `WorkflowSessionStore` 里还存着同一个 id，
@@ -277,7 +304,7 @@ struct Index {
       if (this.workflowViewModel.wasSessionStale()) {
         // 会话失效：`WorkflowViewModel` 内部**已经**清掉 `ClientCache` 并新建了一个，
         // 这里只负责把**持久化**那份也换掉 —— 否则下次冷启动又会把死 id 读回来。
-        // ⚠️ 不要再调 `start()`：那会多建一个用不上的 workflow。
+        //  不要再调 `start()`：那会多建一个用不上的 workflow。
         const staleContext: common.UIAbilityContext =
           this.getUIContext().getHostContext() as common.UIAbilityContext;
         WorkflowSessionStore.clear(staleContext);
@@ -287,7 +314,7 @@ struct Index {
         }
       }
     }
-    // ⚠️ 这里**不能**加 `if (!this.isFixture())` 的门槛。
+    //  这里**不能**加 `if (!this.isFixture())` 的门槛。
     //
     // 原来只在联机模式加载计划，于是离线模式下 `ClientCache` 里没有"用户看得见的那份
     // 计划"，而首页主行动卡带下来的 taskId 是**契约 id**（`task-postorder`）、
@@ -315,10 +342,10 @@ struct Index {
   /**
    * 取当前周计划，**保证非空**。
    *
-   * ⚠️ 原实现是 `ensurePlan(); return appState.weeklyPlan!;` —— 这是运行时炸弹：
+   *  原实现是 `ensurePlan(); return appState.weeklyPlan!;` —— 这是运行时炸弹：
    * `ensurePlan()` 在**联机模式直接 return**（`weeklyPlan` 只由本地生成路径写入，
    * 服务端从不写它），所以联机模式下 `weeklyPlan` 一直是 `null`，
-   * `!` 只是让类型检查闭嘴，运行时照样抛 `Cannot read property 'tasks' of null`。
+   * `!` 只是让类型检查闭嘴，运行时照样抛 `Cannot read property 'tasks'of null`。
    *
    * 触发路径：联机模式 + 后端不可达 → 首页主行动卡走「先做一组快速诊断」兜底
    * → `onPrimaryAction()` 求值 `primaryTask()` → 本方法 → 崩溃，
@@ -393,8 +420,14 @@ struct Index {
 
   /** 页头：身份标签可点进「我的」，与底部标签栏指向一致（原来一个进 Account、一个进 LearningHistory）。 */
   /** 页头标题：与底部标签一一对应（0 号「对话」已跳走到 ChatMain，不会在此出现）。 */
+  private async loadWrongBookCount(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const result = await AgentApiClient.getWrongBook();
+    if (this.isPageActive && owner === appState.currentUser.userId && result.ok) this.wrongBookCount = result.data.total;
+  }
+
   private headerTitle(): string {
-    if (this.activeTab === 1) return '我的智能体';
+    if (this.activeTab === 1) return '智能体';
     if (this.activeTab === 2) return '学习';
     return '我的';
   }
@@ -402,7 +435,7 @@ struct Index {
   /**
    * 底部标签栏。
    *
-   * ⚠️ **必须写成无参 `@Builder`**，且高亮状态在 Builder 内部**直接读 `this.activeTab`**。
+   *  **必须写成无参 `@Builder`**，且高亮状态在 Builder 内部**直接读 `this.activeTab`**。
    *
    * 原因：ArkTS 的 `@Builder` 函数参数是**按值传递**的，参数变化不会触发该 Builder
    * 重新求值（只有组件所在范围整体重建时才会刷新）。所以
@@ -422,68 +455,42 @@ struct Index {
    */
   @Builder
   AgentCard(item: AgentSpec) {
-    Column({ space: 10 }) {
+    Column({ space: 4 }) {
       Row() {
-        Image(item.icon).objectFit(ImageFit.Contain)
-          .width(34).height(34).padding(6)
-          .borderRadius(9).backgroundColor('#EFF6FF')
-        Blank()
-        Text(item.category).fontSize(10).fontColor('#475467')
-          .backgroundColor('#F1F5F9').borderRadius(7)
-          .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+        Text(item.name).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+        Text('›').fontSize(22).fontColor(UiTheme.secondary)
+      }.width('100%').constraintSize({ minHeight: 28 }).onClick(() => this.invokeAgent(item))
+      Text(item.role).fontSize(13).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
+      Flex({ wrap: FlexWrap.Wrap }) {
+        ForEach(item.routes, (route: AgentRoute) => {
+          Text(`${route.label} ›`).fontSize(14).fontColor(UiTheme.accent)
+            .constraintSize({ minHeight: 32 }).padding({ right: 20, top: 4, bottom: 4 })
+            .onClick(() => this.goRoute(route))
+        }, (route: AgentRoute) => route.label)
       }.width('100%')
-
-      Text(item.name).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-        .width('100%').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-
-      // 职能一句话：比 desc 更短，回答"这个智能体替我干什么"
-      Text(item.role).fontSize(11.5).fontWeight(FontWeight.Medium).fontColor('#2563EB')
-        .width('100%').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-
-      Text(item.desc).fontSize(11).fontColor('#64748B').lineHeight(16)
-        .width('100%').height(48).maxLines(3).textOverflow({ overflow: TextOverflow.Ellipsis })
-
-      Row() {
-        Row({ space: 4 }) {
-          Text('●').fontSize(8).fontColor('#10B981')
-          Text(item.ready ? '可用' : '需联网').fontSize(10).fontColor('#10B981')
-        }
-        Blank()
-        Text(item.routes.length > 1 ? `${item.routes.length} 个入口 ↗` : '使用 ↗')
-          .fontSize(12).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-      }.width('100%')
-    }
-    .width('48.5%').padding(14).margin({ bottom: 12 })
-    .backgroundColor('#FFFFFF').borderRadius(14)
-    .border({ width: 1, color: '#EAECF0' })
-    .onClick(() => this.invokeAgent(item))
+    }.width('100%').padding({ top: 10, bottom: 10 }).alignItems(HorizontalAlign.Start)
+      .border({ width: { bottom: 1 }, color: UiTheme.line })
   }
 
   /** 「学习」标签里的一行入口。 */
   @Builder
   PanelRow(icon: Resource, title: string, desc: string, target: string) {
     Row({ space: 12 }) {
-      Image(icon).objectFit(ImageFit.Contain)
-        .width(30).height(30).padding(5)
-        .borderRadius(15).backgroundColor('#EFF6FF')
-      Column({ space: 2 }) {
-        Text(title).fontSize(14).fontWeight(FontWeight.Medium).fontColor('#1F2937')
-        Text(desc).fontSize(11).fontColor('#667085').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-      }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-      Text('›').fontSize(16).fontColor('#98A2B3')
-    }
-    .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
-    .border({ width: 1, color: '#EAECF0' })
-    .onClick(() => router.pushUrl({ url: target }))
+      Text(title).fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+      if (desc.length > 0) { Text(desc).fontSize(12).fontColor(UiTheme.secondary).constraintSize({ maxWidth: '42%' }) }
+      Text('›').fontSize(22).fontColor(UiTheme.muted)
+    }.width('100%').constraintSize({ minHeight: 56 }).padding({ top: 12, bottom: 12 })
+      .border({ width: { bottom: 1 }, color: UiTheme.line })
+      .onClick(() => router.pushUrl({ url: target }))
   }
 
   @Builder
   LearningShortcut(icon: Resource, title: string, detail: string, target: string) {
     Column({ space: 7 }) {
       Image(icon).width(28).height(28).objectFit(ImageFit.Contain)
-      Text(title).fontSize(14).fontWeight(FontWeight.Medium).fontColor('#1F2937')
-      Text(detail).fontSize(11).fontColor('#667085').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-    }.layoutWeight(1).padding(14).backgroundColor('#FFFFFF').borderRadius(14)
+      Text(title).fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+      Text(detail).fontSize(11).fontColor(UiTheme.secondary).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+    }.layoutWeight(1).padding(14).backgroundColor(UiTheme.surface).borderRadius(8)
       .onClick(() => router.pushUrl({ url: target }))
   }
 
@@ -493,44 +500,44 @@ struct Index {
   @Builder
   PanelCard(title: string, desc: string, buttonText: string, target: string) {
     Column({ space: 12 }) {
-      Text(title).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
-      Text(desc).fontSize(12.5).fontColor('#64748B').lineHeight(19).width('100%')
+      Text(title).fontSize(17).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
+      Text(desc).fontSize(12.5).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
       Button(buttonText)
         .width('100%').height(46).fontSize(14).fontWeight(FontWeight.Bold)
-        .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+        .fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
         .onClick(() => router.pushUrl({ url: target }))
     }
-    .width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(16)
-    .border({ width: 1, color: '#EAECF0' })
+    .width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
+    .border({ width: 1, color: UiTheme.line })
   }
 
   /** 当前唯一推荐行动。首页前台展示不等同于系统通知，因此不依赖 shouldNotify。 */
   @Builder
   PrimaryActionCard() {
     Column({ space: 10 }) {
-      Text(this.perceptionLine()).fontSize(11.5).fontColor('#64748B').width('100%')
+      Text(this.perceptionLine()).fontSize(11.5).fontColor(UiTheme.secondary).width('100%')
       if (this.hasProactiveTask()) {
         Text(this.proactiveDecision!.cardData.taskName ?? this.proactiveDecision!.title)
-          .fontSize(20).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
+          .fontSize(20).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
         Text(this.proactiveDecision!.reason.length > 0
           ? this.proactiveDecision!.reason : this.proactiveDecision!.body)
-          .fontSize(12.5).fontColor('#475467').lineHeight(19).width('100%')
+          .fontSize(12.5).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
       } else if (this.currentAgentTask() !== null) {
         Text(this.currentAgentTask()!.knowledgePointName)
-          .fontSize(20).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
+          .fontSize(20).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
         Text('这是 Agent 当前计划中的下一项未完成任务。')
-          .fontSize(12.5).fontColor('#475467').lineHeight(19).width('100%')
+          .fontSize(12.5).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
       } else {
-        Text(appState.courses.length === 0 && appState.homeworkDDLs.length === 0 ? '先建立课程与学习目标' : '先做一组快速诊断').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
+        Text(appState.courses.length === 0 && appState.homeworkDDLs.length === 0 ? '先建立课程与学习目标' : '先做一组快速诊断').fontSize(20).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
         Text(this.proactiveMessage.length > 0 ? this.proactiveMessage : '用一组练习确定当前薄弱点，再生成下一步计划。')
-          .fontSize(12.5).fontColor('#475467').lineHeight(19).width('100%')
+          .fontSize(12.5).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
       }
       Button(this.isActionReady() ? '开始当前任务' : (appState.courses.length === 0 && appState.homeworkDDLs.length === 0 ? '开始建立学习档案' : '开始诊断'))
         .width('100%').height(46).fontSize(14).fontWeight(FontWeight.Bold)
-        .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+        .fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
         .onClick(() => this.onPrimaryAction())
     }
-    .width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(16)
+    .width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
     .border({ width: 1, color: '#BFDBFE' })
   }
 
@@ -540,34 +547,32 @@ struct Index {
     Column({ space: 9 }) {
       Text(this.agentPlanKind === 'no_plan' ? '还没有学习计划' : '计划同步提示')
         .fontSize(14).fontWeight(FontWeight.Bold)
-        .fontColor(this.agentPlanKind === 'error' ? '#B42318' : '#475467').width('100%')
-      Text(this.agentPlanMessage).fontSize(12).lineHeight(18).fontColor('#667085').width('100%')
+        .fontColor(this.agentPlanKind === 'error' ? UiTheme.danger : UiTheme.secondary).width('100%')
+      Text(this.agentPlanMessage).fontSize(12).lineHeight(18).fontColor(UiTheme.secondary).width('100%')
       if (this.agentPlanKind === 'no_plan') {
         Button('导入课程，生成计划').width('100%').height(40).fontSize(13)
-          .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(10)
+          .fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
           .onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'import' } }))
       } else {
         Button(this.isAgentPlanLoading ? '读取中…' : '重新读取计划').width('100%').height(40).fontSize(13)
-          .fontColor('#2563EB').backgroundColor('#EFF6FF').borderRadius(10)
+          .fontColor(UiTheme.accent).backgroundColor(UiTheme.tint).borderRadius(8)
           .enabled(!this.isAgentPlanLoading)
           .onClick(() => { void this.loadAgentPlan(true); })
       }
     }
-    .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
-    .border({ width: 1, color: this.agentPlanKind === 'error' ? '#FECACA' : '#E2E8F0' })
+    .width('100%').padding(14).backgroundColor(UiTheme.surface).borderRadius(8)
+    .border({ width: 1, color: this.agentPlanKind === 'error' ? '#FECACA' : UiTheme.line })
   }
 
   /** 「我的」标签的统计块（任务完成度 / 专注次数等）。 */
   @Builder
   StatCard(value: string, label: string, target: string = '') {
-    Column({ space: 4 }) {
-      Text(value).fontSize(20).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-      Text(target.length > 0 ? `${label} ›` : label).fontSize(11).fontColor('#64748B').textAlign(TextAlign.Center)
-    }
-    .layoutWeight(1).height(84).padding({ top: 14, bottom: 14 })
-    .onClick(() => { if (target.length > 0) router.pushUrl({ url: target, params: { initialTab: 'ddls', ddlFilter: 'pending' } }); })
-    .backgroundColor('#FFFFFF').borderRadius(14)
-    .border({ width: 1, color: '#EAECF0' })
+    Column({ space: 6 }) {
+      Text(value).fontSize(19).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+      Text(label).fontSize(11).fontColor(UiTheme.secondary)
+        .textAlign(TextAlign.Center).lineHeight(17)
+    }.layoutWeight(1).constraintSize({ minHeight: 90 }).padding({ left: 3, right: 3, top: 10, bottom: 10 })
+      .onClick(() => { if (target.length > 0) router.pushUrl({ url: target, params: { initialTab: 'ddls', ddlFilter: 'pending' } }); })
   }
 
   /** 页头副标题：按标签切换，说明这一页能做什么。 */
@@ -578,7 +583,7 @@ struct Index {
     return '账号与密码管理、学习数据、我的搭子。';
   }
 
-  /** 按分类过滤能力卡；'全部' 返回全部。 */
+  /** 按分类过滤能力卡；'全部'返回全部。 */
   private filteredAgents(): AgentSpec[] {
     if (this.agentFilter === '全部') {
       return AGENT_SPECS;
@@ -626,24 +631,24 @@ struct Index {
         if (this.pendingAgent !== null) {
           Column({ space: 4 }) {
             Text(this.pendingAgent!.name).fontSize(17).fontWeight(FontWeight.Bold)
-              .fontColor('#0F172A').width('100%')
-            Text(this.pendingAgent!.role).fontSize(12.5).fontColor('#64748B').width('100%')
+              .fontColor(UiTheme.ink).width('100%')
+            Text(this.pendingAgent!.role).fontSize(12.5).fontColor(UiTheme.secondary).width('100%')
           }.width('100%')
 
           ForEach(this.pendingAgent!.routes, (route: AgentRoute) => {
             Button(route.label)
-              .width('100%').height(46).fontSize(15).fontColor('#2563EB')
-              .backgroundColor('#EFF6FF').borderRadius(12)
+              .width('100%').height(46).fontSize(15).fontColor(UiTheme.accent)
+              .backgroundColor(UiTheme.tint).borderRadius(8)
               .onClick(() => this.goRoute(route))
           }, (route: AgentRoute) => route.label)
 
           Button('取消')
-            .width('100%').height(42).fontSize(14).fontColor('#64748B')
-            .backgroundColor('#F1F5F9').borderRadius(12)
+            .width('100%').height(42).fontSize(14).fontColor(UiTheme.secondary)
+            .backgroundColor(UiTheme.subtle).borderRadius(8)
             .onClick(() => { this.showRouteSheet = false; })
         }
       }
-      .width('86%').padding(20).backgroundColor('#FFFFFF').borderRadius(16)
+      .width('86%').padding(20).backgroundColor(UiTheme.surface).borderRadius(8)
     }
     .width('100%').height('100%')
     .backgroundColor('rgba(15, 23, 42, 0.45)')
@@ -653,14 +658,7 @@ struct Index {
 
   @Builder
   TabBar() {
-    Row({ space: 4 }) {
-      this.TabItem($r('app.media.nav_chat'), $r('app.media.nav_chat_selected'), '对话', 0)
-      this.TabItem($r('app.media.nav_agent'), $r('app.media.nav_agent_selected'), '智能体', 1)
-      this.TabItem($r('app.media.nav_study'), $r('app.media.nav_study_selected'), '学习', 2)
-      this.TabItem($r('app.media.nav_profile'), $r('app.media.nav_profile_selected'), '我的', 3)
-    }
-    .width('100%').padding({ left: 12, right: 12, top: 8, bottom: 10 })
-    .backgroundColor('#FFFFFF').border({ width: { top: 1 }, color: '#EAECF0' })
+    AppBottomBar({ selected: this.activeTab, onSelect: (index: number) => this.switchTab(index) })
   }
 
   /**
@@ -674,18 +672,18 @@ struct Index {
         .width(22).height(22).objectFit(ImageFit.Contain)
       Text(label).fontSize(12)
         .fontWeight(this.activeTab === index ? FontWeight.Bold : FontWeight.Medium)
-        .fontColor(this.activeTab === index ? '#2563EB' : '#667085')
+        .fontColor(this.activeTab === index ? UiTheme.accent : UiTheme.secondary)
     }
     .layoutWeight(1).height(62).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
     .accessibilityText(label)
-    .backgroundColor(this.activeTab === index ? '#EFF6FF' : '#FFFFFF').borderRadius(12)
+    .backgroundColor(this.activeTab === index ? UiTheme.tint : UiTheme.surface).borderRadius(8)
     .onClick(() => { this.switchTab(index); })
   }
 
   /**
    * 标签切换。
    *
-   * ★「对话」不是本页的一个标签，而是**另一个页面**（`pages/ChatMain`）。
+   * 「对话」不是本页的一个标签，而是**另一个页面**（`pages/ChatMain`）。
    * 所以点它必须真的跳过去，不能只把 `activeTab` 置 0 —— 那样会停在本页
    * 一张"回到对话"的中间卡片上，用户还得再点一次才能说话。
    *
@@ -700,12 +698,13 @@ struct Index {
       return;
     }
     this.activeTab = index;
+    if (index === 2) void this.loadWrongBookCount();
   }
 
   /**
    * 把后端的**内部标签**翻译成用户看得懂的话。
    *
-   * ⚠️ 原来直接把 `contextTags` 原样 `join(' · ')` 显示出来，界面上就出现了
+   *  原来直接把 `contextTags` 原样 `join(' · ')` 显示出来，界面上就出现了
    * `已掌握 0 门课程、0 项临近作业 · exam_within_7d · r…` —— 那是给日志与联调看的
    * 英文枚举，不是给用户看的文案（实测反馈：「有的东西不要写给用户直接看」）。
    *
@@ -749,7 +748,7 @@ struct Index {
   }
 
   /**
-   * ★ 唯一主行动 CTA。
+   *  唯一主行动 CTA。
    *
    * 三个候选来源按可靠性排序，**永远只渲染一个按钮**：
    *   1. 后端 proactive 决策（最权威，带 Agent 的 reason 与 factors）
@@ -783,7 +782,7 @@ struct Index {
       this.startAgentTask(agentTask);
       return;
     }
-    // ⚠️ 必须先判 `isFixture()` 再求值 `primaryTask()`。
+    //  必须先判 `isFixture()` 再求值 `primaryTask()`。
     // 原写法是 `const fixtureTask = this.primaryTask(); if (this.isFixture() && ...)` ——
     // 参数在 `&&` 之前就已求值，联机模式下 `primaryTask()` 照样被调用，
     // 于是那条"先做一组快速诊断"的兜底路径一点就崩（见 plan() 的注释）。
@@ -883,189 +882,99 @@ struct Index {
   build() {
     Stack() {
       Column() {
-        // ---------- 页头（对齐参考设计：小标 + 大标题 + 副标题） ----------
-        Column({ space: 4 }) {
-          Text('AI AGENTS')
-            .fontSize(10).fontWeight(FontWeight.Bold).fontColor('#94A3B8')
-            .letterSpacing(1.5).width('100%')
-          Row() {
-            Text(this.headerTitle()).fontSize(24).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-            Blank()
-            Row({ space: 6 }) {
-              Text('●').fontSize(9).fontColor(appState.isSignedIn ? '#10B981' : '#F59E0B')
-              Text(this.identityLabel()).fontSize(11).fontWeight(FontWeight.Medium).fontColor('#2563EB')
-            }
-            .backgroundColor('#EFF6FF').borderRadius(10).padding({ left: 8, right: 8, top: 4, bottom: 4 })
-            .onClick(() => this.openAccount())
-          }.width('100%').margin({ top: 2 })
-          Text(this.headerSubtitle()).fontSize(13).fontColor('#64748B').width('100%')
-        }
-        .width('100%').alignItems(HorizontalAlign.Start)
-        .padding({ left: 20, right: 20, top: 18, bottom: 14 }).backgroundColor('#FFFFFF')
-
+        Row() {
+          Blank().width(64)
+          Text(this.headerTitle()).fontSize(18).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+            .layoutWeight(1).textAlign(TextAlign.Center)
+          Blank().width(64)
+        }.width('100%').height(56).backgroundColor(UiTheme.surface)
         Scroll() {
-          Column({ space: 16 }) {
-
-            // ================= 标签 0：对话 =================
-            // ★ 本页**没有**标签 0 的内容。
-            //
-            // 对话是独立页面 `pages/ChatMain`，点底部「对话」标签时
-            // `switchTab(0)` 会直接 `replaceUrl` 跳过去 —— 不再渲染
-            // "回到对话 / 打开对话"这类中间卡片，少一次点击。
-            // 因此下面的分支从 1 开始。
-
-            // ================= 标签 1：我的智能体（多智能体助学团） =================
-            // 定位：**它替我做什么** —— 只放智能体能力，不放功能页快捷方式。
+          Column({ space: 0 }) {
             if (this.activeTab === 1) {
-              Row() {
-                Text('选择合适能力，直接进入学习任务。').fontSize(12).fontColor('#94A3B8')
-                Blank()
-                Text(`${AGENT_SPECS.length} 个智能体`).fontSize(11).fontColor('#10B981')
-                  .backgroundColor('#ECFDF5').borderRadius(8)
-                  .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-              }.width('100%')
-
-              Scroll() {
-                Row({ space: 8 }) {
-                  ForEach(AGENT_CATEGORIES, (category: string) => {
-                    Text(category)
-                      .fontSize(12)
-                      .fontColor(this.agentFilter === category ? '#FFFFFF' : '#475467')
-                      .backgroundColor(this.agentFilter === category ? '#2563EB' : '#FFFFFF')
-                      .border({ width: 1, color: this.agentFilter === category ? '#2563EB' : '#E2E8F0' })
-                      .borderRadius(16).padding({ left: 14, right: 14, top: 7, bottom: 7 })
-                      .onClick(() => { this.agentFilter = category; })
-                  }, (category: string) => category)
-                }
-              }
-              .scrollable(ScrollDirection.Horizontal)
-              .scrollBar(BarState.Off)
-              .width('100%')
-
-              Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-                ForEach(this.filteredAgents(), (item: AgentSpec) => {
-                  this.AgentCard(item)
-                }, (item: AgentSpec) => item.key)
-              }.width('100%')
-
-              Text('多智能体自治学习引擎：诊断 → 规划 → 练习 → 测评，由内部流程节点协调。')
-                .fontSize(11).fontColor('#94A3B8').lineHeight(17).width('100%')
+              Row({ space: 6 }) {
+                ForEach(AGENT_CATEGORIES, (category: string) => {
+                  Button(category === '学情诊断' ? '诊断' : category === '路径规划' ? '规划' : category === '推送练习' ? '练习' : category === '效果评估' ? '测评' : category === '阶段复盘' ? '复盘' : '全部', { type: ButtonType.Normal })
+                    .fontSize(12).fontColor(this.agentFilter === category ? UiTheme.surface : UiTheme.secondary)
+                    .backgroundColor(this.agentFilter === category ? UiTheme.accent : UiTheme.surface)
+                    .border({ width: 1, color: this.agentFilter === category ? UiTheme.accent : UiTheme.line })
+                    .borderRadius(8).height(36).layoutWeight(1).padding({ left: 5, right: 5 })
+                    .onClick(() => this.agentFilter = category)
+                }, (category: string) => category)
+              }.width('100%').padding({ top: 12, bottom: 10 })
+              ForEach(this.filteredAgents(), (item: AgentSpec) => { this.AgentCard(item) }, (item: AgentSpec) => item.key)
             }
-
-            // ================= 标签 2：学习（管理型操作，不做能力罗列） =================
-            // 定位：**我要处理什么** —— 只放"管理"类操作。
-            // 去重原则：智能体能力（建议/计划/错题/画像）一律不在此重复，
-            // 需要它们时去「智能体」页点对应智能体；这里只解决"任务从哪来、时间怎么安排"。
             if (this.activeTab === 2) {
-              Row() {
-                Text('常用操作').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-                Blank()
-                Text(`${appState.getUrgentDDLs().length} 项作业临近`).fontSize(11).fontColor('#667085')
-              }.width('100%')
+              DeviceSummary()
+              Divider().color(UiTheme.line)
               if (appState.focusRuntime !== null && appState.focusRuntime.ownerId === appState.currentUser.userId && appState.focusRuntime.finishedAt === undefined) {
-                this.PanelRow($r('app.media.feature_focus'), '继续专注', '返回正在进行的计时任务', 'pages/FocusTimer')
+                Column({ space: 8 }) {
+                  Text('下一项任务').fontSize(12).fontColor(UiTheme.secondary)
+                  Row({ space: 12 }) {
+                    Column({ space: 5 }) {
+                      Text(appState.activeFocusTask?.task || '继续当前专注').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+                      Text(`${appState.activeFocusTask?.course || ''} · ${appState.activeFocusTask?.plannedMinutes || 0} 分钟`).fontSize(12).fontColor(UiTheme.secondary)
+                    }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+                    Button('继续专注', { type: ButtonType.Normal }).fontSize(14).height(44).fontColor(UiTheme.surface)
+                      .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => router.pushUrl({ url: 'pages/FocusTimer' }))
+                  }.width('100%')
+                }.width('100%').padding({ top: 20, bottom: 20 }).alignItems(HorizontalAlign.Start)
+              } else if (this.currentAgentTask() !== null) {
+                Column({ space: 8 }) {
+                  Text('下一项任务').fontSize(12).fontColor(UiTheme.secondary)
+                  Row({ space: 12 }) {
+                    Column({ space: 5 }) {
+                      Text(this.currentAgentTask()!.knowledgePointName).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+                      Text(`${this.currentAgentTask()!.sourceCourse || '学习任务'} · ${this.currentAgentTask()!.durationMinutes} 分钟`).fontSize(12).fontColor(UiTheme.secondary)
+                      Text('依据：今日或逾期未完成任务，按计划顺序推荐。').fontSize(12).fontColor(UiTheme.secondary)
+                      Text('查看和调整计划 ›').fontSize(13).fontColor(UiTheme.accent).onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+                    }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+                    Button('开始专注', { type: ButtonType.Normal }).fontSize(14).height(44).fontColor(UiTheme.surface)
+                      .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => this.startAgentTask(this.currentAgentTask()!))
+                  }.width('100%')
+                }.width('100%').padding({ top: 20, bottom: 20 }).alignItems(HorizontalAlign.Start)
               } else {
-                this.PanelRow($r('app.media.feature_focus'), '开始专注', '选择任务，安排本次学习时间', 'pages/FocusSetup')
+                this.PanelRow($r('app.media.feature_focus'), '开始专注', '安排本次学习时间', 'pages/FocusSetup')
               }
-              Row({ space: 12 }) {
-                this.LearningShortcut($r('app.media.feature_courses'), '课程与 DDL',
-                  this.hasLearningData() ? `${appState.courses.length} 门课程 · ${appState.getPendingDDLs().length} 项待办` : '添加或导入课程', 'pages/CourseImport')
-                this.LearningShortcut($r('app.media.feature_diagnosis'), '我的错题本', '按课程整理与练习', 'pages/WrongBook')
-              }.width('100%')
-              this.PanelRow($r('app.media.feature_courses'), '我的知识库', '管理课程讲义、笔记与资料', 'pages/KnowledgeBase')
+              this.PanelRow($r('app.media.feature_courses'), '课程与作业', `${this.courseCount}门 / ${this.pendingCount}项`, 'pages/CourseImport')
+              this.PanelRow($r('app.media.feature_diagnosis'), '错题本', this.wrongBookCount >= 0 ? `${this.wrongBookCount}题` : '', 'pages/WrongBook')
+              this.PanelRow($r('app.media.feature_courses'), '我的知识库', '', 'pages/KnowledgeBase')
+              this.PanelRow($r('app.media.feature_planner'), '学习计划', '', 'pages/StudyPlan')
+              this.PanelRow($r('app.media.feature_review'), '学习目标与考试', '', 'pages/UpcomingExams')
               if (!this.hasLearningData()) {
                 this.PanelCard('建立课程与学习目标', '导入课程表与作业截止时间，安排自己的学习任务。', '去上传 / 导入数据', 'pages/CourseImport')
               }
-              CourseReviewReminder({ revision: this.refreshKey })
               if (this.agentPlanMessage.length > 0) this.PlanLoadNotice()
             }
-
-            // ================= 标签 3：我的（身份 / 数据 / 搭子） =================
             if (this.activeTab === 3) {
-              Column({ space: 10 }) {
-                Row({ space: 10 }) {
-                  UserAvatar({ source: this.profileAvatar, nickname: this.profileNickname, diameter: 44 })
-                    .onClick(() => router.pushUrl({ url: appState.isSignedIn ? 'pages/EditProfile' : 'pages/Login' }))
-                  Column({ space: 3 }) {
-                    Text(this.profileNickname).fontSize(17).fontWeight(FontWeight.Bold)
-                      .fontColor('#0F172A').width('100%')
-                    Text(appState.isSignedIn ? '独立账号 · 数据归你所有' : '体验身份（演示数据）')
-                      .fontSize(11.5).fontColor(appState.isSignedIn ? '#1E6B3A' : '#B45309')
-                      .width('100%')
-                  }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-                    .onClick(() => router.pushUrl({ url: appState.isSignedIn ? 'pages/EditProfile' : 'pages/Login' }))
-                  Text(appState.isSignedIn ? '编辑资料 ›' : '登录 ›')
-                    .onClick(() => router.pushUrl({ url: appState.isSignedIn ? 'pages/EditProfile' : 'pages/Login' }))
-                    .fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
-                }.width('100%')
-                Button('账号与密码管理')
-                  .width('100%').height(44).fontSize(14).fontColor('#2563EB')
-                  .backgroundColor('#EFF6FF').borderRadius(12)
-                  .onClick(() => this.openAccount())
-
-                // 切换到登录 / 注册界面。
-                //
-                // **三种身份都必须能走这条路**，而不只是"已登录"：
-                //   · 已登录 → 先吊销服务端会话再跳，否则下次启动又直接进主页
-                //   · 游客   → 直接跳（没有服务端凭据可吊销）
-                //   · 离线   → 先切回联机数据源，再跳
-                // 否则用户一旦以游客身份进入，就再也没法换账号了。
-                Button('切换账号 / 退出登录')
-                  .width('100%').height(44).fontSize(14).fontColor('#B45309')
-                  .backgroundColor('#FFFBEB').borderRadius(12)
-                  .border({ width: 1, color: '#FDE68A' })
-                  .onClick(() => { this.goToLogin(); })
-                Text(appState.isSignedIn
-                  ? '退出后将回到登录 / 注册界面，可以换一个账号进来。账号数据仍保留在服务端。'
-                  : '当前是体验身份。点击可回到登录 / 注册界面，用你自己的账号进入。')
-                  .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
-              }
-              .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
-              .border({ width: 1, color: '#EAECF0' })
-
+              Row({ space: 14 }) {
+                UserAvatar({ source: this.profileAvatar, nickname: this.profileNickname, diameter: 52 })
+                Column({ space: 6 }) {
+                  Text(this.profileNickname || '我的').fontSize(19).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+                  Text(appState.isSignedIn ? '编辑资料 ›' : '登录 ›').fontSize(13).fontColor(UiTheme.secondary)
+                }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+              }.width('100%').padding({ top: 20, bottom: 24 })
+                .onClick(() => router.pushUrl({ url: appState.isSignedIn ? 'pages/EditProfile' : 'pages/Login' }))
               Row() {
-                Text('学习数据').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-                Blank()
-                Text('详情 ›').fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
-                  .onClick(() => router.pushUrl({ url: 'pages/LearningHistory' }))
-              }.width('100%').margin({ top: 4 })
-
-              Row({ space: 10 }) {
-                this.StatCard(`${appState.getPlanProgress()}%`, '任务完成度')
-                this.StatCard(`${appState.getFocusSummary().todayMinutes}`, '今日专注分钟')
-                this.StatCard(`${appState.getFocusSummary().recentSessions.length}`, '专注记录次数')
-              }.width('100%')
-
-              Row({ space: 10 }) {
-                this.StatCard(`${appState.getFocusSummary().streakDays}`, '连续学习天数')
-                // 同 Account 页：这里是**全部**待处理作业。用只数 7 天内的
-                // getUrgentDDLs() 会让"导入 N 条却显示 N-1 条"（实测反馈的数字对不上）。
-                this.StatCard(`${appState.getPendingDDLs().length}`, '待处理作业', 'pages/CourseImport')
-              }.width('100%')
-
-              this.PanelRow($r('app.media.feature_review'), '提醒设置', '通知权限与免打扰时段', 'pages/Reminders')
-              this.PanelRow($r('app.media.feature_review'), '学习报告', '查看学习投入、作答证据与改进动作', 'pages/ReviewSummary')
-
-              Row() {
-                Text('我的学习搭子').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-              }.width('100%').margin({ top: 4 })
-
-              this.PanelRow($r('app.media.feature_partner'), '搭子与协同', '查看匹配结果与协同学习计划', 'pages/PartnerMatch')
-
+                this.StatCard(`${this.planProgress}%`, '任务\n完成度')
+                this.StatCard(`${this.todayMinutes}分钟`, '今日\n专注')
+                this.StatCard(`${this.recentFocusCount}次`, '专注\n记录 ›', 'pages/LearningHistory')
+                this.StatCard(`${this.streakDays}天`, '连续\n学习')
+                this.StatCard(`${this.pendingCount}项`, '待处理\n作业 ›', 'pages/CourseImport')
+              }.width('100%').border({ width: 1, color: UiTheme.line }).borderRadius(8).margin({ bottom: 24 })
+              this.PanelRow($r('app.media.feature_assessment'), '学习报告', '', 'pages/ReviewSummary')
+              this.PanelRow($r('app.media.feature_focus'), '专注记录', '', 'pages/LearningHistory')
+              this.PanelRow($r('app.media.feature_courses'), '学习目标记录', '', 'pages/LearningRecords')
+              this.PanelRow($r('app.media.feature_partner'), '搭子与协同', '', 'pages/PartnerMatch')
+              this.PanelRow($r('app.media.feature_review'), '提醒设置', '', 'pages/Reminders')
+              this.PanelRow($r('app.media.feature_review'), '账号、安全与隐私', '', 'pages/Account')
             }
-
-            Blank().height(12)
-          }.width('100%').padding({ left: 20, right: 20, top: 16, bottom: 20 })
-        }.align(Alignment.TopStart).layoutWeight(1)
-
+          }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth })
+            .padding({ left: 20, right: 20, bottom: 24 })
+        }.width('100%').layoutWeight(1).align(Alignment.TopStart).scrollBar(BarState.Off)
         this.TabBar()
-      }
-      .width('100%').height('100%').backgroundColor('#F7F8FA')
+      }.width('100%').height('100%').backgroundColor(UiTheme.surface)
       AIFloatButton({ bottomGap: 100 })
-      // 多入口智能体的选择浮层（覆盖在最上层）
-      if (this.showRouteSheet) {
-        this.RouteSheet()
-      }
+      if (this.showRouteSheet) { this.RouteSheet() }
     }.width('100%').height('100%')
   }
 
@@ -1109,7 +1018,7 @@ interface AgentRoute {
  *                          → 测评智能体（效果评估）
  *   秘书智能体（总控编排）统筹上面四个，决定"下一步叫谁"。
  *
- * ⚠️ **后端逻辑完全未改动**：这 5 张卡只是把既有页面/意图**归并展示**，
+ *  **后端逻辑完全未改动**：这 5 张卡只是把既有页面/意图**归并展示**，
  * 每个 `routes` 仍指向原有页面，不新增也不删除任何 Agent 行为。
  *
  * 为什么从 12 张收到 5 张：原先把「学习记录 / 课程导入 / 专注模式 / 学习复盘」

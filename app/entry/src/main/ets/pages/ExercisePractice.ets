@@ -1,3 +1,5 @@
+import { PageHeader } from '../components/PageHeader';
+import { UiTheme } from '../utils/UiTheme';
 import { CourseLabels } from '../utils/CourseLabels';
 import { ActionButton } from '../components/ActionButton';
 import { Evidence, MasteryHistory } from '../api/ApiModels';
@@ -302,7 +304,7 @@ struct ExercisePractice {
    * `DemoSnapshot.EXERCISE_KNOWLEDGE_POINT_ID`，于是不管诊断出什么知识点，
    * 都只拿得到演示那 3 道题 —— 用户反馈的"一直是那三个题目"就是这个。
    *
-   * ⚠️ 不带参数时仍用演示默认知识点，**演示基线（√√× → 66.67 → 42→58）不受影响**。
+   *  不带参数时仍用演示默认知识点，**演示基线（√√× → 66.67 → 42→58）不受影响**。
    */
   private readRouteParams(): void {
     try {
@@ -433,7 +435,7 @@ struct ExercisePractice {
       return;
     }
     this.stopWait();
-    // ⚠️ 用户**主动要一组新题**（forceRefresh）却没拿到新题时，必须清空上一轮的题与作答。
+    //  用户**主动要一组新题**（forceRefresh）却没拿到新题时，必须清空上一轮的题与作答。
     // 两条路径都会落到这里：
     //   1. `data === null` —— 请求彻底失败；
     //   2. 请求失败、但 `ExerciseViewModel` 用缓存兜了底（它会把 errorMessage 写上）。
@@ -504,19 +506,19 @@ struct ExercisePractice {
     Column({ space: 14 }) {
       Text('题目资料依据').fontSize(22).fontWeight(FontWeight.Bold).width('100%')
       Text('下列原文用于核对题目。来源链接与引用已检查，模型生成的题目及答案仍可能有误。')
-        .fontSize(13).fontColor('#64748B').lineHeight(21)
+        .fontSize(13).fontColor(UiTheme.secondary).lineHeight(21)
       if (this.sourceLoading) {
         LoadingProgress().width(32).height(32)
       } else if (this.sourceError.length > 0) {
-        Text(this.sourceError).fontSize(14).fontColor('#B42318')
+        Text(this.sourceError).fontSize(14).fontColor(UiTheme.danger)
       } else {
         ForEach(this.sourceFragments, (source: ExerciseSource) => {
           Column({ space: 8 }) {
             Text(source.fileName).fontSize(16).fontWeight(FontWeight.Bold).width('100%')
-            Text(`${source.headingPath || '无章节标题'} · ${source.chunkIndex > 0 ? '第 ' + source.chunkIndex + ' 段' : '原文片段'}`)
-              .fontSize(12).fontColor('#2563EB').width('100%')
-            Text(source.text ?? '').fontSize(14).fontColor('#344054').lineHeight(23).width('100%').copyOption(CopyOptions.InApp)
-          }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
+            Text(`${source.headingPath || '无章节标题'} · ${source.chunkIndex > 0 ? '第 ' + source.chunkIndex + '段' : '原文片段'}`)
+              .fontSize(12).fontColor(UiTheme.accent).width('100%')
+            Text(source.text ?? '').fontSize(14).fontColor(UiTheme.ink).lineHeight(23).width('100%').copyOption(CopyOptions.InApp)
+          }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
         }, (source: ExerciseSource) => source.chunkId)
       }
       Button('返回练习').onClick(() => { this.sourceRequestVersion++; this.sourceVisible = false; })
@@ -599,7 +601,7 @@ struct ExercisePractice {
       this.submissionUnconfirmed = !(status >= 400 && status < 500 && status !== 408 && status !== 429);
       if (!this.submissionUnconfirmed) this.pendingSubmission = null;
       this.errorMessage = (this.viewModel.getErrorMessage() || '提交失败，请稍后重试。') +
-        (this.submissionUnconfirmed ? ' 交卷结果尚未确认，已保留原答案；请重试确认结果。' : '');
+        (this.submissionUnconfirmed ? '交卷结果尚未确认，已保留原答案；请重试确认结果。' : '');
       return;
     }
     this.pendingSubmission = null;
@@ -621,34 +623,37 @@ struct ExercisePractice {
 
   @Builder
   OptionButton(questionIndex: number, option: string) {
-    Button(option)
-      .fontSize(14).fontColor(this.isSelected(questionIndex, option) ? '#FFFFFF' : '#344054')
-      .backgroundColor(this.isSelected(questionIndex, option) ? '#2563EB' : '#F8FAFC')
-      .border({ width: 1, color: this.isSelected(questionIndex, option) ? '#2563EB' : '#D0D5DD' })
-      .borderRadius(10).width('100%').height(42)
-      .enabled(!this.isSubmitting && !this.submissionUnconfirmed)
-      .onClick(() => this.selectAnswer(questionIndex, option))
+    Button({ type: ButtonType.Normal }) {
+      Row({ space: 10 }) {
+        Radio({ value: option.substring(0, 1), group: `question-${questionIndex}` }).checked(this.isSelected(questionIndex, option))
+          .width(18).height(18).hitTestBehavior(HitTestMode.None)
+        Text(option).fontSize(14).fontColor(UiTheme.ink).lineHeight(22).layoutWeight(1)
+      }.width('100%').padding({ left: 12, right: 12, top: 12, bottom: 12 })
+    }.width('100%').constraintSize({ minHeight: 48 }).borderRadius(8)
+      .backgroundColor(this.isSelected(questionIndex, option) ? UiTheme.tint : UiTheme.surface)
+      .border({ width: 1, color: this.isSelected(questionIndex, option) ? UiTheme.accent : UiTheme.line })
+      .accessibilityText(option).onClick(() => this.selectAnswer(questionIndex, option))
   }
 
   @Builder
   QuestionCard(item: Exercise, index: number) {
     Column({ space: 12 }) {
       Text(`第 ${index + 1} 题 · ${item.knowledgePointName} · ${item.difficulty ?? '练习'}`)
-        .fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Bold)
-      Text(item.stem).fontSize(16).fontColor('#1F2937').fontWeight(FontWeight.Medium).lineHeight(23)
+        .fontSize(12).fontColor(UiTheme.accent).fontWeight(FontWeight.Bold)
+      Text(item.stem).fontSize(16).fontColor(UiTheme.ink).fontWeight(FontWeight.Medium).lineHeight(23)
       if (item.source === 'materials') {
         Button('资料生成题 · 查看原文依据').fontSize(12).height(34)
           .onClick(() => this.openSources(item.exerciseId))
       } else {
         Text(item.source === 'llm' ? '通用知识生成题，未引用上传资料' : '预置题库题，未引用上传资料')
-          .fontSize(11).fontColor('#64748B')
+          .fontSize(11).fontColor(UiTheme.secondary)
       }
       ForEach(item.options, (option: string) => {
         this.OptionButton(index, option)
       }, (option: string) => option)
     }
-    .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
-    .border({ width: 1, color: '#E2E8F0' })
+    .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+    .border({ width: 1, color: UiTheme.line })
   }
 
   private weakPointText(value: ExerciseSubmissionResult): string {
@@ -686,66 +691,66 @@ struct ExercisePractice {
   ReviewPanel(value: ExerciseSubmissionResult) {
     Column({ space: 16 }) {
       if (value.reviewStatus === 'pending') {
-        Text('基础解析已可查看，AI 详细解析仍在后台生成。').fontSize(13).fontColor('#64748B')
+        Text('基础解析已可查看，AI 详细解析仍在后台生成。').fontSize(13).fontColor(UiTheme.secondary)
         Button('刷新解析状态').height(34).fontSize(12).onClick(() => { this.reviewPollCount = 0; void this.refreshReview(); })
       }
       Row() {
-        Text('逐题解析').fontSize(23).fontWeight(FontWeight.Bold).fontColor('#111827')
+        Text('逐题解析').fontSize(23).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
         Blank()
-        Text('返回结果').fontSize(13).fontColor('#2563EB').onClick(() => this.closeReview())
+        Text('返回结果').fontSize(13).fontColor(UiTheme.accent).onClick(() => this.closeReview())
       }.width('100%')
       Text('答错题已自动加入错题本。每道做过的题也可以由你自行加入或移除。')
-        .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
+        .fontSize(13).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
       if (this.wrongBookMessage.length > 0) {
         Text(this.wrongBookMessage).fontSize(13).fontColor('#0F766E').width('100%')
-          .padding(10).backgroundColor('#ECFDF5').borderRadius(10)
+          .padding(10).backgroundColor('#ECFDF5').borderRadius(8)
       }
       ForEach(this.exercises, (item: Exercise, index: number) => {
         Column({ space: 10 }) {
           Row() {
             Text(`第 ${index + 1} 题 · ${item.knowledgePointName}`).fontSize(13)
-              .fontWeight(FontWeight.Bold).fontColor('#2563EB').layoutWeight(1)
+              .fontWeight(FontWeight.Bold).fontColor(UiTheme.accent).layoutWeight(1)
             Text(value.review[index].correct ? '回答正确' : '回答错误')
-              .fontSize(12).fontColor(value.review[index].correct ? '#0F766E' : '#DC2626')
+              .fontSize(12).fontColor(value.review[index].correct ? '#0F766E' : UiTheme.danger)
           }.width('100%')
-          Text(item.stem).fontSize(16).fontWeight(FontWeight.Medium).fontColor('#1F2937').lineHeight(23)
+          Text(item.stem).fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).lineHeight(23)
           Column({ space: 8 }) {
             ForEach(item.options, (option: string) => {
               Row({ space: 8 }) {
-                Text(option).fontSize(14).fontColor('#344054').layoutWeight(1).lineHeight(20)
+                Text(option).fontSize(14).fontColor(UiTheme.ink).layoutWeight(1).lineHeight(20)
                 if (option.substring(0, 1) === value.review[index].correctAnswer) {
                   Text('正确答案').fontSize(11).fontColor('#0F766E')
                     .padding({ left: 7, right: 7, top: 3, bottom: 3 })
                     .backgroundColor('#ECFDF5').borderRadius(6)
                 } else if (option.substring(0, 1) === value.review[index].selectedAnswer) {
-                  Text('你的选择').fontSize(11).fontColor('#B42318')
+                  Text('你的选择').fontSize(11).fontColor(UiTheme.danger)
                     .padding({ left: 7, right: 7, top: 3, bottom: 3 })
                     .backgroundColor('#FEF3F2').borderRadius(6)
                 }
-              }.width('100%').padding(10).backgroundColor('#F8FAFC').borderRadius(8)
+              }.width('100%').padding(10).backgroundColor(UiTheme.subtle).borderRadius(8)
             }, (option: string) => option)
           }.width('100%')
           Text(`你的答案：${value.review[index].selectedAnswer}　正确答案：${value.review[index].correctAnswer}`)
-            .fontSize(13).fontColor('#475467').width('100%')
+            .fontSize(13).fontColor(UiTheme.secondary).width('100%')
           Column({ space: 6 }) {
             Text(value.review[index].explanationSource === 'materials' ? '资料题解析（模型生成，可查看原文核对）' :
               this.reviewSourceLabel(value.review[index]))
-              .fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB').width('100%')
-            Text(value.review[index].explanation).fontSize(14).fontColor('#344054').lineHeight(22).width('100%')
-          }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(10)
+              .fontSize(13).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent).width('100%')
+            Text(value.review[index].explanation).fontSize(14).fontColor(UiTheme.ink).lineHeight(22).width('100%')
+          }.width('100%').padding(12).backgroundColor(UiTheme.tint).borderRadius(8)
           if (item.source === 'materials') {
             Button('查看本题资料依据').height(36).fontSize(13).onClick(() => this.openSources(item.exerciseId))
           }
           Button(this.wrongBookFlags[index] ? '移出错题本' : '加入错题本')
             .width('100%').height(40).fontSize(13)
-            .fontColor(this.wrongBookFlags[index] ? '#B42318' : '#2563EB')
-            .backgroundColor(this.wrongBookFlags[index] ? '#FEF3F2' : '#EFF6FF')
-            .borderRadius(10).onClick(() => this.toggleReviewWrongBook(index))
-        }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
+            .fontColor(this.wrongBookFlags[index] ? UiTheme.danger : UiTheme.accent)
+            .backgroundColor(this.wrongBookFlags[index] ? '#FEF3F2' : UiTheme.tint)
+            .borderRadius(8).onClick(() => this.toggleReviewWrongBook(index))
+        }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
           .border({ width: 1, color: value.review[index].correct ? '#A7F3D0' : '#FECACA' })
       }, (item: Exercise) => item.exerciseId)
-      Button('进入错题本刷题').width('100%').height(46).fontSize(15).fontColor('#FFFFFF')
-        .backgroundColor('#2563EB').borderRadius(12)
+      Button('进入错题本刷题').width('100%').height(46).fontSize(15).fontColor(UiTheme.surface)
+        .backgroundColor(UiTheme.accent).borderRadius(8)
         .onClick(() => router.pushUrl({ url: 'pages/WrongBook' }))
     }.width('100%')
   }
@@ -753,64 +758,64 @@ struct ExercisePractice {
   @Builder
   ResultPanel(value: ExerciseSubmissionResult) {
     Column({ space: 16 }) {
-      Text('诊断结果已生成').fontSize(23).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+      Text('诊断结果已生成').fontSize(23).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
       Text('根据本次答题更新掌握度估计；题量有限，结果供后续学习安排参考。')
-        .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
+        .fontSize(13).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
 
       if (this.warningMessage.length > 0) {
         Text(this.warningMessage)
           .fontSize(13).fontColor('#B45309').lineHeight(19).width('100%')
-          .padding(12).backgroundColor('#FFFBEB').borderRadius(10)
+          .padding(12).backgroundColor('#FFFBEB').borderRadius(8)
       }
 
 
 
       Row({ space: 12 }) {
         Column({ space: 4 }) {
-          Text(`${value.assessment.score}%`).fontSize(30).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-          Text('本次正确率').fontSize(12).fontColor('#667085')
-        }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor('#EFF6FF').borderRadius(14)
+          Text(`${value.assessment.score}%`).fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+          Text('本次正确率').fontSize(12).fontColor(UiTheme.secondary)
+        }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor(UiTheme.tint).borderRadius(8)
         Column({ space: 4 }) {
           Text(`${value.review.filter((item: ExerciseReview) => item.correct).length}/${value.review.length}`)
             .fontSize(22).fontWeight(FontWeight.Bold).fontColor('#0F766E')
-          Text('本轮答对题数').fontSize(12).fontColor('#667085').textAlign(TextAlign.Center)
-        }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor('#ECFDF5').borderRadius(14)
+          Text('本轮答对题数').fontSize(12).fontColor(UiTheme.secondary).textAlign(TextAlign.Center)
+        }.layoutWeight(1).alignItems(HorizontalAlign.Center).padding(14).backgroundColor('#ECFDF5').borderRadius(8)
       }.width('100%')
 
       if (value.assessment.masteryUpdates !== undefined) {
         Column({ space: 8 }) {
-          Text('各知识点评估').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+          Text('各知识点评估').fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
           ForEach(value.assessment.masteryUpdates, (item: PointMasteryUpdate) => {
             Row({ space: 12 }) {
               Column({ space: 4 }) {
-                Text(this.assessedPointName(item.knowledgePointId)).fontSize(14).fontColor('#344054')
+                Text(this.assessedPointName(item.knowledgePointId)).fontSize(14).fontColor(UiTheme.ink)
                 Text(`答对 ${item.correctCount}/${item.questionCount} 题`)
-                  .fontSize(12).fontColor('#667085')
+                  .fontSize(12).fontColor(UiTheme.secondary)
               }.layoutWeight(1).alignItems(HorizontalAlign.Start)
               Text(`${item.questionCount > 0 ? Math.round(item.correctCount / item.questionCount * 100) : 0}%`).fontSize(17).fontColor('#0F766E')
             }.width('100%')
           }, (item: PointMasteryUpdate) => item.knowledgePointId)
-        }.width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(12)
+        }.width('100%').padding(14).backgroundColor(UiTheme.surface).borderRadius(8)
       }
 
       Column({ space: 6 }) {
         Text('错误类型').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#B45309')
         Text(this.errorTypeText(value))
-          .fontSize(14).fontColor('#475467')
-      }.width('100%').padding(13).backgroundColor('#FFFBEB').borderRadius(12)
+          .fontSize(14).fontColor(UiTheme.secondary)
+      }.width('100%').padding(13).backgroundColor('#FFFBEB').borderRadius(8)
 
 
       Text(value.planChangeSummary ?? '本轮测评结果已保存。').fontSize(14).fontColor('#0F766E')
-      Text(`薄弱知识点：${this.weakPointText(value)}`).fontSize(14).fontColor('#475467')
+      Text(`薄弱知识点：${this.weakPointText(value)}`).fontSize(14).fontColor(UiTheme.secondary)
 
       ActionButton({ label: '查看题目与逐题解析', onAction: () => this.openReview() })
 
       if (value.needReplan && value.planDiff !== undefined) {
-        Text('已根据本次结果调整复习安排 · 查看原因 ›').fontSize(13).fontColor('#667085')
-          .stateStyles({ normal: { .fontColor('#2563EB').backgroundColor('#FFFFFF') }, pressed: { .fontColor('#FFFFFF').backgroundColor('#2563EB') } }).onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+        Text('已根据本次结果调整复习安排 · 查看原因 ›').fontSize(13).fontColor(UiTheme.secondary)
+          .stateStyles({ normal: { .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface) }, pressed: { .fontColor(UiTheme.surface).backgroundColor(UiTheme.accent) } }).onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
       }
 
-      // ★ 核心闭环收口。
+      //  核心闭环收口。
       // 重构前这里只有「查看画像 / 看决策过程 / 返回首页」三个平级跳转，
       // 而**恰恰没有「再练一次」** —— 于是「练习 → 判分 → 掌握度更新 → 重规划」
       // 这条 Agent 主链在最后一格断掉了：用户看到分数变了，却不知道该干嘛。
@@ -848,20 +853,20 @@ struct ExercisePractice {
   @Builder
   KnowledgePointPicker() {
     Column({ space: 14 }) {
-      Text('选择要练的知识点').fontSize(22).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+      Text('选择要练的知识点').fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
       Text('先练推荐项，也可以按课程、主题或状态选择。')
-        .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
+        .fontSize(13).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
 
       if (this.pickerErrorMessage.length > 0) {
         Text(this.pickerErrorMessage)
           .fontSize(13).fontColor('#B45309').lineHeight(19).width('100%')
-          .padding(12).backgroundColor('#FFFBEB').borderRadius(10)
+          .padding(12).backgroundColor('#FFFBEB').borderRadius(8)
       }
 
       Select(this.pickerCourses().map((name: string): SelectOption => { return { value: name }; }))
         .value(this.selectedCourse || '选择课程').width('100%')
         .onSelect((index: number) => { this.selectedCourse = this.pickerCourses()[index]; this.selectedTopic = '全部主题'; this.pointFilter = '推荐'; })
-      Button('查看全部知识点或手动匹配归属 ›').fontSize(13).width('100%').backgroundColor('#EFF6FF').fontColor('#2563EB')
+      Button('查看全部知识点或手动匹配归属 ›').fontSize(13).width('100%').backgroundColor(UiTheme.tint).fontColor(UiTheme.accent)
         .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { courseName: this.selectedCourse } }))
       if (this.pickerOptions.some((p: KnowledgeMastery) => p.classificationRequired === true)) {
         Text('部分内容未能识别所属课程，请手动匹配后开始练习 ›').fontSize(13).fontColor('#B45309').width('100%')
@@ -869,27 +874,27 @@ struct ExercisePractice {
       }
       if (this.pickerOptions.length === 0) {
         Column({ space: 12 }) {
-          Text('还没有可练的知识点').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+          Text('还没有可练的知识点').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
           if (this.isDemoIdentity()) {
             Text('当前是游客演示身份，可以先用演示知识点体验完整练习流程。')
-              .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
+              .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
             Button('先用演示知识点练一轮')
-              .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
-              .backgroundColor('#2563EB').borderRadius(12)
+              .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent).borderRadius(8)
               .onClick(() => this.practiceDemoPoint())
           } else {
             Text('先上传课程或资料，或拍一道错题完成诊断。系统会根据你的真实内容生成知识点和练习。')
-              .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
+              .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
             Button('去上传课程 / 资料')
-              .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
-              .backgroundColor('#2563EB').borderRadius(12)
+              .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent).borderRadius(8)
               .onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'import' } }))
             Button('去做错题诊断')
-              .width('100%').height(44).fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
-              .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
+              .width('100%').height(44).fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
+              .border({ width: 1, color: '#BFDBFE' }).borderRadius(8)
               .onClick(() => router.pushUrl({ url: 'pages/WrongQuestion' }))
           }
-        }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
+        }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
       } else {
         TextInput({ text: this.pointSearch, placeholder: '搜索知识点' }).onChange((v: string) => this.pointSearch = v)
         if (this.topicChoices().length > 1) Select(this.topicChoices().map((name: string): SelectOption => { return { value: name }; }))
@@ -897,30 +902,30 @@ struct ExercisePractice {
         Scroll() {
         Row({ space: 4 }) {
           ForEach(['推荐', '需巩固', '待复测', '未测评', '全部'], (name: string) => {
-            Button(name).fontSize(12).margin(4).backgroundColor(this.pointFilter === name ? '#2563EB' : '#EFF6FF')
-              .fontColor(this.pointFilter === name ? '#FFFFFF' : '#2563EB').onClick(() => this.pointFilter = name)
+            Button(name).fontSize(12).margin(4).backgroundColor(this.pointFilter === name ? UiTheme.accent : UiTheme.tint)
+              .fontColor(this.pointFilter === name ? UiTheme.surface : UiTheme.accent).onClick(() => this.pointFilter = name)
           }, (name: string) => name)
         }
-        }.scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).width('100%')
-        Text('判定说明 ›').fontSize(12).fontColor('#667085').width('100%').textAlign(TextAlign.End)
+        }.scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).width('100%').align(Alignment.TopStart)
+        Text('判定说明 ›').fontSize(12).fontColor(UiTheme.secondary).width('100%').textAlign(TextAlign.End)
           .padding({ top: 4, bottom: 4 }).onClick(() => this.showCriteria())
-        if (this.coursePoints().length === 0) Text('暂无符合条件的知识点，请调整筛选。').fontSize(13).fontColor('#667085')
+        if (this.coursePoints().length === 0) Text('暂无符合条件的知识点，请调整筛选。').fontSize(13).fontColor(UiTheme.secondary)
         ForEach(this.coursePoints().slice(0, 20), (item: KnowledgeMastery, index: number) => {
           Column({ space: 8 }) {
             Row({ space: 8 }) {
               Text(item.knowledgePointName)
-                .fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937').layoutWeight(1)
+                .fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).layoutWeight(1)
               if (index === 0 && this.pickerAssessed(item)) {
                 Text('可继续练习').fontSize(11).fontColor('#B45309').backgroundColor('#FEF3C7')
                   .borderRadius(8).padding({ left: 8, right: 8, top: 3, bottom: 3 })
               }
-              Text(LearningEvidence.label(item)).fontSize(12).fontColor('#667085')
+              Text(LearningEvidence.label(item)).fontSize(12).fontColor(UiTheme.secondary)
             }.width('100%').alignItems(VerticalAlign.Top)
-            Text(LearningEvidence.detail(item)).fontSize(12).fontColor('#667085')
-            Text(this.pickerAssessed(item) ? '开始专项练习 →' : '开始诊断 →').fontSize(13).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+            Text((item.effectiveQuestionCount ?? 0) > 0 ? `近期正确率：${LearningEvidence.score(item)}%` : '近期正确率：—').fontSize(12).fontColor(UiTheme.secondary)
+            Text('开始练习 ›').fontSize(13).fontWeight(FontWeight.Medium).fontColor(UiTheme.accent)
           }
-          .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
-          .border({ width: 1, color: index === 0 ? '#BFDBFE' : '#E2E8F0' })
+          .width('100%').padding(14).backgroundColor(UiTheme.surface).borderRadius(8)
+          .border({ width: 1, color: index === 0 ? '#BFDBFE' : UiTheme.line })
           .onClick(() => this.chooseKnowledgePoint(item))
         }, (item: KnowledgeMastery) => item.knowledgePointId)
       }
@@ -930,17 +935,9 @@ struct ExercisePractice {
   build() {
     Stack() {
       Column() {
-        Row({ space: 12 }) {
-          Text(this.showReview ? '← 返回诊断结果' : '← 返回').fontSize(14).fontColor('#64748B').padding({ top: 8, bottom: 8 }).onClick(() => this.goBack())
-          Blank()
-          if (!this.showPicker && !this.pickerLoading) {
-            Text('换知识点').fontSize(13).fontColor('#2563EB')
-              .enabled(!this.isSubmitting)
-              .onClick(() => this.backToPicker())
-          }
-          Text(this.showPicker || this.pickerLoading ? '选择知识点' : this.practiceTitle())
-            .fontSize(14).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-        }.width('100%').padding({ left: 16, right: 16, top: 14, bottom: 14 }).backgroundColor('#FFFFFF')
+        PageHeader({ title: this.showPicker || this.pickerLoading ? '选择知识点' : this.showReview ? '逐题解析与依据' : this.result !== null ? '练习结果' : '作答与交卷',
+          assistant: true, detail: !this.showPicker && !this.pickerLoading ? '换知识点' : '',
+          onBack: () => this.goBack(), onDetail: () => { if (!this.isSubmitting) this.backToPicker(); } })
 
         Scroll(this.pageScroller) {
           Column({ space: 16 }) {
@@ -949,7 +946,7 @@ struct ExercisePractice {
             } else if (this.pickerLoading) {
               Column({ space: 10 }) {
                 LoadingProgress().width(32).height(32)
-                Text('正在读取你的知识点…').fontSize(14).fontColor('#64748B')
+                Text('正在读取你的知识点…').fontSize(14).fontColor(UiTheme.secondary)
               }
               .width('100%').padding(32).alignItems(HorizontalAlign.Center)
             } else if (this.showPicker) {
@@ -957,8 +954,8 @@ struct ExercisePractice {
             } else if (this.isLoading) {
               Column({ space: 12 }) {
                 LoadingProgress().width(36).height(36)
-                Text(`正在请求练习，已等待 ${this.waitSeconds} 秒`).fontSize(15).fontColor('#475467')
-                Text('题库未覆盖时需要现场生成，通常需要数十秒。请求完成后将显示结果；失败可重试。').fontSize(13).fontColor('#64748B')
+                Text(`正在请求练习，已等待 ${this.waitSeconds} 秒`).fontSize(15).fontColor(UiTheme.secondary)
+                Text('题库未覆盖时需要现场生成，通常需要数十秒。请求完成后将显示结果；失败可重试。').fontSize(13).fontColor(UiTheme.secondary)
                 Button('退出等待').onClick(() => this.leaveWaiting())
               }.width('100%').padding(28)
             } else if (this.result !== null && this.showReview) {
@@ -967,35 +964,35 @@ struct ExercisePractice {
               this.ResultPanel(this.result)
             } else if (this.exercises.length === 0) {
               Column({ space: 14 }) {
-                Text('练习题暂未加载成功').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#111827')
+                Text('练习题暂未加载成功').fontSize(20).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
                 Text(this.errorMessage || '暂未取得题目，请稍后重试。')
-                  .fontSize(14).fontColor('#667085').lineHeight(21).textAlign(TextAlign.Center)
+                  .fontSize(14).fontColor(UiTheme.secondary).lineHeight(21).textAlign(TextAlign.Center)
                 Button('重新加载')
-                  .height(44).fontSize(15).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+                  .height(44).fontSize(15).fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
                   .onClick(() => this.loadExercises(true))
                 if (this.sourceMode === 'materials') {
                   Button('切换为通用知识练习').fontSize(14).height(40).onClick(() => this.useGeneralQuestions())
                 }
               }.width('100%').margin({ top: 56 }).alignItems(HorizontalAlign.Center)
             } else {
-              Text(`${this.practiceTitle()} · ${this.exercises.length} 题快速诊断`).fontSize(22).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+              Text(`${this.practiceTitle()} · ${this.exercises.length} 题快速诊断`).fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
               Text(this.sourceMode === 'materials' ? '本轮依据所选上传资料出题，原文支持核对。' : '本轮使用通用知识或预置题库；资料题请从资料库选择文档进入。')
-                .fontSize(12).fontColor('#64748B').lineHeight(20).width('100%')
-              Text(`已完成 ${this.answeredCount()} / ${this.exercises.length} 题`).fontSize(13).fontColor('#667085').width('100%')
+                .fontSize(12).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
+              Text(`已完成 ${this.answeredCount()} / ${this.exercises.length} 题`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
               ForEach(this.exercises, (item: Exercise, index: number) => {
                 this.QuestionCard(item, index)
               }, (item: Exercise) => item.exerciseId)
               if (this.errorMessage.length > 0) {
-                Text(this.errorMessage).fontSize(13).fontColor('#B45309').width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(10)
+                Text(this.errorMessage).fontSize(13).fontColor('#B45309').width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(8)
               }
               Button(this.isSubmitting ? '正在提交…' : (this.submissionUnconfirmed ? '重试确认交卷结果' : '提交诊断'))
-                .width('100%').height(48).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
-                .backgroundColor('#2563EB').borderRadius(14)
+                .width('100%').height(48).fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.surface)
+                .backgroundColor(UiTheme.accent).borderRadius(8)
                 .enabled(!this.isSubmitting && this.answeredCount() === this.exercises.length)
                 .onClick(() => this.submit())
             }
           }.width('100%').padding({ left: 16, right: 16, top: 16, bottom: 96 })
-        }.layoutWeight(1).backgroundColor('#F3F6FA')
+        }.layoutWeight(1).backgroundColor(UiTheme.canvas).align(Alignment.TopStart)
       }.width('100%').height('100%')
       AIFloatButton()
     }.width('100%').height('100%')

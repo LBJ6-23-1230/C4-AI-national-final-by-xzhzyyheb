@@ -90,7 +90,7 @@ def fit_plan_to_budget(old_plan: dict, available_minutes: int, prioritize_point=
         elif duration <= remaining:
             scheduled.append(task)
             remaining -= duration
-        elif (task.get('source') != 'ddl' and task.get('status') == 'pending' and
+        elif (task.get('source') not in ('ddl', 'manual', 'partner', 'exam_review', 'today') and task.get('status') == 'pending' and
               task.get('allowPartial') and remaining >= 5):
             # Only explicitly divisible learning tasks may be split. Keep the
             # unfinished minutes visible with their own stable task identifier.

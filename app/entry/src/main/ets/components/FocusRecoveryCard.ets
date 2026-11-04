@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { appState } from '../data/AppState';
 
@@ -18,9 +19,9 @@ export struct FocusRecoveryCard {
   build() {
     if (this.label.length > 0) {
       Row({ space: 8 }) {
-        Text(this.label).fontSize(12).fontColor('#344054').layoutWeight(1)
+        Text(this.label).fontSize(12).fontColor(UiTheme.ink).layoutWeight(1)
         Button('恢复').fontSize(12).onClick(() => router.pushUrl({ url: 'pages/FocusSetup' }))
-      }.width('100%').padding(10).backgroundColor('#EFF6FF')
+      }.width('100%').padding(10).backgroundColor(UiTheme.tint)
     }
   }
 }

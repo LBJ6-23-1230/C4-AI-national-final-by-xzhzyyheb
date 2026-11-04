@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { KeyboardAvoidMode } from '@ohos.arkui.UIContext';
 import { PageHeader } from '../components/PageHeader';
 import { UserAvatar } from '../components/UserAvatar';
@@ -5,7 +6,7 @@ import router from '@ohos.router';
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { AgentApiClient } from '../api/AgentApiClient';
-import { PartnerMessage } from '../api/LearningUpgradeModels';
+import { PartnerMessage, PartnerConversation } from '../api/LearningUpgradeModels';
 import { appState } from '../data/AppState';
 import { ImageEncoder } from '../utils/ImageEncoder';
 import { VoiceInputCallbacks, VoiceInputService } from '../services/VoiceInputService';
@@ -25,6 +26,9 @@ struct PartnerChat {
   @State sendFailed: boolean = false;
   @State listening: boolean = false;
   @State showTools: boolean = false;
+  @State showLearningInfo: boolean = false;
+  @State summary: PartnerConversation | null = null;
+  @State infoNotice: string = '';
   @State previewImage: string = '';
   private messageScroller: Scroller = new Scroller();
   private imageSource(value: string): string {
@@ -60,6 +64,7 @@ struct PartnerChat {
     this.owner = appState.currentUser.userId;
     this.active = true;
     void this.load();
+    void this.loadSummary();
     this.timer = setInterval(() => { void this.load(); }, 3000);
   }
   onPageHide(): void {
@@ -154,30 +159,59 @@ struct PartnerChat {
       ));
     } catch (error) { this.notice = '语音输入不可用，可继续文字输入。'; }
   }
+  private async loadSummary(): Promise<void> {
+    const result = await AgentApiClient.partnerSummary(this.partnerId);
+    if (!this.ownsPage()) return;
+    if (result.ok) { this.summary = result.data.conversation; this.infoNotice = ''; }
+    else this.infoNotice = '学习信息暂未同步，点击重试';
+  }
+  @Builder
+  LearningInformation() {
+    Column({ space: 10 }) {
+      Row() {
+        Text('学习信息').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+        Text(this.showLearningInfo ? '⌃' : '›').fontSize(20).fontColor(UiTheme.secondary)
+      }.width('100%').constraintSize({ minHeight: 36 }).onClick(() => { this.showLearningInfo = !this.showLearningInfo; if (this.showLearningInfo && this.summary === null) void this.loadSummary(); })
+      if (this.showLearningInfo) {
+        if (this.infoNotice) { Text(this.infoNotice).fontSize(12).fontColor(UiTheme.secondary).onClick(() => this.loadSummary()) }
+        if (this.summary !== null) {
+          Text(`结伴时长　${this.summary.pairedDays}天`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+          Text(`结伴日期　${this.summary.pairedAt.substring(0, 10) || '暂无记录'}`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+          Text(`共同学习课程　${this.summary.sharedCourses.join(' / ') || '待确认'}`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+          Text(`共同关注知识点　${this.summary.sharedKnowledgePoints.join(' / ') || '暂无记录'}`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+          Text(`共同学习时长　${this.summary.sharedStudyMinutes === null ? '暂无已确认记录' : this.summary.sharedStudyMinutes + '分钟'}`)
+            .fontSize(13).fontColor(UiTheme.secondary).width('100%')
+        } else if (!this.infoNotice) { LoadingProgress().width(20).height(20) }
+      }
+    }.width('100%').padding({ left: 12, right: 12, bottom: this.showLearningInfo ? 12 : 0 }).backgroundColor(UiTheme.subtle).borderRadius(8)
+  }
   build() {
     Stack() {
       Column() {
-        PageHeader({ title: this.partnerName, onTitle: () => router.pushUrl({ url: 'pages/PartnerDetail', params: { partnerId: this.partnerId } }) })
+        PageHeader({ title: this.partnerName, detail: '资料', onTitle: () => router.pushUrl({ url: 'pages/PartnerDetail', params: { partnerId: this.partnerId } }), onDetail: () => router.pushUrl({ url: 'pages/PartnerDetail', params: { partnerId: this.partnerId } }) })
+        Button('安排协同任务', { type: ButtonType.Normal }).width('100%').height(44).fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint)
+          .onClick(() => router.pushUrl({ url: 'pages/CollaborativeTasks', params: { partnerId: this.partnerId, partnerName: this.partnerName } }))
+        Column() { this.LearningInformation() }.width('100%').padding({ left: 16, right: 16, bottom: 8 })
         List({ space: 14, scroller: this.messageScroller }) {
           if (!this.messages.length) {
-            ListItem() { Text('和搭子聊聊今天的学习安排吧').fontSize(13).fontColor('#98A2B3').width('100%').textAlign(TextAlign.Center).padding(24) }
+            ListItem() { Text('和搭子聊聊今天的学习安排吧').fontSize(13).fontColor(UiTheme.muted).width('100%').textAlign(TextAlign.Center).padding(24) }
           }
           ForEach(this.messages, (item: PartnerMessage, index: number) => {
             ListItem() {
               Column({ space: 12 }) {
-                if (this.showTime(index)) { Text(this.timeLabel(item.createdAt)).fontSize(11).fontColor('#98A2B3').width('100%').textAlign(TextAlign.Center) }
+                if (this.showTime(index)) { Text(this.timeLabel(item.createdAt)).fontSize(11).fontColor(UiTheme.muted).width('100%').textAlign(TextAlign.Center) }
                 Row({ space: 10 }) {
                   if (item.senderId === this.owner) { Blank().width('15%') }
                   else { UserAvatar({ nickname: this.partnerName, diameter: 36 }) }
                   Row() {
                     Column({ space: 6 }) {
-                      if (item.text) { Text(item.text).fontSize(16).lineHeight(24).fontColor('#182230') }
+                      if (item.text) { Text(item.text).fontSize(15).lineHeight(23).fontColor(item.senderId === this.owner ? UiTheme.surface : UiTheme.ink) }
                       if (item.image) {
                         Image(this.imageSource(item.image)).width(160).height(160).objectFit(ImageFit.Cover).borderRadius(6)
                           .onClick(() => this.previewImage = this.imageSource(item.image))
                       }
-                    }.padding(12).borderRadius(10).constraintSize({ maxWidth: 360 })
-                      .backgroundColor(item.senderId === this.owner ? '#E2ECE8' : '#FFFFFF').alignItems(HorizontalAlign.Start)
+                    }.padding(12).borderRadius(8).constraintSize({ maxWidth: 360 })
+                      .backgroundColor(item.senderId === this.owner ? UiTheme.accent : UiTheme.subtle).alignItems(HorizontalAlign.Start)
                   }.layoutWeight(1).justifyContent(item.senderId === this.owner ? FlexAlign.End : FlexAlign.Start)
                   if (item.senderId === this.owner) { UserAvatar({ nickname: '我', diameter: 36 }) }
                   else { Blank().width('15%') }
@@ -191,12 +225,12 @@ struct PartnerChat {
                 Row({ space: 10 }) {
                   Blank().width('15%')
                   Column({ space: 6 }) {
-                    if (this.pendingText) { Text(this.pendingText).fontSize(16).fontColor('#344054') }
+                    if (this.pendingText) { Text(this.pendingText).fontSize(16).fontColor(UiTheme.ink) }
                     if (this.pendingImage) { Image(this.imageSource(this.pendingImage)).width(140).height(140).objectFit(ImageFit.Cover) }
-                  }.padding(12).backgroundColor('#E2ECE8').borderRadius(10).constraintSize({ maxWidth: 360 })
+                  }.padding(12).backgroundColor(UiTheme.tint).borderRadius(8).constraintSize({ maxWidth: 360 })
                   UserAvatar({ nickname: '我', diameter: 36 })
                 }.width('100%').justifyContent(FlexAlign.End).alignItems(VerticalAlign.Top)
-                Text(this.sendFailed ? '发送失败 · 点击重试' : '发送中…').fontSize(12).fontColor(this.sendFailed ? '#B42318' : '#98A2B3')
+                Text(this.sendFailed ? '发送失败 · 点击重试' : '发送中…').fontSize(12).fontColor(this.sendFailed ? UiTheme.danger : UiTheme.muted)
                   .width('100%').textAlign(TextAlign.End).padding({ right: 46 }).onClick(() => { if (this.sendFailed) this.send(); })
               }.width('100%')
             }
@@ -204,40 +238,43 @@ struct PartnerChat {
         }.layoutWeight(1).width('100%').padding({ left: 16, right: 16, top: 12, bottom: 16 })
         if (this.notice) {
           Row() {
-            Text(this.notice).fontSize(12).fontColor('#667085').layoutWeight(1)
+            Text(this.notice).fontSize(12).fontColor(UiTheme.secondary).layoutWeight(1)
             if (this.notice.startsWith('发送失败')) { Text('重试').fontSize(13).fontColor('#B45309').onClick(() => this.send()) }
           }.width('100%').padding(12).backgroundColor('#FFFAEB')
         }
         if (this.imageUri) {
           Row({ space: 12 }) {
             Image(this.imageUri).width(64).height(64).objectFit(ImageFit.Cover).borderRadius(8)
-            Text('待发送图片').fontSize(13).fontColor('#667085').layoutWeight(1)
-            Text('移除').fontSize(13).fontColor('#667085').onClick(() => this.imageUri = '')
-          }.width('100%').padding(12).backgroundColor('#FFFFFF')
+            Text('待发送图片').fontSize(13).fontColor(UiTheme.secondary).layoutWeight(1)
+            Text('移除').fontSize(13).fontColor(UiTheme.secondary).onClick(() => this.imageUri = '')
+          }.width('100%').padding(12).backgroundColor(UiTheme.surface)
         }
+        if (this.showTools) {
         Scroll() {
           Row({ space: 8 }) {
             ForEach(['一起专注一会吧', '今天的学习任务完成了吗？', '加油，我们一起攻克这个知识点！'], (text: string) => {
-              Text(text).fontSize(12).fontColor('#667085').padding(9).backgroundColor('#FFFFFF').borderRadius(8)
+              Text(text).fontSize(12).fontColor(UiTheme.secondary).padding(9).backgroundColor(UiTheme.surface).borderRadius(8)
                 .onClick(() => this.draft = this.draft + (this.draft ? '\n' : '') + text)
             }, (text: string) => text)
           }.padding({ left: 12, right: 12, top: 8, bottom: 8 })
-        }.width('100%').scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off)
+        }.width('100%').scrollable(ScrollDirection.Horizontal).scrollBar(BarState.Off).align(Alignment.TopStart)
+        }
         Row({ space: 8 }) {
-          Image($r('app.media.ic_chat_mic')).width(40).height(40).padding(8).opacity(this.listening ? 0.45 : 1)
+          Button('+', { type: ButtonType.Normal }).width(44).height(44).fontSize(24).fontColor(UiTheme.secondary).backgroundColor(UiTheme.surface).onClick(() => this.showTools = !this.showTools)
+          Image($r('app.media.ic_chat_mic')).width(44).height(44).padding(10).opacity(this.listening ? 0.45 : 1)
             .accessibilityText(this.listening ? '停止语音输入' : '语音输入').onClick(() => this.toggleVoice())
-          Image($r('app.media.ic_chat_photo')).width(40).height(40).padding(8).accessibilityText('选择图片').onClick(() => this.pickImage())
+          Image($r('app.media.ic_chat_photo')).width(44).height(44).padding(10).accessibilityText('选择图片').onClick(() => this.pickImage())
           TextInput({ text: this.draft, placeholder: this.listening ? '正在听，请说话…' : '发送消息' })
-            .layoutWeight(1).height(42).backgroundColor('#FFFFFF').borderRadius(8).maxLength(3000).onChange((value: string) => this.draft = value)
+            .layoutWeight(1).height(42).backgroundColor(UiTheme.surface).borderRadius(8).maxLength(3000).onChange((value: string) => this.draft = value)
           if (this.draft.trim() || this.imageUri) {
             Button(this.sending ? '发送中' : '发送', { type: ButtonType.Normal }).height(38).borderRadius(8)
-              .backgroundColor('#2563EB').fontColor('#FFFFFF').fontSize(14).enabled(!this.sending).onClick(() => this.send())
+              .backgroundColor(UiTheme.accent).fontColor(UiTheme.surface).fontSize(14).enabled(!this.sending).onClick(() => this.send())
           }
-        }.width('100%').padding({ left: 8, right: 8, top: 8, bottom: 10 }).backgroundColor('#F2F3F5')
-      }.width('100%').height('100%').backgroundColor('#F2F3F5')
+        }.width('100%').padding({ left: 8, right: 8, top: 8, bottom: 10 }).backgroundColor(UiTheme.surface)
+      }.width('100%').height('100%').backgroundColor(UiTheme.surface)
       if (this.previewImage) {
         Column() {
-          Row() { Blank(); Text('关闭').fontSize(16).fontColor('#FFFFFF').padding(20).onClick(() => this.previewImage = '') }.width('100%')
+          Row() { Blank(); Text('关闭').fontSize(16).fontColor(UiTheme.surface).padding(20).onClick(() => this.previewImage = '') }.width('100%')
           Image(this.previewImage).width('100%').layoutWeight(1).objectFit(ImageFit.Contain)
         }.width('100%').height('100%').backgroundColor('#E6000000')
       }

@@ -1,3 +1,5 @@
+import { UiTheme } from '../utils/UiTheme';
+import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { appState } from '../data/AppState';
 import { AgentFeedback, FocusSelfAssessment, FocusSession, FocusTask, PlanTaskStatus } from '../models/AgentModels';
@@ -14,6 +16,7 @@ struct FocusResult {
   @State actualMinutes: number = 30;
   @State pauseCount: number = 0;
   @State interruptionCount: number = 0;
+  @State showRecordDetails: boolean = false;
   @State saved: boolean = false;
   @State resultSession: FocusSession | null = null;
   @State saveError: string = '';
@@ -83,7 +86,7 @@ struct FocusResult {
     this.assessment = session.selfAssessment;
     // 重复 taskId（同一条专注被结算两次，例如快速连点"保存这次记录"）。
     //
-    // ⚠️ 这里**不能提前 return** —— 那样会留下两个尾巴：
+    //  这里**不能提前 return** —— 那样会留下两个尾巴：
     //   ① `focusResultDraft` 不被清掉，下次进结算页还会看到上一条的旧数据；
     //   ② 计划不回写，可页面照样显示"已保存"，用户以为进度更新了（假成功）。
     // 正确做法：照常走完"清理 + 回写"，只在文案上如实说明这是重复提交。
@@ -137,7 +140,7 @@ struct FocusResult {
     this.resultSession = session;
     appState.clearFocusResultDraft();
     appState.clearFocusTask();
-    // ★ 同步清除分布式共享状态。
+    //  同步清除分布式共享状态。
     //   漏掉这一步会造成跨设备"僵尸任务"：本机已经结算完，另一台设备上
     //   却一直显示「手机正在专注：xxx」并提供"接着做"按钮，点了会进入一个
     //   早已结束的任务。必须与本地状态一起清理。
@@ -179,70 +182,63 @@ struct FocusResult {
 
   build() {
     Stack() {
-    Column() {
-      Row() {
-        Text(this.saved ? '← 返回聊天' : '专注结果')
-          .fontSize(16).fontWeight(FontWeight.Medium).fontColor('#2563EB')
-          .onClick(() => {
-            if (this.saved) {
-              this.returnToChat();
-            }
-          })
-        Blank()
-        Text(this.saved ? '已保存' : '保存后可返回').fontSize(12).fontColor('#6B7FA0')
-      }
-        .width('100%').padding(20).backgroundColor('#FFFFFF')
-      Scroll() {
-        Column({ space: 16 }) {
-          Text(this.currentSession().completionRate >= 90 ? '这一段时间，做得很扎实。' : '这次的节奏，也值得被看见。')
-            .fontSize(25).fontWeight(FontWeight.Bold).fontColor('#202522').width('100%')
-          Row({ space: 10 }) {
-            this.StatCard(`${this.currentSession().plannedMinutes} 分钟`, '计划时长')
-            this.StatCard(`${this.currentSession().actualMinutes} 分钟`, '实际专注')
-            this.StatCard(this.currentSession().plannedMinutes > 0 ? `${this.currentSession().plannedMinutes} 分钟` : '正计时', '计划时长')
-          }.width('100%')
-          Row({ space: 10 }) { this.StatCard(`${this.currentSession().pauseCount} 次`, '暂停'); this.StatCard(`${this.currentSession().interruptionCount} 次`, '中断') }.width('100%')
-          Row({ space: 10 }) { this.StatCard(this.timerLabel(), '计时方式'); this.StatCard(this.statusLabel(), '记录状态') }.width('100%')
-          Column({ space: 12 }) {
-            Text('这次完成得怎么样？').fontSize(15).fontWeight(FontWeight.Medium).fontColor('#202522').width('100%')
-            Row({ space: 8 }) {
-              ForEach(['completed', 'partial', 'not_completed'], (value: string) => {
-                Button(this.assessmentLabel(value)).layoutWeight(1).fontSize(13).fontColor(this.assessment === value ? '#FFFFFF' : '#2563EB')
-                  .backgroundColor(this.assessment === value ? '#2563EB' : '#FFFFFF').borderRadius(12)
-                  .border({ width: 1, color: '#BFDBFE' }).enabled(!this.saved)
-                  .onClick(() => this.changeAssessment(value as FocusSelfAssessment))
-              }, (value: string) => value)
+      Column() {
+        PageHeader({ title: '专注已结束', assistant: true, onBack: () => { if (this.saved) this.returnToChat(); } })
+        Scroll() {
+          Column({ space: 18 }) {
+            Text(this.saved ? '记录已保存在本机' : '保存后保留本机记录并同步').fontSize(13).fontColor(UiTheme.secondary).width('100%')
+            if (this.focusSyncMessage) { Text(this.focusSyncMessage).fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%') }
+            Text('本次专注完成').fontSize(22).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+            Row() {
+              this.StatCard(`${this.currentSession().actualMinutes}分钟`, '实际时长')
+              this.StatCard(this.currentSession().plannedMinutes > 0 ? `${this.currentSession().plannedMinutes}分钟` : '正计时', '计划时长')
             }.width('100%')
-          }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(20).border({ width: 1, color: '#F1F5F9' })
-          if (this.isFixture()) {
-            Column({ space: 8 }) {
-              Text('离线模式的下一步建议').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#2563EB').width('100%')
-              Text(this.currentFeedback().feedback).fontSize(16).fontWeight(FontWeight.Medium).fontColor('#202522').lineHeight(24)
-              Text(this.currentFeedback().nextSuggestion).fontSize(13).fontColor('#64748B').lineHeight(20)
-            }.width('100%').padding(18).backgroundColor('#EFF6FF').borderRadius(20)
-          } else {
-            Text(this.focusSyncMessage.length > 0 ? this.focusSyncMessage : '保存后先保留本机记录，再同步到当前账号；断网时可稍后重试。')
-              .fontSize(13).fontColor('#0F766E').lineHeight(20).width('100%').padding(16).backgroundColor('#ECFDF5').borderRadius(16)
-          }
-          if (this.saveError.length > 0) {
-            Text(this.saveError).fontSize(13).fontColor('#B42318').width('100%')
-          }
-          if (this.saved) {
-            if (!this.isFixture()) {
-              Button('重试同步').onClick(() => { void appState.syncFocusSessions(); })
+            Divider().color(UiTheme.line)
+            Row({ space: 12 }) {
+              Text('任务').fontSize(14).fontColor(UiTheme.secondary).width(44)
+              Text(this.currentSession().task).fontSize(15).fontColor(UiTheme.ink).layoutWeight(1)
+            }.width('100%')
+            Text('自我评价').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+            Text('自评不等于掌握，用于后续复盘。').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+            ForEach(['completed', 'partial', 'not_completed'], (value: string) => {
+              Button({ type: ButtonType.Normal }) {
+                Row({ space: 12 }) {
+                  Radio({ value: value, group: 'focus-assessment' }).checked(this.assessment === value).width(18).height(18).hitTestBehavior(HitTestMode.None)
+                  Column({ space: 4 }) {
+                    Text(this.assessmentLabel(value)).fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+                    Text(value === 'completed' ? '按计划完成任务，达成本次目标。' : value === 'partial' ? '完成了主要内容，仍有未完成部分。' : '本次基本未完成，需要重新安排。')
+                      .fontSize(12).fontColor(UiTheme.secondary)
+                  }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+                }.width('100%').padding(12)
+              }.width('100%').constraintSize({ minHeight: 58 }).backgroundColor(this.assessment === value ? UiTheme.tint : UiTheme.surface)
+                .border({ width: 1, color: UiTheme.line }).borderRadius(8).enabled(!this.saved)
+                .onClick(() => this.changeAssessment(value as FocusSelfAssessment))
+            }, (value: string) => value)
+            if (this.saveError) { Text(this.saveError).fontSize(13).fontColor(UiTheme.danger).width('100%') }
+            if (!this.saved) {
+              Button('保存这次记录', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15).fontColor('#FFFFFF')
+                .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => this.save())
+            } else {
+              if (!this.isFixture()) { Button('重试同步', { type: ButtonType.Normal }).height(44).fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).onClick(() => { void appState.syncFocusSessions(); }) }
+              Button('查看更新计划', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15).fontColor('#FFFFFF')
+                .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+              Button('返回聊天', { type: ButtonType.Normal }).width('100%').height(44).fontSize(14).fontColor(UiTheme.accent)
+                .backgroundColor(UiTheme.surface).onClick(() => this.returnToChat())
             }
-            Button('查看 Agent 更新后的计划').width('100%').height(52).fontColor('#FFFFFF').fontWeight(FontWeight.Bold).backgroundColor('#2563EB').borderRadius(16)
-              .onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
-            Button('返回聊天页').width('100%').height(48).fontColor('#2563EB').fontWeight(FontWeight.Medium).backgroundColor('#FFFFFF')
-              .border({ width: 1, color: '#BFDBFE' }).borderRadius(16)
-              .onClick(() => this.returnToChat())
-          } else {
-            Button('保存这次记录').width('100%').height(52).fontColor('#FFFFFF').fontWeight(FontWeight.Bold).backgroundColor('#2563EB').borderRadius(16).onClick(() => this.save())
-          }
-        }.width('100%').padding(20)
-      }.layoutWeight(1)
-    }.width('100%').height('100%').backgroundColor('#FFFFFF')
-    AIFloatButton()
+            Text(this.showRecordDetails ? '收起记录信息' : '更多记录信息 ›').fontSize(13).fontColor(UiTheme.secondary).padding({ top: 12, bottom: 12 })
+              .onClick(() => this.showRecordDetails = !this.showRecordDetails)
+            if (this.showRecordDetails) {
+              Text(`${this.currentSession().course} · ${this.timerLabel()} · ${this.statusLabel()}`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+              Text(`暂停${this.currentSession().pauseCount}次 · 中断${this.currentSession().interruptionCount}次`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+              if (this.isFixture()) {
+                Text('离线模式的下一步建议').fontSize(14).fontColor(UiTheme.ink).width('100%')
+                Text(this.currentFeedback().feedback + '\n' + this.currentFeedback().nextSuggestion).fontSize(13).fontColor(UiTheme.secondary).lineHeight(21).width('100%')
+              }
+            }
+          }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding(20).alignItems(HorizontalAlign.Start)
+        }.width('100%').layoutWeight(1).scrollBar(BarState.Off).align(Alignment.TopStart)
+      }.width('100%').height('100%').backgroundColor(UiTheme.surface)
+      AIFloatButton()
     }.width('100%').height('100%')
   }
 
@@ -256,7 +252,9 @@ struct FocusResult {
 
   @Builder
   StatCard(value: string, label: string) {
-    Column({ space: 4 }) { Text(value).fontSize(18).fontWeight(FontWeight.Bold).fontColor('#202522'); Text(label).fontSize(11).fontColor('#64748B') }
-      .layoutWeight(1).alignItems(HorizontalAlign.Start).padding(14).backgroundColor('#F5F7FA').borderRadius(16)
+    Column({ space: 8 }) {
+      Text(label).fontSize(13).fontColor(UiTheme.secondary)
+      Text(value).fontSize(25).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+    }.layoutWeight(1).padding({ top: 12, bottom: 12 }).alignItems(HorizontalAlign.Start)
   }
 }

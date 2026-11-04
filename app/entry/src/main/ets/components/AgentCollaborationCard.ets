@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { TraceEvent } from '../api/ApiModels';
@@ -32,17 +33,17 @@ export struct AgentCollaborationCard {
   build() {
     Column({ space: 8 }) {
       Text('学习助手协作进度').fontSize(16).fontWeight(FontWeight.Bold).width('100%')
-      Text(this.notice).fontSize(12).fontColor('#64748B')
+      Text(this.notice).fontSize(12).fontColor(UiTheme.secondary)
       ForEach(this.events, (event: TraceEvent, index: number) => {
         Column({ space: 4 }) {
           Text(this.role(event.agent) + ' · ' + event.status).fontSize(13).fontWeight(FontWeight.Medium)
-          Text(event.outputSummary).fontSize(12).fontColor('#475569').maxLines(3)
-        }.width('100%').padding(10).backgroundColor('#EFF6FF').borderRadius(10)
+          Text(event.outputSummary).fontSize(12).fontColor(UiTheme.secondary).maxLines(3)
+        }.width('100%').padding(10).backgroundColor(UiTheme.tint).borderRadius(10)
       }, (event: TraceEvent, index: number) => `${event.timestamp}-${index}`)
       if (this.traceId) {
         Button('查看实际交接与调整依据').fontSize(12)
           .onClick(() => router.pushUrl({ url: 'pages/AgentTrace', params: { traceId: this.traceId } }))
       }
-    }.width('100%').padding(12).backgroundColor('#FFFFFF').borderRadius(12)
+    }.width('100%').padding(12).backgroundColor(UiTheme.surface).borderRadius(8)
   }
 }

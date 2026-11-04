@@ -1,3 +1,4 @@
+import { ChatFile } from '../api/StudyTaskModels';
 import { AgentHistoryItem, AgentRequest, AgentResponse, ChatAction, ChatBasicInfoUpdate, ChatCard, ChatCardType, ChatCourseUpdate, ChatExamUpdate, ChatHistoryRecord, ChatIntent, ChatKnowledgeUpdate, ChatLearningGoalUpdate, ChatMessage, ChatProfileUpdates, ChatRecentStatusUpdate, ChatTaskUpdate, ChatTimeUpdate, ChatUserUpdate, WrongAnalysis } from '../models/ChatModels';
 import { http } from '@kit.NetworkKit';
 import { appState } from '../data/AppState';
@@ -188,7 +189,7 @@ export class AgentBridge {
     return created;
   }
 
-  static buildRequestBody(message: string, image: string, history: AgentHistoryItem[]): string {
+  static buildRequestBody(message: string, image: string, history: AgentHistoryItem[], document?: ChatFile): string {
     const sessionId: string = AgentBridge.ensureChatSessionId();
     // 单独序列化 user_data，避免 inline object literal 触发 ArkTS 编译错误
     const userDataObj: Record<string, Object> = {};
@@ -209,6 +210,7 @@ export class AgentBridge {
     // 同一场对话的每一轮都携带同一个 id；只有点「新对话」才更换。
     // 后端据此把历史按完整会话归档，而不是把每一问一答拆成独立卡片。
     parts.push('"sessionId":' + JSON.stringify(sessionId));
+    if (document !== undefined) parts.push('"document":' + JSON.stringify(document));
     parts.push('"coordinateLearning":true');
     return '{' + parts.join(',') + '}';
   }
@@ -217,7 +219,8 @@ export class AgentBridge {
     message: string,
     image: string | undefined,
     history: ChatMessage[],
-    onProgress?: (event: ChatProgress) => void
+    onProgress?: (event: ChatProgress) => void,
+    document?: ChatFile
   ): Promise<AgentResponse> {
     const request: AgentRequest = AgentBridge.buildRequest(message, image, history);
     const imageStr: string = image ?? '';
@@ -225,13 +228,14 @@ export class AgentBridge {
 
     // Fixture 是完整的离线演示模式，不应先等待真实后端连接超时。
     if (apiConfig.useFixture) {
+      if (document !== undefined) return { reply: `已读取《${document.fileName}》的正文。离线演示无法生成文件问答，请连接服务后继续提问。\n正文片段：${document.text.slice(0, 300)}`, intent: 'unknown', llmUsed: false };
       return AgentBridge.createDemoResponse(message, image);
     }
 
     const httpRequestInstance: http.HttpRequest = http.createHttp();
     let streamDeadline: number = -1;
     try {
-      const requestBody: string = AgentBridge.buildRequestBody(request.message, imageStr, request.history);
+      const requestBody: string = AgentBridge.buildRequestBody(request.message, imageStr, request.history, document);
 
       const header: Record<string, string> = {
         'Accept': onProgress !== undefined ? 'text/event-stream' : 'application/json',
@@ -424,6 +428,9 @@ export class AgentBridge {
       && AgentBridge.stringField(record, 'recognitionStatus').length === 0
       && AgentBridge.stringField(record, 'wrongType').length === 0) return undefined;
     return { courseName: AgentBridge.stringField(record, 'courseName'), knowledgePoint: AgentBridge.stringField(record, 'knowledgePoint'),
+      answer: AgentBridge.stringField(record, 'answer') || AgentBridge.stringField(record, 'correctAnswer'),
+      explanation: AgentBridge.stringField(record, 'explanation') || AgentBridge.stringField(record, 'solution'),
+      reason: AgentBridge.stringField(record, 'reason'),
       wrongType: AgentBridge.stringField(record, 'wrongType'),
       diagnosisId: AgentBridge.stringField(record, 'diagnosisId'),
       questionText: AgentBridge.stringField(record, 'questionText'),

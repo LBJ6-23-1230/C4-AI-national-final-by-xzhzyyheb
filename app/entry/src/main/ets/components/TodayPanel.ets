@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { ReminderNavigation } from '../services/ReminderNavigation';
 import router from '@ohos.router';
 import { common } from '@kit.AbilityKit';
@@ -38,7 +39,7 @@ export struct TodayPanel {
     const owner: string = appState.currentUser.userId;
     if (owner !== this.displayOwner) {
       this.displayOwner = owner;
-      this.panelOpen = appState.isSignedIn && TodayStore.firstDisplay(getContext(this) as common.Context, owner);
+      this.panelOpen = false;
       this.expanded = false; this.actionMessage = ''; this.busy = false;
       this.focusSheetVisible = false; this.focusTask = null;
     }
@@ -120,46 +121,45 @@ export struct TodayPanel {
         }
         TextInput({ text: this.snoozeMinutes, placeholder: '自定义分钟，5的倍数' }).type(InputType.Number).onChange((value: string) => this.snoozeMinutes = value)
         Row({ space: 12 }) { Button('确认延后').onClick(() => this.confirmSnooze()); Button('取消').onClick(() => this.snoozeItem = null) }
-      }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(12)
+      }.width('100%').padding(12).backgroundColor(UiTheme.tint).borderRadius(8)
     }
   }
   build() {
     Column({ space: 8 }) {
       Row() {
-        Text(this.data?.pendingCount ? `今日有 ${this.data!.pendingCount} 项待办` : '今日安排')
-          .fontSize(14).fontWeight(FontWeight.Bold).fontColor('#101828').layoutWeight(1).maxLines(1)
+        Text(this.data?.pendingCount ? `今日待办 ${this.data!.pendingCount}项` : '今日安排')
+          .fontSize(14).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).layoutWeight(1).maxLines(1)
         Blank()
-        Text(this.panelOpen ? '收起 ∧' : '展开 ∨').fontSize(12).fontColor('#2563EB').padding(8)
+        Text(this.panelOpen ? '收起' : '查看 ›').fontSize(12).fontColor(UiTheme.accent).padding(8)
           .onClick(() => this.panelOpen = !this.panelOpen)
       }.width('100%')
       if (this.panelOpen) {
       if (this.data?.highlight) {
         Text(this.data!.highlight!.title).fontSize(18).fontWeight(FontWeight.Medium)
-          .fontColor('#B42318').width('100%').maxLines(2)
-        Text(`${this.data!.highlight!.courseName}${this.data!.highlight!.durationMinutes > 0 ? ' · ' + this.data!.highlight!.durationMinutes + ' 分钟' : ''}`)
-          .fontSize(12).fontColor('#667085').width('100%')
-        Text(this.data!.highlight!.reason).fontSize(12).fontColor('#B42318').width('100%')
+          .fontColor(UiTheme.danger).width('100%').maxLines(2)
+        Text(`${this.data!.highlight!.courseName}${this.data!.highlight!.durationMinutes > 0 ? ' · ' + this.data!.highlight!.durationMinutes + '分钟' : ''}`)
+          .fontSize(12).fontColor(UiTheme.secondary).width('100%')
+        Text(this.data!.highlight!.reason).fontSize(12).fontColor(UiTheme.danger).width('100%')
         Row({ space: 16 }) {
-          Button(this.startLabel()).height(40).fontSize(14).backgroundColor('#2563EB').enabled(!this.busy)
+          Button(this.startLabel()).height(40).fontSize(14).backgroundColor(UiTheme.accent).enabled(!this.busy)
             .onClick(() => this.act(this.data!.highlight!, 'open'))
 
         }.width('100%')
       } else {
-        Text(this.loading ? '正在读取今日安排…' : this.data?.guidance ?? '今日安排暂未读取').fontSize(13).fontColor('#667085').width('100%')
-        Text('查看今日安排 ›').fontSize(13).fontColor('#2563EB').width('100%').onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+        Text(this.loading ? '正在读取今日安排…' : this.data?.guidance ?? '今日安排暂未读取').fontSize(13).fontColor(UiTheme.secondary).width('100%')
+        Text('查看今日安排 ›').fontSize(13).fontColor(UiTheme.accent).width('100%').onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
       }
-      Text('查看全部待办 ›').fontSize(13).fontColor('#2563EB').onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'ddls', ddlFilter: 'pending', unifiedTasks: 'true' } }))
+      Text('查看全部待办 ›').fontSize(13).fontColor(UiTheme.accent).onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'ddls', ddlFilter: 'pending', unifiedTasks: 'true' } }))
       }
       this.SnoozeSelector()
-      if (this.actionMessage) Text(this.actionMessage).fontSize(12).fontColor('#667085').width('100%')
+      if (this.actionMessage) Text(this.actionMessage).fontSize(12).fontColor(UiTheme.secondary).width('100%')
       if (this.message) {
         Text(this.message)
           .fontSize(11).fontColor('#B54708').width('100%').onClick(() => this.refresh())
       }
-    }.padding(14).width('100%').backgroundColor('#FFFFFF').borderRadius(12)
-      .border({ width: 1, color: '#E4E7EC' })
+    }.padding({ left: 12, right: 12, top: 4, bottom: 4 }).width('100%').backgroundColor('#F4F6FA').borderRadius(8)
       .bindSheet($$this.focusSheetVisible, this.FocusSheet(), {
-        height: SheetSize.FIT_CONTENT, showClose: false, dragBar: true, backgroundColor: '#FFFFFF',
+        height: SheetSize.FIT_CONTENT, showClose: false, dragBar: true, backgroundColor: UiTheme.surface,
         onWillDismiss: (action: DismissSheetAction) => { this.focusSheetVisible = false; action.dismiss(); }
       })
   }

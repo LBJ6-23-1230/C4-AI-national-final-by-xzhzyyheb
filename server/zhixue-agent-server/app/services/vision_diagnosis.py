@@ -13,14 +13,25 @@ def normalize(parsed):
     if type(count) is not int or count < len(rows) or count < 0:
         raise ValueError("vision_invalid_structure")
     questions = []
+    seen_questions = {}
     for index, row in enumerate(rows):
         question = str(row.get("questionText") or "").strip()
         readable = row.get("readable") is True and bool(question)
         reply = str(row.get("reply") or "").strip()
         has_solution = bool(reply)
         answer_visible = row.get("answerVisible") is True
+        normalized_stem = re.sub(r"\s+", "", re.sub(r"^\s*(?:第\s*\d+\s*题[、:：]?\s*|\d+[、)）:：]\s*|\d+[.．]\s+)", "", question))
+        if normalized_stem and normalized_stem in seen_questions:
+            first_number = seen_questions[normalized_stem]
+            question = ""
+            readable = False
+            has_solution = False
+            reply = f"本题识别内容与第{first_number}题重复，未作为独立题目解析，请补拍此题。"
+        elif normalized_stem:
+            seen_questions[normalized_stem] = str(row.get("questionNumber") or index + 1)
         if not readable:
-            reply = "本题关键条件不清晰，请补拍此题或补充题干；未生成答案和个人错因。"
+            if "重复" not in reply:
+                reply = "本题关键条件不清晰，请补拍此题或补充题干；未生成答案和个人错因。"
         elif not reply:
             # A transcribed question with no solution is not a complete diagnosis.
             reply = "已识别题干，但本题解析未完成，请重试。"

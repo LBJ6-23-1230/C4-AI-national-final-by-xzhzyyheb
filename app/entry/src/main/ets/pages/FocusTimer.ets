@@ -1,3 +1,6 @@
+import { DeviceSummary } from '../components/DeviceSummary';
+import { PageHeader } from '../components/PageHeader';
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { appState } from '../data/AppState';
 import { FocusSession, FocusSessionStatus, FocusTask, FocusRuntime } from '../models/AgentModels';
@@ -310,87 +313,58 @@ struct FocusTimer {
 
   build() {
     Stack() {
-      Column({ space: 24 }) {
-        if (this.saveError.length > 0) {
-          Text(this.saveError).fontSize(13).fontColor('#B42318').width('90%')
-        }
-        Row() {
-          Text(this.isStrict() ? '中断专注' : '← 返回').fontSize(14).fontColor(this.isStrict() ? '#8A3A2B' : '#2563EB').fontWeight(FontWeight.Medium)
-            .onClick(() => this.goBackToSetup())
-          Blank()
-          Text(this.isStrict() ? '严格' : (appState.activeFocusTask?.allowBackgroundTiming ? '普通 · 后台计时' : '普通')).fontSize(13).fontColor(this.isStrict() ? '#FFFFFF' : '#2563EB').fontWeight(FontWeight.Bold)
-            .backgroundColor(this.isStrict() ? '#1E3A5F' : '#EFF6FF').borderRadius(8).padding({ left: 10, right: 10, top: 4, bottom: 4 })
-        }
-        .width('100%').padding({ left: 20, right: 20, top: 12, bottom: 8 })
-
-        Text(appState.activeFocusTask?.course ?? '数据结构')
-          .fontSize(14).fontColor(this.isStrict() ? '#64748B' : '#6B7FA0').margin({ top: 16 })
-        Text(appState.activeFocusTask?.task ?? '理清二叉树中序遍历')
-          .fontSize(22).fontWeight(FontWeight.Bold).fontColor('#202522')
-          .textAlign(TextAlign.Center).padding({ left: 28, right: 28 }).maxLines(3)
-
-        Column({ space: 10 }) {
-          Text(this.displayTime())
-            .fontSize(56).fontWeight(FontWeight.Bold).fontColor(this.isStrict() ? '#1E3A5F' : '#2563EB')
-          Text(this.statusText()).fontSize(14).fontColor('#64748B')
-          if (!this.isStopwatch()) {
-            Progress({ value: this.progressPercent(), total: 100, type: ProgressType.Ring })
-              .width(28).height(28).color(this.isStrict() ? '#1E3A5F' : '#2563EB').margin({ top: 4 })
-          } else {
-            Text('正计时').fontSize(12).fontColor('#64748B')
-          }
-        }
-        .alignItems(HorizontalAlign.Center).justifyContent(FlexAlign.Center)
-        .width(250).height(250)
-        .border({ width: 10, color: this.isStrict() ? '#D0D8F0' : (this.paused ? '#F5E6D3' : '#E8F0FE') })
-        .borderRadius(125).margin({ top: 30, bottom: 20 })
-
-        if (!this.isStrict()) {
-          Button(this.paused ? '继续专注' : '暂停')
-            .width('80%').height(52).fontSize(16).fontWeight(FontWeight.Bold)
-            .fontColor('#FFFFFF').backgroundColor(this.paused ? '#B76B2B' : '#2563EB')
-            .borderRadius(8).onClick(() => this.togglePause())
-        } else {
-          Text('严格模式中暂停不可用')
-            .width('80%').height(44).fontSize(14).fontColor('#1E3A5F').textAlign(TextAlign.Center)
-            .backgroundColor('#F0F4FF').borderRadius(8).padding({ top: 12 })
-        }
-
-        Button('完成本次专注')
-          .width('80%').height(48).fontSize(15).fontColor(this.isStrict() ? '#1E3A5F' : '#2563EB')
-          .backgroundColor('#FFFFFF')
-          .border({ width: 1.5, color: this.isStrict() ? '#1E3A5F' : '#2563EB' }).borderRadius(8)
-          .onClick(() => this.showCompleteConfirmDialog())
-
-        Text(this.isStrict() ? '中断并结算' : '提前退出').fontSize(14).fontColor('#8A5D45')
-          .margin({ top: 8 }).padding({ top: 8, bottom: 8, left: 20, right: 20 })
-          .onClick(() => this.showExitConfirmDialog())
-
-        Text(this.modeHint())
-          .fontSize(11).fontColor('#7D8FA0').width('100%').textAlign(TextAlign.Center)
-          .margin({ top: 4, bottom: 20 })
-      }
-      .width('100%').height('100%').alignItems(HorizontalAlign.Center)
+      Column() {
+        PageHeader({ title: '专注计时', assistant: true, onBack: () => this.goBackToSetup() })
+        Scroll() {
+          Column({ space: 18 }) {
+            DeviceSummary({ compact: true })
+            Divider().color(UiTheme.line)
+            if (this.saveError.length > 0) { Text(this.saveError).fontSize(13).fontColor(UiTheme.danger).width('100%') }
+            Column({ space: 14 }) {
+              Text(this.isStopwatch() ? '已专注时间' : '剩余时间').fontSize(14).fontColor(UiTheme.secondary)
+              Text(this.displayTime()).fontSize(64).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+              Text(this.isStrict() ? '严格模式' : '普通模式').fontSize(13).fontColor(UiTheme.accent)
+                .padding({ left: 10, right: 10, top: 5, bottom: 5 }).backgroundColor(UiTheme.tint).borderRadius(8)
+              Text(this.paused ? this.statusText() : this.isStrict() ? '严格 · 不可暂停' : appState.activeFocusTask?.allowBackgroundTiming === true ? '普通 · 后台计时开启' : '普通 · 后台计时关闭')
+                .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).textAlign(TextAlign.Center)
+            }.width('100%').padding({ top: 44, bottom: 32 })
+            if (!this.isStrict()) {
+              Button(this.paused ? '继续专注' : '暂停', { type: ButtonType.Normal }).width('100%').height(48)
+                .fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.surface).backgroundColor(UiTheme.accent)
+                .borderRadius(8).onClick(() => this.togglePause())
+            }
+            Button('完成本次专注', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15)
+              .fontColor('#FFFFFF').backgroundColor(UiTheme.accent).borderRadius(8)
+              .onClick(() => this.showCompleteConfirmDialog())
+            Button(this.isStrict() ? '中断并结算' : '提前退出', { type: ButtonType.Normal }).width('100%').height(44)
+              .fontSize(14).fontColor(this.isStrict() ? UiTheme.danger : UiTheme.secondary).backgroundColor(this.isStrict() ? '#FFF0F0' : UiTheme.surface).borderRadius(8)
+              .onClick(() => this.showExitConfirmDialog())
+            if (!this.isStrict()) {
+              Text(this.modeHint()).fontSize(12).fontColor(UiTheme.secondary).lineHeight(19).width('100%').margin({ top: 12 })
+            }
+          }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding({ left: 20, right: 20, bottom: 24 })
+        }.width('100%').layoutWeight(1).scrollBar(BarState.Off).align(Alignment.TopStart)
+      }.width('100%').height('100%').backgroundColor(UiTheme.surface)
 
       if (this.showCompleteConfirm) {
         Column() {
           Column({ space: 16 }) {
             Text('确认完成本次专注？')
-              .fontSize(20).fontWeight(FontWeight.Bold).fontColor('#202522')
+              .fontSize(20).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
             Text(`已专注 ${this.elapsedMinutes()} 分钟，确认后会进入结算页。`)
-              .fontSize(14).fontColor('#64748B').lineHeight(20).textAlign(TextAlign.Center)
+              .fontSize(14).fontColor(UiTheme.secondary).lineHeight(20).textAlign(TextAlign.Center)
             Row({ space: 12 }) {
               Button('继续专注').layoutWeight(1).height(44).fontSize(14).fontWeight(FontWeight.Medium)
-                .fontColor('#2563EB').backgroundColor('#FFFFFF')
-                .border({ width: 1, color: '#2563EB' }).borderRadius(8)
+                .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
+                .border({ width: 1, color: UiTheme.accent }).borderRadius(8)
                 .onClick(() => this.dismissCompleteConfirm())
               Button('去结算').layoutWeight(1).height(44).fontSize(14).fontWeight(FontWeight.Medium)
-                .fontColor('#FFFFFF').backgroundColor(this.isStrict() ? '#1E3A5F' : '#2563EB').borderRadius(8)
+                .fontColor(UiTheme.surface).backgroundColor(this.isStrict() ? '#1E3A5F' : UiTheme.accent).borderRadius(8)
                 .onClick(() => this.confirmComplete())
             }.width('100%')
           }
-          .width('82%').padding(24).backgroundColor('#FFFFFF').borderRadius(8)
-          .shadow({ radius: 20, color: '#30000000', offsetX: 0, offsetY: 8 })
+          .width('82%').padding(24).backgroundColor(UiTheme.surface).borderRadius(8)
+
         }
         .width('100%').height('100%').justifyContent(FlexAlign.Center)
         .backgroundColor('#40000000')
@@ -400,38 +374,38 @@ struct FocusTimer {
         Column() {
           Column({ space: 16 }) {
             Text(this.isStrict() ? '确认中断严格专注？' : '提前退出吗？')
-              .fontSize(20).fontWeight(FontWeight.Bold).fontColor('#202522')
+              .fontSize(20).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
             Text(this.isStrict() ? '这次会记录为中断，并进入结算页。' : '你可以继续，也可以保存为未完成记录。')
-              .fontSize(14).fontColor('#64748B').lineHeight(20).textAlign(TextAlign.Center)
+              .fontSize(14).fontColor(UiTheme.secondary).lineHeight(20).textAlign(TextAlign.Center)
             if (this.isStrict()) {
               Row({ space: 12 }) {
                 Button('继续坚持').layoutWeight(1).height(44).fontSize(14).fontWeight(FontWeight.Medium)
-                  .fontColor('#FFFFFF').backgroundColor('#1E3A5F').borderRadius(8)
+                  .fontColor(UiTheme.surface).backgroundColor('#1E3A5F').borderRadius(8)
                   .onClick(() => this.dismissExitConfirm())
                 Button('确认中断').layoutWeight(1).height(44).fontSize(14).fontWeight(FontWeight.Medium)
-                  .fontColor('#8A3A2B').backgroundColor('#FFFFFF')
+                  .fontColor('#8A3A2B').backgroundColor(UiTheme.surface)
                   .border({ width: 1, color: '#8A3A2B' }).borderRadius(8)
                   .onClick(() => this.interruptStrictFocus())
               }.width('100%')
             } else {
-              Button('继续专注').width('100%').height(42).fontSize(14).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(8)
+              Button('继续专注').width('100%').height(42).fontSize(14).fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
                 .onClick(() => this.dismissExitConfirm())
-              Button('保存为未完成').width('100%').height(42).fontSize(14).fontColor('#2563EB').backgroundColor('#FFFFFF')
-                .border({ width: 1, color: '#2563EB' }).borderRadius(8)
+              Button('保存为未完成').width('100%').height(42).fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
+                .border({ width: 1, color: UiTheme.accent }).borderRadius(8)
                 .onClick(() => this.saveIncompleteAndLeave())
-              Button('不保存，返回设置').width('100%').height(42).fontSize(14).fontColor('#8A3A2B').backgroundColor('#FFFFFF')
+              Button('不保存，返回设置').width('100%').height(42).fontSize(14).fontColor('#8A3A2B').backgroundColor(UiTheme.surface)
                 .border({ width: 1, color: '#D6B3A7' }).borderRadius(8)
                 .onClick(() => this.leaveWithoutRecord())
             }
           }
-          .width('82%').padding(24).backgroundColor('#FFFFFF').borderRadius(8)
-          .shadow({ radius: 20, color: '#30000000', offsetX: 0, offsetY: 8 })
+          .width('82%').padding(24).backgroundColor(UiTheme.surface).borderRadius(8)
+
         }
         .width('100%').height('100%').justifyContent(FlexAlign.Center)
         .backgroundColor('#40000000')
       }
     AIFloatButton()
     }
-    .width('100%').height('100%').backgroundColor(this.isStrict() ? '#F5F7FA' : '#FFFFFF')
+    .width('100%').height('100%').backgroundColor(this.isStrict() ? UiTheme.canvas : UiTheme.surface)
   }
 }

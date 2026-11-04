@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { CourseLabels } from '../utils/CourseLabels';
 import { PageHeader } from '../components/PageHeader';
 import { ApiFailure } from '../api/ApiResult';
@@ -38,7 +39,7 @@ struct LearningReviewPage {
     if (this.ownsPage() && settings.ok) {
       settings.data.courses.forEach((item) => {
         if (CourseLabels.valid(item.courseName) && this.courses.indexOf(item.courseName) < 0) this.courses = this.courses.concat([item.courseName]);
-        if (item.reviewDue) this.notice = this.notice + item.courseName + '距考试 ' + item.daysUntilExam + ' 天，建议进行考前复盘。';
+        if (item.reviewDue) this.notice = this.notice + item.courseName + '距考试 ' + item.daysUntilExam + '天，建议进行考前复盘。';
       });
       if (!this.course) this.course = this.courses[0] || '';
     }
@@ -70,56 +71,56 @@ struct LearningReviewPage {
       PageHeader({ title: '阶段复盘与考前建议' })
       Scroll() {
         Column({ space: 20 }) {
-          Text('选择课程').fontSize(13).fontColor('#667085')
+          Text('选择课程').fontSize(13).fontColor(UiTheme.secondary)
           if (this.courses.length) {
             Select(this.courses.map((name: string): SelectOption => { return { value: name }; }).concat([{ value: '＋添加课程' }]))
-              .value(this.course).width('100%').fontColor('#344054').backgroundColor('#FFFFFF')
+              .value(this.course).width('100%').fontColor(UiTheme.ink).backgroundColor(UiTheme.surface)
               .onSelect((index: number) => { if (!this.busy) { if (index === this.courses.length) router.pushUrl({ url: 'pages/LearningSetup', params: { newCourse: 'true' } }); else { this.course = this.courses[index]; this.review = null; this.notice = ''; } } })
-          } else { Text('＋添加课程').fontSize(14).fontColor('#2563EB').onClick(() => router.pushUrl({ url: 'pages/LearningSetup', params: { newCourse: 'true' } })) }
-          Text('结合已完成的练习、错题及考试日期，整理下一步复习重点。').fontSize(14).fontColor('#667085').lineHeight(22)
+          } else { Text('＋添加课程').fontSize(14).fontColor(UiTheme.accent).onClick(() => router.pushUrl({ url: 'pages/LearningSetup', params: { newCourse: 'true' } })) }
+          Text('结合已完成的练习、错题及考试日期，整理下一步复习重点。').fontSize(14).fontColor(UiTheme.secondary).lineHeight(22)
           Button(this.busy ? '正在整理学习记录…' : this.review !== null ? '重新生成本课程建议' : '生成本课程建议', { type: ButtonType.Normal })
-            .width('100%').height(44).borderRadius(10).backgroundColor('#2563EB').fontColor('#FFFFFF')
+            .width('100%').height(44).borderRadius(8).backgroundColor(UiTheme.accent).fontColor(UiTheme.surface)
             .enabled(!this.busy && !!this.course).onClick(() => this.generate())
-          if (this.notice) { Text(this.notice).fontSize(13).fontColor('#667085').lineHeight(21).width('100%') }
+          if (this.notice) { Text(this.notice).fontSize(13).fontColor(UiTheme.secondary).lineHeight(21).width('100%') }
           if (this.review !== null) {
             Column({ space: 14 }) {
               Text('本阶段建议').fontSize(18).fontWeight(FontWeight.Medium).width('100%')
-              Text(this.review.summary).fontSize(15).lineHeight(25).fontColor('#344054').width('100%')
-              ForEach(this.review.evidenceSummary, (fact: string) => { Text(fact).fontSize(13).fontColor('#667085').width('100%') })
+              Text(this.review.summary).fontSize(15).lineHeight(25).fontColor(UiTheme.ink).width('100%')
+              ForEach(this.review.evidenceSummary, (fact: string) => { Text(fact).fontSize(13).fontColor(UiTheme.secondary).width('100%') })
               ForEach(this.review.actions, (action: ReviewAction) => {
                 Column({ space: 8 }) {
                   Text(`${action.title} · ${action.durationMinutes}分钟`).fontSize(16).fontWeight(FontWeight.Medium)
-                  Text('依据：' + action.why).fontSize(13).fontColor('#667085')
-                  ForEach(action.steps, (step: string) => { Text('• ' + step).fontSize(14).fontColor('#475467').width('100%') })
+                  Text('依据：' + action.why).fontSize(13).fontColor(UiTheme.secondary)
+                  ForEach(action.steps, (step: string) => { Text('• ' + step).fontSize(14).fontColor(UiTheme.secondary).width('100%') })
                   Text('完成条件：' + action.doneWhen).fontSize(13).fontColor('#0F766E')
                   Button('开始行动').onClick(() => router.pushUrl({ url: action.targetPage, params: { knowledgePointId: action.knowledgePointId, courseName: this.course } }))
-                }.width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(10).alignItems(HorizontalAlign.Start)
+                }.width('100%').padding(12).backgroundColor(UiTheme.subtle).borderRadius(8).alignItems(HorizontalAlign.Start)
               }, (action: ReviewAction) => action.actionId)
               if (this.review.fallbackReason) { Text(this.review.fallbackReason).fontSize(12).fontColor('#B54708') }
-              Text(this.review.source === 'model' ? '结合学习记录生成' : '基础建议 · 可继续练习补充测评记录').fontSize(12).fontColor('#98A2B3')
-              Text('采纳建议，加入复习清单 ›').fontSize(14).fontColor('#475467').padding({ top: 8, bottom: 8 }).onClick(() => this.accept())
-            }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(12).alignItems(HorizontalAlign.Start)
+              Text(this.review.source === 'model' ? '结合学习记录生成' : '基础建议 · 可继续练习补充测评记录').fontSize(12).fontColor(UiTheme.muted)
+              Text('采纳建议，加入复习清单 ›').fontSize(14).fontColor(UiTheme.secondary).padding({ top: 8, bottom: 8 }).onClick(() => this.accept())
+            }.width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8).alignItems(HorizontalAlign.Start)
           }
           Text('复习清单').fontSize(18).fontWeight(FontWeight.Medium)
-          if (!this.tasks.length) { Text('采纳建议后，复习行动会保存在这里。').fontSize(14).fontColor('#98A2B3') }
+          if (!this.tasks.length) { Text('采纳建议后，复习行动会保存在这里。').fontSize(14).fontColor(UiTheme.muted) }
           ForEach(this.tasks.filter((task: ReviewTask) => task.courseName === this.course), (task: ReviewTask) => {
             Column({ space: 12 }) {
-              Text(task.title).fontSize(15).fontColor('#344054').width('100%')
+              Text(task.title).fontSize(15).fontColor(UiTheme.ink).width('100%')
               if (task.practiceVerified) {
                 Text('已提交对应练习；是否掌握请查看作答表现。').fontSize(12).fontColor('#0F766E').width('100%')
-                Text('查看学习报告 ›').fontSize(14).fontColor('#2563EB')
+                Text('查看学习报告 ›').fontSize(14).fontColor(UiTheme.accent)
                   .onClick(() => router.pushUrl({ url: 'pages/ReviewSummary' }))
               } else {
-                if (task.status === 'completed') Text('此前手动勾选，尚无对应练习提交记录。').fontSize(12).fontColor('#667085').width('100%')
-                Text(task.actionType === 'settings' ? '保存课程设置后，可重新生成建议。' : '提交该知识点练习后，将自动显示已练习。').fontSize(12).fontColor('#667085').width('100%')
-                Text(task.actionType === 'settings' || task.title.indexOf('确认考试日期') >= 0 ? '完善设置 ›' : '开始本项练习 ›').fontSize(14).fontColor('#2563EB')
+                if (task.status === 'completed') Text('此前手动勾选，尚无对应练习提交记录。').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+                Text(task.actionType === 'settings' ? '保存课程设置后，可重新生成建议。' : '提交该知识点练习后，将自动显示已练习。').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+                Text(task.actionType === 'settings' || task.title.indexOf('确认考试日期') >= 0 ? '完善设置 ›' : '开始本项练习 ›').fontSize(14).fontColor(UiTheme.accent)
                   .onClick(() => router.pushUrl({ url: task.actionType === 'settings' || task.title.indexOf('确认考试日期') >= 0 ? 'pages/LearningSetup' : 'pages/ExercisePractice', params: { knowledgePointId: task.knowledgePointId, courseName: task.courseName } }))
               }
-            }.padding(18).width('100%').backgroundColor('#FFFFFF').borderRadius(12).alignItems(HorizontalAlign.Start)
+            }.padding(18).width('100%').backgroundColor(UiTheme.surface).borderRadius(8).alignItems(HorizontalAlign.Start)
           }, (task: ReviewTask) => task.taskId)
-          Text('查看知识画像 ›').fontSize(14).fontColor('#667085').onClick(() => router.pushUrl({ url: 'pages/StudyTags' }))
+          Text('查看知识画像 ›').fontSize(14).fontColor(UiTheme.secondary).onClick(() => router.pushUrl({ url: 'pages/StudyTags' }))
         }.width('100%').padding(20).alignItems(HorizontalAlign.Start).justifyContent(FlexAlign.Start)
       }.align(Alignment.TopStart).layoutWeight(1).width('100%')
-    }.width('100%').height('100%').backgroundColor('#F5F6F8')
+    }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
   }
 }

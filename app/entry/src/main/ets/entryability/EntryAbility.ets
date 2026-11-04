@@ -1,4 +1,4 @@
-import { AbilityConstant, UIAbility, Want, abilityAccessCtrl, Permissions } from '@kit.AbilityKit';
+import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { AgentApiClient } from '../api/AgentApiClient';
@@ -93,9 +93,8 @@ export default class EntryAbility extends UIAbility {
     // 这不是"短暂显示未登录"，而是**登录态恢复永久失效**（token 存了也用不上）。
     void this.bootstrapAuth(windowStage, fromLearningCard);
 
-    // ★ 全场景分布式：先申请「多设备协同」权限，再初始化分布式会话。
-    //   失败不阻断任何主流程 —— 单设备功能完全不受影响（见 DistributedStateService 文档）。
-    void this.setupDistributedState();
+    // Device relay uses the signed-in account; it does not request nearby-device permission.
+    void DistributedStateService.getInstance().init(this.context);
   }
 
   /**
@@ -118,46 +117,7 @@ export default class EntryAbility extends UIAbility {
       hilog.error(DOMAIN, 'testTag', 'AuthStore init failed: %{public}s', JSON.stringify(error));
     }
     await this.restoreIdentity(windowStage, fromLearningCard);
-  }
-
-  /**
-   * 申请分布式数据同步权限并初始化跨设备会话。
-   *
-   * 权限依据（本机 SDK `toolchains/lib/PermissionDefinitions.json`）：
-   *   `ohos.permission.DISTRIBUTED_DATASYNC`
-   *     grantMode = user_grant → 必须运行时申请，系统会弹授权框
-   *     availableLevel = normal → 普通应用可申请
-   *
-   * ⚠️ 为什么不在 `onCreate` 里做：`requestPermissionsFromUser` 需要 UI 上下文，
-   * 在 `onWindowStageCreate` 之后调用才能正常弹出授权框。
-   */
-  private async setupDistributedState(): Promise<void> {
-    const permission: Permissions = 'ohos.permission.DISTRIBUTED_DATASYNC';
-    const service: DistributedStateService = DistributedStateService.getInstance();
-    try {
-      const manager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
-      // `Context.applicationInfo` 是**同步只读属性**（见 @ohos.app.ability.Context.d.ts），
-      // 不是方法，不要写成 getApplicationInfo()。
-      const accessTokenId: number = this.context.applicationInfo.accessTokenId;
-      let granted: boolean = false;
-      const status: abilityAccessCtrl.GrantStatus =
-        manager.checkAccessTokenSync(accessTokenId, permission);
-      granted = status === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED;
-
-      if (!granted) {
-        const result = await manager.requestPermissionsFromUser(this.context, [permission]);
-        const codes: Array<number> = result.authResults;
-        granted = codes.length > 0 && codes[0] === 0;   // 0 = PERMISSION_GRANTED
-        hilog.info(DOMAIN, 'testTag',
-          'DISTRIBUTED_DATASYNC requested, granted=%{public}s', `${granted}`);
-      }
-      await service.init(this.context, granted);
-    } catch (error) {
-      // 权限申请本身失败也要让服务拿到"未授权"状态，UI 才能如实提示，
-      // 而不是停在一个既不报错也不工作的中间态。
-      hilog.error(DOMAIN, 'testTag', 'setupDistributedState failed: %{public}s', JSON.stringify(error));
-      await service.init(this.context, false);
-    }
+    void DistributedStateService.getInstance().refresh();
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -241,19 +201,14 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
     this.activeWindowStage = null;
     FocusLifecycleService.destroy();
-    // ★ 退出分布式会话。
-    //
-    // `DistributedStateService.leave()` 此前**一个调用点都没有**（它自己的注释还写着
-    // "页面销毁时调用"）—— 于是本机不会主动 `off('change')`、也不退出 session；
-    // 答辩若被问"分布式会话怎么退出"，代码里找不到答案。
-    // 窗口销毁是本 Ability 生命周期的终点，在这里退出最直接；
-    // 内部已做空值判断，未初始化过就什么都不做。
+    // Stop the foreground lease and tell connected devices this app is offline.
     void DistributedStateService.getInstance().leave();
   }
 
   onForeground(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
     FocusLifecycleService.onForeground();
+    DistributedStateService.getInstance().setForeground(true);
     void appState.syncFocusSessions();
     void ProactiveSurfaceService.refresh(this.context, true);
   }
@@ -261,6 +216,7 @@ export default class EntryAbility extends UIAbility {
   onBackground(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
     FocusLifecycleService.onBackground();
+    DistributedStateService.getInstance().setForeground(false);
     void ProactiveSurfaceService.refresh(this.context, false);
   }
 

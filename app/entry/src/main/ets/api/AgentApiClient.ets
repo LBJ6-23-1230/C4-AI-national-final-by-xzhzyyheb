@@ -1,4 +1,5 @@
 import { TaskSplitRequest, AssessmentActionRequest, CalendarRequest, PointClassification, ProfileResponse } from './ApiModels';
+import { ManualTaskRequest, SharedTasks, SharedTaskRequest, ChatFileRequest, ChatFile, TodayItemRequest } from './StudyTaskModels';
 import { PartnerInbox, PartnerSummary, PartnerReadRequest, PartnerReadResult } from './LearningUpgradeModels';
 import { CourseSettings, CourseSettingRequest } from './LearningUpgradeModels';
 import { PartnerMessages, PartnerMessageRequest, PartnerMessageResult, ScannedQuestionRequest, SavedScannedQuestion, LearningReview, ReviewRequest, ReviewTasks, ReviewTaskRequest } from './LearningUpgradeModels';
@@ -7,6 +8,7 @@ import { LearningRecords, GoalActionRequest, GoalActionResponse, GoalHistoryResp
 import { AuthProfileUpdateRequest } from './AuthModels';
 import { LearningPreferencesRequest, DocumentPointsRequest } from './ApiModels';
 import { http } from '@kit.NetworkKit';
+import { CollaborationRequest, CollaborationResponse } from './DeviceCollaborationModels';
 import { LearningChanges, LearningSnapshot, LearningEffect } from './LearningSyncModels';
 import { ExerciseSourcesResponse } from './ApiModels';
 import { LearningContext } from './ApiModels';
@@ -47,6 +49,24 @@ interface KnowledgePointImportRequest {
  * 默认地址集中定义在 `ApiDefaults.DEFAULT_BASE_URL`，页面里不得再各写一份 IP。
  */
 export class AgentApiClient {
+  static async addTodayItem(body: TodayItemRequest): Promise<ApiResult<LearningPlan>> {
+    return AgentApiClient.request<LearningPlan>(http.RequestMethod.POST, '/api/v1/plans/current/today-items', body);
+  }
+  static async readChatFile(body: ChatFileRequest): Promise<ApiResult<ChatFile>> {
+    return AgentApiClient.request<ChatFile>(http.RequestMethod.POST, '/api/v1/chat-files', body, 60000);
+  }
+  static async saveManualTask(body: ManualTaskRequest): Promise<ApiResult<LearningPlan>> {
+    return AgentApiClient.request<LearningPlan>(http.RequestMethod.POST, '/api/v1/study-tasks', body);
+  }
+  static async sharedTasks(): Promise<ApiResult<SharedTasks>> {
+    return AgentApiClient.request<SharedTasks>(http.RequestMethod.GET, '/api/v1/shared-study-tasks');
+  }
+  static async sharedTaskAction(body: SharedTaskRequest): Promise<ApiResult<SharedTasks>> {
+    return AgentApiClient.request<SharedTasks>(http.RequestMethod.POST, '/api/v1/shared-study-tasks', body);
+  }
+  static async deviceCollaboration(body: CollaborationRequest): Promise<ApiResult<CollaborationResponse>> {
+    return AgentApiClient.request<CollaborationResponse>(http.RequestMethod.POST, '/api/v1/device-collaboration', body, 10000);
+  }
   static async getLearningRecords(cursor: string = '', chatSessionId: string = ''): Promise<ApiResult<LearningRecords>> {
     return AgentApiClient.request<LearningRecords>(http.RequestMethod.GET, `/api/v1/learning-records?limit=20&cursor=${encodeURIComponent(cursor)}&chatSessionId=${encodeURIComponent(chatSessionId)}`);
   }

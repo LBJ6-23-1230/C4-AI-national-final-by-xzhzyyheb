@@ -1,5 +1,37 @@
 /** Lightweight runtime guards for JSON received from the api-contract-v0.3 endpoints. */
 export class ApiResponseValidator {
+  private static isCollaboration(payload: Record<string, Object>): boolean {
+    if (!['userId', 'deviceId'].every((key: string) => ApiResponseValidator.hasString(payload, key)) ||
+      !ApiResponseValidator.hasNumber(payload, 'serverTime') || !ApiResponseValidator.hasArray(payload, 'devices') ||
+      !ApiResponseValidator.hasArray(payload, 'links')) return false;
+    if (!(payload['devices'] as Object[]).every((item: Object) => {
+      if (!ApiResponseValidator.isRecord(item)) return false;
+      const row = item as Record<string, Object>;
+      return ['deviceId', 'deviceLabel'].every((key: string) => ApiResponseValidator.hasString(row, key)) &&
+        ApiResponseValidator.hasBoolean(row, 'online') && ApiResponseValidator.hasNumber(row, 'lastSeen');
+    })) return false;
+    return (payload['links'] as Object[]).every((item: Object) => {
+      if (!ApiResponseValidator.isRecord(item)) return false;
+      const row = item as Record<string, Object>;
+      if (!['invitationId', 'peerDeviceId', 'peerDeviceLabel', 'state'].every((key: string) => ApiResponseValidator.hasString(row, key)) ||
+        !ApiResponseValidator.isString(row, 'sentMessageId') || !ApiResponseValidator.hasBoolean(row, 'incoming') ||
+        !['expiresAt', 'acknowledgedAt'].every((key: string) => ApiResponseValidator.hasNumber(row, key)) ||
+        !['pending', 'connected', 'expired', 'rejected', 'disconnected'].includes(row['state'] as string)) return false;
+      if (row['received'] === null) return true;
+      if (!ApiResponseValidator.isRecord(row['received'])) return false;
+      const message = row['received'] as Record<string, Object>;
+      if (!ApiResponseValidator.hasString(message, 'messageId') ||
+        !['sentAt', 'ackedAt'].every((key: string) => ApiResponseValidator.hasNumber(message, key))) return false;
+      if (message['task'] === null) return true;
+      if (!ApiResponseValidator.isRecord(message['task'])) return false;
+      const task = message['task'] as Record<string, Object>;
+      return ['course', 'task'].every((key: string) => ApiResponseValidator.hasString(task, key)) &&
+        ApiResponseValidator.hasNumber(task, 'plannedMinutes') && (task['plannedMinutes'] as number) >= 0 &&
+        (task['plannedMinutes'] as number) <= 180 && ['normal', 'strict'].includes(task['mode'] as string) &&
+        ['stopwatch', 'countdown'].includes(task['timerType'] as string) && task['source'] === 'collaborative' &&
+        ApiResponseValidator.hasBoolean(task, 'allowBackgroundTiming');
+    });
+  }
   private static isReminder(payload: Object): boolean {
     if (!ApiResponseValidator.isRecord(payload)) return false;
     const data: Record<string, Object> = payload as Record<string, Object>;
@@ -36,6 +68,20 @@ export class ApiResponseValidator {
     const data: Record<string, Object> = payload as Record<string, Object>;
     // 一律用去查询串的路径做匹配，避免 `?a=b` 让精确比较失效。
     const route: string = ApiResponseValidator.basePath(path);
+    if (route === '/api/v1/plans/current/today-items') return ApiResponseValidator.isPlan(data);
+    if (route === '/api/v1/chat-files') return ApiResponseValidator.hasString(data, 'fileName') &&
+      ApiResponseValidator.hasString(data, 'text') && ApiResponseValidator.hasBoolean(data, 'truncated');
+    if (route === '/api/v1/study-tasks') return ApiResponseValidator.isPlan(data);
+    if (route === '/api/v1/shared-study-tasks') return ApiResponseValidator.hasArray(data, 'tasks') &&
+      (data['tasks'] as Object[]).every((value: Object) => {
+        if (!ApiResponseValidator.isRecord(value)) return false;
+        const item = value as Record<string, Object>;
+        return ['taskId','title','courseName','scheduledDate','fromUserId','partnerId','partnerName','myPart','partnerPart'].every((key: string) => ApiResponseValidator.hasString(item, key)) &&
+          ['pending','accepted','declined'].includes(item['status'] as string) &&
+          ['pending','completed'].includes(item['myStatus'] as string) && ['pending','completed'].includes(item['partnerStatus'] as string) &&
+          ApiResponseValidator.hasNumber(item, 'durationMinutes');
+      });
+    if (route === '/api/v1/device-collaboration') return method === 'POST' && ApiResponseValidator.isCollaboration(data);
     if (route === '/api/v1/learning-data') return ApiResponseValidator.hasString(data, 'userId') &&
       ApiResponseValidator.hasNumber(data, 'revision') && ApiResponseValidator.hasArray(data, 'courses') &&
       ApiResponseValidator.hasArray(data, 'homeworkDDLs') &&

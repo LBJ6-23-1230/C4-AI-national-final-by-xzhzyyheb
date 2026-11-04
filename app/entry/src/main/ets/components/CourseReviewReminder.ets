@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { CourseSetting } from '../api/LearningUpgradeModels';
@@ -30,15 +31,15 @@ export struct CourseReviewReminder {
       if (this.due.length > 0) {
         Row({ space: 10 }) {
           Column({ space: 4 }) {
-            Text(`近期考试 ${this.due.length} 门`).fontSize(14).fontWeight(FontWeight.Medium).fontColor('#1F2937')
+            Text(`近期考试 ${this.due.length} 门`).fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
             Text(`最近：${this.due[0].courseName} · ${UpcomingExamService.countdown(this.due[0])}`)
-              .fontSize(12).fontColor(this.due[0].daysUntilExam === 0 ? '#B42318' : '#667085').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontSize(12).fontColor(this.due[0].daysUntilExam === 0 ? UiTheme.danger : UiTheme.secondary).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
           }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-          Text('查看 ›').fontSize(13).fontColor('#2563EB')
-        }.width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(14)
+          Text('查看 ›').fontSize(13).fontColor(UiTheme.accent)
+        }.width('100%').padding(14).backgroundColor(UiTheme.surface).borderRadius(8)
           .accessibilityText(`近期考试 ${this.due.length} 门，查看全部`).onClick(() => this.openExams())
       } else if (this.notice) {
-        Text(this.notice).fontSize(12).fontColor('#667085').width('100%').padding(10).onClick(() => this.load())
+        Text(this.notice).fontSize(12).fontColor(UiTheme.secondary).width('100%').padding(10).onClick(() => this.load())
       }
     }.width('100%')
   }

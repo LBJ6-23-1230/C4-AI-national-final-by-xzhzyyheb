@@ -1,3 +1,6 @@
+import { AppBottomBar } from '../components/AppBottomBar';
+import { UiTheme } from '../utils/UiTheme';
+import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { util } from '@kit.ArkTS';
 import { fileIo, picker } from '@kit.CoreFileKit';
@@ -51,6 +54,9 @@ struct KnowledgeBasePage {
   @State activeTab: string = 'documents';   // documents | upload | knowledge | search
 
   // 新建知识库表单
+  @State createKbOpen: boolean = false;
+  @State manageKbOpen: boolean = false;
+  @State expandedDocumentId: string = '';
   @State newCourseName: string = '';
   @State isCreating: boolean = false;
 
@@ -889,13 +895,14 @@ struct KnowledgeBasePage {
                 this.SearchSection()
               }
             }
-            Blank().height(80)
+            Blank().height(24)
           }
           .width('100%').padding({ left: 16, right: 16, bottom: 20 })
         }
-        .layoutWeight(1).scrollBar(BarState.Off)
+        .layoutWeight(1).scrollBar(BarState.Off).align(Alignment.TopStart)
+        if (this.activeTab === 'documents') { AppBottomBar({ selected: 2 }) }
       }
-      .width('100%').height('100%').backgroundColor('#F8FAFC')
+      .width('100%').height('100%').backgroundColor(UiTheme.subtle)
 
       AIFloatButton()
 
@@ -912,31 +919,33 @@ struct KnowledgeBasePage {
       }
     }
     .width('100%').height('100%')
+    .bindSheet($$this.createKbOpen, this.CreateKnowledgeBase(), { height: SheetSize.FIT_CONTENT, title: { title: '新建课程资料库' }, showClose: true, backgroundColor: UiTheme.surface })
   }
 
   @Builder
   TopBar() {
-    Row({ space: 12 }) {
-      Text('←').fontSize(20).fontColor('#0F172A')
-        .onClick(() => router.back())
-      Column({ space: 2 }) {
-        Text('我的知识库').fontSize(19).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-        Text('上传课程资料，让 Agent 有据可依')
-          .fontSize(12).fontColor('#64748B')
-      }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-      if (this.isLoading) {
-        LoadingProgress().width(20).height(20).color('#2563EB')
-      }
-    }
-    .width('100%').padding({ left: 16, right: 16, top: 14, bottom: 12 })
-    .backgroundColor('#FFFFFF')
+    PageHeader({ title: this.activeTab === 'upload' ? '上传资料' : this.activeTab === 'search' ? '检索与原文引用' : '我的知识库', assistant: true, onBack: () => { if (this.activeTab !== 'documents') this.activeTab = 'documents'; else router.back(); } })
+  }
+
+  @Builder
+  CreateKnowledgeBase() {
+    Column({ space: 16 }) {
+      Text('课程名称').fontSize(14).fontColor(UiTheme.ink).width('100%')
+      TextInput({ text: this.newCourseName, placeholder: '例如：数据结构' }).height(44).fontSize(15)
+        .backgroundColor(UiTheme.subtle).borderRadius(8).onChange((value: string) => this.newCourseName = value)
+      Text('每门课程一个资料库，后续文件都归入该课程。').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+      if (this.message && this.messageIsError) { Text(this.message).fontSize(13).fontColor(UiTheme.danger).width('100%') }
+      Button(this.isCreating ? '创建中…' : '创建资料库', { type: ButtonType.Normal }).height(46).width('100%')
+        .fontSize(15).fontColor('#FFFFFF').backgroundColor(UiTheme.accent).borderRadius(8).enabled(!this.isCreating)
+        .onClick(async () => { await this.createKnowledgeBase(); if (!this.messageIsError) this.createKbOpen = false; })
+    }.width('100%').padding(20)
   }
 
   @Builder
   MessageBanner() {
     if (this.message.length > 0) {
       Text(this.message)
-        .fontSize(13).lineHeight(20).width('100%').padding(12).borderRadius(10)
+        .fontSize(13).lineHeight(20).width('100%').padding(12).borderRadius(8)
         .fontColor(this.messageIsError ? '#B91C1C' : '#166534')
         .backgroundColor(this.messageIsError ? '#FEF2F2' : '#F0FDF4')
     }
@@ -944,53 +953,50 @@ struct KnowledgeBasePage {
 
   @Builder
   KnowledgeBaseSection() {
-    Column({ space: 10 }) {
-      Text('课程知识库').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-        .width('100%')
-
-      if (this.knowledgeBases.length === 0 && !this.isLoading) {
-        Text('还没有课程资料库。创建一门课程后，把这门课的讲义、题库和笔记都放在其中。')
-          .fontSize(13).fontColor('#64748B').width('100%')
-      }
-
-      ForEach(this.knowledgeBases, (kb: KnowledgeBase) => {
+    Column({ space: 12 }) {
+      Row() {
+        Text('课程知识库').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+        Text('新建课程资料库').fontSize(13).fontColor(UiTheme.accent).padding({ top: 12, bottom: 12 })
+          .onClick(() => this.createKbOpen = true)
+      }.width('100%')
+      if (this.knowledgeBases.length > 0) {
         Row({ space: 10 }) {
-          Column({ space: 3 }) {
-            Text(kb.courseName).fontSize(14).fontWeight(FontWeight.Bold)
-              .fontColor(kb.kbId === this.selectedKbId ? '#2563EB' : '#0F172A')
-              .width('100%')
-            Text(`${kb.documentCount ?? 0} 份课程文档 · ${kb.chunkCount ?? 0} 个片段`)
-              .fontSize(12).fontColor('#64748B').width('100%')
-          }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-
-          Text('删除').fontSize(12).fontColor('#B91C1C')
-            .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-            .onClick(() => { this.requestDeleteKnowledgeBase(kb); })
+          Text('课程').fontSize(13).fontColor(UiTheme.secondary)
+          Select(this.knowledgeBases.map((kb: KnowledgeBase): SelectOption => { return { value: kb.courseName }; }))
+            .value(this.selectedKb()?.courseName || '选择课程').layoutWeight(1).backgroundColor(UiTheme.surface)
+            .onSelect((index: number) => { this.selectKnowledgeBase(this.knowledgeBases[index].kbId); void this.loadDocuments(); })
+          Text('管理').fontSize(13).fontColor(UiTheme.secondary).padding({ top: 12, bottom: 12 })
+            .onClick(() => this.manageKbOpen = !this.manageKbOpen)
+        }.width('100%')
+        if (this.selectedKb() !== null) {
+          Row() {
+            Column({ space: 5 }) {
+              Text(this.selectedKb()!.courseName + '资料库').fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+              Text(`${this.selectedKb()!.documentCount ?? 0} 个文件 · ${this.allKnowledgePoints().length} 个知识点`)
+                .fontSize(12).fontColor(UiTheme.secondary)
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Text('···').fontSize(20).fontColor(UiTheme.secondary).padding(8)
+              .bindMenu([{ value: '管理资料库', action: () => { this.manageKbOpen = true; } },
+                { value: '删除资料库', action: () => { if (this.selectedKb() !== null) this.requestDeleteKnowledgeBase(this.selectedKb()!); } }])
+          }.width('100%').padding(12).backgroundColor(UiTheme.subtle).borderRadius(8)
         }
-        .width('100%').padding(12).borderRadius(12).backgroundColor('#FFFFFF')
-        .border({ width: 1, color: kb.kbId === this.selectedKbId ? '#2563EB' : '#E2E8F0' })
-        .onClick(() => {
-          this.selectKnowledgeBase(kb.kbId);
-          this.loadDocuments();
-        })
-      }, (kb: KnowledgeBase) => kb.kbId)
-
-      // 新建
-      Column({ space: 8 }) {
-        TextInput({ placeholder: '课程名，如「数据结构」', text: this.newCourseName })
-          .height(44).fontSize(14).onChange((value: string) => { this.newCourseName = value; })
-        Text('每门课程只建一个资料库，后续文档都归入该课程。')
-          .fontSize(12).fontColor('#64748B').width('100%')
-        Button(this.isCreating ? '创建中…' : '新建课程资料库')
-          .width('100%').height(44).fontSize(14).fontColor('#FFFFFF')
-          .backgroundColor('#2563EB').borderRadius(10)
-          .enabled(!this.isCreating)
-          .onClick(() => { this.createKnowledgeBase(); })
+        if (this.manageKbOpen) {
+          ForEach(this.knowledgeBases, (kb: KnowledgeBase) => {
+            Row({ space: 10 }) {
+              Text(kb.courseName).fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+                .onClick(() => { this.selectKnowledgeBase(kb.kbId); void this.loadDocuments(); this.manageKbOpen = false; })
+              Text('删除').fontSize(13).fontColor(UiTheme.danger).padding({ top: 12, bottom: 12 })
+                .onClick(() => this.requestDeleteKnowledgeBase(kb))
+            }.width('100%').border({ width: { bottom: 1 }, color: UiTheme.line })
+          }, (kb: KnowledgeBase) => kb.kbId)
+          Text('收起管理').fontSize(13).fontColor(UiTheme.secondary).onClick(() => this.manageKbOpen = false)
+        }
+      } else if (!this.isLoading) {
+        Text('还没有课程资料库。先新建课程，再添加讲义、题库或笔记。').fontSize(14).fontColor(UiTheme.secondary).lineHeight(22).width('100%')
+        Button('新建课程资料库', { type: ButtonType.Normal }).height(44).fontColor('#FFFFFF').backgroundColor(UiTheme.accent)
+          .borderRadius(8).onClick(() => this.createKbOpen = true)
       }
-      .width('100%').padding(12).borderRadius(12)
-      .backgroundColor('#FFFFFF').border({ width: 1, color: '#E2E8F0' })
-    }
-    .width('100%')
+    }.width('100%')
   }
 
   @Builder
@@ -999,21 +1005,18 @@ struct KnowledgeBasePage {
       this.TabChip('documents', '文件')
       this.TabChip('upload', '上传')
       this.TabChip('knowledge', '知识点')
-      this.TabChip('search', '检索测试')
+      this.TabChip('search', '检索')
     }
     .width('100%')
   }
 
   @Builder
   TabChip(key: string, label: string) {
-    Text(label)
-      .fontSize(13).fontWeight(this.activeTab === key ? FontWeight.Bold : FontWeight.Normal)
-      .fontColor(this.activeTab === key ? '#FFFFFF' : '#475569')
-      .backgroundColor(this.activeTab === key ? '#2563EB' : '#FFFFFF')
-      .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-      .borderRadius(16)
-      .border({ width: 1, color: this.activeTab === key ? '#2563EB' : '#E2E8F0' })
-      .onClick(() => { this.activeTab = key; })
+    Text(label).fontSize(13).fontWeight(this.activeTab === key ? FontWeight.Medium : FontWeight.Regular)
+      .fontColor(this.activeTab === key ? UiTheme.accent : UiTheme.secondary)
+      .constraintSize({ minHeight: 44 }).layoutWeight(1).textAlign(TextAlign.Center).padding({ top: 12, bottom: 12 })
+      .border({ width: { bottom: this.activeTab === key ? 2 : 1 }, color: this.activeTab === key ? UiTheme.accent : UiTheme.line })
+      .onClick(() => this.activeTab = key)
   }
 
   @Builder
@@ -1021,35 +1024,41 @@ struct KnowledgeBasePage {
     Column({ space: 10 }) {
       if (this.documents.length === 0) {
         Text('这个知识库还没有文件。切到「上传」添加讲义、题库或笔记。')
-          .fontSize(13).fontColor('#64748B').width('100%')
-          .padding(12).backgroundColor('#FFFFFF').borderRadius(12)
+          .fontSize(13).fontColor(UiTheme.secondary).width('100%')
+          .padding(12).backgroundColor(UiTheme.surface).borderRadius(8)
       }
       ForEach(this.documents, (doc: KnowledgeDocument) => {
         Column({ space: 6 }) {
-          Row({ space: 8 }) {
-            Text(doc.fileName).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-              .layoutWeight(1).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-            // 状态标签：失败必须显眼
-            Text(doc.status === 'ready' ? '基础解析完成' : doc.status === 'processing' ? '后台处理中' : '解析失败')
-              .fontSize(11).fontColor('#FFFFFF')
-              .backgroundColor(doc.status === 'ready' ? '#10B981' : doc.status === 'processing' ? '#2563EB' : '#DC2626')
-              .padding({ left: 8, right: 8, top: 3, bottom: 3 }).borderRadius(8)
-            Text('正文 ›').fontSize(12).fontColor('#2563EB')
-              .padding({ left: 6, right: 6, top: 3, bottom: 3 })
-            Text('删除').fontSize(12).fontColor('#B91C1C')
-              .onClick(() => { this.requestDeleteDocument(doc); })
-          }
-          .width('100%')
-
+          Row({ space: 10 }) {
+            Text(doc.fileName.split('.').pop()?.toUpperCase() || '文件').fontSize(10).fontColor(UiTheme.secondary)
+              .width(36).height(42).textAlign(TextAlign.Center).padding({ top: 14 }).border({ width: 1, color: UiTheme.line }).borderRadius(4)
+            Column({ space: 4 }) {
+              Text(doc.fileName).fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).maxLines(2).width('100%')
+              Text(doc.status === 'ready' ? '处理完成' : doc.status === 'processing' ? '后台处理中' : '解析失败')
+                .fontSize(12).fontColor(doc.status === 'ready' ? UiTheme.success : doc.status === 'processing' ? UiTheme.secondary : UiTheme.danger)
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Text('···').fontSize(20).fontColor(UiTheme.secondary).padding(8).bindMenu([
+              { value: '查看正文', action: () => { void this.openDocumentDetail(doc); } },
+              { value: '修改与确认知识点', action: () => { this.expandedDocumentId = doc.documentId; this.editingPointsId = doc.documentId; this.editedPoints = (doc.knowledgePoints ?? []).join('、'); } },
+              { value: '重新提取', action: () => { void this.revisePoints(doc, true); } },
+              { value: '删除', action: () => { this.requestDeleteDocument(doc); } }
+            ])
+          }.width('100%')
+          Row({ space: 20 }) {
+            Text('正文 ›').fontSize(13).fontColor(UiTheme.secondary).padding({ top: 10, bottom: 10 }).onClick(() => this.openDocumentDetail(doc))
+            Text(this.expandedDocumentId === doc.documentId ? '收起知识点' : '修改确认知识点').fontSize(13).fontColor(UiTheme.secondary)
+              .padding({ top: 10, bottom: 10 }).onClick(() => this.expandedDocumentId = this.expandedDocumentId === doc.documentId ? '' : doc.documentId)
+          }.width('100%')
+          if (this.expandedDocumentId === doc.documentId) {
           // 归属必须显式写出来：用户反馈"这份讲义不知道属于哪个课程知识库"。
           // 数据来自页面已有的知识库列表；查不到就写"归属未知"，不猜。
           Text(`所属知识库：${this.knowledgeBaseLabel(doc.kbId)}`)
-            .fontSize(12).fontColor('#475569').width('100%')
+            .fontSize(12).fontColor(UiTheme.secondary).width('100%')
             .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
 
           if (doc.status === 'ready') {
             Text(`${doc.charCount ?? 0} 字 · ${doc.chunkCount ?? 0} 个片段`)
-              .fontSize(12).fontColor('#64748B').width('100%')
+              .fontSize(12).fontColor(UiTheme.secondary).width('100%')
           } else {
             // 失败原因照实展示，不吞掉
             Text(doc.statusMessage ?? '未知原因')
@@ -1057,7 +1066,7 @@ struct KnowledgeBasePage {
           }
 
           if (doc.status === 'ready') {
-            Text(doc.tagsConfirmed ? '知识点已确认' : '知识点待核对；点击正文可查看原文依据').fontSize(12).fontColor('#64748B')
+            Text(doc.tagsConfirmed ? '知识点已确认' : '知识点待核对；点击正文可查看原文依据').fontSize(12).fontColor(UiTheme.secondary)
             Row({ space: 8 }) {
               Button('修改 / 确认知识点').fontSize(12).height(32).onClick(() => {
                 this.editingPointsId = doc.documentId;
@@ -1076,9 +1085,9 @@ struct KnowledgeBasePage {
           }
           if ((doc.knowledgePoints ?? []).length > 0) {
             Text(`候选知识点 ${(doc.knowledgePoints ?? []).length} 项：${(this.expandedPointsId === doc.documentId ? (doc.knowledgePoints ?? []) : (doc.knowledgePoints ?? []).slice(0, 3)).join('、')}`)
-              .fontSize(12).fontColor('#2563EB').width('100%').lineHeight(18)
+              .fontSize(12).fontColor(UiTheme.accent).width('100%').lineHeight(18)
             if ((doc.knowledgePoints ?? []).length > 3) {
-              Text(this.expandedPointsId === doc.documentId ? '收起知识点 ↑' : '查看全部知识点 ↓').fontSize(12).fontColor('#2563EB')
+              Text(this.expandedPointsId === doc.documentId ? '收起知识点 ↑' : '查看全部知识点 ↓').fontSize(12).fontColor(UiTheme.accent)
                 .onClick(() => this.expandedPointsId = this.expandedPointsId === doc.documentId ? '' : doc.documentId)
             }
             if (doc.status === 'ready') {
@@ -1090,7 +1099,7 @@ struct KnowledgeBasePage {
               if (this.practiceDocId === doc.documentId && doc.tagsConfirmed) {
                 Flex({ wrap: FlexWrap.Wrap }) {
                   ForEach(doc.knowledgePoints ?? [], (point: string) => {
-                    Button(`${point === this.practicePoint ? '✓ ' : ''}${point}`).fontSize(12).height(30).margin(4)
+                    Button(`${point === this.practicePoint ? ' ' : ''}${point}`).fontSize(12).height(30).margin(4)
                       .onClick(() => this.practicePoint = point)
                   }, (point: string) => point)
                 }
@@ -1106,9 +1115,10 @@ struct KnowledgeBasePage {
                 ? `、发现 ${(doc.errorPointCandidates ?? []).length} 个易错点` : ''))
               .fontSize(12).fontColor('#166534').width('100%').lineHeight(18)
           }
+          }
         }
-        .width('100%').padding(12).borderRadius(12).backgroundColor('#FFFFFF')
-        .border({ width: 1, color: doc.status === 'ready' ? '#E2E8F0' : '#FECACA' })
+        .width('100%').padding({ top: 16, bottom: 12 }).backgroundColor(UiTheme.surface)
+        .border({ width: { bottom: 1 }, color: UiTheme.line })
         // 整项可点：点开看正文。子节点"删除"有自己的 onClick，
         // ArkUI 的点击由最内层处理者消费、不会再冒泡到这一层 ——
         // 知识库列表（选择 / 删除同一张卡片）用的就是同一套写法，行为已验证。
@@ -1135,29 +1145,29 @@ struct KnowledgeBasePage {
       Column({ space: 10 }) {
         Row({ space: 10 }) {
           Column({ space: 3 }) {
-            Text(this.detailFileName).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#0F172A')
+            Text(this.detailFileName).fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
               .width('100%').maxLines(2).textOverflow({ overflow: TextOverflow.Ellipsis })
             Text(`所属知识库：${this.detailKbLabel}`)
-              .fontSize(12).fontColor('#64748B').width('100%')
+              .fontSize(12).fontColor(UiTheme.secondary).width('100%')
               .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
           }.layoutWeight(1).alignItems(HorizontalAlign.Start)
 
-          Text('关闭').fontSize(13).fontColor('#2563EB')
+          Text('关闭').fontSize(13).fontColor(UiTheme.accent)
             .padding({ left: 12, right: 12, top: 7, bottom: 7 })
-            .backgroundColor('#EFF6FF').borderRadius(8)
+            .backgroundColor(UiTheme.tint).borderRadius(8)
             .onClick(() => { this.closeDocumentDetail(); })
         }.width('100%')
 
         Text(this.chunkSummary())
           .fontSize(11).width('100%')
-          .fontColor(this.detailTruncated ? '#B45309' : '#94A3B8')
+          .fontColor(this.detailTruncated ? '#B45309' : UiTheme.muted)
 
-        Divider().color('#E2E8F0')
+        Divider().color(UiTheme.line)
 
         if (this.detailLoading) {
           Row({ space: 8 }) {
-            LoadingProgress().width(18).height(18).color('#2563EB')
-            Text('正在加载正文…').fontSize(13).fontColor('#64748B')
+            LoadingProgress().width(18).height(18).color(UiTheme.accent)
+            Text('正在加载正文…').fontSize(13).fontColor(UiTheme.secondary)
           }
           .width('100%').padding({ top: 24, bottom: 24 })
           .justifyContent(FlexAlign.Center)
@@ -1167,32 +1177,32 @@ struct KnowledgeBasePage {
               .width('100%')
             // 后端给的可读原因原样透出（如 404「文档不存在」），不吞成"加载失败"
             Text(this.detailError).fontSize(12).fontColor('#B91C1C').width('100%').lineHeight(18)
-            Button('重试').height(38).fontSize(13).fontColor('#FFFFFF')
-              .backgroundColor('#2563EB').borderRadius(10)
+            Button('重试').height(38).fontSize(13).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent).borderRadius(8)
               .onClick(() => { this.fetchDocumentDetail(this.detailDocumentId); })
           }
           .width('100%').padding({ top: 12 })
         } else if (this.detailChunks.length === 0) {
-          Text(this.emptyDetailText()).fontSize(13).fontColor('#64748B')
+          Text(this.emptyDetailText()).fontSize(13).fontColor(UiTheme.secondary)
             .width('100%').lineHeight(20)
         } else {
           Scroll() {
             Column({ space: 12 }) {
-              Text('知识点原文依据').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+              Text('知识点原文依据').fontSize(14).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
               ForEach(this.detailEvidence, (item: KnowledgePointEvidence) => {
                 Column({ space: 4 }) {
-                  Text(`${item.name} · ${item.headingPath || '原文片段'}`).fontSize(13).fontColor('#2563EB')
-                  Text(item.excerpt || '此名称由用户修订，尚无可直接对应的原文短语。').fontSize(12).fontColor('#64748B').lineHeight(18)
-                }.width('100%').padding(10).backgroundColor('#EFF6FF').borderRadius(10)
+                  Text(`${item.name} · ${item.headingPath || '原文片段'}`).fontSize(13).fontColor(UiTheme.accent)
+                  Text(item.excerpt || '此名称由用户修订，尚无可直接对应的原文短语。').fontSize(12).fontColor(UiTheme.secondary).lineHeight(18)
+                }.width('100%').padding(10).backgroundColor(UiTheme.tint).borderRadius(8)
               }, (item: KnowledgePointEvidence) => item.name)
               ForEach(this.readingSections(), (chunk: KnowledgeDocumentChunk) => {
                 Column({ space: 5 }) {
                   Text(this.chunkTitle(chunk))
                     .fontSize(11).fontColor('#166534').width('100%').lineHeight(17)
-                  Text(chunk.text).fontSize(13).fontColor('#334155').width('100%').lineHeight(21)
+                  Text(chunk.text).fontSize(13).fontColor(UiTheme.secondary).width('100%').lineHeight(21)
                   if ((chunk.knowledgePoints ?? []).length > 0) {
                     Text(`标签：${(chunk.knowledgePoints ?? []).join('、')}`)
-                      .fontSize(11).fontColor('#64748B').width('100%')
+                      .fontSize(11).fontColor(UiTheme.secondary).width('100%')
                   }
                 }
                 .width('100%').padding({ top: 8, bottom: 12 })
@@ -1203,8 +1213,8 @@ struct KnowledgeBasePage {
         }
       }
       .width('92%').height('82%').padding(16)
-      .backgroundColor('#FFFFFF').borderRadius(16)
-      .border({ width: 1, color: '#E2E8F0' })
+      .backgroundColor(UiTheme.surface).borderRadius(8)
+      .border({ width: 1, color: UiTheme.line })
     }
     .width('100%').height('100%')
     .backgroundColor('rgba(15, 23, 42, 0.45)')
@@ -1218,13 +1228,13 @@ struct KnowledgeBasePage {
         Text(this.messageIsError ? '上传未完成' : '上传成功')
           .fontSize(18).fontWeight(FontWeight.Bold)
           .fontColor(this.messageIsError ? '#B91C1C' : '#166534')
-        Text(this.message).fontSize(13).lineHeight(20).fontColor('#475467').width('100%')
-        Button('知道了').width('100%').height(42).fontColor('#FFFFFF')
-          .backgroundColor('#2563EB').borderRadius(10)
+        Text(this.message).fontSize(13).lineHeight(20).fontColor(UiTheme.secondary).width('100%')
+        Button('知道了').width('100%').height(42).fontColor(UiTheme.surface)
+          .backgroundColor(UiTheme.accent).borderRadius(8)
           .onClick(() => { this.uploadResultVisible = false; })
       }
-      .width('84%').padding(18).backgroundColor('#FFFFFF').borderRadius(16)
-      .border({ width: 1, color: '#E2E8F0' })
+      .width('84%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
+      .border({ width: 1, color: UiTheme.line })
     }
     .width('100%').height('100%').justifyContent(FlexAlign.Center)
     .backgroundColor('rgba(15, 23, 42, 0.45)')
@@ -1238,23 +1248,23 @@ struct KnowledgeBasePage {
           .fontSize(18).fontWeight(FontWeight.Bold)
           .fontColor(this.isDeleting ? '#B45309' : '#B91C1C')
         if (this.isDeleting) {
-          LoadingProgress().width(28).height(28).color('#2563EB')
-          Text(this.deleteProgressText).fontSize(13).lineHeight(20).fontColor('#475467').width('100%')
-          Text('请勿重复点击或退出页面。').fontSize(12).fontColor('#94A3B8').width('100%')
+          LoadingProgress().width(28).height(28).color(UiTheme.accent)
+          Text(this.deleteProgressText).fontSize(13).lineHeight(20).fontColor(UiTheme.secondary).width('100%')
+          Text('请勿重复点击或退出页面。').fontSize(12).fontColor(UiTheme.muted).width('100%')
         } else {
-          Text(this.deleteTargetSummary).fontSize(13).lineHeight(20).fontColor('#475467').width('100%')
+          Text(this.deleteTargetSummary).fontSize(13).lineHeight(20).fontColor(UiTheme.secondary).width('100%')
           Row({ space: 10 }) {
-            Button('取消').layoutWeight(1).height(42).fontColor('#475467')
-              .backgroundColor('#F1F5F9').borderRadius(10)
+            Button('取消').layoutWeight(1).height(42).fontColor(UiTheme.secondary)
+              .backgroundColor(UiTheme.subtle).borderRadius(8)
               .onClick(() => { this.cancelDelete(); })
-            Button('确定删除').layoutWeight(1).height(42).fontColor('#FFFFFF')
-              .backgroundColor('#DC2626').borderRadius(10)
+            Button('确定删除').layoutWeight(1).height(42).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.danger).borderRadius(8)
               .onClick(() => { this.confirmDelete(); })
           }.width('100%')
         }
       }
-      .width('86%').padding(18).backgroundColor('#FFFFFF').borderRadius(16)
-      .border({ width: 1, color: '#E2E8F0' })
+      .width('86%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
+      .border({ width: 1, color: UiTheme.line })
     }
     .width('100%').height('100%').justifyContent(FlexAlign.Center)
     .backgroundColor('#66000000')
@@ -1264,11 +1274,11 @@ struct KnowledgeBasePage {
   UploadSection() {
     Column({ space: 12 }) {
       Text('支持 TXT / Markdown / CSV / JSON / Word（DOCX）/ PDF / PPTX。旧 PPT 请转换；纯图片需先做 OCR。')
-        .fontSize(12).fontColor('#64748B').width('100%').lineHeight(18)
+        .fontSize(12).fontColor(UiTheme.secondary).width('100%').lineHeight(18)
 
       Button(this.isUploading ? this.uploadProgressText : '选择 Word / PDF / 文本文件')
-        .width('100%').height(46).fontSize(14).fontColor('#2563EB')
-        .backgroundColor('#EFF6FF').borderRadius(10)
+        .width('100%').height(46).fontSize(14).fontColor(UiTheme.accent)
+        .backgroundColor(UiTheme.tint).borderRadius(8)
         .border({ width: 1, color: '#BFDBFE' })
         .enabled(!this.isUploading)
         .onClick(() => { this.pickAndUploadDocument(); })
@@ -1282,8 +1292,8 @@ struct KnowledgeBasePage {
         .onChange((value: string) => { this.sampleFileName = value; })
 
       Button(this.isUploading ? this.uploadProgressText : '上传并解析')
-        .width('100%').height(46).fontSize(15).fontColor('#FFFFFF')
-        .backgroundColor('#2563EB').borderRadius(10)
+        .width('100%').height(46).fontSize(15).fontColor(UiTheme.surface)
+        .backgroundColor(UiTheme.accent).borderRadius(8)
         .enabled(!this.isUploading)
         .onClick(() => {
           const name: string = this.sampleFileName.trim().length > 0
@@ -1292,33 +1302,33 @@ struct KnowledgeBasePage {
         })
 
       Button('使用示例讲义快速体验')
-        .width('100%').height(44).fontSize(14).fontColor('#2563EB')
-        .backgroundColor('#FFFFFF').borderRadius(10)
+        .width('100%').height(44).fontSize(14).fontColor(UiTheme.accent)
+        .backgroundColor(UiTheme.surface).borderRadius(8)
         .border({ width: 1, color: '#BFDBFE' })
         .enabled(!this.isUploading)
         .onClick(() => { this.uploadSample(); })
     }
-    .width('100%').padding(12).borderRadius(12).backgroundColor('#FFFFFF')
-    .border({ width: 1, color: '#E2E8F0' })
+    .width('100%').padding(12).borderRadius(8).backgroundColor(UiTheme.surface)
+    .border({ width: 1, color: UiTheme.line })
   }
 
   @Builder
   KnowledgeSection() {
     Column({ space: 10 }) {
       Text('从你的资料中识别出的知识点').fontSize(14).fontWeight(FontWeight.Bold)
-        .fontColor('#0F172A').width('100%')
+        .fontColor(UiTheme.ink).width('100%')
 
       if (this.allKnowledgePoints().length === 0) {
         Text('还没有识别到知识点。上传含标题层级的讲义效果最好。')
-          .fontSize(13).fontColor('#64748B').width('100%')
+          .fontSize(13).fontColor(UiTheme.secondary).width('100%')
       } else {
         Flex({ wrap: FlexWrap.Wrap }) {
           ForEach(this.allKnowledgePoints(), (point: string) => {
             Text(point)
-              .fontSize(12).fontColor('#2563EB')
-              .backgroundColor('#EFF6FF')
+              .fontSize(12).fontColor(UiTheme.accent)
+              .backgroundColor(UiTheme.tint)
               .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-              .borderRadius(14)
+              .borderRadius(8)
               .margin({ right: 8, bottom: 8 })
           }, (point: string) => point)
         }.width('100%')
@@ -1326,17 +1336,17 @@ struct KnowledgeBasePage {
 
       // 易错点：来自确定性规则（命中"注意/常见错误/易错"等语境的句子）
       if (this.gatherErrorPoints().length > 0) {
-        Divider().color('#E2E8F0').margin({ top: 6, bottom: 6 })
+        Divider().color(UiTheme.line).margin({ top: 6, bottom: 6 })
         Text('常见易错点').fontSize(14).fontWeight(FontWeight.Bold)
-          .fontColor('#0F172A').width('100%')
+          .fontColor(UiTheme.ink).width('100%')
         ForEach(this.gatherErrorPoints(), (item: string) => {
           Text(`· ${item}`).fontSize(12).fontColor('#B45309')
             .width('100%').lineHeight(18)
         }, (item: string) => item)
       }
     }
-    .width('100%').padding(12).borderRadius(12).backgroundColor('#FFFFFF')
-    .border({ width: 1, color: '#E2E8F0' })
+    .width('100%').padding(12).borderRadius(8).backgroundColor(UiTheme.surface)
+    .border({ width: 1, color: UiTheme.line })
   }
 
   private gatherErrorPoints(): string[] {
@@ -1361,25 +1371,25 @@ struct KnowledgeBasePage {
           .onChange((value: string) => { this.searchQuery = value; })
           .onSubmit(() => { this.runSearch(); })
         Button(this.isSearching ? '检索中' : '检索')
-          .height(44).fontSize(14).fontColor('#FFFFFF')
-          .backgroundColor('#2563EB').borderRadius(10)
+          .height(44).fontSize(14).fontColor(UiTheme.surface)
+          .backgroundColor(UiTheme.accent).borderRadius(8)
           .enabled(!this.isSearching)
           .onClick(() => { this.runSearch(); })
       }.width('100%')
 
       if (this.retrievalMode.length > 0) {
         Text(`检索方式：${this.retrievalMode} · 扫描 ${this.lastScanned} 个片段`)
-          .fontSize(11).fontColor('#94A3B8').width('100%')
+          .fontSize(11).fontColor(UiTheme.muted).width('100%')
       }
 
       ForEach(this.hits, (hit: KnowledgeChunkHit) => {
         Column({ space: 6 }) {
           Row({ space: 8 }) {
             Text(hit.fileName ?? '未知文件').fontSize(12).fontWeight(FontWeight.Bold)
-              .fontColor('#2563EB').layoutWeight(1)
+              .fontColor(UiTheme.accent).layoutWeight(1)
               .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-            Text(hit.score.toFixed(2)).fontSize(12).fontColor('#FFFFFF')
-              .backgroundColor('#2563EB')
+            Text(hit.score.toFixed(2)).fontSize(12).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent)
               .padding({ left: 8, right: 8, top: 2, bottom: 2 }).borderRadius(8)
           }.width('100%')
 
@@ -1388,17 +1398,17 @@ struct KnowledgeBasePage {
             Text(`§ ${hit.headingPath}`)
               .fontSize(12).fontColor('#166534').width('100%').lineHeight(18)
           }
-          Text(hit.text).fontSize(13).fontColor('#334155')
+          Text(hit.text).fontSize(13).fontColor(UiTheme.secondary)
             .width('100%').lineHeight(20).maxLines(6)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
 
           if ((hit.knowledgePoints ?? []).length > 0) {
             Text(`标签：${(hit.knowledgePoints ?? []).join('、')}`)
-              .fontSize(11).fontColor('#64748B').width('100%')
+              .fontSize(11).fontColor(UiTheme.secondary).width('100%')
           }
         }
-        .width('100%').padding(12).borderRadius(12).backgroundColor('#FFFFFF')
-        .border({ width: 1, color: '#E2E8F0' })
+        .width('100%').padding(12).borderRadius(8).backgroundColor(UiTheme.surface)
+        .border({ width: 1, color: UiTheme.line })
       }, (hit: KnowledgeChunkHit) => hit.chunkId)
     }
     .width('100%')

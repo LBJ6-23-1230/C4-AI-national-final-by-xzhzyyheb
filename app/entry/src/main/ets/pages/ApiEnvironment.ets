@@ -1,3 +1,5 @@
+import { UiTheme } from '../utils/UiTheme';
+import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { common } from '@kit.AbilityKit';
 import { AgentApiClient, ApiClientConfig } from '../api/AgentApiClient';
@@ -94,7 +96,7 @@ struct ApiEnvironment {
       return;
     }
     const failure: ApiFailure = result as ApiFailure;
-    // ⚠️ 区分「连不上」与「连上了、但服务端返回了错误」。
+    //  区分「连不上」与「连上了、但服务端返回了错误」。
     // `statusCode > 0` 说明**已经拿到 HTTP 响应** —— 例如账号还没有计划时的
     // 404 `current plan not found`，那恰恰证明地址与网络都是通的。
     // 原来一律写成"连接失败：<服务端 message>"，把**业务错误说成网络问题**，
@@ -106,61 +108,57 @@ struct ApiEnvironment {
 
   build() {
     Column() {
-      Row() {
-        Text('← 返回').fontSize(14).fontColor('#64748B').onClick(() => router.back())
-        Blank()
-        Text('接口环境').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-      }.width('100%').padding({ left: 16, right: 16, top: 14, bottom: 14 }).backgroundColor('#FFFFFF')
+      PageHeader({ title: '接口环境（开发）', assistant: false, onBack: () => { router.back(); } })
       Scroll() {
         Column({ space: 16 }) {
-          Text('数据源与联调地址').fontSize(23).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
+          Text('数据源与联调地址').fontSize(23).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
           Text('切换后会清除短期接口缓存，不会修改后端、项目代码或课程数据。')
-            .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
-          // ⚠️ 两个按钮的**配色必须由选中状态驱动**。
+            .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
+          //  两个按钮的**配色必须由选中状态驱动**。
           //
-          // 修复的缺陷：原先"离线 Fixture"按钮写死 `.backgroundColor('#2563EB')`（蓝底白字）、
-          // "真 Agent 后端"按钮写死 `.backgroundColor('#FFFFFF')`（白底蓝字），
+          // 修复的缺陷：原先"离线 Fixture"按钮写死 `.backgroundColor(UiTheme.accent)`（蓝底白字）、
+          // "真 Agent 后端"按钮写死 `.backgroundColor(UiTheme.surface)`（白底蓝字），
           // 只有**文字**随 `useFixture` 变。后果是切到联机后，**离线按钮看起来仍然是被选中的那个**
           // ——用户反馈的"怎么调，按钮始终是离线（加重）"就是这个。
           // 现在选中方为实心蓝，未选中方为白底描边，与真实状态一致。
-          Button(this.useFixture ? '✓ 当前：离线 Fixture' : '使用离线 Fixture')
+          Button(this.useFixture ? '当前：离线 Fixture' : '使用离线 Fixture')
             .width('100%').height(48).fontSize(15)
-            .fontColor(this.useFixture ? '#FFFFFF' : '#2563EB')
-            .backgroundColor(this.useFixture ? '#2563EB' : '#FFFFFF')
-            .border({ width: 1, color: this.useFixture ? '#2563EB' : '#BFDBFE' })
-            .borderRadius(12)
+            .fontColor(this.useFixture ? UiTheme.surface : UiTheme.accent)
+            .backgroundColor(this.useFixture ? UiTheme.accent : UiTheme.surface)
+            .border({ width: 1, color: this.useFixture ? UiTheme.accent : '#BFDBFE' })
+            .borderRadius(8)
             .onClick(() => this.useOfflineDemo())
-          Text('固定演示不依赖后端，可稳定展示 42 → 58 → Plan V2。').fontSize(12).fontColor('#667085').width('100%')
-          Button(!this.useFixture ? '✓ 当前：真 Agent 后端' : '使用真 Agent 后端（5000）')
+          Text('固定演示不依赖后端，可稳定展示 42 → 58 → Plan V2。').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+          Button(!this.useFixture ? '当前：真 Agent 后端' : '使用真 Agent 后端（5000）')
             .width('100%').height(48).fontSize(15)
-            .fontColor(!this.useFixture ? '#FFFFFF' : '#2563EB')
-            .backgroundColor(!this.useFixture ? '#2563EB' : '#FFFFFF')
-            .border({ width: 1, color: !this.useFixture ? '#2563EB' : '#BFDBFE' })
-            .borderRadius(12).onClick(() => this.useEmulatorBackend())
+            .fontColor(!this.useFixture ? UiTheme.surface : UiTheme.accent)
+            .backgroundColor(!this.useFixture ? UiTheme.accent : UiTheme.surface)
+            .border({ width: 1, color: !this.useFixture ? UiTheme.accent : '#BFDBFE' })
+            .borderRadius(8).onClick(() => this.useEmulatorBackend())
           Column({ space: 10 }) {
-            Text('真机 / 自定义后端').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
+            Text('真机 / 自定义后端').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
             // 真机联调：手机与本机需在同一 WiFi，用 ipconfig 取本机 IPv4 地址后按
             // http://<本机IP>:5000 填写（详见项目根 README.md 的「联调地址速查」）。
             Text('真机联调：手机与电脑需在同一 WiFi，填入电脑的局域网地址（含 5000 端口）。')
-              .fontSize(13).fontColor('#667085').lineHeight(19).width('100%')
+              .fontSize(13).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
             TextInput({ placeholder: 'http://192.168.x.x:5000', text: this.baseUrl })
-              .width('100%').height(44).fontSize(14).backgroundColor('#F8FAFC').borderRadius(10)
+              .width('100%').height(44).fontSize(14).backgroundColor(UiTheme.subtle).borderRadius(8)
               .onChange((value: string) => this.baseUrl = value)
-            Button('应用此地址').width('100%').height(42).fontSize(14).fontColor('#FFFFFF')
-              .backgroundColor('#2563EB').borderRadius(10).onClick(() => this.useCustomBackend())
-          }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14).border({ width: 1, color: '#E2E8F0' })
+            Button('应用此地址').width('100%').height(42).fontSize(14).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => this.useCustomBackend())
+          }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8).border({ width: 1, color: UiTheme.line })
           Column({ space: 7 }) {
-            Text(`当前模式：${this.useFixture ? 'Fixture 离线演示' : '真实后端'}`).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
-            Text(`当前地址：${this.baseUrl}`).fontSize(12).fontColor('#667085').width('100%')
-          }.width('100%').padding(14).backgroundColor('#EFF6FF').borderRadius(12)
+            Text(`当前模式：${this.useFixture ? 'Fixture 离线演示' : '真实后端'}`).fontSize(14).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
+            Text(`当前地址：${this.baseUrl}`).fontSize(12).fontColor(UiTheme.secondary).width('100%')
+          }.width('100%').padding(14).backgroundColor(UiTheme.tint).borderRadius(8)
           if (this.message.length > 0) {
-            Text(this.message).fontSize(13).fontColor('#475467').lineHeight(19).width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(10)
+            Text(this.message).fontSize(13).fontColor(UiTheme.secondary).lineHeight(19).width('100%').padding(12).backgroundColor(UiTheme.subtle).borderRadius(8)
           }
           Button(this.isChecking ? '正在检测…' : '检测当前计划接口')
-            .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
-            .backgroundColor('#0F766E').borderRadius(12).enabled(!this.isChecking).onClick(() => this.checkCurrentPlan())
+            .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.surface)
+            .backgroundColor('#0F766E').borderRadius(8).enabled(!this.isChecking).onClick(() => this.checkCurrentPlan())
         }.width('100%').padding(16)
-      }.layoutWeight(1).backgroundColor('#F3F6FA')
+      }.layoutWeight(1).backgroundColor(UiTheme.canvas).align(Alignment.TopStart)
     }.width('100%').height('100%')
   }
 }

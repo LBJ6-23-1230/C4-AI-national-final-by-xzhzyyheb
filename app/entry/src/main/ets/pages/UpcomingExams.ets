@@ -1,3 +1,5 @@
+import { AIFloatButton } from '../components/AIFloatButton';
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { CourseSetting } from '../api/LearningUpgradeModels';
@@ -23,39 +25,45 @@ struct UpcomingExams {
     const result = await AgentApiClient.courseSettings();
     if (!this.active || version !== this.requestVersion || owner !== appState.currentUser.userId) return;
     this.loading = false;
-    if (result.ok) this.courses = UpcomingExamService.sorted(result.data.courses);
+    if (result.ok) this.courses = result.data.courses.slice().sort((a: CourseSetting, b: CourseSetting) => (a.examDate || '9999').localeCompare(b.examDate || '9999'));
     else this.notice = '考试信息读取失败，点击重试';
   }
   private review(course: CourseSetting): void {
     router.pushUrl({ url: 'pages/LearningReview', params: { courseName: course.courseName } });
   }
   build() {
+    Stack() {
     Column() {
-      PageHeader({ title: '近期考试', detail: `${this.courses.length} 门` })
+      PageHeader({ title: '学习目标与考试', assistant: true, detail: `${this.courses.length} 门` })
       List({ space: 12 }) {
-        ListItem() { Text('未来14天的考试，按日期由近到远排列。').fontSize(13).fontColor('#667085').width('100%') }
-        if (this.loading) ListItem() { Text('正在读取考试安排…').fontSize(14).fontColor('#667085') }
-        if (this.notice) ListItem() { Text(this.notice).fontSize(14).fontColor('#667085').padding(14).onClick(() => this.load()) }
+        ListItem() { Button('添加课程目标与考试', { type: ButtonType.Normal }).width('100%').height(44).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint).onClick(() => router.pushUrl({ url: 'pages/LearningSetup', params: { newCourse: 'true' } })) }
+        ListItem() { Text('按课程管理学习目标与考试，点击课程可修改。').fontSize(13).fontColor(UiTheme.secondary).width('100%') }
+        if (this.loading) ListItem() { Text('正在读取考试安排…').fontSize(14).fontColor(UiTheme.secondary) }
+        if (this.notice) ListItem() { Text(this.notice).fontSize(14).fontColor(UiTheme.secondary).padding(14).onClick(() => this.load()) }
         if (!this.loading && !this.notice && this.courses.length === 0) {
-          ListItem() { Text('未来14天暂无已安排的考试。').fontSize(14).fontColor('#667085').padding(14) }
+          ListItem() { Text('还没有课程目标，添加一门课程开始安排。').fontSize(14).fontColor(UiTheme.secondary).padding(14) }
         }
         ForEach(this.courses, (course: CourseSetting) => {
           ListItem() {
             Row({ space: 12 }) {
               Column({ space: 8 }) {
-                Text(course.courseName).fontSize(16).fontWeight(FontWeight.Medium).fontColor('#1F2937')
-                Text(`${course.examDate} · ${UpcomingExamService.countdown(course)}`)
-                  .fontSize(13).fontColor(course.daysUntilExam === 0 ? '#B42318' : '#667085')
+                Text(course.courseName).fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+                Text(course.goal || '尚未设置学习目标').fontSize(14).fontColor(UiTheme.ink)
+                Text(course.examDate ? `${course.examDate} · ${UpcomingExamService.countdown(course)}` : '尚未设置考试日期')
+                  .fontSize(13).fontColor(course.daysUntilExam === 0 ? UiTheme.danger : UiTheme.secondary)
               }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-              Text('考前建议 ›').fontSize(13).fontColor('#2563EB')
-            }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(14).onClick(() => this.review(course))
+              Text('编辑 ›').fontSize(13).fontColor(UiTheme.accent).padding(8).onClick(() => router.pushUrl({ url: 'pages/LearningSetup', params: { courseName: course.courseName } }))
+              Text('复习建议 ›').fontSize(13).fontColor(UiTheme.accent).padding(8).onClick(() => this.review(course))
+            }.width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
           }
         }, (course: CourseSetting) => course.courseName)
         ListItem() {
-          Button('管理课程与考试日期').width('100%').backgroundColor('#EFF6FF').fontColor('#2563EB')
+          Button('管理课程与考试日期').width('100%').backgroundColor(UiTheme.tint).fontColor(UiTheme.accent)
             .onClick(() => router.pushUrl({ url: 'pages/LearningSetup' }))
         }
       }.layoutWeight(1).width('100%').padding(20)
-    }.width('100%').height('100%').backgroundColor('#F5F6F8')
+    }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
+    AIFloatButton()
+    }.width('100%').height('100%')
   }
 }

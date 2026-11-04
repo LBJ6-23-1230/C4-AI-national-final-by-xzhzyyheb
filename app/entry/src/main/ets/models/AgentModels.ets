@@ -194,6 +194,8 @@ export interface StudySuggestion {
 }
 
 export interface WrongAnalysisResult {
+  answer?: string;
+  explanation?: string;
   questionNumber?: string;
   questionText?: string;
   recognitionStatus?: string;

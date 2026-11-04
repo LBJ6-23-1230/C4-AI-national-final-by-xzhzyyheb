@@ -1,3 +1,5 @@
+import { UiTheme } from '../utils/UiTheme';
+import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { promptAction } from '@kit.ArkUI';
@@ -120,49 +122,42 @@ struct EditProfile {
   @Builder
   private ProfileContent() {
     Column() {
-      Row() {
-        Button('返回').fontSize(14).fontColor('#64748B').backgroundColor(Color.Transparent)
-          .enabled(!this.busy && !this.picking).onClick(() => router.back())
-        Blank()
-        Text('编辑资料').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#172033')
-        Blank()
-        Blank().width(60)
-      }.width('100%').padding(12).backgroundColor('#FFFFFF')
+      PageHeader({ title: '编辑资料', onBack: () => { if (!this.busy && !this.picking) router.back(); } })
       Scroll() {
         Column({ space: 20 }) {
           if (appState.isSignedIn) {
             Column({ space: 12 }) {
               UserAvatar({ source: this.avatar, nickname: this.nickname, diameter: 88 })
               Button(this.picking ? '正在处理图片…' : '更换头像')
-                .fontSize(14).fontColor('#2563EB').backgroundColor('#EFF6FF')
+                .fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint)
                 .enabled(!this.busy && !this.picking).onClick(() => { void this.pickAvatar(); })
-              Text('选图后可拖动、缩放裁剪，保存前可预览').fontSize(12).fontColor('#667085')
+              Text('选图后可拖动、缩放裁剪，保存前可预览').fontSize(12).fontColor(UiTheme.secondary)
               if (this.avatar.length > 0) {
-                Button('使用默认头像').fontSize(12).fontColor('#667085').backgroundColor(Color.Transparent)
+                Button('使用默认头像').fontSize(12).fontColor(UiTheme.secondary).backgroundColor(Color.Transparent)
                   .enabled(!this.busy && !this.picking).onClick(() => this.avatar = '')
               }
-            }.width('100%').padding(24).backgroundColor('#FFFFFF').borderRadius(16)
+            }.width('100%').padding(24).backgroundColor(UiTheme.surface).borderRadius(8)
             Column({ space: 10 }) {
-              Text('昵称').fontSize(15).fontWeight(FontWeight.Medium).fontColor('#172033')
+              Text('昵称').fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
               TextInput({ text: this.nickname, placeholder: '请输入昵称' }).maxLength(16)
-                .height(48).fontSize(16).backgroundColor('#F5F7FA')
+                .height(48).fontSize(16).backgroundColor(UiTheme.canvas)
                 .enabled(!this.busy).onChange((value: string) => { this.nickname = value; this.message = ''; })
-              Text(`${this.nickname.length}/16`).fontSize(12).fontColor('#667085')
-            }.alignItems(HorizontalAlign.Start).width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(16)
+              Text(`${this.nickname.length}/16`).fontSize(12).fontColor(UiTheme.secondary)
+            }.alignItems(HorizontalAlign.Start).width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
             if (this.message.length > 0) {
-              Text(this.message).fontSize(13).fontColor('#B42318').width('100%')
+              Text(this.message).fontSize(13).fontColor(UiTheme.danger).width('100%')
             }
             Button(this.busy ? '正在保存…' : '保存')
-              .width('100%').height(48).fontSize(16).backgroundColor('#2563EB')
+              .width('100%').height(48).fontSize(16).backgroundColor(UiTheme.accent)
               .enabled(!this.busy && !this.picking && this.changed() && this.nickname.trim().length > 0)
               .onClick(() => { void this.save(); })
           } else {
-            Text('登录后即可设置头像和昵称').fontSize(16).fontColor('#475467')
+            Text('登录后即可设置头像和昵称').fontSize(16).fontColor(UiTheme.secondary)
             Button('去登录').onClick(() => router.pushUrl({ url: 'pages/Login' }))
           }
         }.width('100%').constraintSize({ maxWidth: 560 }).padding(20)
-      }.layoutWeight(1).width('100%')
-    }.width('100%').height('100%').backgroundColor('#F3F6FA')
+      }.layoutWeight(1).width('100%').align(Alignment.TopStart)
+    }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
   }
 
   build() {

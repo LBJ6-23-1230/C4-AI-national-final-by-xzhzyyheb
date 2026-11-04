@@ -417,6 +417,7 @@ export interface AssignmentSnapshot {
 }
 
 export interface AssignmentSyncRequest {
+  scheduleToday?: boolean;
   assignments: AssignmentSnapshot[];
   selectedId?: string;
 }

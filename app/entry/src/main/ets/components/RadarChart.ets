@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 /**
  * RadarChart - 知识薄弱点雷达图组件
  */
@@ -66,7 +67,7 @@ export struct RadarChart {
         else { ctx.lineTo(x, y); }
       }
       ctx.closePath();
-      ctx.strokeStyle = '#E2E8F0';
+      ctx.strokeStyle = UiTheme.line;
       ctx.lineWidth = 0.5;
       ctx.stroke();
     }
@@ -77,7 +78,7 @@ export struct RadarChart {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
-      ctx.strokeStyle = '#E2E8F0';
+      ctx.strokeStyle = UiTheme.line;
       ctx.lineWidth = 0.5;
       ctx.stroke();
     }
@@ -93,7 +94,7 @@ export struct RadarChart {
         else { ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
       }
       ctx.closePath();
-      ctx.strokeStyle = '#94A3B8';
+      ctx.strokeStyle = UiTheme.muted;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([6, 4]);
       ctx.stroke();
@@ -113,7 +114,7 @@ export struct RadarChart {
       ctx.closePath();
       ctx.fillStyle = 'rgba(37, 99, 235, 0.2)';
       ctx.fill();
-      ctx.strokeStyle = '#2563EB';
+      ctx.strokeStyle = UiTheme.accent;
       ctx.lineWidth = 2;
       ctx.stroke();
     }
@@ -131,7 +132,7 @@ export struct RadarChart {
 
       // 维度标签
       const label: string = dims[i] || '';
-      ctx.fillStyle = '#334155';
+      ctx.fillStyle = UiTheme.secondary;
       ctx.fillText(label.length > 7 ? label.substring(0, 6) + '…' : label, labelX, labelY, 88);
 
       // 数据点
@@ -146,18 +147,18 @@ export struct RadarChart {
         ctx.arc(pointX, pointY, 7, 0, Math.PI * 2);
         ctx.fillStyle = '#EF4444';
         ctx.fill();
-        ctx.strokeStyle = '#FFFFFF';
+        ctx.strokeStyle = UiTheme.surface;
         ctx.lineWidth = 2;
         ctx.stroke();
       } else if (this.isStrength(i)) {
         ctx.beginPath();
         ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#2563EB';
+        ctx.fillStyle = UiTheme.accent;
         ctx.fill();
       } else {
         ctx.beginPath();
         ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#3B82F6';
+        ctx.fillStyle = UiTheme.accent;
         ctx.fill();
       }
     }

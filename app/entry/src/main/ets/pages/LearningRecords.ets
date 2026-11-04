@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { LearningRecord, LearningContext } from '../api/ApiModels';
@@ -52,32 +53,32 @@ struct LearningRecordsPage {
   }
   build() {
     Column() {
-      PageHeader({ title: '学习记录' })
+      PageHeader({ title: '学习目标记录' })
       Scroll() {
         Column({ space: 12 }) {
-          Text('当前账号已确认的学习目标与完成情况').fontSize(14).fontColor('#667085')
+          Text('保存每次练习目标与进度，可继续未完成练习、查看已完成结果。完成流程不代表已掌握，掌握情况请看学习报告。').fontSize(14).fontColor(UiTheme.secondary)
           if (this.busy) { LoadingProgress().width(32).height(32) }
-          if (this.error) { Text(this.error).fontColor('#B42318'); Button('重试').onClick(() => this.load()) }
+          if (this.error) { Text(this.error).fontColor(UiTheme.danger); Button('重试').onClick(() => this.load()) }
           else if (!this.busy && !this.records.length) {
-            Text('还没有学习记录。在对话中确认一个学习目标后，会在这里显示。').fontColor('#667085')
+            Text('还没有学习记录。在对话中确认一个学习目标后，会在这里显示。').fontColor(UiTheme.secondary)
           }
           ForEach(this.records, (record: LearningRecord) => {
             Column({ space: 8 }) {
               Text(record.knowledgePointName).fontSize(17).fontWeight(FontWeight.Medium)
-              Text(`${this.label(record.status)} · ${this.updatedLabel(record.updatedAt)}`).fontSize(12).fontColor('#667085')
-              Text(record.nextAction).fontSize(14).fontColor('#475467')
-              Text(record.status === 'completed' ? '查看结果 ›' : '查看详情 ›').fontColor('#2563EB')
+              Text(`${this.label(record.status)} · ${this.updatedLabel(record.updatedAt)}`).fontSize(12).fontColor(UiTheme.secondary)
+              Text(record.nextAction).fontSize(14).fontColor(UiTheme.secondary)
+              Text(record.status === 'completed' ? '查看结果 ›' : '查看详情 ›').fontColor(UiTheme.accent)
                 .onClick(() => this.selected = this.selected?.goalId === record.goalId ? null : record)
               if (this.selected?.goalId === record.goalId) {
-                Text(`目标：${record.goal}\n测评：${record.assessmentStatus === 'assessed' ? '已测评' : '待测评'}`).fontSize(14).fontColor('#475467')
+                Text(`目标：${record.goal}\n测评：${record.assessmentStatus === 'assessed' ? '已测评' : '待测评'}`).fontSize(14).fontColor(UiTheme.secondary)
                 if (record.status !== 'ended' && record.status !== 'completed') { Button('继续学习').onClick(() => this.practice(record)) }
-                if (record.traceId) { Text('查看过程与结果 ›').fontColor('#2563EB').onClick(() => router.pushUrl({ url: 'pages/AgentTrace', params: { traceId: record.traceId } })) }
+                if (record.traceId) { Text('查看过程与结果 ›').fontColor(UiTheme.accent).onClick(() => router.pushUrl({ url: 'pages/AgentTrace', params: { traceId: record.traceId } })) }
               }
-            }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12).alignItems(HorizontalAlign.Start)
+            }.width('100%').padding({ top: 18, bottom: 18 }).border({ width: { bottom: 1 }, color: UiTheme.line }).alignItems(HorizontalAlign.Start)
           }, (record: LearningRecord) => record.goalId)
           if (this.cursor !== null) { Button('加载更多').enabled(!this.busy).onClick(() => this.load(true)) }
         }.width('100%').padding(16).alignItems(HorizontalAlign.Start)
       }.align(Alignment.TopStart).layoutWeight(1).width('100%')
-    }.width('100%').height('100%').backgroundColor('#F5F6F8')
+    }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
   }
 }

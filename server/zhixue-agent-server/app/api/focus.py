@@ -138,6 +138,16 @@ def submit_focus_session():
                 # Task progress changes state, not the schedule's plan version.
                 # Later plan writers must preserve these task IDs and statuses.
                 saves.append(("plans", updated["planId"], updated))
+        if matched and session['selfAssessment'] == 'completed':
+            task_id = session.get('planTaskId')
+            manual = _repository.get('study_tasks', task_id)
+            if manual and manual.get('userId') == owner:
+                manual['status'] = 'completed'
+                saves.append(('study_tasks', task_id, manual))
+            shared = _repository.get('shared_study_tasks', task_id)
+            if shared and shared.get('status') == 'accepted' and owner in shared.get('members', []):
+                shared['progress'][owner] = 'completed'
+                saves.append(('shared_study_tasks', task_id, shared))
         event_id = f"focus-{key}"
         response = {"userId": owner, "eventId": event_id, "session": session,
                     "planTaskMatched": matched}

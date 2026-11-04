@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
@@ -62,48 +63,48 @@ struct LearningSetup {
     Column() {
       PageHeader({ title: '确认学习目标', detail: '第 2 步 / 共 3 步' })
       Row({ space: 12 }) {
-        Text('1  导入课程').fontSize(13).fontColor('#98A2B3')
-        Text('→').fontColor('#98A2B3')
-        Text('2  确认目标').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-        Text('→').fontColor('#98A2B3')
-        Text('3  补充资料').fontSize(13).fontColor(this.saved ? '#2563EB' : '#98A2B3')
-      }.width('100%').padding(16).backgroundColor('#EFF6FF')
+        Text('1  导入课程').fontSize(13).fontColor(UiTheme.muted)
+        Text('→').fontColor(UiTheme.muted)
+        Text('2  确认目标').fontSize(14).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+        Text('→').fontColor(UiTheme.muted)
+        Text('3  补充资料').fontSize(13).fontColor(this.saved ? UiTheme.accent : UiTheme.muted)
+      }.width('100%').padding(16).backgroundColor(UiTheme.surface)
       Scroll() {
         Column({ space: 18 }) {
-          Text('学习课程').fontSize(14).fontColor('#667085')
+          Text('学习课程').fontSize(14).fontColor(UiTheme.secondary)
           TextInput({ placeholder: '课程名称，例如：数据结构', text: this.course })
-            .backgroundColor('#FFFFFF').borderRadius(10).onChange((v: string) => { this.course = v; this.saved = false; })
+            .backgroundColor(UiTheme.subtle).borderRadius(8).onChange((v: string) => { this.course = v; this.saved = false; })
           if (this.settings.length && !this.addingCourse) {
             Text('已有课程：' + this.settings.map((item: CourseSetting) => item.courseName).join('、'))
-              .fontSize(12).fontColor('#98A2B3').lineHeight(19).width('100%')
+              .fontSize(12).fontColor(UiTheme.muted).lineHeight(19).width('100%')
           }
-          Text('本课程的学习目标').fontSize(14).fontColor('#667085')
-          TextInput({ placeholder: '例如：掌握核心概念，完成期末复习', text: this.goal }).maxLength(200)
-            .backgroundColor('#FFFFFF').borderRadius(10).onChange((v: string) => { this.goal = v; this.saved = false; })
-          Text('考试日期（可选）').fontSize(14).fontColor('#667085')
+          Text('本课程的学习目标').fontSize(14).fontColor(UiTheme.secondary)
+          TextArea({ placeholder: '例如：掌握核心概念，完成期末复习', text: this.goal }).height(96).maxLength(200)
+            .backgroundColor(UiTheme.subtle).borderRadius(8).onChange((v: string) => { this.goal = v; this.saved = false; })
+          Text('考试日期（可选）').fontSize(14).fontColor(UiTheme.secondary)
           TextInput({ placeholder: '考试日期 YYYY-MM-DD（可选）', text: this.exam })
-            .backgroundColor('#FFFFFF').borderRadius(10).onChange((v: string) => { this.exam = v; this.saved = false; })
-          Text('作业截止时间在课程与作业中管理，考试日期用于安排考前复习。').fontSize(12).fontColor('#98A2B3').lineHeight(20)
+            .backgroundColor(UiTheme.subtle).borderRadius(8).onChange((v: string) => { this.exam = v; this.saved = false; })
+          Text('作业截止时间在课程与作业中管理，考试日期用于安排考前复习。').fontSize(12).fontColor(UiTheme.muted).lineHeight(20)
           Button(this.busy ? '正在保存…' : this.saved ? '已保存' : '保存并继续', { type: ButtonType.Normal })
-            .width('100%').height(44).backgroundColor('#2563EB').fontColor('#FFFFFF').borderRadius(10).enabled(!this.busy).onClick(() => this.save())
-          if (this.message) { Text(this.message).fontSize(13).fontColor('#667085') }
+            .width('100%').height(44).backgroundColor(UiTheme.accent).fontColor(UiTheme.surface).borderRadius(8).enabled(!this.busy).onClick(() => this.save())
+          if (this.message) { Text(this.message).fontSize(13).fontColor(UiTheme.secondary) }
           if (this.saved) {
-            Text('✓ 目标已保存 · 第 3 步：补充资料').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-            Text('可稍后补充，知识库也可从学习页随时进入。').fontSize(13).fontColor('#98A2B3')
+            Text('目标已保存 · 第 3 步：补充资料').fontSize(18).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+            Text('可稍后补充，知识库也可从学习页随时进入。').fontSize(13).fontColor(UiTheme.muted)
             this.MaterialRow('课程讲义与笔记', 'pages/KnowledgeBase')
             this.MaterialRow('拍照分析题目', 'pages/WrongQuestion')
             this.MaterialRow('暂不补充，开始练习', 'pages/ExercisePractice')
           }
         }.width('100%').padding(20).alignItems(HorizontalAlign.Start).justifyContent(FlexAlign.Start)
       }.align(Alignment.TopStart).layoutWeight(1).width('100%')
-    }.width('100%').height('100%').backgroundColor('#F5F6F8')
+    }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
   }
   @Builder
   MaterialRow(title: string, page: string) {
     Row() {
-      Text(title).fontSize(15).fontColor('#344054').layoutWeight(1)
-      Text('›').fontSize(22).fontColor('#98A2B3')
-    }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(10)
+      Text(title).fontSize(15).fontColor(UiTheme.ink).layoutWeight(1)
+      Text('›').fontSize(22).fontColor(UiTheme.muted)
+    }.width('100%').padding({ top: 14, bottom: 14 }).border({ width: { bottom: 1 }, color: UiTheme.line })
       .onClick(() => router.pushUrl({ url: page, params: { courseName: this.course } }))
   }
 }

@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { ChatMessage } from '../models/ChatModels';
 import { AgentBridge } from '../services/AgentBridge';
 import router from '@ohos.router';
@@ -17,6 +18,12 @@ import { appState } from '../data/AppState';
 @Component
 export struct AIFloatButton {
   @Prop bottomGap: number = 24;
+  @State hostWidth: number = 400;
+  @State hostHeight: number = 760;
+  @State panelWidth: number = 376;
+  @State panelHeight: number = 500;
+  private resizeStartWidth: number = 376;
+  private resizeStartHeight: number = 500;
   @State showPanel: boolean = false;
   @State translateX: number = 0;
   @State translateY: number = 0;
@@ -37,7 +44,7 @@ export struct AIFloatButton {
       role: 'agent',
       // 这里列的六项与 `ChatMain.INTENT_CHIPS` 一一对应，且用**页面标题**口径，
       // 保证"浮标里看到的"与"对话页按钮上写的"是同一套名字。
-      text: '你好！我是知学 Mate 助手。\n\n可以问我：\n• 今日学习建议\n• 学情画像\n• 错题诊断\n• 学习搭子\n• 今日任务\n• 学习画像更新',
+      text: '可以就当前页面继续提问，我会结合你的学习资料和目标回答。',
       time: '',
       status: 'done'
     }];
@@ -121,7 +128,7 @@ export struct AIFloatButton {
       const errorMessage: ChatMessage = {
         id: this.makeId(),
         role: 'agent',
-        text: '⚠️ 连接失败，请确认后端已启动（python app.py），或稍后重试。',
+        text: '连接失败，请检查网络后重试。',
         time: this.getTimeLabel(),
         status: 'error'
       };
@@ -137,178 +144,73 @@ export struct AIFloatButton {
   }
 
   build() {
-    Column() {
-      // ==========================================
-      // 弹出式 AI 对话窗口（浮标上方）
-      // ==========================================
+    Stack({ alignContent: Alignment.TopEnd }) {
+      Button('问小知', { type: ButtonType.Normal }).height(44).fontSize(13).fontWeight(FontWeight.Medium)
+        .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).borderRadius(8)
+        .margin({ top: 6, right: 12 }).accessibilityText('问小知，打开当前页助手')
+        .onClick(() => this.showPanel = !this.showPanel)
       if (this.showPanel) {
-        Column() {
-          // ---- 标题栏 ----
+        Row() {}.width('100%').height('100%').backgroundColor('#66000000').onClick(() => this.showPanel = false)
+        Column({ space: 0 }) {
           Row() {
-            Row({ space: 6 }) {
-              Text('').width(8).height(8).borderRadius(4).backgroundColor('#22C55E')
-              Text('AI 助手')
-                .fontSize(15)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#FFFFFF')
-            }
-            Blank().hitTestBehavior(HitTestMode.None)
-            Text('✕')
-              .fontSize(18)
-              .fontColor('#FFFFFF')
-              .padding({ left: 8, right: 4, top: 2, bottom: 2 })
-              .onClick(() => {
-                this.showPanel = false;
-              })
-          }
-          .width('100%')
-          .padding({ left: 14, right: 10, top: 12, bottom: 12 })
-          .backgroundColor('#2563EB')
-          .borderRadius({ topLeft: 16, topRight: 16 })
-
-          // ---- 消息列表 ----
+            Text('问小知').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+            Button('关闭', { type: ButtonType.Normal }).height(44).fontSize(13).fontColor(UiTheme.secondary)
+              .backgroundColor(UiTheme.surface).onClick(() => this.showPanel = false)
+          }.width('100%').padding({ left: 20, right: 12 })
+            .gesture(PanGesture({ direction: PanDirection.All, distance: 6 })
+              .onActionStart(() => { this.dragStartX = this.translateX; this.dragStartY = this.translateY; })
+              .onActionUpdate((event: GestureEvent) => {
+                this.translateX = Math.max(-(this.hostWidth - this.panelWidth) / 2, Math.min((this.hostWidth - this.panelWidth) / 2, this.dragStartX + event.offsetX));
+                this.translateY = Math.max(-Math.max(0, this.hostHeight - this.panelHeight - this.bottomGap), Math.min(this.bottomGap, this.dragStartY + event.offsetY));
+              }))
+          Divider().color(UiTheme.line)
           Scroll(this.scroller) {
-            Column({ space: 10 }) {
-              ForEach(this.messages, (msg: ChatMessage, index: number) => {
-                if (msg.role === 'user') {
-                  // 用户消息（右对齐，蓝色气泡）
-                  Row() {
-                    Blank().hitTestBehavior(HitTestMode.None)
-                    Text(msg.text)
-                      .fontSize(13)
-                      .fontColor('#FFFFFF')
-                      .backgroundColor('#2563EB')
-                      .borderRadius({ topLeft: 12, topRight: 12, bottomLeft: 12, bottomRight: 4 })
-                      .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-                      .constraintSize({ maxWidth: '75%' })
-                  }
-                  .width('100%')
-                  .padding({ left: 40, right: 4 })
-                } else {
-                  // Agent 消息（左对齐，灰色气泡）
-                  Column({ space: 4 }) {
-                    Row() {
-                      Text(msg.text)
-                        .fontSize(13)
-                        .fontColor('#334155')
-                        .backgroundColor('#F1F5F9')
-                        .borderRadius({ topLeft: 12, topRight: 12, bottomLeft: 4, bottomRight: 12 })
-                        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-                        .constraintSize({ maxWidth: '80%' })
-                      Blank().hitTestBehavior(HitTestMode.None)
-                    }
-                    .width('100%')
-                    .padding({ left: 4, right: 40 })
-                  }
-                  .width('100%')
-                }
-              // 原缺陷：key 生成器是 `${msg.id}-${index}`，而上面（成功 / 失败分支）
-              // 会从中间删掉 loading 消息，其后所有元素的 index 都往前挪一位，
-              // ArkUI 据此判定"换了一批元素"→ 整列气泡销毁重建：
-              // 表现为闪烁，滚动位置与子组件状态全部丢失。
-              // `makeId()` 已保证 msg.id 全局唯一且稳定，key 只用它即可。
+            Column({ space: 12 }) {
+              ForEach(this.messages, (msg: ChatMessage) => {
+                Row() {
+                  if (msg.role === 'user') { Blank() }
+                  Column({ space: 6 }) {
+                    Text(msg.text).fontSize(14).lineHeight(22).fontColor(msg.role === 'user' ? UiTheme.surface : UiTheme.ink)
+                    if (msg.status === 'sending') { LoadingProgress().width(18).height(18) }
+                  }.padding(12).constraintSize({ maxWidth: '88%' }).borderRadius(8)
+                    .backgroundColor(msg.role === 'user' ? UiTheme.accent : UiTheme.subtle)
+                  if (msg.role !== 'user') { Blank() }
+                }.width('100%')
               }, (msg: ChatMessage) => msg.id)
-            }
-            .width('100%')
-            .padding(12)
-          }
-          .layoutWeight(1)
-          .backgroundColor('#F8FAFC')
-          .height(200)
-
-          // ---- 输入区域 ----
-          if (this.hasLearningGoal) {
-            Button('回到对话继续同一学习目标').fontSize(12).height(34).width('100%')
-              .onClick(() => { this.showPanel = false; router.pushUrl({ url: 'pages/ChatMain' }); })
-          }
+            }.width('100%').padding(16)
+          }.layoutWeight(1).width('100%')
+          Button('回到对话继续同一学习目标', { type: ButtonType.Normal }).width('100%').height(44)
+            .fontSize(13).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
+            .onClick(() => { this.showPanel = false; router.pushUrl({ url: 'pages/ChatMain' }); })
           Row({ space: 8 }) {
-            TextInput({ placeholder: '输入问题...', text: this.inputText })
-              .layoutWeight(1)
-              .height(38)
-              .fontSize(13)
-              .backgroundColor('#F1F5F9')
-              .borderRadius(19)
-              .padding({ left: 14, right: 14 })
-              .onChange((value: string) => {
-                this.inputText = value;
-              })
-              .onSubmit(() => {
-                this.sendMessage();
-              })
-            Button('发送')
-              .fontSize(12)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#FFFFFF')
-              .backgroundColor('#2563EB')
-              .height(34)
-              .borderRadius(17)
-              .padding({ left: 14, right: 14 })
-              .enabled(!this.isSending)
-              .onClick(() => {
-                this.sendMessage();
-              })
-          }
-          .width('100%')
-          .padding({ left: 10, right: 10, top: 8, bottom: 10 })
-          .backgroundColor('#FFFFFF')
-          .borderRadius({ bottomLeft: 16, bottomRight: 16 })
-        }
-        .width('92%')
-        .height(380)
-        .borderRadius(16)
-        .backgroundColor('#FFFFFF')
-        .shadow({ radius: 24, color: '#30000000', offsetX: 0, offsetY: 8 })
-        .margin({ bottom: 12 })
+            TextInput({ text: this.inputText, placeholder: '继续提问…' }).layoutWeight(1).height(44)
+              .fontSize(14).backgroundColor(UiTheme.subtle).borderRadius(8)
+              .onChange((value: string) => this.inputText = value).onSubmit(() => this.sendMessage())
+            Button('发送', { type: ButtonType.Normal }).height(44).fontSize(14).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent).borderRadius(8).enabled(!this.isSending && this.inputText.trim().length > 0)
+              .onClick(() => this.sendMessage())
+          }.width('100%').padding({ left: 16, right: 16, top: 8, bottom: 20 })
+          Row() {
+            Text('拖动右侧调节大小').fontSize(12).fontColor(UiTheme.secondary).layoutWeight(1)
+            Text('↗').fontSize(24).fontColor(UiTheme.accent).width(48).height(44).textAlign(TextAlign.Center).accessibilityText('拖动调节小知窗口大小')
+              .gesture(PanGesture({ direction: PanDirection.All, distance: 1 })
+                .onActionStart(() => { this.resizeStartWidth = this.panelWidth; this.resizeStartHeight = this.panelHeight; })
+                .onActionUpdate((event: GestureEvent) => {
+                  this.translateX = 0; this.translateY = 0;
+                  this.panelWidth = Math.max(Math.min(280, this.hostWidth - 16), Math.min(this.hostWidth - 16, this.resizeStartWidth + event.offsetX));
+                  this.panelHeight = Math.max(Math.min(300, this.hostHeight - 16), Math.min(this.hostHeight - 16, this.resizeStartHeight - event.offsetY));
+                }))
+          }.width('100%').padding({ left: 16, right: 4 })
+        }.width(this.panelWidth).height(this.panelHeight).backgroundColor(UiTheme.surface)
+          .borderRadius({ topLeft: 12, topRight: 12 }).align(Alignment.Bottom)
+          .position({ x: (this.hostWidth - this.panelWidth) / 2 + this.translateX,
+            y: Math.max(0, this.hostHeight - this.panelHeight - this.bottomGap) + this.translateY })
       }
-
-      // ==========================================
-      // 空白弹性空间 → 把浮标推到底部
-      // ==========================================
-      Blank().hitTestBehavior(HitTestMode.None)
-
-      // ==========================================
-      // 可拖拽 AI 浮标按钮
-      // ==========================================
-      Row() {
-        Blank().hitTestBehavior(HitTestMode.None)
-        Button() {
-          Row({ space: 5 }) {
-            Text('💬')
-              .fontSize(20)
-            Text('AI')
-              .fontSize(12)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#FFFFFF')
-          }
-          .padding({ left: 12, right: 14, top: 9, bottom: 9 })
-        }
-        .backgroundColor('#2563EB')
-        .borderRadius(26)
-        .shadow({ radius: 14, color: '#402563EB', offsetX: 0, offsetY: 5 })
-        .translate({ x: this.translateX, y: this.translateY })
-        .gesture(
-          PanGesture({ fingers: 1, direction: PanDirection.All, distance: 3 })
-            .onActionStart((event: GestureEvent) => {
-              // 记录拖拽开始时的当前位置
-              this.dragStartX = this.translateX;
-              this.dragStartY = this.translateY;
-            })
-            .onActionUpdate((event: GestureEvent) => {
-              // offset 是累积偏移，直接加到起始位置，不累加
-              this.translateX = this.dragStartX + event.offsetX;
-              this.translateY = this.dragStartY + event.offsetY;
-            })
-        )
-        .onClick(() => {
-          this.showPanel = !this.showPanel;
-        })
-      }
-      .width('100%')
-      .padding({ right: 20, bottom: this.bottomGap })
-      .hitTestBehavior(HitTestMode.Transparent)
-    }
-    .width('100%')
-    .height('100%')
-    .hitTestBehavior(HitTestMode.Transparent)
+    }.width('100%').height('100%').hitTestBehavior(HitTestMode.Transparent)
+      .onAreaChange((oldArea: Area, area: Area) => {
+        this.hostWidth = Number(area.width); this.hostHeight = Number(area.height);
+        this.panelWidth = Math.min(this.hostWidth - 16, 560); this.panelHeight = Math.min(this.hostHeight - 16, this.hostHeight * 0.68);
+        this.translateX = 0; this.translateY = 0;
+      })
   }
 }

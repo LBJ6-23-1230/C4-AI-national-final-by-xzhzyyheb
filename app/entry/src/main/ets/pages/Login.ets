@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { common } from '@kit.AbilityKit';
 import { AgentApiClient } from '../api/AgentApiClient';
@@ -20,15 +21,15 @@ import { DeviceLayout } from '../utils/DeviceLayout';
  *   │  登录知学                                │
  *   │  进入你的 AI 学习工作台                   │
  *   │  ┌──────────────┬──────────────┐        │
- *   │  │ 🔒 登录       │ ✎ 注册        │  ← 分段切换
+ *   │  │  登录       │  注册        │  ← 分段切换
  *   │  └──────────────┴──────────────┘        │
  *   │  ┌──────────────┬──────────────┐        │
- *   │  │ 🔒 密码登录    │ 💬 验证码登录  │  ← 分段切换（仅登录模式）
+ *   │  │  密码登录    │  验证码登录  │  ← 分段切换（仅登录模式）
  *   │  └──────────────┴──────────────┘        │
  *   │  昵称                                    │
- *   │  [ 👤 请输入昵称                      ]  │
+ *   │  [  请输入昵称                      ]  │
  *   │  密码                                    │
- *   │  [ 🔒 请输入密码                  👁 ]  │
+ *   │  [  请输入密码                   ]  │
  *   │  □ 记住我                                │
  *   │  ┌────────────────────────────────┐     │
  *   │  │          登录  →                │     │
@@ -91,7 +92,7 @@ struct Login {
     if (/^1\d{10}$/.test(account)) this.phone = account;
     else this.nickname = account;
     const params: Record<string, Object> = router.getParams() as Record<string, Object>;
-    // ⚠️ `router.getParams()` 在**没有路由参数**时返回 undefined —— 而"冷启动直接进登录页"
+    //  `router.getParams()` 在**没有路由参数**时返回 undefined —— 而"冷启动直接进登录页"
     // 正是这种情况（App 未登录时的必经路径）。
     // `as Record<string, Object>` 只是**编译期断言**，不会让运行时值变成非空对象，
     // 少了下面这道判断就会抛 TypeError。实测后果是 jscrash：
@@ -144,7 +145,7 @@ struct Login {
   /**
    * 登录成功后进入**对话页**。
    *
-   * ⚠️ 修正来源：原来跳 `pages/Index`，而 Index 的默认标签是「智能体」，
+   *  修正来源：原来跳 `pages/Index`，而 Index 的默认标签是「智能体」，
    * 于是「登录之后看到的第一个界面是智能体页」——与「对话式学习秘书」的定位相反。
    * 现改为直达 `pages/ChatMain`，登录后立即是对话界面。
    */
@@ -191,7 +192,7 @@ struct Login {
   private enterOffline(): void {
     if (!ApiDefaults.ALLOW_DEMO) return;
     AgentApiClient.setUseFixture(true);
-    // ⚠️ 必须持久化：`setUseFixture()` 只改**内存**里的 `config.useFixture`。
+    //  必须持久化：`setUseFixture()` 只改**内存**里的 `config.useFixture`。
     //
     // 这里原先漏了落盘，而对称的 `useOnlineSource()`（上面那个）是落盘的 ——
     // 两条路径行为不一致，表现为"从登录页点『无网络？用离线模式进入』，
@@ -213,7 +214,7 @@ struct Login {
   /**
    * 主按钮分派。
    *
-   * ⚠️ 这里修掉了一个实际缺陷：**此前两个标签都只调 `AuthClient.register()`**，
+   *  这里修掉了一个实际缺陷：**此前两个标签都只调 `AuthClient.register()`**，
    * 于是「登录」标签下用同一昵称再点一次会**又建一个新账号**
    * （实测两次注册「张三」得到两个不同 userId）——用户以为登录了，
    * 实际旧画像永远读不到。
@@ -464,7 +465,7 @@ struct Login {
   build() {
     Column() {
       Scroll() {
-        // ⚠️ 限宽加在**内容列**上，不能加在外面的 `Scroll` 上。
+        //  限宽加在**内容列**上，不能加在外面的 `Scroll` 上。
         //
         // 原实现把 `constraintSize({ maxWidth: contentMaxWidth() })` 挂在 `Scroll` 上，
         // 在平板（2880×1920，实测）上引发了一类很难看出来的渲染错误：
@@ -482,14 +483,10 @@ struct Login {
         Column({ space: 0 }) {
           // ---------- 标题区 ----------
           Column({ space: 6 }) {
-            Text('ACCOUNT ACCESS')
-              .fontSize(11).fontWeight(FontWeight.Bold).fontColor('#94A3B8')
-              .letterSpacing(1.5).width('100%')
-            Text(this.mode === 'login' ? '登录知学' : '注册知学')
-              .fontSize(30).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
+            Text('知学 Mate').fontSize(26).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%').textAlign(TextAlign.Center)
+            Text('你的智能学习伙伴')
+              .fontSize(14).fontColor(UiTheme.secondary).width('100%').textAlign(TextAlign.Center)
               .margin({ top: 2 })
-            Text(this.mode === 'login' ? '进入你的 AI 学习工作台' : '建立属于你自己的学习画像')
-              .fontSize(14).fontColor('#64748B').width('100%')
           }
           .width('100%').alignItems(HorizontalAlign.Start)
           .padding({ top: this.topPadding(), bottom: 26 })
@@ -503,9 +500,9 @@ struct Login {
             if (this.mode === 'register') {
             // 昵称仅用于展示
             Column({ space: 8 }) {
-              Text('昵称（注册选填）').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#0F172A').width('100%')
+              Text('昵称（注册选填）').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
               Row({ space: 10 }) {
-                Text('👤').fontSize(15).fontColor('#94A3B8')
+
                 TextInput({ placeholder: '选填，留空自动生成昵称', text: this.nickname })
                   .layoutWeight(1).height(48).fontSize(15)
                   .backgroundColor(Color.Transparent).padding(0)
@@ -519,25 +516,25 @@ struct Login {
                   })
               }
               .width('100%').padding({ left: 14, right: 14 })
-              .backgroundColor('#F8FAFC').borderRadius(10)
-              .border({ width: 1, color: '#E2E8F0' })
+              .backgroundColor(UiTheme.subtle).borderRadius(8)
+              .border({ width: 1, color: UiTheme.line })
             }.width('100%')
 
             }
             // 手机号是唯一登录标识
             Column({ space: 8 }) {
               Row({ space: 6 }) {
-                Text('手机号').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#0F172A')
+                Text('手机号').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
                 Text('必填')
                   .fontSize(11)
-                  .fontColor(this.mode === 'register' ? '#B91C1C' : '#94A3B8')
-                  .backgroundColor(this.mode === 'register' ? '#FEF2F2' : '#F1F5F9')
+                  .fontColor(this.mode === 'register' ? '#B91C1C' : UiTheme.muted)
+                  .backgroundColor(this.mode === 'register' ? '#FEF2F2' : UiTheme.subtle)
                   .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                   .borderRadius(6)
                 Blank()
               }.width('100%')
               Row({ space: 10 }) {
-                Text('📱').fontSize(15).fontColor('#94A3B8')
+
                 TextInput({ placeholder: '11 位手机号', text: this.phone })
                   .type(InputType.PhoneNumber)
                   .layoutWeight(1).height(48).fontSize(15)
@@ -552,23 +549,23 @@ struct Login {
                   })
               }
               .width('100%').padding({ left: 14, right: 14 })
-              .backgroundColor('#F8FAFC').borderRadius(10)
-              .border({ width: 1, color: '#E2E8F0' })
+              .backgroundColor(UiTheme.subtle).borderRadius(8)
+              .border({ width: 1, color: UiTheme.line })
               Text(this.mode === 'register'
                 ? '手机号是账号的唯一标识，用于登录与找回。'
                 : (this.method === 'code'
                   ? '手机号验证：已有账号进入原账号，首次验证后请设置密码。'
                   : '请填写手机号和密码，一个手机号对应一个账号。'))
-                .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
+                .fontSize(11).fontColor(UiTheme.muted).lineHeight(17).width('100%')
             }.width('100%')
 
             // ---------- 登录方式 = 验证码：验证码输入 + 获取验证码 ----------
             if (this.mode === 'login' && this.method === 'code') {
               Column({ space: 8 }) {
                 Text('短信验证码').fontSize(14).fontWeight(FontWeight.Medium)
-                  .fontColor('#0F172A').width('100%')
+                  .fontColor(UiTheme.ink).width('100%')
                 Row({ space: 10 }) {
-                  Text('💬').fontSize(15).fontColor('#94A3B8')
+
                   TextInput({ placeholder: '6 位数字验证码', text: this.verifyCode })
                     .type(InputType.Number)
                     .maxLength(6)
@@ -581,19 +578,19 @@ struct Login {
                     ? `${this.resendCountdown} 秒后可重发`
                     : (this.codeSent ? '重新获取' : '获取验证码'))
                     .fontSize(13).height(36).borderRadius(8)
-                    .backgroundColor(this.resendCountdown > 0 ? '#E2E8F0' : '#DBEAFE')
-                    .fontColor(this.resendCountdown > 0 ? '#94A3B8' : '#1D4ED8')
+                    .backgroundColor(this.resendCountdown > 0 ? UiTheme.line : '#DBEAFE')
+                    .fontColor(this.resendCountdown > 0 ? UiTheme.muted : UiTheme.accent)
                     .enabled(!this.busy && this.resendCountdown === 0)
                     .onClick(() => { this.onSendCode(); })
                 }
                 .width('100%').padding({ left: 14, right: 14 })
-                .backgroundColor('#F8FAFC').borderRadius(10)
-                .border({ width: 1, color: '#E2E8F0' })
+                .backgroundColor(UiTheme.subtle).borderRadius(8)
+                .border({ width: 1, color: UiTheme.line })
 
                 // 开发回显必须醒目且如实：不能让人以为短信真的发出去了
                 if (!this.smsDelivered && this.devCode.length > 0) {
                   Column({ space: 4 }) {
-                    Text('⚠️ 开发模式回显（短信未真实下发）')
+                    Text('开发模式回显（短信未真实下发）')
                       .fontSize(12).fontWeight(FontWeight.Medium).fontColor('#B45309').width('100%')
                     Text(`验证码：${this.devCode}`)
                       .fontSize(15).fontWeight(FontWeight.Bold).fontColor('#B45309').width('100%')
@@ -601,10 +598,10 @@ struct Login {
                       .fontSize(11).fontColor('#B45309').lineHeight(16).width('100%')
                   }
                   .width('100%').padding(12).backgroundColor('#FFFBEB')
-                  .borderRadius(10).border({ width: 1, color: '#FDE68A' })
+                  .borderRadius(8).border({ width: 1, color: '#FDE68A' })
                 } else if (this.codeSent) {
                   Text('验证码已发送。收不到可改用「密码登录」或「一键体验」。')
-                    .fontSize(11).fontColor('#64748B').lineHeight(17).width('100%')
+                    .fontSize(11).fontColor(UiTheme.secondary).lineHeight(17).width('100%')
                 }
               }.width('100%')
             }
@@ -612,34 +609,34 @@ struct Login {
             // 密码登录 / 注册 —— 验证码方式下不显示
             if (!(this.mode === 'login' && this.method === 'code')) {
               Column({ space: 8 }) {
-                Text('密码').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#0F172A').width('100%')
+                Text('密码').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
                 Row({ space: 10 }) {
-                  Text('🔒').fontSize(15).fontColor('#94A3B8')
+
                   TextInput({ placeholder: '请输入密码', text: this.password })
                     .type(this.showPassword ? InputType.Normal : InputType.Password)
                     .layoutWeight(1).height(48).fontSize(15)
                     .backgroundColor(Color.Transparent).padding(0)
                     .enabled(!this.busy)
                     .onChange((value: string) => { this.password = value; })
-                  Text(this.showPassword ? '🙈' : '👁')
-                    .fontSize(15).fontColor('#94A3B8')
+                  Text(this.showPassword ? '隐藏' : '显示')
+                    .fontSize(15).fontColor(UiTheme.muted)
                     .onClick(() => { this.showPassword = !this.showPassword; })
                 }
                 .width('100%').padding({ left: 14, right: 14 })
-                .backgroundColor('#F8FAFC').borderRadius(10)
-                .border({ width: 1, color: '#E2E8F0' })
+                .backgroundColor(UiTheme.subtle).borderRadius(8)
+                .border({ width: 1, color: UiTheme.line })
 
                 Text(this.mode === 'register'
                   ? '至少 6 位；服务端仅保存加盐哈希，不保存明文。'
                   : '密码会提交到后端校验；服务端只保存加盐哈希。')
-                  .fontSize(11).fontColor('#94A3B8').lineHeight(17).width('100%')
+                  .fontSize(11).fontColor(UiTheme.muted).lineHeight(17).width('100%')
             }.width('100%')
             }
 
             if (this.mode === 'login') {
               Row() {
                 Blank()
-                Text('忘记密码？').fontSize(13).fontColor('#2563EB')
+                Text('忘记密码？').fontSize(13).fontColor(UiTheme.accent)
                   .onClick(() => {
                     this.message = '暂未接入短信找回。请联系管理员核验账号后重置。请勿重复注册，以免生成新账号。';
                     this.messageIsError = false;
@@ -651,15 +648,15 @@ struct Login {
             if (this.mode === 'register') {
               Column({ space: 8 }) {
                 Text('在读年级（可跳过）').fontSize(14).fontWeight(FontWeight.Medium)
-                  .fontColor('#0F172A').width('100%')
+                  .fontColor(UiTheme.ink).width('100%')
                 Flex({ wrap: FlexWrap.Wrap }) {
                   ForEach(GRADE_OPTIONS, (item: string) => {
                     Text(item)
                       .fontSize(13)
-                      .fontColor(this.grade === item ? '#FFFFFF' : '#2563EB')
-                      .backgroundColor(this.grade === item ? '#2563EB' : '#EFF6FF')
+                      .fontColor(this.grade === item ? UiTheme.surface : UiTheme.accent)
+                      .backgroundColor(this.grade === item ? UiTheme.accent : UiTheme.tint)
                       .padding({ left: 14, right: 14, top: 7, bottom: 7 })
-                      .borderRadius(16).margin({ right: 8, bottom: 8 })
+                      .borderRadius(8).margin({ right: 8, bottom: 8 })
                       .onClick(() => { this.grade = this.grade === item ? '' : item; })
                   })
                 }.width('100%')
@@ -668,31 +665,31 @@ struct Login {
 
             if (this.mode === 'register') {
               Text('新账号将从零开始：不预置课程、知识点或学习计划，内容由你导入的资料、练习和智能体操作逐步建立。')
-                .fontSize(11).fontColor('#1D4ED8').lineHeight(17).width('100%')
+                .fontSize(11).fontColor(UiTheme.accent).lineHeight(17).width('100%')
               .width('100%').padding(12)
-              .backgroundColor('#F8FAFC')
-              .borderRadius(10)
-              .border({ width: 1, color: '#E2E8F0' })
+              .backgroundColor(UiTheme.subtle)
+              .borderRadius(8)
+              .border({ width: 1, color: UiTheme.line })
             }
 
             // 记住我
             Row({ space: 8 }) {
-              Text(this.rememberMe ? '☑' : '☐')
-                .fontSize(16).fontColor(this.rememberMe ? '#2563EB' : '#94A3B8')
-              Text('保持登录（下次自动进入）').fontSize(13).fontColor('#475467')
+              Checkbox().select(this.rememberMe).hitTestBehavior(HitTestMode.None)
+                .width(20).height(20).selectedColor(UiTheme.accent)
+              Text('保持登录（下次自动进入）').fontSize(13).fontColor(UiTheme.secondary)
             }
             .width('100%')
             .onClick(() => { this.rememberMe = !this.rememberMe; })
 
             Row({ space: 8 }) {
-              Text(this.rememberAccount ? '☑' : '☐').fontSize(16).fontColor('#2563EB')
-              Text('记住账号').fontSize(13).fontColor('#475467')
+              Checkbox().select(this.rememberAccount).hitTestBehavior(HitTestMode.None)
+              Text('记住账号').fontSize(13).fontColor(UiTheme.secondary)
             }.width('100%').onClick(() => { this.rememberAccount = !this.rememberAccount; })
 
             // 主按钮
             // 文案必须与当前标签严格对应：此前两个标签下都是"登录 →"，
             // 用户以为在登录、实际在注册（见 onSubmit 的说明）。
-            // ⚠️ 按钮**不再因为"还没填完"而变灰**。
+            //  按钮**不再因为"还没填完"而变灰**。
             //
             // 原实现是 `.backgroundColor(canSubmit() ? 蓝 : 灰)` + `.enabled(canSubmit())`：
             // 注册模式下只要手机号还没填成合法的 11 位，按钮就是灰的、而且**不告诉用户
@@ -702,9 +699,9 @@ struct Login {
             Button(this.busy ? '处理中…'
               : (this.mode === 'login' ? '登录  →' : '注册并进入  →'))
               .width('100%').height(50).fontSize(16).fontWeight(FontWeight.Bold)
-              .fontColor('#FFFFFF')
-              .backgroundColor(this.busy ? '#93C5FD' : '#3B82F6')
-              .borderRadius(12)
+              .fontColor(UiTheme.surface)
+              .backgroundColor(this.busy ? '#93C5FD' : UiTheme.accent)
+              .borderRadius(8)
               .enabled(!this.busy)
               .onClick(() => { this.onSubmit(); })
           }
@@ -713,53 +710,53 @@ struct Login {
           // ---------- 提示 ----------
           if (this.message.length > 0) {
             Text(this.message)
-              .fontSize(13).lineHeight(20).width('100%').padding(12).borderRadius(10)
-              .fontColor(this.messageIsError ? '#EF4444' : '#475467')
-              .backgroundColor(this.messageIsError ? '#FEF2F2' : '#F8FAFC')
+              .fontSize(13).lineHeight(20).width('100%').padding(12).borderRadius(8)
+              .fontColor(this.messageIsError ? '#EF4444' : UiTheme.secondary)
+              .backgroundColor(this.messageIsError ? '#FEF2F2' : UiTheme.subtle)
               .margin({ top: 14 })
           }
 
           // ---------- 分隔 ----------
           Row({ space: 12 }) {
-            Divider().color('#E2E8F0').layoutWeight(1)
-            Text('或').fontSize(12).fontColor('#94A3B8')
-            Divider().color('#E2E8F0').layoutWeight(1)
+            Divider().color(UiTheme.line).layoutWeight(1)
+            Text('或').fontSize(12).fontColor(UiTheme.muted)
+            Divider().color(UiTheme.line).layoutWeight(1)
           }.width('100%').margin({ top: 28, bottom: 18 })
 
           // 服务端可信授权校验完成前，明确展示能力状态。
           Button('华为账号登录（待完善）')
             .width('100%').height(48).fontSize(15).fontWeight(FontWeight.Medium)
-            .fontColor('#0F172A').backgroundColor('#FFFFFF')
-            .borderRadius(12).border({ width: 1, color: '#E2E8F0' })
+            .fontColor(UiTheme.ink).backgroundColor(UiTheme.surface)
+            .borderRadius(8).border({ width: 1, color: UiTheme.line })
             .enabled(false)
             .onClick(() => { this.onHuaweiLogin(); })
           Text('华为账号登录暂不可用，请使用手机号和密码登录。')
-            .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
+            .fontSize(11).fontColor(UiTheme.muted).lineHeight(17).width('100%')
             .margin({ top: 8 })
 
           // ---------- 演示 / 离线逃生口（评审必用，务必保留） ----------
           if (ApiDefaults.ALLOW_DEMO) {
           Button('跳过登录，用演示身份进入 →')
             .width('100%').height(46).fontSize(14).fontWeight(FontWeight.Medium)
-            .fontColor('#2563EB').backgroundColor('#FFFFFF')
-            .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
+            .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
+            .border({ width: 1, color: '#BFDBFE' }).borderRadius(8)
             .onClick(() => this.enterAsGuest())
           Text(`以演示身份（${ApiDefaults.DEMO_USER_ID}）进入，直接看到完整的 Agent 决策闭环。`)
-            .fontSize(11).fontColor('#94A3B8').lineHeight(17).width('100%')
+            .fontSize(11).fontColor(UiTheme.muted).lineHeight(17).width('100%')
             .margin({ top: 8 })
 
           Button('无网络？用离线模式进入')
-            .width('100%').height(40).fontSize(13).fontColor('#64748B')
+            .width('100%').height(40).fontSize(13).fontColor(UiTheme.secondary)
             .backgroundColor(Color.Transparent)
             .margin({ top: 6 })
             .onClick(() => this.enterOffline())
           Text('离线演示：全部数据由本机提供，判分规则与后端一致。')
-            .fontSize(11).fontColor('#94A3B8').width('100%')
+            .fontSize(11).fontColor(UiTheme.muted).width('100%')
           }
 
           Blank().height(28)
 
-          // ⚠️ 原文案写「不含手机号等敏感信息」，就印在**必填手机号 + 密码**的
+          //  原文案写「不含手机号等敏感信息」，就印在**必填手机号 + 密码**的
           // 表单正下方 —— 与实现相反。如实改写。
           Text('手机号仅用于登录与账号识别；密码由服务端加盐哈希保存，不存明文。')
             .fontSize(11).fontColor('#B0B7C3').lineHeight(17).width('100%')
@@ -773,9 +770,9 @@ struct Login {
       .layoutWeight(1)
       .width('100%')
       .scrollBar(BarState.Off)
-      .align(Alignment.Top)
+      .align(Alignment.Top).align(Alignment.TopStart)
     }
-    .width('100%').height('100%').backgroundColor('#FFFFFF')
+    .width('100%').height('100%').backgroundColor(UiTheme.surface)
 
   }
 
@@ -787,7 +784,7 @@ struct Login {
   /**
    * 「登录 | 注册」分段。
    *
-   * ⚠️ **刻意不给本 Builder 传参**，而是直接读 `this.mode`。
+   *  **刻意不给本 Builder 传参**，而是直接读 `this.mode`。
    *
    * 原因：ArkUI 的 `@Builder` 对**参数**采用值传递，参数不是可观察依赖，
    * 外层状态变化时不保证重建。此前把 `this.mode` 当参数传进去，
@@ -802,11 +799,11 @@ struct Login {
           Text(item.icon).fontSize(13)
           Text(item.label).fontSize(14)
             .fontWeight(this.mode === item.key ? FontWeight.Bold : FontWeight.Normal)
-            .fontColor(this.mode === item.key ? '#2563EB' : '#64748B')
+            .fontColor(this.mode === item.key ? UiTheme.accent : UiTheme.secondary)
         }
         .layoutWeight(1).height(44)
         .justifyContent(FlexAlign.Center)
-        .backgroundColor(this.mode === item.key ? '#FFFFFF' : '#F1F5F9')
+        .backgroundColor(this.mode === item.key ? UiTheme.surface : UiTheme.subtle)
         .borderRadius(8)
         .onClick(() => {
           if (this.busy || this.isHuaweiLoggingIn || this.mode === item.key) return;
@@ -826,7 +823,7 @@ struct Login {
         })
       }, (item: SegOption) => item.key)
     }
-    .width('100%').padding(4).backgroundColor('#F1F5F9').borderRadius(10)
+    .width('100%').padding(4).backgroundColor(UiTheme.subtle).borderRadius(8)
     .margin({ bottom: 12 })
   }
 
@@ -839,11 +836,11 @@ struct Login {
           Text(item.icon).fontSize(13)
           Text(item.label).fontSize(14)
             .fontWeight(this.method === item.key ? FontWeight.Bold : FontWeight.Normal)
-            .fontColor(this.method === item.key ? '#2563EB' : '#64748B')
+            .fontColor(this.method === item.key ? UiTheme.accent : UiTheme.secondary)
         }
         .layoutWeight(1).height(44)
         .justifyContent(FlexAlign.Center)
-        .backgroundColor(this.method === item.key ? '#FFFFFF' : '#F1F5F9')
+        .backgroundColor(this.method === item.key ? UiTheme.surface : UiTheme.subtle)
         .borderRadius(8)
         .onClick(() => {
           this.method = item.key;
@@ -852,7 +849,7 @@ struct Login {
         })
       }, (item: SegOption) => item.key)
     }
-    .width('100%').padding(4).backgroundColor('#F1F5F9').borderRadius(10)
+    .width('100%').padding(4).backgroundColor(UiTheme.subtle).borderRadius(8)
     .margin({ bottom: 12 })
   }
 
@@ -868,29 +865,29 @@ struct Login {
           Text(item.icon).fontSize(13)
           Text(item.label).fontSize(14)
             .fontWeight(activeKey === item.key ? FontWeight.Bold : FontWeight.Normal)
-            .fontColor(activeKey === item.key ? '#2563EB' : '#64748B')
+            .fontColor(activeKey === item.key ? UiTheme.accent : UiTheme.secondary)
         }
         .layoutWeight(1).height(44)
         .justifyContent(FlexAlign.Center)
-        .backgroundColor(activeKey === item.key ? '#FFFFFF' : '#F1F5F9')
+        .backgroundColor(activeKey === item.key ? UiTheme.surface : UiTheme.subtle)
         .borderRadius(8)
         .onClick(() => onPick(item.key))
       }, (item: SegOption) => item.key)
     }
-    .width('100%').padding(4).backgroundColor('#F1F5F9').borderRadius(10)
+    .width('100%').padding(4).backgroundColor(UiTheme.subtle).borderRadius(8)
     .margin({ bottom: 12 })
   }
 }
 
 /** 分段选项常量（提到组件外，避免每次 build 重建数组）。 */
 const MODE_OPTIONS: SegOption[] = [
-  { key: 'login', label: '登录', icon: '🔒' },
-  { key: 'register', label: '注册', icon: '✎' }
+  { key: 'login', label: '登录', icon: '' },
+  { key: 'register', label: '注册', icon: '' }
 ];
 
 const METHOD_OPTIONS: SegOption[] = [
-  { key: 'password', label: '密码登录', icon: '🔒' },
-  { key: 'code', label: '验证码登录', icon: '💬' }
+  { key: 'password', label: '密码登录', icon: '' },
+  { key: 'code', label: '验证码登录', icon: '' }
 ];
 
 /** 分段控件的选项类型。 */

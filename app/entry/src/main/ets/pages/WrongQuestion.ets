@@ -1,3 +1,5 @@
+import { UiTheme } from '../utils/UiTheme';
+import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { common } from '@kit.AbilityKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
@@ -27,8 +29,10 @@ struct WrongQuestion {
     const index: number = this.selectedQuestionIndex;
     const version: number = this.analysisRequestVersion;
     const owner: string = appState.currentUser.userId;
+    const solution: string = (this.analysisResult.answer ? `答案：${this.analysisResult.answer}\n` : '') +
+      (this.analysisResult.explanation || this.analysisResult.reason);
     const result = await AgentApiClient.saveScannedQuestion({ stem: this.saveStem,
-      courseName: this.saveCourse, knowledgePointName: this.savePoint, explanation: this.analysisResult.reason });
+      courseName: this.saveCourse, knowledgePointName: this.savePoint, explanation: solution });
     if (!this.isPageActive || version !== this.analysisRequestVersion || owner !== appState.currentUser.userId) return;
     this.savingQuestion = false;
     if (result.ok) { this.savedQuestions = this.savedQuestions.concat([index]); this.analysisMessage = '已保存到错题本，不计作答错记录。'; }
@@ -167,7 +171,9 @@ struct WrongQuestion {
         return;
       }
       const result: WrongAnalysisResult = LocalAgentService.analyzeWrongQuestion(imageUri);
-      this.analysisResult = result;
+      this.analysisResults = [result];
+      appState.latestWrongAnalyses = this.analysisResults;
+      this.selectQuestion(0);
       this.showAnalysis = true;
       this.isAnalyzing = false;
       appState.latestWrongAnalysis = result;
@@ -274,7 +280,8 @@ struct WrongQuestion {
       this.analysisResults = questions.map((question: WrongAnalysis): WrongAnalysisResult => {
         const point: string = (question.knowledgePoint ?? '').trim();
         return { course: question.courseName || '', knowledge: point.length > 0 ? [point] : [],
-          wrongType: question.wrongType ?? '', reason: question.reply || response.reply,
+          wrongType: question.wrongType ?? '', reason: question.reason || '',
+          answer: question.answer || '', explanation: question.explanation || question.reply || '',
           suggestions: [], tags: [], imageUri: imageUri,
           questionNumber: question.questionNumber ?? '', questionText: question.questionText ?? '',
           recognitionStatus: question.recognitionStatus ?? '' };
@@ -383,75 +390,46 @@ struct WrongQuestion {
   @Builder
   AnalysisCard(result: WrongAnalysisResult) {
     Column({ space: 14 }) {
-      Row() {
-        Text('🤖 AI 分析结果')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#172033')
-Text(result.recognitionStatus === 'unreadable' || result.recognitionStatus === 'partial' ? '待补充' : '✅ 分析完成')
-          .fontSize(12)
-          .fontColor('#2563EB')
-          .fontWeight(FontWeight.Bold)
-          .backgroundColor('#DBEAFE')
-          .borderRadius(10)
-          .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+      Text(`第${result.questionNumber || (this.selectedQuestionIndex + 1).toString()}题`).fontSize(16)
+        .fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+      if (result.questionText) {
+        Text(result.questionText).fontSize(15).lineHeight(23).fontColor(UiTheme.ink).width('100%')
       }
-      .width('100%')
-
-      Divider().color('#EFF6FF')
-
-      if (result.questionText !== undefined && result.questionText.length > 0) {
-        Text(result.questionText).fontSize(14).fontColor('#344054').lineHeight(21).width('100%')
+      Row({ space: 12 }) {
+        Text('课程').fontSize(13).fontColor(UiTheme.secondary).width(60)
+        Text(result.course || '待确认').fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+      }.width('100%')
+      Row({ space: 12 }) {
+        Text('知识点').fontSize(13).fontColor(UiTheme.secondary).width(60)
+        Text(result.knowledge.join('、') || '待确认').fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+      }.width('100%')
+      Divider().color(UiTheme.line)
+      Text('答案与解题解析').fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+      if (result.answer) {
+        Text(`答案：${result.answer}`).fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
       }
-
-      if (result.course.trim().length > 0) {
-      Row({ space: 8 }) {
-        Text('课程').fontSize(13).fontColor('#667085').width(60)
-        Text(result.course).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+      Text(result.explanation || (this.isFixture() ? result.reason : '本题尚未返回完整解析，请核对题干后重新识别。'))
+        .fontSize(14).lineHeight(23).fontColor(UiTheme.ink).width('100%').copyOption(CopyOptions.InApp)
+        .padding(12).backgroundColor(UiTheme.subtle).borderRadius(8)
+      Row({ space: 12 }) {
+        Text('错误类型').fontSize(13).fontColor(UiTheme.secondary).width(60)
+        Text(result.wrongType || '未确认个人错因').fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
       }.width('100%')
+      if (result.reason && result.explanation) {
+        Text('原因分析').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+        Text(result.reason).fontSize(14).lineHeight(22).fontColor(UiTheme.secondary).width('100%')
       }
-
-      Row({ space: 8 }) {
-        Text('知识点').fontSize(13).fontColor('#667085').width(60)
-        Text(result.knowledge.join('、')).fontSize(14).fontColor('#344054').layoutWeight(1)
-      }.width('100%')
-
-      Row({ space: 8 }) {
-        Text('错误类型').fontSize(13).fontColor('#667085').width(60)
-        Text(result.wrongType || '未确认个人错因').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#DC2626')
-          .backgroundColor('#FEF2F2').borderRadius(6).padding({ left: 6, right: 6, top: 2, bottom: 2 })
-      }.width('100%')
-
-      Column({ space: 6 }) {
-        Text('🔍 原因分析').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB').width('100%')
-        Text(result.reason).fontSize(14).fontColor('#344054').lineHeight(21).width('100%')
-      }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(12)
-
       if (result.suggestions.length > 0) {
-        Column({ space: 8 }) {
-          Text('📌 补强建议').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#2563EB').width('100%')
-          ForEach(result.suggestions, (tip: string, index: number) => {
-            Row({ space: 10 }) {
-              Text((index + 1).toString()).fontSize(12).fontColor('#FFFFFF').fontWeight(FontWeight.Bold)
-                .textAlign(TextAlign.Center).width(22).height(22).borderRadius(11).backgroundColor('#2563EB')
-              Text(tip).fontSize(13).fontColor('#344054').layoutWeight(1).lineHeight(19)
-            }.width('100%')
-          }, (tip: string) => tip)
-        }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(12)
+        Text('补强建议').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+        ForEach(result.suggestions, (tip: string) => {
+          Text(tip).fontSize(14).lineHeight(22).fontColor(UiTheme.secondary).width('100%')
+        }, (tip: string) => tip)
       }
-
       if (result.tags.length > 0) {
-        Row({ space: 8 }) {
-          Text('🏷️').fontSize(13)
-          ForEach(result.tags, (tag: string) => {
-            Text(tag).fontSize(12).fontColor('#2563EB').fontWeight(FontWeight.Medium)
-              .backgroundColor('#EFF6FF').borderRadius(10).padding({ left: 10, right: 10, top: 4, bottom: 4 })
-          }, (tag: string) => tag)
-        }.width('100%')
+        Text(result.tags.join(' · ')).fontSize(12).fontColor(UiTheme.secondary).width('100%')
       }
-    }
-    .width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(18)
-    .shadow({ radius: 14, color: '#14000000', offsetX: 0, offsetY: 6 })
+    }.width('100%').padding({ top: 16, bottom: 16 }).alignItems(HorizontalAlign.Start)
+      .border({ width: { bottom: 1 }, color: UiTheme.line })
   }
 
   /**
@@ -476,7 +454,7 @@ Text(result.recognitionStatus === 'unreadable' || result.recognitionStatus === '
         primaryTarget: 'pages/ExercisePractice',
         secondaryText: this.reviewButtonText(),
         showAgentTraceLink: true,
-        // ⚠️ 必须把**诊断出的那个知识点**带到练习页。
+        //  必须把**诊断出的那个知识点**带到练习页。
         // 原来只用 primaryTarget 跳转（不带参数），练习页就回落到演示知识点，
         // 于是不管诊断出什么，练的永远是那同一套 3 道题 —— 用户反馈的就是这个。
         // 后端 `select_exercises` 支持按知识点从 30 题题库里选题，
@@ -485,9 +463,9 @@ Text(result.recognitionStatus === 'unreadable' || result.recognitionStatus === '
         onSecondary: (): void => { this.addToTomorrowPlan(); }
       })
 
-      Button('📸 继续上传错题')
-        .width('100%').height(44).fontSize(14).fontColor('#2563EB')
-        .backgroundColor('#FFFFFF').border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
+      Button('继续上传错题')
+        .width('100%').height(44).fontSize(14).fontColor(UiTheme.accent)
+        .backgroundColor(UiTheme.surface).border({ width: 1, color: '#BFDBFE' }).borderRadius(8)
         .onClick(() => {
           this.hasPhoto = false;
           this.showAnalysis = false;
@@ -511,165 +489,85 @@ Text(result.recognitionStatus === 'unreadable' || result.recognitionStatus === '
 
   build() {
     Stack() {
-    Column() {
-      Row() {
-        Text('← 返回').fontSize(14).fontColor('#64748B').fontWeight(FontWeight.Medium)
-          .onClick(() => { router.back(); })
-        Blank()
-        Text('错题诊断').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-          .backgroundColor('#EFF6FF').borderRadius(16).padding({ left: 12, right: 12, top: 6, bottom: 6 })
-      }
-      .width('100%').padding({ left: 20, right: 20, top: 12, bottom: 12 })
-      .backgroundColor('#FFFFFF').shadow({ radius: 4, color: '#08000000', offsetX: 0, offsetY: 2 })
-
-      Scroll() {
-        Column({ space: 16 }) {
-          Text('错题诊断')
-            .fontSize(26).fontWeight(FontWeight.Bold).fontColor('#172033').width('100%')
-
-          Text('拍照或从相册上传错题，AI 自动识别知识点、判断错误类型并生成补强建议')
-            .fontSize(14).fontColor('#667085').lineHeight(21).width('100%')
-
-          Text(appState.getChatTaskContext()).fontSize(12).fontColor('#2563EB')
-            .width('100%').padding(10).backgroundColor('#EFF6FF').borderRadius(10)
-
-          Text('选择题目—识别内容—生成补强任务')
-            .fontSize(12).fontColor('#2563EB').width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(12)
-
-          /* 上传区域 */
-          Column({ space: 14 }) {
+      Column() {
+        PageHeader({ title: this.showAnalysis ? '逐题诊断结果' : '错题诊断', assistant: true })
+        Scroll() {
+          Column({ space: 16 }) {
+            if (!this.showAnalysis) {
+              Text('上传错题，获取诊断与建议').fontSize(22).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+              Text('支持拍照或从相册选择，识别题目并给出错误原因、知识点与补强建议。')
+                .fontSize(14).fontColor(UiTheme.secondary).lineHeight(22).width('100%')
+            }
             if (!this.hasPhoto) {
-              Button() {
-                Row({ space: 10 }) {
-                  Text('📷').fontSize(28)
-                  Column({ space: 4 }) {
-                    Text('上传错题图片').fontSize(17).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
-                    Text('从手机相册选取清晰的错题照片').fontSize(12).fontColor('#BFDBFE')
-                  }.alignItems(HorizontalAlign.Start)
-                }.width('100%').padding({ left: 16, top: 14, bottom: 14 })
-              }
-              .width('100%').backgroundColor('#2563EB').borderRadius(16)
-              .onClick(() => { this.pickFromGallery(); })
-
-              Row({ space: 12 }) {
-                Divider().color('#BFDBFE').layoutWeight(1)
-                Text('或').fontSize(12).fontColor('#999')
-                Divider().color('#BFDBFE').layoutWeight(1)
-              }.width('100%')
-
-              Button(this.isFixture() ? '🔄 使用模拟错题快速体验' : '🖼️ 用内置示例错题体验（真实识别）')
-                .width('100%').height(44).fontSize(13).fontWeight(FontWeight.Medium)
-                .fontColor('#2563EB').backgroundColor('#FFFFFF')
-                .border({ width: 1, color: '#93C5FD' }).borderRadius(12)
-                // ⚠️ 不能再 `enabled(this.isFixture())` —— 那会让**在线（账号）用户
-                // 拿不到任何图片入口**：相册可能是空的，而唯一的体验按钮又被禁用，
-                // 整页就彻底走不通了。现在在线也能用：走内置示例图 + 真实识别。
-                .enabled(!this.isAnalyzing)
-                .onClick(() => { this.useSampleImage(); })
+              Column({ space: 16 }) {
+                Text('选择清晰的题目照片').fontSize(14).fontColor(UiTheme.secondary)
+                Button('从相册选择', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15)
+                  .fontColor('#FFFFFF').backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => this.pickFromGallery())
+                Button(this.isFixture() ? '使用模拟错题体验' : '用示例体验（真实识别）', { type: ButtonType.Normal })
+                  .fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).height(44)
+                  .enabled(!this.isAnalyzing).onClick(() => this.useSampleImage())
+              }.width('100%').padding(20).border({ width: 1, color: UiTheme.line }).borderRadius(8)
             } else {
-              Column({ space: 12 }) {
-                Column({ space: 8 }) {
-                  Row({ space: 8 }) {
-                    Text('📷').fontSize(32)
-                    Column({ space: 4 }) {
-                      Text(this.selectedImageName).fontSize(15).fontWeight(FontWeight.Bold).fontColor('#172033')
-                      Text('图片已就绪').fontSize(12).fontColor('#2563EB')
-                    }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-                  }.width('100%')
-
-                  if (this.isSampleImage) {
-                    // 内置示例错题：图片在应用资源里，必须用 `$r` 引用 ——
-                    // 直接 `Image('')` 会渲染成空白（这正是原先"没有题目照片"的原因）。
-                    Image($r('app.media.sample_wrong'))
-                      .width('100%').height(160).objectFit(ImageFit.Contain)
-                      .backgroundColor('#EFF6FF').borderRadius(12)
-                  } else if (this.selectedImageUri.startsWith('mock_')) {
-                    Column({ space: 6 }) {
-                      Text('📝').fontSize(48)
-                      Text('模拟错题图片').fontSize(13).fontColor('#667085')
-                    }
-                    .width('100%').height(160).justifyContent(FlexAlign.Center)
-                    .backgroundColor('#EFF6FF').borderRadius(12)
-                  } else {
-                    Image(this.selectedImageUri)
-                      .width('100%').height(160).objectFit(ImageFit.Contain)
-                      .backgroundColor('#EFF6FF').borderRadius(12)
-                  }
-                }
-                .width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(16).border({ width: 1, color: '#EFF6FF' })
-
-                Button('🖼️ 重新选择图片').width('100%').height(42).fontSize(13).fontWeight(FontWeight.Medium)
-                  .fontColor('#2563EB').backgroundColor('#EFF6FF')
-                  .border({ width: 1, color: '#93C5FD' }).borderRadius(12)
-                  .onClick(() => { this.pickFromGallery(); })
-              }.width('100%')
+              Column({ space: 10 }) {
+                if (this.isSampleImage) {
+                  Image($r('app.media.sample_wrong')).width('100%').height(this.showAnalysis ? 120 : 190).objectFit(ImageFit.Contain)
+                } else if (!this.selectedImageUri.startsWith('mock_')) {
+                  Image(this.selectedImageUri).width('100%').height(this.showAnalysis ? 120 : 190).objectFit(ImageFit.Contain)
+                } else { Text('模拟错题图片').fontSize(14).fontColor(UiTheme.secondary).padding(24) }
+                Text(this.selectedImageName).fontSize(12).fontColor(UiTheme.secondary)
+                Button('重新选择图片', { type: ButtonType.Normal }).height(44).fontSize(13).fontColor(UiTheme.accent)
+                  .backgroundColor(UiTheme.surface).enabled(!this.isAnalyzing).onClick(() => this.pickFromGallery())
+              }.width('100%').backgroundColor(UiTheme.subtle).borderRadius(8).padding(12)
             }
-          }
-          .width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(18)
-          .shadow({ radius: 14, color: '#14000000', offsetX: 0, offsetY: 6 })
-
-          /* 加载中 */
-          if (this.isAnalyzing) {
-            Column({ space: 10 }) {
-              LoadingProgress().width(40).height(40).color('#2563EB')
-              Text('正在识别整页题目并逐题分析...').fontSize(14).fontColor('#667085')
+            if (!this.showAnalysis && !this.isAnalyzing) {
+              Text('三步完成诊断').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+              Text('1　选择题目\n2　核对识别内容\n3　查看解析与建议').fontSize(14).fontColor(UiTheme.secondary).lineHeight(32).width('100%')
+              Text('仅分析本次上传的题目，不会自动加入错题本。').fontSize(12).fontColor(UiTheme.secondary).width('100%')
             }
-            .width('100%').padding(24).backgroundColor('#FFFFFF').borderRadius(16).border({ width: 1, color: '#EFF6FF' })
-          }
-
-          if (this.analysisMessage.length > 0) {
-            Text(this.analysisMessage).fontSize(13).fontColor('#B45309').lineHeight(20).width('100%')
-              .padding(12).backgroundColor('#FFFBEB').borderRadius(10)
-          }
-
-          /* 分析结果 */
-          if (this.showAnalysis && this.analysisResult !== null) {
-            Text(`本页返回 ${this.analysisResults.length || 1} 道题，可逐题查看和练习`)
-              .fontSize(14).fontColor('#2563EB').width('100%')
-            if (this.analysisResults.length > 1) {
-              Flex({ wrap: FlexWrap.Wrap }) {
-                ForEach(this.analysisResults, (item: WrongAnalysisResult, index: number) => {
-                  Button(`第${item.questionNumber || (index + 1).toString()}题`)
-                    .fontSize(13).margin({ right: 8, bottom: 8 })
-                    .backgroundColor(this.selectedQuestionIndex === index ? '#2563EB' : '#EFF6FF')
-                    .fontColor(this.selectedQuestionIndex === index ? '#FFFFFF' : '#2563EB')
-                    .onClick(() => { this.selectQuestion(index); })
-                }, (item: WrongAnalysisResult, index: number) => index.toString())
-              }.width('100%')
+            if (this.isAnalyzing) {
+              Row({ space: 12 }) {
+                LoadingProgress().width(28).height(28)
+                Text('正在识别整页题目并逐题分析…').fontSize(14).fontColor(UiTheme.secondary).layoutWeight(1)
+              }.width('100%').padding({ top: 16, bottom: 16 })
             }
-            this.AnalysisCard(this.analysisResult)
-            Row({ space: 10 }) {
-              Checkbox().select(this.selectedForBook.indexOf(this.selectedQuestionIndex) >= 0).onChange((selected: boolean) => {
-                this.selectedForBook = selected ? this.selectedForBook.concat([this.selectedQuestionIndex]) : this.selectedForBook.filter((index: number) => index !== this.selectedQuestionIndex);
-              })
-              Text('将本题加入错题本').fontSize(15).fontColor('#475467')
-            }.width('100%').padding({ top: 12, bottom: 12 })
-            Text('只分析不会自动收藏，已做对的题不必勾选。').fontSize(12).fontColor('#98A2B3')
-            if (this.selectedForBook.indexOf(this.selectedQuestionIndex) >= 0) {
-            TextArea({ text: this.saveStem, placeholder: '核对或补充本题题干后保存' }).height(100).onChange((v: string) => this.saveStem = v)
-            TextInput({ placeholder: '课程自动识别，可手动修正', text: this.saveCourse })
-              .onChange((value: string) => this.saveCourse = value)
-            TextInput({ placeholder: '确认知识点', text: this.savePoint })
-              .onChange((value: string) => this.savePoint = value)
-            Button(this.savedQuestions.indexOf(this.selectedQuestionIndex) >= 0 ? '本题已加入错题本' : (this.savingQuestion ? '保存中…' : '将本题加入错题本'))
-              .width('100%').backgroundColor('#344054').fontColor('#FFFFFF').borderRadius(10).enabled(!this.savingQuestion && this.savedQuestions.indexOf(this.selectedQuestionIndex) < 0)
-              .onClick(() => this.saveQuestion())
+            if (this.analysisMessage) { Text(this.analysisMessage).fontSize(13).fontColor(UiTheme.danger).lineHeight(21).width('100%') }
+            if (this.showAnalysis && this.analysisResult !== null) {
+              Text(`本页返回 ${this.analysisResults.length || 1} 道题，可逐题核对`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+              if (this.analysisResults.length > 1) {
+                Flex({ wrap: FlexWrap.Wrap }) {
+                  ForEach(this.analysisResults, (item: WrongAnalysisResult, index: number) => {
+                    Button(`第${item.questionNumber || (index + 1).toString()}题`, { type: ButtonType.Normal }).height(40).fontSize(13)
+                      .backgroundColor(this.selectedQuestionIndex === index ? UiTheme.tint : UiTheme.surface)
+                      .fontColor(this.selectedQuestionIndex === index ? UiTheme.accent : UiTheme.secondary)
+                      .onClick(() => this.selectQuestion(index))
+                  }, (item: WrongAnalysisResult, index: number) => index.toString())
+                }.width('100%')
+              }
+              ForEach([this.selectedQuestionIndex], (index: number) => {
+                this.AnalysisCard(this.analysisResults[index])
+              }, (index: number) => `${this.analysisRequestVersion}-${index}`)
+              Row({ space: 10 }) {
+                Checkbox().select(this.selectedForBook.includes(this.selectedQuestionIndex)).onChange((selected: boolean) => {
+                  this.selectedForBook = selected ? this.selectedForBook.concat([this.selectedQuestionIndex]) : this.selectedForBook.filter((index: number) => index !== this.selectedQuestionIndex);
+                })
+                Text('加入错题本').fontSize(14).fontColor(UiTheme.ink)
+              }.width('100%').constraintSize({ minHeight: 44 })
+              if (this.selectedForBook.includes(this.selectedQuestionIndex)) {
+                TextArea({ text: this.saveStem, placeholder: '核对或补充题干后保存' }).height(100).onChange((value: string) => this.saveStem = value)
+                TextInput({ text: this.saveCourse, placeholder: '课程，可手动修正' }).onChange((value: string) => this.saveCourse = value)
+                TextInput({ text: this.savePoint, placeholder: '确认知识点' }).onChange((value: string) => this.savePoint = value)
+                Button(this.savedQuestions.includes(this.selectedQuestionIndex) ? '已加入错题本' : this.savingQuestion ? '保存中…' : '确认加入错题本', { type: ButtonType.Normal })
+                  .width('100%').height(44).fontColor('#FFFFFF').backgroundColor(UiTheme.accent).borderRadius(8)
+                  .enabled(!this.savingQuestion && !this.savedQuestions.includes(this.selectedQuestionIndex)).onClick(() => this.saveQuestion())
+              }
+              Text('查看错题本 ›').fontSize(14).fontColor(UiTheme.accent).width('100%').padding({ top: 10, bottom: 10 })
+                .onClick(() => router.pushUrl({ url: 'pages/WrongBook' }))
+              if (this.analysisResult.knowledge.length > 0) { this.NavButtons() }
             }
-            Text('查看错题本 ›').fontSize(13).fontColor('#667085').padding(10).onClick(() => router.pushUrl({ url: 'pages/WrongBook' }))
-          }
-
-          /* 导航选项 */
-          if (this.showAnalysis && !this.isAnalyzing && this.analysisResult !== null
-            && this.analysisResult.knowledge.length > 0) {
-            this.NavButtons()
-          }
-        }
-        .width('100%').padding({ left: 20, right: 20, top: 16, bottom: 40 })
-      }
-      .layoutWeight(1)
-    }
-    .width('100%').height('100%').backgroundColor('#F5F7FA')
-    AIFloatButton()
+          }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding(20).alignItems(HorizontalAlign.Start)
+        }.width('100%').layoutWeight(1).scrollBar(BarState.Off).align(Alignment.TopStart)
+      }.width('100%').height('100%').backgroundColor(UiTheme.surface)
+      AIFloatButton()
     }.width('100%').height('100%')
   }
 }

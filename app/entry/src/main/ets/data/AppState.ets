@@ -718,6 +718,26 @@ export class AppState {
   }
 
   /** 删除指定DDL */
+  /** Edit an existing assignment without changing its identity, completion or sync ownership. */
+  public updateDDL(ddlId: string, title: string, dueDate: string, minutes: number, priority: string): boolean {
+    if (!title.trim() || !Number.isInteger(minutes) || minutes < 1 || minutes > 1440) return false;
+    const previous: HomeworkDDL[] = this.homeworkDDLs;
+    const original: HomeworkDDL | undefined = previous.find((item: HomeworkDDL) => item.id === ddlId);
+    if (original === undefined) return false;
+    const due: number = Date.parse(dueDate.replace(' ', 'T'));
+    if (!Number.isFinite(due)) return false;
+    const updated: HomeworkDDL = {
+      id: original.id, courseId: original.courseId, syncVersion: original.syncVersion,
+      courseName: original.courseName, origin: original.origin, completed: original.completed,
+      title: title.trim(), dueDate: dueDate.trim(), estimatedMinutes: minutes, priority: priority,
+      daysLeft: DateHelper.calculateDaysLeft(dueDate)
+    };
+    this.homeworkDDLs = previous.map((item: HomeworkDDL) => item.id === ddlId ? updated : item);
+    if (!this.persistLearningData()) { this.homeworkDDLs = previous; return false; }
+    this.notifyLearningDataChanged();
+    return true;
+  }
+
   public removeDDL(ddlId: string): void {
     const filtered: HomeworkDDL[] = [];
     for (let i = 0; i < this.homeworkDDLs.length; i++) {

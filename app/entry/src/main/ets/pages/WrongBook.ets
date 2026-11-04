@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { appState } from '../data/AppState';
 import { CourseInfo } from '../models/AgentModels';
 import { ApiFailure } from '../api/ApiResult';
@@ -81,12 +82,12 @@ struct WrongBook {
   AssignmentPanel() {
     Column({ space: 12 }) {
       Text(`为 ${this.assigningIds.length} 道题选择科目`).fontSize(17).fontWeight(FontWeight.Bold).width('100%')
-      Text('可选已有科目，也可输入新科目名称。仅修改所选题目的归属，作答记录保持不变。').fontSize(13).fontColor('#667085').width('100%')
+      Text('可选已有科目，也可输入新科目名称。仅修改所选题目的归属，作答记录保持不变。').fontSize(13).fontColor(UiTheme.secondary).width('100%')
       Flex({ wrap: FlexWrap.Wrap }) {
         ForEach(this.assignmentChoices(), (name: string) => {
           Button(name).fontSize(13).margin(4).enabled(!this.assignmentSaving)
-            .fontColor(this.assignmentCourse === name ? '#FFFFFF' : '#2563EB')
-            .backgroundColor(this.assignmentCourse === name ? '#2563EB' : '#EFF6FF')
+            .fontColor(this.assignmentCourse === name ? UiTheme.surface : UiTheme.accent)
+            .backgroundColor(this.assignmentCourse === name ? UiTheme.accent : UiTheme.tint)
             .onClick(() => this.assignmentCourse = name)
         }, (name: string) => name)
       }.width('100%')
@@ -94,7 +95,7 @@ struct WrongBook {
         .enabled(!this.assignmentSaving).onChange((value: string) => this.assignmentCourse = value)
       ActionButton({ label: this.assignmentSaving ? '保存中…' : '确认归类', available: !this.assignmentSaving && this.assignmentCourse.trim().length > 0, onAction: () => { void this.assignCourse(); } })
       ActionButton({ label: '返回选择题目', available: !this.assignmentSaving, onAction: () => { this.assignmentOpen = false; } })
-    }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
+    }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
   }
 
   @State contentWidth: number = 320;
@@ -288,10 +289,10 @@ struct WrongBook {
     Column({ space: 14 }) {
       Text('本知识点刷题完成').fontSize(21).fontWeight(FontWeight.Bold)
       Text(`已完成 ${this.practiceItems.length} 道题。可继续生成同类题，交卷后更新知识点掌握度与学情画像。`)
-        .fontSize(14).fontColor('#475467').lineHeight(22)
+        .fontSize(14).fontColor(UiTheme.secondary).lineHeight(22)
       ActionButton({ label: '同类练习', onAction: () => this.openSimilarPractice() })
       ActionButton({ label: '返回题目列表', onAction: () => this.leavePractice() })
-    }.width('100%').padding(20).backgroundColor('#FFFFFF').borderRadius(16)
+    }.width('100%').padding(20).backgroundColor(UiTheme.surface).borderRadius(8)
   }
 
   @Builder
@@ -299,52 +300,54 @@ struct WrongBook {
     Column({ space: 12 }) {
       Row() {
         Text(`${item.courseName} · 第 ${this.practiceIndex + 1}/${this.practiceItems.length} 题`)
-          .fontSize(13).fontColor('#2563EB')
+          .fontSize(13).fontColor(UiTheme.accent)
         Blank()
-        Text('返回题目列表').fontSize(13).fontColor('#64748B').onClick(() => this.leavePractice())
+        Text('返回题目列表').fontSize(13).fontColor(UiTheme.secondary).onClick(() => this.leavePractice())
       }.width('100%')
-      Text(item.stem).fontSize(17).fontWeight(FontWeight.Medium).fontColor('#1F2937').lineHeight(24)
+      Text(item.stem).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).lineHeight(24)
       if (!this.canGrade(item)) {
         TextArea({ text: this.selectedAnswer, placeholder: '先写下你的答案或解题过程，再查看参考解析' })
           .width('100%').constraintSize({ minHeight: 120 }).enabled(!this.referenceReviewed)
           .onChange((value: string) => this.selectedAnswer = value)
         Text('本题答案尚未核对，提交后可对照参考解析；本题不自动判分，同类练习交卷后会更新掌握度。')
-          .fontSize(12).fontColor('#64748B').lineHeight(19)
+          .fontSize(12).fontColor(UiTheme.secondary).lineHeight(19)
       } else {
       ForEach(item.options, (option: string) => {
-        Button(option).width('100%').height(42).fontSize(14)
-          .fontColor(this.selectedAnswer === option.substring(0, 1) ? '#FFFFFF' : '#344054')
-          .backgroundColor(this.selectedAnswer === option.substring(0, 1) ? '#2563EB' : '#F8FAFC')
-          .border({ width: 1, color: '#D0D5DD' }).borderRadius(10)
+        Button({ type: ButtonType.Normal }) {
+          Text(option).fontSize(14).lineHeight(22).width('100%').textAlign(TextAlign.Start)
+            .fontColor(this.selectedAnswer === option.substring(0, 1) ? UiTheme.accent : UiTheme.ink)
+        }.width('100%').constraintSize({ minHeight: 44 }).padding({ left: 12, right: 12, top: 10, bottom: 10 })
+          .backgroundColor(this.selectedAnswer === option.substring(0, 1) ? UiTheme.tint : UiTheme.surface)
+          .border({ width: 1, color: '#D0D5DD' }).borderRadius(8)
           .enabled(this.attempt === null && !this.isSubmitting)
           .onClick(() => this.selectedAnswer = option.substring(0, 1))
       }, (option: string) => option)
       }
-      if (this.errorMessage) Text(this.errorMessage).fontSize(13).fontColor('#B42318')
+      if (this.errorMessage) Text(this.errorMessage).fontSize(13).fontColor(UiTheme.danger)
       if (this.attempt !== null) {
         Text(this.attempt.correct ? '回答正确' : `回答错误，正确答案：${this.attempt.correctAnswer}`)
           .fontSize(15).fontWeight(FontWeight.Bold)
-          .fontColor(this.attempt.correct ? '#0F766E' : '#DC2626').width('100%')
-        Text(this.attempt.explanation).fontSize(14).fontColor('#475467').lineHeight(21).width('100%')
+          .fontColor(this.attempt.correct ? '#0F766E' : UiTheme.danger).width('100%')
+        Text(this.attempt.explanation).fontSize(14).fontColor(UiTheme.secondary).lineHeight(21).width('100%')
         Text(this.attempt.removed ? '已累计答对 3 次，自动移出错题本。'
           : `已答对 ${this.attempt.correctCount} / 3 次。`)
-          .fontSize(13).fontColor('#2563EB').width('100%')
+          .fontSize(13).fontColor(UiTheme.accent).width('100%')
       } else if (this.referenceReviewed) {
         Text('参考解析').fontSize(15).fontWeight(FontWeight.Bold).width('100%')
-        Text(item.explanation || '本题暂无参考解析，请结合教材核对。').fontSize(14).fontColor('#475467').lineHeight(22).width('100%')
+        Text(item.explanation || '本题暂无参考解析，请结合教材核对。').fontSize(14).fontColor(UiTheme.secondary).lineHeight(22).width('100%')
       }
       if (this.attempt !== null || this.referenceReviewed) {
         Button(this.practiceIndex + 1 < this.practiceItems.length ? '继续下一题' : '完成本知识点刷题')
-          .width('100%').height(42).fontSize(14).fontColor('#FFFFFF')
-          .backgroundColor('#2563EB').borderRadius(10)
+          .width('100%').height(42).fontSize(14).fontColor(UiTheme.surface)
+          .backgroundColor(UiTheme.accent).borderRadius(8)
           .onClick(() => this.continuePractice())
       } else {
         Button(this.isSubmitting ? '提交中…' : this.canGrade(item) ? '提交答案' : '提交并查看参考解析').width('100%').height(44)
-          .fontSize(15).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(10)
+          .fontSize(15).fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
           .enabled(this.selectedAnswer.trim().length > 0 && !this.isSubmitting)
           .onClick(() => this.submitAttempt())
       }
-    }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
+    }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
       .border({ width: 1, color: '#BFDBFE' })
   }
 
@@ -354,8 +357,8 @@ struct WrongBook {
       Scroll() {
         Column({ space: 14 }) {
           Text('按课程整理；在这里刷对同一道题 3 次后，系统会自动移出。')
-            .fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
-          if (this.assignmentMessage) Text(this.assignmentMessage).fontSize(13).fontColor('#475467').width('100%')
+            .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
+          if (this.assignmentMessage) Text(this.assignmentMessage).fontSize(13).fontColor(UiTheme.secondary).width('100%')
           if (this.assignmentOpen) {
             this.AssignmentPanel()
           } else if (this.isLoading) {
@@ -367,38 +370,38 @@ struct WrongBook {
             // “完成本学科”按钮；用户主动返回列表后再展示空状态。
             this.PracticePanel(this.practiceItem)
           } else if (this.errorMessage.length > 0) {
-            Text(this.errorMessage).fontSize(14).fontColor('#B42318')
+            Text(this.errorMessage).fontSize(14).fontColor(UiTheme.danger)
             ActionButton({ label: '重新加载', onAction: () => { void this.load(); } })
           } else if (this.total === 0) {
             Column({ space: 10 }) {
               Text('错题本还是空的').fontSize(18).fontWeight(FontWeight.Bold)
               Text('练习中答错的题会自动出现在这里，也可以在逐题解析页手动添加。')
-                .fontSize(13).fontColor('#667085').lineHeight(20).textAlign(TextAlign.Center)
+                .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).textAlign(TextAlign.Center)
             }.width('100%').padding(32).alignItems(HorizontalAlign.Center)
           } else {
             if (!this.selectedCourse) {
               ForEach(this.courses, (course: WrongBookCourse) => {
                 Row({ space: 12 }) {
                   Column({ space: 6 }) {
-                    Text(course.courseName === '待确认科目' ? '请手动匹配课程' : course.courseName).fontSize(17).fontWeight(FontWeight.Medium).fontColor('#182230')
-                    Text(`${this.points(course).length} 个知识点 · ${course.items.length} 道题`).fontSize(13).fontColor('#667085')
+                    Text(course.courseName === '待确认科目' ? '请手动匹配课程' : course.courseName).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+                    Text(`${this.points(course).length} 个知识点 · ${course.items.length} 道题`).fontSize(13).fontColor(UiTheme.secondary)
                   }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-                  Text('›').fontSize(24).fontColor('#98A2B3')
-                }.width('100%').padding(20).backgroundColor('#FFFFFF').borderRadius(12)
+                  Text('›').fontSize(24).fontColor(UiTheme.muted)
+                }.width('100%').padding(20).backgroundColor(UiTheme.surface).borderRadius(8)
                   .onClick(() => { this.selectedCourse = course.courseName; this.selectedPoint = ''; })
               }, (course: WrongBookCourse) => course.courseName)
             } else {
               ForEach(this.visibleCourses(), (course: WrongBookCourse) => {
                 if (course.courseName === '待确认科目') {
-                  Text('这些题目的科目尚不明确。可逐题选择，或将同一科目的题目批量归类。').fontSize(13).fontColor('#667085').width('100%')
+                  Text('这些题目的科目尚不明确。可逐题选择，或将同一科目的题目批量归类。').fontSize(13).fontColor(UiTheme.secondary).width('100%')
                 }
                 if (!this.selectedPoint) {
                   ForEach(this.points(course), (point: string) => {
                     Row() {
-                      Text(point).fontSize(16).fontColor('#344054').layoutWeight(1)
+                      Text(point).fontSize(16).fontColor(UiTheme.ink).layoutWeight(1)
                       Text(`${course.items.filter((item: WrongBookItem) => (item.knowledgeGroup || item.knowledgePointName) === point).length} 题  ›`)
-                        .fontSize(13).fontColor('#98A2B3')
-                    }.width('100%').padding(20).backgroundColor('#FFFFFF').borderRadius(12)
+                        .fontSize(13).fontColor(UiTheme.muted)
+                    }.width('100%').padding(20).backgroundColor(UiTheme.surface).borderRadius(8)
                       .onClick(() => { this.selectedPoint = point; this.cancelSelection(); })
                   }, (point: string) => point)
                 } else {
@@ -418,33 +421,33 @@ struct WrongBook {
                       Row({ space: 10 }) {
                         if (this.selecting) {
                           Button({ type: ButtonType.Circle }) {
-                            Text(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '✓' : '')
-                              .fontSize(18).fontColor('#FFFFFF').textAlign(TextAlign.Center)
+                            Checkbox().select(this.assigningIds.indexOf(item.exerciseId) >= 0).hitTestBehavior(HitTestMode.None)
+                              .width(20).height(20).selectedColor(UiTheme.accent)
                           }
-                            .width(32).height(32).padding(0).borderRadius(16).flexShrink(0)
-                            .backgroundColor(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '#2563EB' : '#FFFFFF')
-                            .border({ width: 1.5, color: '#2563EB' })
+                            .width(32).height(32).padding(0).borderRadius(8).flexShrink(0)
+                            .backgroundColor(this.assigningIds.indexOf(item.exerciseId) >= 0 ? UiTheme.accent : UiTheme.surface)
+                            .border({ width: 1.5, color: UiTheme.accent })
                             .accessibilityText(this.assigningIds.indexOf(item.exerciseId) >= 0 ? '已选中，点击取消' : '未选中，点击选择')
                             .onClick(() => this.toggleSelection(item))
                         }
-                        Text(item.stem).fontSize(16).fontColor('#344054').maxLines(3).layoutWeight(1)
+                        Text(item.stem).fontSize(16).fontColor(UiTheme.ink).maxLines(3).layoutWeight(1)
                       }.width('100%')
                       if (!this.selecting) {
                       Row() {
-                        Text(`已答对 ${item.correctCount}/3 次`).fontSize(12).fontColor('#98A2B3').layoutWeight(1)
-                        Button('开始刷题', { type: ButtonType.Normal }).height(34).fontSize(13).fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(8)
+                        Text(`已答对 ${item.correctCount}/3 次`).fontSize(12).fontColor(UiTheme.muted).layoutWeight(1)
+                        Button('开始刷题', { type: ButtonType.Normal }).height(34).fontSize(13).fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
                           .onClick(() => this.startPractice(item))
-                        Text('移除').fontSize(13).fontColor('#98A2B3').padding({ left: 18 }).onClick(() => this.removeItem(item))
+                        Text('移除').fontSize(13).fontColor(UiTheme.muted).padding({ left: 18 }).onClick(() => this.removeItem(item))
                       }.width('100%')
                       }
-                    }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(12)
+                    }.width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
                   }, (item: WrongBookItem) => item.exerciseId)
                 }
               }, (course: WrongBookCourse) => course.courseName)
             }
           }
         }.width('100%').alignItems(HorizontalAlign.Start).onAreaChange((_old: Area, area: Area) => { this.contentWidth = Number(area.width) - 32; }).padding({ left: 16, right: 16, top: 16, bottom: 40 })
-      }.align(Alignment.TopStart).layoutWeight(1).backgroundColor('#F5F6F8')
+      }.align(Alignment.TopStart).layoutWeight(1).backgroundColor(UiTheme.canvas)
     }.width('100%').height('100%')
   }
 }

@@ -1,3 +1,8 @@
+import { ChatFile } from '../api/StudyTaskModels';
+import { picker, fileIo } from '@kit.CoreFileKit';
+import { util } from '@kit.ArkTS';
+import { UiTheme } from '../utils/UiTheme';
+import { AppBottomBar } from '../components/AppBottomBar';
 import { PartnerInboxButton } from '../components/PartnerInboxButton';
 import { TodayPanel } from '../components/TodayPanel';
 import { PageHeader } from '../components/PageHeader';
@@ -21,7 +26,7 @@ import { ApiFailure } from '../api/ApiResult';
 /**
  * 对话页顶部的六个意图快捷按钮。
  *
- * ⚠️ 三条纪律（改动前务必读完）：
+ *  三条纪律（改动前务必读完）：
  *
  * 1. **`intent` 不能改** —— 这六个值是前后端契约（`api-contract-v0.3`）里
  *    意图识别的枚举，后端 `chat_llm.INTENT_CARDS` 与 `KNOWN_INTENTS`
@@ -43,7 +48,7 @@ const INTENT_CHIPS: IntentChip[] = [
   { intent: 'analyze_weakness', label: '学情画像', prompt: '帮我看看我的薄弱知识点' },
   { intent: 'match_partner', label: '学习搭子', prompt: '帮我匹配一个学习搭子' },
   { intent: 'query_tasks', label: '今日任务', prompt: '今天有哪些任务要交？' },
-  // ⚠️ 标签必须体现"改"这个动作，不能只叫「学习画像」。
+  //  标签必须体现"改"这个动作，不能只叫「学习画像」。
   // 实测反馈：「学习画像和学情画像有什么区别？点开之后跳转的界面是一样的」
   // —— 两个 chip 一个叫「学情画像」一个叫「学习画像」，名字几乎同义、
   // 又都落到同一个页面，用户无法分辨。它们的**动作**其实是不同的：
@@ -59,11 +64,17 @@ struct ChatMain {
   @State todayRevision: number = 0;
   @State messages: ChatMessage[] = [];
   @State inputText: string = '';
+  @State pendingFileName: string = '';
+  @State pendingFileTruncated: boolean = false;
+  @State pendingFileText: string = '';
+  @State fileBusy: boolean = false;
+  private fileRevision: number = 0;
   @State pendingImage: string = '';
   @State previewImage: string = '';
   @State previewNotice: string = '';
   private imageRequestVersion: number = 0;
   @State selectedIntent: string = 'get_suggestion';
+  @State showFunctionWorkspace: boolean = false;
   /** 当前标签：对话页自身固定为 0，仅用于驱动底部标签栏高亮。 */
   @State activeTab: number = 0;
   @State isSending: boolean = false;
@@ -75,6 +86,7 @@ struct ChatMain {
   @State isListening: boolean = false;
   @State voiceMessage: string = '';
   @State showHistory: boolean = false;
+  @State showLearningFunctions: boolean = false;
   @State historyLoading: boolean = false;
   @State historySessions: ChatHistorySession[] = [];
   /**
@@ -117,9 +129,9 @@ struct ChatMain {
   @Builder
   DiagnosisQuestion(message: ChatMessage, question: WrongAnalysis, index: number) {
     Column({ space: 10 }) {
-      Text(`第${question.questionNumber || (index + 1).toString()}题`).fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054')
-      if (question.courseName) { Text(`建议科目：${question.courseName} · 保存后可在错题本调整`).fontSize(12).fontColor('#667085').width('100%') }
-      if (question.questionText) { Text(question.questionText).fontSize(14).fontColor('#475467').maxLines(4).width('100%') }
+      Text(`第${question.questionNumber || (index + 1).toString()}题`).fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+      if (question.courseName) { Text(`建议科目：${question.courseName} · 保存后可在错题本调整`).fontSize(12).fontColor(UiTheme.secondary).width('100%') }
+      if (question.questionText) { Text(question.questionText).fontSize(14).fontColor(UiTheme.secondary).maxLines(4).width('100%') }
       TextInput({ text: this.diagnosisPoint(message, question), placeholder: '核对知识点' }).height(38).fontSize(13)
         .onChange((value: string) => {
           const key: string = this.diagnosisKey(message, question);
@@ -132,19 +144,19 @@ struct ChatMain {
             const key: string = this.diagnosisKey(message, question);
             this.bookSelectedIds = selected ? this.bookSelectedIds.concat([key]) : this.bookSelectedIds.filter((id: string) => id !== key);
           })
-        Text(this.bookSavedIds.indexOf(this.diagnosisKey(message, question)) >= 0 ? '已加入错题本' : '加入错题本（可选）').fontSize(13).fontColor('#667085')
+        Text(this.bookSavedIds.indexOf(this.diagnosisKey(message, question)) >= 0 ? '已加入错题本' : '加入错题本（可选）').fontSize(13).fontColor(UiTheme.secondary)
       }.width('100%')
       Row({ space: 12 }) {
         Button(this.startingDiagnosisId === this.diagnosisKey(message, question) && this.isGoalLoading ? '准备中…' : '开始练习', { type: ButtonType.Normal })
-          .height(36).fontSize(13).backgroundColor('#2563EB').fontColor('#FFFFFF').borderRadius(8).enabled(!this.isGoalLoading && !!question.diagnosisId && !!this.diagnosisPoint(message, question).trim())
+          .height(36).fontSize(13).backgroundColor(UiTheme.accent).fontColor(UiTheme.surface).borderRadius(8).enabled(!this.isGoalLoading && !!question.diagnosisId && !!this.diagnosisPoint(message, question).trim())
           .onClick(() => this.confirmDiagnosis(message, question))
         if (this.bookSelectedIds.indexOf(this.diagnosisKey(message, question)) >= 0 && this.bookSavedIds.indexOf(this.diagnosisKey(message, question)) < 0) {
-          Text(this.bookSavingIds.indexOf(this.diagnosisKey(message, question)) >= 0 ? '加入中…' : '确认加入').fontSize(13).fontColor('#2563EB')
+          Text(this.bookSavingIds.indexOf(this.diagnosisKey(message, question)) >= 0 ? '加入中…' : '确认加入').fontSize(13).fontColor(UiTheme.accent)
             .onClick(() => this.saveDiagnosisToBook(message, question))
         }
       }.width('100%')
-      if (this.diagnosisNoticeId === this.diagnosisKey(message, question)) { Text(this.diagnosisNotice).fontSize(12).fontColor('#667085').width('100%') }
-    }.width('100%').padding(12).backgroundColor('#F9FAFB').borderRadius(10).alignItems(HorizontalAlign.Start)
+      if (this.diagnosisNoticeId === this.diagnosisKey(message, question)) { Text(this.diagnosisNotice).fontSize(12).fontColor(UiTheme.secondary).width('100%') }
+    }.width('100%').padding(12).backgroundColor(UiTheme.subtle).borderRadius(8).alignItems(HorizontalAlign.Start)
   }
   @State inboxRefreshVersion: number = 0;
   @State showGoalHistory: boolean = false;
@@ -187,7 +199,7 @@ struct ChatMain {
     this.welcomeNotice = appState.loginNotice;
     // 恢复之前的对话；**没有历史时保持为空**，由 WelcomeBlock 呈现"纯对话界面"。
     //
-    // ⚠️ 修正来源：原实现在无历史时种入一条 WELCOME_MESSAGE 气泡，
+    //  修正来源：原实现在无历史时种入一条 WELCOME_MESSAGE 气泡，
     // 结果 `messages.length === 0` 永远不成立，欢迎引导（问候语 + 输入框）
     // 从来没显示过，首屏看起来就是"一条机器人寒暄"，不是想要的对话界面。
     if (appState.hasActiveChat && appState.chatMessages.length > 0) {
@@ -284,14 +296,14 @@ struct ChatMain {
   @Builder
   IdentityLoading() {
     Column({ space: 16 }) {
-      Text('知学 Mate').fontSize(24).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-      LoadingProgress().width(36).height(36).color('#2563EB')
-      Text('正在恢复登录状态…').fontSize(13).fontColor('#667085')
+      Text('知学 Mate').fontSize(24).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+      LoadingProgress().width(36).height(36).color(UiTheme.accent)
+      Text('正在恢复登录状态…').fontSize(13).fontColor(UiTheme.secondary)
     }
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
-    .backgroundColor('#F3F6FA')
+    .backgroundColor(UiTheme.surface)
   }
 
   build() {
@@ -302,37 +314,34 @@ struct ChatMain {
         Column() {
           this.Header()
           FocusRecoveryCard()
-          TodayPanel({ revision: this.todayRevision })
-
-          this.IntentBar()
-          this.MessageList()
+          if (this.showFunctionWorkspace) { this.FunctionWorkspace() } else { this.MessageList() }
           this.InputBar()
           this.TabBar()
         }
         .width('100%')
         .height('100%')
-        .backgroundColor('#F3F6FA')
+        .backgroundColor(UiTheme.surface)
         if (this.showGoalHistory) {
           Column() {
-            PageHeader({ title: '学习任务记录', detail: '当前对话', onBack: () => this.showGoalHistory = false })
+            PageHeader({ title: '学习目标记录', detail: '当前对话', onBack: () => this.showGoalHistory = false })
             Scroll() {
               Column({ space: 12 }) {
-                Text('查看当前对话中建立的学习任务及完成状态，点击一项可恢复任务或查看结果。专注时长请到“我的”查看。').fontSize(13).fontColor('#667085').lineHeight(20).width('100%')
-                if (!this.goalHistory.length) { Text('还没有学习任务记录').fontSize(14).fontColor('#98A2B3').padding(20) }
+                Text('查看当前对话中建立的学习任务及完成状态，点击一项可恢复任务或查看结果。专注时长请到“我的”查看。').fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
+                if (!this.goalHistory.length) { Text('还没有学习任务记录').fontSize(14).fontColor(UiTheme.muted).padding(20) }
                 ForEach(this.goalHistory, (goal: LearningContext) => {
                   Row() {
                     Column({ space: 6 }) {
-                      Text(goal.knowledgePointName || '待确认的练习').fontSize(16).fontColor('#344054')
+                      Text(goal.knowledgePointName || '待确认的练习').fontSize(16).fontColor(UiTheme.ink)
                       Text(goal.status === 'completed' ? '本次练习已完成 · 查看记录' : goal.status === 'ended' ? '已结束' : '学习进行中')
-                        .fontSize(12).fontColor('#98A2B3')
+                        .fontSize(12).fontColor(UiTheme.muted)
                     }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-                    Text('›').fontSize(22).fontColor('#98A2B3')
-                  }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(12)
+                    Text('›').fontSize(22).fontColor(UiTheme.muted)
+                  }.width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
                     .onClick(() => { this.showGoalHistory = false; void this.changeGoal('select', goal.goalId); })
                 }, (goal: LearningContext) => goal.goalId)
               }.width('100%').padding(16).alignItems(HorizontalAlign.Start)
             }.align(Alignment.TopStart).layoutWeight(1).width('100%')
-          }.width('100%').height('100%').backgroundColor('#F5F6F8')
+          }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
         }
         if (this.showHistory) {
           Row() {}
@@ -343,7 +352,7 @@ struct ChatMain {
         if (this.previewImage.length > 0) {
           Column({ space: 12 }) {
             Row() {
-              Text(this.previewNotice).fontSize(13).fontColor('#FFFFFF').layoutWeight(1)
+              Text(this.previewNotice).fontSize(13).fontColor(UiTheme.surface).layoutWeight(1)
               Button('关闭').onClick(() => this.closeImagePreview())
             }.width('100%').padding(16)
             Image(this.previewImage).width('100%').layoutWeight(1).objectFit(ImageFit.Contain)
@@ -353,6 +362,15 @@ struct ChatMain {
     }
     .width('100%')
     .height('100%')
+    .bindSheet($$this.showLearningGoalCard, this.GoalDetails(), {
+      height: SheetSize.FIT_CONTENT, title: { title: '当前目标详情' }, showClose: true, dragBar: true,
+      backgroundColor: UiTheme.surface
+    })
+  }
+
+  @Builder
+  private GoalDetails() {
+    if (this.learningContext !== null) { this.LearningGoalCard(this.learningContext) }
   }
 
   private async openHistory(): Promise<void> {
@@ -404,6 +422,7 @@ struct ChatMain {
     this.isGoalLoading = false;
     this.inputText = '';
     this.pendingImage = '';
+    this.pendingFileName = ''; this.pendingFileText = ''; this.pendingFileTruncated = false; this.fileRevision++; this.fileBusy = false;
     const restored: ChatMessage[] = [];
     for (let index: number = 0; index < session.turns.length; index++) {
       const record: ChatHistoryRecord = session.turns[index];
@@ -428,59 +447,52 @@ struct ChatMain {
   private HistoryDrawer() {
     Column() {
       Row() {
-        Text('历史会话').fontSize(19).fontWeight(FontWeight.Bold).fontColor('#111827')
+        Text('历史会话').fontSize(19).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
         Blank()
-        Text('关闭').fontSize(14).fontColor('#2563EB').onClick(() => this.showHistory = false)
+        Text('关闭').fontSize(14).fontColor(UiTheme.accent).onClick(() => this.showHistory = false)
       }.width('100%').padding({ left: 18, right: 18, top: 20, bottom: 14 })
       if (this.historyLoading) {
         LoadingProgress().width(34).height(34).margin({ top: 48 })
       } else if (this.historySessions.length === 0) {
-        Text('暂无历史会话').fontSize(14).fontColor('#667085').margin({ top: 48 })
+        Text('暂无历史会话').fontSize(14).fontColor(UiTheme.secondary).margin({ top: 48 })
       } else {
         List({ space: 8 }) {
           ForEach(this.historySessions, (session: ChatHistorySession) => {
             ListItem() {
               Column({ space: 5 }) {
                 Text(session.title).fontSize(15).fontWeight(FontWeight.Medium)
-                  .fontColor('#1F2937').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .fontColor(UiTheme.ink).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
                   .width('100%')
                 Text(session.turns[session.turns.length - 1].botResponse)
-                  .fontSize(12).fontColor('#667085').maxLines(2)
+                  .fontSize(12).fontColor(UiTheme.secondary).maxLines(2)
                   .textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                 Row() {
-                  Text(`${session.turns.length} 轮对话`).fontSize(12).fontColor('#2563EB')
+                  Text(`${session.turns.length} 轮对话`).fontSize(12).fontColor(UiTheme.accent)
                   Blank()
                   Text(session.updatedAt.length >= 16
                     ? session.updatedAt.substring(0, 16).replace('T', ' ') : '')
-                    .fontSize(11).fontColor('#98A2B3')
+                    .fontSize(11).fontColor(UiTheme.muted)
                 }.width('100%')
               }.width('100%').alignItems(HorizontalAlign.Start).padding(13)
-                .backgroundColor('#F8FAFC').borderRadius(10)
+                .backgroundColor(UiTheme.surface).border({ width: { bottom: 1 }, color: UiTheme.line })
                 .onClick(() => this.restoreHistory(session))
             }
           }, (session: ChatHistorySession) => session.sessionId)
         }.layoutWeight(1).width('100%').padding({ left: 14, right: 14, bottom: 20 })
       }
-    }.width('82%').height('100%').backgroundColor('#FFFFFF')
-      .shadow({ radius: 16, color: '#33000000', offsetX: 4, offsetY: 0 })
+    }.width('100%').height('100%').backgroundColor(UiTheme.surface)
+
   }
 
   /**
    * 底部标签栏（与「我的智能体」页保持一致的四标签语义）。
    *
-   * ⚠️ 必须无参，高亮在内部读 `this.activeTab`——原因见 Index.ets 的同名注释：
+   *  必须无参，高亮在内部读 `this.activeTab`——原因见 Index.ets 的同名注释：
    * ArkTS 的 `@Builder` 参数按值传递，把状态当参数传会导致高亮不刷新。
    */
   @Builder
   private TabBar() {
-    Row({ space: 4 }) {
-      this.TabItem($r('app.media.nav_chat'), $r('app.media.nav_chat_selected'), '对话', 0)
-      this.TabItem($r('app.media.nav_agent'), $r('app.media.nav_agent_selected'), '智能体', 1)
-      this.TabItem($r('app.media.nav_study'), $r('app.media.nav_study_selected'), '学习', 2)
-      this.TabItem($r('app.media.nav_profile'), $r('app.media.nav_profile_selected'), '我的', 3)
-    }
-    .width('100%').padding({ left: 12, right: 12, top: 8, bottom: 10 })
-    .backgroundColor('#FFFFFF').border({ width: { top: 1 }, color: '#EAECF0' })
+    AppBottomBar({ selected: this.activeTab, onSelect: (index: number) => this.switchTab(index) })
   }
 
   @Builder
@@ -490,11 +502,11 @@ struct ChatMain {
         .width(22).height(22).objectFit(ImageFit.Contain)
       Text(label).fontSize(12)
         .fontWeight(this.activeTab === index ? FontWeight.Bold : FontWeight.Medium)
-        .fontColor(this.activeTab === index ? '#2563EB' : '#667085')
+        .fontColor(this.activeTab === index ? UiTheme.accent : UiTheme.secondary)
     }
     .layoutWeight(1).height(62).justifyContent(FlexAlign.Center).alignItems(HorizontalAlign.Center)
     .accessibilityText(label)
-    .backgroundColor(this.activeTab === index ? '#EFF6FF' : '#FFFFFF').borderRadius(12)
+    .backgroundColor(this.activeTab === index ? UiTheme.tint : UiTheme.surface).borderRadius(8)
     .onClick(() => this.switchTab(index))
   }
 
@@ -569,87 +581,68 @@ struct ChatMain {
   private WorkflowStatusBar() {
     Row({ space: 10 }) {
       Column() {
-        Text(this.isWorkflowLoading ? '···' : 'AI').fontSize(11).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
-      }.width(28).height(28).borderRadius(14).justifyContent(FlexAlign.Center)
-        .alignItems(HorizontalAlign.Center).backgroundColor(this.workflowMessage.length > 0 ? '#B45309' : '#2563EB')
+        Text(this.isWorkflowLoading ? '···' : 'AI').fontSize(11).fontWeight(FontWeight.Bold).fontColor(UiTheme.surface)
+      }.width(28).height(28).borderRadius(8).justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center).backgroundColor(this.workflowMessage.length > 0 ? '#B45309' : UiTheme.accent)
       Column({ space: 2 }) {
         Text(this.workflowTitle.length > 0 ? this.workflowTitle : 'Agent 状态暂时无法同步')
-          .fontSize(12).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+          .fontSize(12).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
         Text(this.workflowMessage.length > 0 ? this.workflowMessage : this.workflowDetail)
-          .fontSize(11).fontColor('#667085').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+          .fontSize(11).fontColor(UiTheme.secondary).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
       }.alignItems(HorizontalAlign.Start).layoutWeight(1)
       if (this.workflowMessage.length > 0) {
         Text('重试').fontSize(12).fontWeight(FontWeight.Bold).fontColor('#B45309')
           .onClick(() => this.refreshWorkflowStatus())
       } else {
         Text(this.workflowStateVersion > 0 ? `v${this.workflowStateVersion} ›` : '查看 ›')
-          .fontSize(12).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+          .fontSize(12).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
           .onClick(() => router.pushUrl({ url: 'pages/AgentTrace' }))
       }
     }.width('100%').padding({ left: 16, right: 16, top: 9, bottom: 9 })
-      .backgroundColor(this.workflowMessage.length > 0 ? '#FFFBEB' : '#EFF6FF')
+      .backgroundColor(this.workflowMessage.length > 0 ? '#FFFBEB' : UiTheme.tint)
   }
 
   @Builder
   private Header() {
-    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
-      Row() {
-      Button('☰')
-        .fontSize(20).fontColor('#334155').backgroundColor('#F1F5F9')
-        .width(38).height(38).borderRadius(10).margin({ right: 10 })
-        .onClick(() => this.openHistory())
-      Button('新对话', { type: ButtonType.Normal })
-        .fontSize(13).fontWeight(FontWeight.Normal).fontColor('#475467')
-        .backgroundColor('#FFFFFF').borderRadius(8).height(34).margin({ right: 10 })
-        .stateStyles({ normal: { .backgroundColor('#FFFFFF').fontColor('#475467') },
-          pressed: { .backgroundColor('#F2F4F7').fontColor('#1F2937') } })
-        .onClick(() => this.resetChat())
-      Column({ space: 4 }) {
-        Text('知学 Mate')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#111827')
-        Row({ space: 6 }) {
-          Text('').width(7).height(7).borderRadius(4).backgroundColor('#3B82F6')
-          Text(AgentApiClient.getConfig().useFixture ? '离线演示 · AI学习助手' : '在线 · AI学习助手')
-            .fontSize(12)
-            .fontColor('#64748B')
+    Row({ space: 2 }) {
+      Button({ type: ButtonType.Normal }) {
+        Column({ space: 1 }) {
+          Image($r('app.media.ui_history')).width(20).height(20)
+          Text('历史').fontSize(10).fontColor(UiTheme.secondary)
         }
-      }
-      .alignItems(HorizontalAlign.Start)
-      }.margin({ bottom: 6 })
-      Row({ space: 4 }) {
-        PartnerInboxButton({ refreshVersion: this.inboxRefreshVersion })
-        Button('学习记录').fontSize(13).height(34).backgroundColor('#F2F4F7').fontColor('#475467').borderRadius(8).onClick(() => { router.pushUrl({ url: 'pages/LearningRecords' }); })
-      }
-    }
-    .width('100%')
-    .padding({ left: 18, right: 18, top: 18, bottom: 12 })
-    .backgroundColor('#FFFFFF')
-    .shadow({ radius: 6, color: '#08000000', offsetX: 0, offsetY: 2 })
+      }.width(40).height(44).backgroundColor(UiTheme.surface).borderRadius(8)
+        .accessibilityText('历史会话').onClick(() => this.openHistory())
+      Button({ type: ButtonType.Normal }) {
+        Column({ space: 1 }) {
+          Image($r('app.media.ui_compose')).width(20).height(20)
+          Text('新对话').fontSize(10).fontColor(UiTheme.secondary)
+        }
+      }.width(40).height(44).backgroundColor(UiTheme.surface).borderRadius(8)
+        .accessibilityText('新对话').onClick(() => this.resetChat())
+      Text(this.showFunctionWorkspace ? this.functionLabel() : '知学 Mate').fontSize(18).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+        .layoutWeight(1).textAlign(TextAlign.Center)
+      PartnerInboxButton({ refreshVersion: this.inboxRefreshVersion })
+    }.width('100%').height(56).padding({ left: 12, right: 12 }).backgroundColor(UiTheme.surface)
+      .bindSheet($$this.showLearningFunctions, this.IntentBar(), { height: SheetSize.FIT_CONTENT, title: { title: '添加内容与学习功能' }, showClose: true, dragBar: true, backgroundColor: UiTheme.surface })
   }
 
   @Builder
   private IntentBar() {
-    Scroll() {
-      Row({ space: 8 }) {
-        ForEach(INTENT_CHIPS, (item: IntentChip) => {
-          Button(item.label)
-            .fontSize(13)
-            .fontColor(this.selectedIntent === item.intent ? '#FFFFFF' : '#334155')
-            .backgroundColor(this.selectedIntent === item.intent ? '#2563EB' : '#FFFFFF')
-            .border({ width: 1, color: this.selectedIntent === item.intent ? '#2563EB' : '#E2E8F0' })
-            .borderRadius(8)
-            .height(34)
-            .padding({ left: 14, right: 14 })
-            .onClick(() => { this.chooseIntent(item); })
-        }, (item: IntentChip) => item.intent)
-      }
-      .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-    }
-    .scrollable(ScrollDirection.Horizontal)
-    .scrollBar(BarState.Off)
-    .backgroundColor('#FFFFFF')
+    Column() {
+      Button('添加图片', { type: ButtonType.Normal }).width('100%').height(48).fontSize(16).fontColor(UiTheme.ink).backgroundColor(UiTheme.surface)
+        .onClick(() => { this.showLearningFunctions = false; void this.pickImage(); })
+      Button('添加文件', { type: ButtonType.Normal }).width('100%').height(48).fontSize(16).fontColor(UiTheme.ink).backgroundColor(UiTheme.surface)
+        .onClick(() => { this.showLearningFunctions = false; void this.pickDocument(); })
+      Divider().color(UiTheme.line)
+      Text('学习功能').fontSize(12).fontColor(UiTheme.secondary).width('100%').padding({ top: 12, bottom: 4 })
+      ForEach(INTENT_CHIPS, (item: IntentChip) => {
+        Button(item.label, { type: ButtonType.Normal }).width('100%').height(52)
+          .fontSize(16).fontColor(UiTheme.ink).backgroundColor(UiTheme.surface)
+          .borderRadius(0).align(Alignment.Start)
+          .border({ width: { bottom: 1 }, color: UiTheme.line })
+          .onClick(() => { this.showLearningFunctions = false; this.chooseIntent(item); })
+      }, (item: IntentChip) => item.intent)
+    }.width('100%').padding({ left: 20, right: 20, bottom: 24 })
   }
 
   private chooseIntent(item: IntentChip): void {
@@ -657,40 +650,90 @@ struct ChatMain {
     this.showGoalSummary = false;
     this.selectedIntent = item.intent;
     this.inputText = item.prompt;
+    this.showFunctionWorkspace = true;
     // 错题诊断沿用文字对话入口，图片由用户点击输入栏的相机按钮主动选择。
+  }
+
+  private functionLabel(): string {
+    return INTENT_CHIPS.find((item: IntentChip) => item.intent === this.selectedIntent)?.label || '学习功能';
+  }
+
+  private functionHint(): string {
+    switch (this.selectedIntent) {
+      case 'analyze_wrong': return '上传清晰的题目图片，核对题干后查看答案、解题步骤和补强建议。';
+      case 'analyze_weakness': return '按课程查看练习表现、薄弱知识点和掌握变化，再选择下一步练习。';
+      case 'match_partner': return '根据课程、目标和空闲时间寻找搭子，查看已有关系与协同安排。';
+      case 'query_tasks': return '查看今天安排的任务、预计时长和待处理作业。';
+      case 'update_profile': return '在下方说明课程、目标或学习情况的变化，确认后再更新画像。';
+      default: return '结合已有课程、待办和练习记录，获取今天可以执行的学习建议。';
+    }
+  }
+
+  private functionActionLabel(): string {
+    switch (this.selectedIntent) {
+      case 'analyze_wrong': return '上传错题并诊断';
+      case 'analyze_weakness': return '查看学情画像';
+      case 'match_partner': return '查看学习搭子';
+      case 'query_tasks': return '查看今日任务';
+      case 'update_profile': return '开始更新对话';
+      default: return '获取今日学习建议';
+    }
+  }
+
+  private openFunction(): void {
+    let target: string = '';
+    if (this.selectedIntent === 'analyze_wrong') target = 'pages/WrongQuestion';
+    else if (this.selectedIntent === 'analyze_weakness') target = 'pages/StudyTags';
+    else if (this.selectedIntent === 'match_partner') target = 'pages/PartnerMatch';
+    else if (this.selectedIntent === 'query_tasks') target = 'pages/StudyPlan';
+    if (target) { router.pushUrl({ url: target }); return; }
+    void this.sendMessage();
+  }
+
+  @Builder
+  private FunctionWorkspace() {
+    Scroll() {
+      Column({ space: 18 }) {
+        Row() {
+          Text('当前学习功能').fontSize(12).fontColor(UiTheme.secondary).layoutWeight(1)
+          Text('更换功能 ›').fontSize(13).fontColor(UiTheme.accent).height(44).padding({ top: 13 })
+            .onClick(() => this.showLearningFunctions = true)
+        }.width('100%')
+        Text(this.functionLabel()).fontSize(24).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+        Text(this.functionHint()).fontSize(15).lineHeight(24).fontColor(UiTheme.secondary).width('100%')
+        if (this.selectedIntent === 'analyze_wrong') {
+          Text('选择题目 → 核对识别 → 查看解析').fontSize(13).fontColor(UiTheme.secondary).width('100%')
+        }
+        Button(this.functionActionLabel(), { type: ButtonType.Normal }).width('100%').height(46).fontSize(15)
+          .backgroundColor(UiTheme.accent).fontColor('#FFFFFF').borderRadius(8).enabled(!this.isSending)
+          .onClick(() => this.openFunction())
+        Text('返回对话 ›').fontSize(14).fontColor(UiTheme.secondary).height(44).padding({ top: 12 })
+          .onClick(() => this.showFunctionWorkspace = false)
+      }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding(20).alignItems(HorizontalAlign.Start)
+    }.width('100%').layoutWeight(1).align(Alignment.TopStart).scrollBar(BarState.Off)
   }
 
   @Builder
   private MessageList() {
-    List({ space: 2, scroller: this.messageScroller }) {
-      // 消息为空时展示欢迎引导：对齐参考设计「问候语 + 一句话价值 + 输入框」的首屏。
-      // 用 ListItem 承载是为了能跟着列表一起滚动，不与既有 List 结构冲突。
+    List({ space: 4, scroller: this.messageScroller }) {
       if (this.messages.length === 0) {
-        ListItem() {
-          this.WelcomeBlock()
-        }
+        ListItem() { this.WelcomeBlock() }
       }
       ForEach(this.messages, (item: ChatMessage) => {
-        ListItem() {
-          this.MessageBubble(item)
-        }
+        ListItem() { this.MessageBubble(item) }
       }, (item: ChatMessage) => item.id)
-      if (this.learningContext !== null && this.showGoalSummary && ((this.learningContext.status !== 'completed' && this.learningContext.status !== 'ended') || this.showLearningGoalCard)) {
+      if (this.learningContext !== null && this.showGoalSummary) {
         ListItem() {
-          if (this.showLearningGoalCard) this.LearningGoalCard(this.learningContext)
-          else {
-            Row({ space: 8 }) {
-              Text(`当前目标：${this.learningContext.knowledgePointName || '待选择知识点'} · ${this.learningContext.status === 'ended' ? '已结束' : this.learningContext.status === 'completed' ? '测评流程已完成' : '学习进行中'}`)
-                .fontSize(13).fontColor('#2563EB').layoutWeight(1)
-              Button('展开').height(30).fontSize(12).onClick(() => this.showLearningGoalCard = true)
-            }.width('94%').padding(12).backgroundColor('#EFF6FF').borderRadius(12).margin({ left: 12, bottom: 8 })
-          }
-        }
+          Row({ space: 8 }) {
+            Text(`当前目标：${this.learningContext.knowledgePointName || '待选择知识点'}`)
+              .fontSize(13).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+            Text('详情 ›').fontSize(13).fontColor(UiTheme.accent)
+          }.width('100%').constraintSize({ minHeight: 44 }).padding(12)
+            .backgroundColor(UiTheme.subtle).borderRadius(8)
+            .onClick(() => this.showLearningGoalCard = true)
+        }.padding({ left: 20, right: 20, top: 8, bottom: 12 })
       }
-    }
-    .layoutWeight(1)
-    .padding({ top: 8, bottom: 8 })
-    .backgroundColor('#F3F6FA')
+    }.layoutWeight(1).width('100%').padding({ top: 8, bottom: 8 }).backgroundColor(UiTheme.surface)
   }
 
   private async loadGoalHistory(): Promise<void> {
@@ -708,7 +751,7 @@ struct ChatMain {
     const result = await AgentApiClient.manageChatGoal(chatId, { action: action, goalId: goalId });
     if (owner !== appState.currentUser.userId || chatId !== appState.chatSessionId || version !== this.goalRequestVersion) return;
     this.isGoalLoading = false;
-    if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = action === 'select'; void this.loadGoalHistory(); }
+    if (result.ok) { this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null; this.showLearningGoalCard = false; void this.loadGoalHistory(); }
     else this.goalMessage = (result as ApiFailure).error.message;
   }
   private async confirmDiagnosis(message: ChatMessage, selected?: WrongAnalysis): Promise<void> {
@@ -728,7 +771,7 @@ struct ChatMain {
     this.isGoalLoading = false;
     if (result.ok) {
       this.showGoalSummary = true; this.learningContext = result.data.learningContext ?? null;
-      this.showLearningGoalCard = true; this.goalMessage = ''; void this.loadGoalHistory();
+      this.showLearningGoalCard = false; this.goalMessage = ''; void this.loadGoalHistory();
       if (this.learningContext !== null) {
         await this.continueLearningGoal(this.learningContext);
         if (this.isPageActive) { this.diagnosisNoticeId = editId; this.diagnosisNotice = this.goalMessage || '练习已准备，可在下方任务卡继续。'; this.messageScroller.scrollEdge(Edge.Bottom); }
@@ -831,51 +874,53 @@ struct ChatMain {
 
   @Builder
   private LearningGoalCard(context: LearningContext) {
-    Column({ space: 10 }) {
+    Column({ space: 16 }) {
       Row() {
-        Text(context.status === 'completed' ? '本次练习已完成' : '当前学习任务').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1D4ED8').layoutWeight(1)
-        Button('收起').fontSize(12).height(28).fontColor('#2563EB')
-          .backgroundColor('#EFF6FF').borderRadius(8)
-          .onClick(() => { this.showLearningGoalCard = false; })
+        Text('进度状态').fontSize(14).fontColor(UiTheme.secondary).width(84)
+        Text(context.status === 'completed' ? '已完成' : context.status === 'ended' ? '已结束' : '进行中')
+          .fontSize(14).fontColor(UiTheme.accent).layoutWeight(1)
       }.width('100%')
-
+      Divider().color(UiTheme.line)
+      Row({ space: 12 }) {
+        Text('目标').fontSize(14).fontColor(UiTheme.secondary).width(72)
+        Text(context.goal || context.knowledgePointName || '待确认学习目标').fontSize(14)
+          .fontColor(UiTheme.ink).lineHeight(22).layoutWeight(1)
+      }.width('100%').alignItems(VerticalAlign.Top)
+      Divider().color(UiTheme.line)
+      Row({ space: 12 }) {
+        Text('测评状态').fontSize(14).fontColor(UiTheme.secondary).width(72)
+        Text(context.assessmentStatus === 'assessed' ? `已测评 ${context.assessedQuestionCount} 道题` : '尚未提交测评')
+          .fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+      }.width('100%')
+      Divider().color(UiTheme.line)
+      Row({ space: 12 }) {
+        Text('下一步').fontSize(14).fontColor(UiTheme.secondary).width(72)
+        Text(context.nextAction || '继续当前学习任务').fontSize(14).fontColor(UiTheme.ink).lineHeight(22).layoutWeight(1)
+      }.width('100%').alignItems(VerticalAlign.Top)
+      if (context.waitingFor === 'knowledge_points' || context.waitingFor === 'available_time' || context.status === 'tool_failed') {
+        Text(context.waitingFor === 'knowledge_points' ? '请导入资料并确认知识点。' : context.waitingFor === 'available_time' ? '请先设置可用学习时间。' : '练习准备失败，可重试。')
+          .fontSize(13).fontColor(UiTheme.secondary).width('100%')
+      }
+      if (this.goalMessage.length > 0) Text(this.goalMessage).fontSize(13).fontColor(UiTheme.danger).width('100%')
+      Button(this.isGoalLoading ? '正在继续…' : context.action.label || '继续学习', { type: ButtonType.Normal })
+        .width('100%').height(46).fontSize(15).fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
+        .enabled(!this.isGoalLoading && context.status !== 'ended' && !context.needsConfirmation)
+        .onClick(() => this.continueLearningGoal(context))
       if (context.status !== 'completed' && context.status !== 'ended') {
-      Button('结束本次任务').fontSize(12).height(30).fontColor('#667085').backgroundColor('#F2F4F7').onClick(() => { void this.changeGoal('end', context.goalId); })
+        Button('结束本次任务', { type: ButtonType.Normal }).width('100%').height(44)
+          .fontSize(14).fontColor(UiTheme.secondary).backgroundColor(UiTheme.subtle).borderRadius(8)
+          .onClick(() => { void this.changeGoal('end', context.goalId); })
       }
-      Text(context.knowledgePointName.length > 0 ? `练习内容：${context.knowledgePointName}` : '请先选择要练习的知识点')
-        .fontSize(15).fontWeight(FontWeight.Medium).fontColor('#1F2937').width('100%')
-      Text(context.status === 'ended' ? '你已结束这项练习，历史记录仍可查看。' :
-        context.status === 'completed' ? '本次测评已完成，可查看结果和后续安排。' :
-        context.waitingFor === 'knowledge_points' ? '还没有可用题目。请导入包含知识正文的资料，并确认知识点。' :
-        context.waitingFor === 'available_time' ? '请先设置可用学习时间，再安排练习。' :
-        context.status === 'tool_failed' ? '这次未能准备好练习，请重试。' : '下一步：打开练习，作答并提交后查看解析和测评结果。')
-        .fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
-      if (context.knowledgePointName.length > 0 && context.waitingFor !== 'knowledge_points') {
-        Text(context.sourceMode === 'materials' ? '题目依据：相关上传资料，可在练习中查看原文。' : '题目依据：通用知识题库或模型生成题。')
-          .fontSize(12).fontColor('#64748B').width('100%')
-      }
-      Button(this.showGoalTechnical ? '收起进度详情 ↑' : '查看进度详情 ↓').fontSize(12).height(30)
+      Button(this.showGoalTechnical ? '收起进度详情' : '进度详情', { type: ButtonType.Normal })
+        .width('100%').height(44).fontSize(14).fontColor(UiTheme.ink).backgroundColor(UiTheme.surface)
         .onClick(() => this.showGoalTechnical = !this.showGoalTechnical)
       if (this.showGoalTechnical) {
-        Text(context.assessmentStatus === 'assessed' ? `已保存 ${context.assessedQuestionCount} 道题的测评记录。` : '尚未提交测评，暂不能据此判断掌握情况。')
-          .fontSize(12).fontColor('#64748B').width('100%')
-        Text(context.nextAction).fontSize(12).fontColor('#64748B').lineHeight(18).width('100%')
+        Text(context.sourceMode === 'materials' ? '题目来源：上传资料，可在练习中查看原文。' : '题目来源：通用知识练习。')
+          .fontSize(13).fontColor(UiTheme.secondary).width('100%')
+        Text(context.assessmentStatus === 'assessed' ? `已保存 ${context.assessedQuestionCount} 道题的测评记录。` : '提交测评后可查看结果，未提交不判断掌握情况。')
+          .fontSize(13).fontColor(UiTheme.secondary).width('100%')
       }
-      if (this.goalMessage.length > 0) Text(this.goalMessage).fontSize(12).fontColor('#B42318')
-      Button(this.isGoalLoading ? '正在继续…' : context.action.label).width('100%').height(40)
-        .enabled(!this.isGoalLoading && context.status !== 'ended' && !context.needsConfirmation).onClick(() => this.continueLearningGoal(context))
-      if (this.showGoalTechnical) {
-      Row({ space: 8 }) {
-        Button('查看调度轨迹').fontSize(12).height(32)
-          .onClick(() => router.pushUrl({ url: 'pages/AgentTrace', params: { traceId: context.traceId } }))
-        if (context.assessmentTraceId.length > 0) {
-          Button('评估与重排轨迹').fontSize(12).height(32)
-            .onClick(() => router.pushUrl({ url: 'pages/AgentTrace', params: { traceId: context.assessmentTraceId } }))
-        }
-      }
-      }
-    }.width('92%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-      .border({ width: 1, color: '#BFDBFE' }).margin({ left: 16, top: 10, bottom: 14 })
+    }.width('100%').padding({ left: 20, right: 20, top: 8, bottom: 24 })
   }
 
   /** 按当前时间给出问候语（早上好 / 下午好 / 晚上好）。 */
@@ -893,7 +938,7 @@ struct ChatMain {
    * 参考设计的首屏是「大号问候 + 一句话说明产品做什么 + 输入框」，
    * 这套结构比一上来就弹一排功能按钮更清楚：先让人知道**能对它说什么**。
    *
-   * ⚠️ 第二段文案**刻意只说能力、不断言已知**。
+   *  第二段文案**刻意只说能力、不断言已知**。
    *
    * 原文案是「我**已经读取**你的课程、考试倒计时与错题记录」——
    * 而事实是：课程 / DDL 必须由用户自己导入（见 `appState.courses` 的默认值注释
@@ -904,31 +949,18 @@ struct ChatMain {
    */
   @Builder
   private WelcomeBlock() {
-    Column({ space: 10 }) {
-      Text('ZHI XUE MATE  ·  LEARNING AGENT')
-        .fontSize(10).fontWeight(FontWeight.Bold).fontColor('#94A3B8')
-        .letterSpacing(1.5).width('100%')
-      Text(`${this.greetingText()}，`)
-        .fontSize(26).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
-      Text('从今天最该做的一件事开始。')
-        .fontSize(26).fontWeight(FontWeight.Bold).fontColor('#0F172A').width('100%')
-      Divider().color('#CBD5E1').width(160).margin({ top: 6, bottom: 2 })
-      // 注册 / 建号结果说明：由后端事实生成（见 AuthClient.registerMessage），
-      // 在登录页上来不及展示，落到这里才算"用户真的被告知了"。
+    Column({ space: 12 }) {
+      Text(`${this.greetingText()}${appState.authNickname ? '，' + appState.authNickname : ''}`)
+        .fontSize(13).fontColor(UiTheme.secondary).width('100%')
+      Text('今天，先完成一件事。').fontSize(23).fontWeight(FontWeight.Medium)
+        .fontColor(UiTheme.ink).width('100%').margin({ bottom: 12 })
+      TodayPanel({ revision: this.todayRevision })
       if (this.welcomeNotice.length > 0) {
-        Text(this.welcomeNotice)
-          .fontSize(12).lineHeight(19).width('100%')
-          .fontColor('#334155')
-          .padding(12).backgroundColor('#EFF6FF').borderRadius(10)
-          .border({ width: 1, color: '#BFDBFE' })
+        Text(this.welcomeNotice).fontSize(13).lineHeight(20).fontColor(UiTheme.secondary)
+          .width('100%').padding(12).backgroundColor(UiTheme.tint).borderRadius(8)
       }
-      Text('我可以读取你上传的课程、考试倒计时与错题记录。你可以直接说想做什么，')
-        .fontSize(13).fontColor('#64748B').lineHeight(20).width('100%')
-      Text('也可以点下面的能力，或去「智能体」页看看我全部会做的事。')
-        .fontSize(13).fontColor('#64748B').lineHeight(20).width('100%')
-    }
-    .width('100%').alignItems(HorizontalAlign.Start)
-    .padding({ left: 20, right: 20, top: 28, bottom: 18 })
+    }.width('100%').alignItems(HorizontalAlign.Start)
+      .padding({ left: 20, right: 20, top: 16, bottom: 20 })
   }
 
   private closeImagePreview(): void {
@@ -965,7 +997,7 @@ struct ChatMain {
             .height(84)
             .objectFit(ImageFit.Cover)
             .borderRadius(8)
-            .backgroundColor('#E2E8F0')
+            .backgroundColor(UiTheme.line)
             .onClick(() => { void this.openImagePreview(message); })
         }
 
@@ -976,30 +1008,30 @@ struct ChatMain {
             Text('').width(6).height(6).borderRadius(3).backgroundColor('#D0D6DE')
           }
           .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-          .backgroundColor('#FFFFFF')
+          .backgroundColor(UiTheme.surface)
           .borderRadius(8)
         } else {
           Text(message.text)
             .fontSize(15)
             .lineHeight(22)
-            .fontColor(message.role === 'user' ? '#FFFFFF' : '#1F2933')
+            .fontColor(message.role === 'user' ? UiTheme.surface : '#1F2933')
             .padding({ left: 14, right: 14, top: 11, bottom: 11 })
-            .backgroundColor(message.role === 'user' ? '#2563EB' : '#FFFFFF')
+            .backgroundColor(message.role === 'user' ? UiTheme.accent : UiTheme.surface)
             .borderRadius(8)
         }
 
         if (message.role === 'agent' && message.status === 'done' && message.sourceLabel !== undefined) {
           Text(message.sourceLabel)
             .fontSize(11)
-            .fontColor('#2563EB')
+            .fontColor(UiTheme.accent)
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-            .backgroundColor('#EAF2FF')
-            .borderRadius(10)
+            .backgroundColor(UiTheme.surface)
+            .borderRadius(8)
         }
 
-        if (message.attachmentStatus !== undefined) Text(message.attachmentStatus).fontSize(12).fontColor('#64748B')
+        if (message.attachmentStatus !== undefined) Text(message.attachmentStatus).fontSize(12).fontColor(UiTheme.secondary)
         if (message.wrongAnalysis?.questions !== undefined && message.wrongAnalysis.questions.length > 1) {
-          Text('只识别分析，不会自动加入错题本。可逐题选择收藏或开始练习。').fontSize(12).fontColor('#98A2B3')
+          Text('只识别分析，不会自动加入错题本。可逐题选择收藏或开始练习。').fontSize(12).fontColor(UiTheme.muted)
           ForEach(message.wrongAnalysis.questions, (question: WrongAnalysis, index: number) => {
             this.DiagnosisQuestion(message, question, index)
           }, (question: WrongAnalysis, index: number) => question.diagnosisId || `${message.id}-${index}`)
@@ -1028,23 +1060,23 @@ struct ChatMain {
       Row() {
         Text(this.getCardLabel(card))
           .fontSize(12)
-          .fontColor('#2563EB')
+          .fontColor(UiTheme.accent)
           .fontWeight(FontWeight.Medium)
         Blank()
         Text('查看 ›')
           .fontSize(12)
-          .fontColor('#64748B')
+          .fontColor(UiTheme.secondary)
       }
       .width('100%')
 
       Text(card.title)
         .fontSize(15)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#111827')
+        .fontColor(UiTheme.ink)
         .maxLines(1)
       Text(card.summary)
         .fontSize(13)
-        .fontColor('#64748B')
+        .fontColor(UiTheme.secondary)
         .lineHeight(18)
         .maxLines(2)
 
@@ -1053,8 +1085,8 @@ struct ChatMain {
           ForEach(card.actions, (action: ChatAction) => {
             Button(action.label)
               .fontSize(12)
-              .fontColor('#2563EB')
-              .backgroundColor('#EAF2FF')
+              .fontColor(UiTheme.accent)
+              .backgroundColor(UiTheme.surface)
               .height(30)
               .borderRadius(8)
               .padding({ left: 10, right: 10 })
@@ -1066,8 +1098,8 @@ struct ChatMain {
     }
     .width(226)
     .padding(12)
-    .backgroundColor('#F8FAFC')
-    .border({ width: 1, color: '#E2E8F0' })
+    .backgroundColor(UiTheme.subtle)
+    .border({ width: 1, color: UiTheme.line })
     .borderRadius(8)
     .onClick(() => {
       // 点击卡片本身也跳转
@@ -1082,7 +1114,7 @@ struct ChatMain {
   /**
    * 卡片类型 → 卡片上的名称标签。
    *
-   * ⚠️ 这里的文案必须与下面 `INTENT_CHIPS` 的 `label` **同一套口径**，
+   *  这里的文案必须与下面 `INTENT_CHIPS` 的 `label` **同一套口径**，
    * 否则会出现"按钮写学情画像、点进去卡片写薄弱诊断"的错位。
    * 统一规则：一律用页面标题（今日学习建议 / 学情画像 / 学习搭子 / 今日任务 / 错题诊断）。
    */
@@ -1161,14 +1193,21 @@ struct ChatMain {
       if (this.voiceMessage.length > 0) {
         Row({ space: 8 }) {
           Text(this.isListening ? '●' : 'i')
-            .fontSize(11).fontColor(this.isListening ? '#DC2626' : '#2563EB')
-          Text(this.voiceMessage).fontSize(12).fontColor('#475569').layoutWeight(1)
+            .fontSize(11).fontColor(this.isListening ? UiTheme.danger : UiTheme.accent)
+          Text(this.voiceMessage).fontSize(12).fontColor(UiTheme.secondary).layoutWeight(1)
           if (this.isListening) {
-            Text('完成').fontSize(12).fontWeight(FontWeight.Bold).fontColor('#DC2626')
+            Text('完成').fontSize(12).fontWeight(FontWeight.Bold).fontColor(UiTheme.danger)
               .onClick(() => { void this.stopVoiceInput(); })
           }
         }.width('100%').padding({ left: 10, right: 10, top: 7, bottom: 7 })
-          .backgroundColor(this.isListening ? '#FEF2F2' : '#EFF6FF').borderRadius(8)
+          .backgroundColor(this.isListening ? '#FEF2F2' : UiTheme.tint).borderRadius(8)
+      }
+      if (this.pendingFileName) {
+        Row({ space: 8 }) {
+          Text(this.pendingFileName).fontSize(13).fontColor(UiTheme.ink).layoutWeight(1).maxLines(2)
+          Button('移除文件', { type: ButtonType.Normal }).height(44).fontSize(12).fontColor(UiTheme.secondary).backgroundColor(UiTheme.surface)
+            .onClick(() => { this.pendingFileName = ''; this.pendingFileText = ''; this.pendingFileTruncated = false; })
+        }.width('100%').padding(10).backgroundColor(UiTheme.subtle).borderRadius(8)
       }
       if (this.pendingImage.length > 0) {
         Row({ space: 10 }) {
@@ -1177,15 +1216,15 @@ struct ChatMain {
             .height(54)
             .objectFit(ImageFit.Cover)
             .borderRadius(8)
-            .backgroundColor('#E2E8F0')
+            .backgroundColor(UiTheme.line)
           Text('已添加图片')
             .fontSize(13)
-            .fontColor('#475569')
+            .fontColor(UiTheme.secondary)
           Blank()
           Button('移除')
             .fontSize(12)
-            .fontColor('#64748B')
-            .backgroundColor('#F1F5F9')
+            .fontColor(UiTheme.secondary)
+            .backgroundColor(UiTheme.subtle)
             .height(30)
             .borderRadius(8)
             .onClick(() => this.pendingImage = '')
@@ -1195,8 +1234,8 @@ struct ChatMain {
 
       Row({ space: 8 }) {
         // 语音输入按钮。
-        // ⚠️ 图标必须用系统 Symbol 字体（`sys.symbol.*`），不要用 emoji：
-        //   原先写的是 `Button(this.isListening ? '■' : '🎤')`，
+        //  图标必须用系统 Symbol 字体（`sys.symbol.*`），不要用 emoji：
+        //   原先写的是 `Button(this.isListening ? '■' : '')`，
         //   emoji 字形取决于系统 emoji 字体，在不同设备/版本上大小、基线、
         //   配色都不一致，且在部分精简镜像里根本不渲染。
         //   Symbol 由 HM Symbol 字体提供，可随 fontSize / fontColor 精确控制。
@@ -1208,39 +1247,37 @@ struct ChatMain {
             ? $r('sys.symbol.stop_circle_fill')
             : $r('sys.symbol.mic'))
             .fontSize(20)
-            .fontColor([this.isListening ? '#FFFFFF' : '#2563EB'])
+            .fontColor([this.isListening ? UiTheme.surface : UiTheme.ink])
         }
-        .backgroundColor(this.isListening ? '#DC2626' : '#EAF2FF')
-        .width(40)
-        .height(40)
+        .backgroundColor(this.isListening ? UiTheme.danger : UiTheme.surface)
+        .width(44)
+        .height(44)
         .borderRadius(8)
         .enabled(!this.isSending)
         .onClick(() => { void this.toggleVoiceInput(); })
         // 拍照上传按钮。语义是"拍照识别错题"，因此用相机图标而非相册/图片图标。
         Button({ type: ButtonType.Normal, stateEffect: true }) {
-          SymbolGlyph($r('sys.symbol.camera'))
-            .fontSize(20)
-            .fontColor(['#2563EB'])
+          Text('+').fontSize(28).fontColor(UiTheme.ink)
         }
-        .backgroundColor('#EAF2FF')
-        .width(40)
-        .height(40)
+        .backgroundColor(UiTheme.surface)
+        .width(44)
+        .height(44)
         .borderRadius(8)
         .enabled(!this.isSending)
-        .onClick(() => this.pickImage())
+        .accessibilityText('添加图片、文件或选择学习功能').onClick(() => this.showLearningFunctions = true)
         TextInput({ placeholder: '问学习建议、错题、计划或搭子', text: this.inputText })
           .height(40)
           .layoutWeight(1)
           .fontSize(14)
-          .placeholderColor('#94A3B8')
-          .fontColor('#111827')
-          .backgroundColor('#F8FAFC')
+          .placeholderColor(UiTheme.muted)
+          .fontColor(UiTheme.ink)
+          .backgroundColor(UiTheme.subtle)
           .borderRadius(8)
           .onChange((value: string) => this.inputText = value)
         Button('发送')
           .fontSize(14)
-          .fontColor('#FFFFFF')
-          .backgroundColor(this.canSend() ? '#2563EB' : '#CBD5E1')
+          .fontColor(UiTheme.surface)
+          .backgroundColor(this.canSend() ? UiTheme.accent : '#CBD5E1')
           .height(40)
           .borderRadius(8)
           .enabled(this.canSend())
@@ -1250,11 +1287,11 @@ struct ChatMain {
     }
     .width('100%')
     .padding({ left: 14, right: 14, top: 10, bottom: 14 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(UiTheme.surface)
   }
 
   private canSend(): boolean {
-    return !this.isSending && (this.inputText.trim().length > 0 || this.pendingImage.length > 0);
+    return !this.isSending && !this.fileBusy && (this.inputText.trim().length > 0 || this.pendingImage.length > 0 || this.pendingFileText.length > 0);
   }
 
   private resetChat(): void {
@@ -1273,7 +1310,9 @@ struct ChatMain {
     this.messages = [];
     this.inputText = '';
     this.pendingImage = '';
+    this.pendingFileName = ''; this.pendingFileText = ''; this.pendingFileTruncated = false; this.fileRevision++; this.fileBusy = false;
     this.selectedIntent = 'get_suggestion';
+    this.showFunctionWorkspace = false;
     this.isSending = false;
     appState.hasActiveChat = false;
     appState.chatMessages = '';
@@ -1325,6 +1364,38 @@ struct ChatMain {
     await this.voiceInputService.stop(true);
   }
 
+  private async pickDocument(): Promise<void> {
+    if (this.isSending || this.fileBusy) return;
+    const owner: string = appState.currentUser.userId;
+    const session: string = appState.chatSessionId;
+    const revision: number = ++this.fileRevision;
+    this.fileBusy = true; this.voiceMessage = '请选择 PDF、Word、PPT、TXT 或 Markdown 文件，最大8MB。';
+    try {
+      const documentPicker = new picker.DocumentViewPicker();
+      const uris: string[] = await documentPicker.select();
+      if (!uris.length) return;
+      const uri: string = uris[0];
+      const file: fileIo.File = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY);
+      let encoded: string = '';
+      try {
+        const size: number = fileIo.statSync(file.fd).size;
+        if (size <= 0 || size > 8 * 1024 * 1024) { this.voiceMessage = '请选择非空且不超过8MB的文件。'; return; }
+        const buffer: ArrayBuffer = new ArrayBuffer(size);
+        if (fileIo.readSync(file.fd, buffer) !== size) { this.voiceMessage = '文件读取不完整，请重新选择。'; return; }
+        encoded = new util.Base64Helper().encodeToStringSync(new Uint8Array(buffer));
+      } finally { fileIo.closeSync(file); }
+      if (owner !== appState.currentUser.userId || session !== appState.chatSessionId || revision !== this.fileRevision) return;
+      this.voiceMessage = '正在读取文件内容…';
+      const result = await AgentApiClient.readChatFile({ fileName: decodeURIComponent(uri.split('/').pop() || '学习资料.txt'), contentBase64: encoded });
+      if (!this.isPageActive || owner !== appState.currentUser.userId || session !== appState.chatSessionId || revision !== this.fileRevision) return;
+      if (result.ok) { this.pendingFileName = result.data.fileName; this.pendingFileText = result.data.text; this.pendingFileTruncated = result.data.truncated;
+        this.voiceMessage = result.data.truncated ? '文件已添加，本次对话使用前12000字；长文可导入知识库。' : '文件已添加，发送后可结合文件提问。'; }
+      else this.voiceMessage = (result as ApiFailure).error.message;
+    } catch (error) {
+      if (owner === appState.currentUser.userId && revision === this.fileRevision) this.voiceMessage = '文件选择或读取失败，请重试。';
+    } finally { if (revision === this.fileRevision) this.fileBusy = false; }
+  }
+
   private async pickImage(): Promise<void> {
     try {
       const photoPicker = new photoAccessHelper.PhotoViewPicker();
@@ -1354,6 +1425,7 @@ struct ChatMain {
     }
     // 先占位：下面读图是 await，期间用户再点一次会重入
     this.isSending = true;
+    this.showFunctionWorkspace = false;
     const owner: string = appState.currentUser.userId;
     const requestVersion: number = ++this.chatRequestVersion;
     this.pendingChatOwner = owner;
@@ -1365,14 +1437,19 @@ struct ChatMain {
     }
     const chatId: string = appState.chatSessionId;
 
-    const text: string = this.inputText.trim().length > 0 ? this.inputText.trim() : '请分析这张图片';
+    const fileName: string = this.pendingFileName;
+    const fileText: string = this.pendingFileText;
+    const fileTruncated: boolean = this.pendingFileTruncated;
+    const questionText: string = this.inputText.trim() || (fileText ? '请总结这份文件的学习重点' : '请分析这张图片');
+    const text: string = questionText + (fileName ? `\n附件：${fileName}` : '');
+    const document: ChatFile | undefined = fileText ? { fileName: fileName, text: fileText, truncated: fileTruncated } : undefined;
     // 新问题开始时不把上一轮目标卡继续钉在消息底部；若本轮仍是学习协作，
     // 服务端回复中的 learningContext 会在下面重新触发显示。
     this.showLearningGoalCard = false;
     this.showGoalSummary = false;
     // 气泡里显示的是**相册 URI**（`Image` 组件要 URI）。
     const bubbleImage: string | undefined = this.pendingImage.length > 0 ? this.pendingImage : undefined;
-    // ⚠️ 发给后端的必须是 **base64**，不是 URI。
+    //  发给后端的必须是 **base64**，不是 URI。
     // 后端按 base64 拼 `data:{mime};base64,{...}`（见 chat_llm._call_llm_with_image），
     // 而相册选择器给的是 `file://media/Photo/...` —— 直接把 URI 发过去，
     // 模型**看不到图片**，而且后端 `b64decode(validate=False)` 不报错，最难查。
@@ -1415,25 +1492,26 @@ struct ChatMain {
     };
 
     // 原缺陷：调用 callAgent 时直接把 this.messages 递过去，而它**已经含本条 userMessage**
-    //（buildRequest 只过滤 status === 'sending' 的占位消息，拦不住它），
+    //（buildRequest 只过滤 status === 'sending'的占位消息，拦不住它），
     // 于是同一条输入在请求体里出现两次：`message` 字段一份、`history` 末项一份，
     // 模型每轮都会看到重复问题。这里先取"发送前"的历史快照，本条消息只由 `message` 承载。
     const historyBeforeSend: ChatMessage[] = this.messages;
     this.messages = [...this.messages, userMessage, loadingMessage];
     this.inputText = '';
     this.pendingImage = '';
+    this.pendingFileName = ''; this.pendingFileText = ''; this.pendingFileTruncated = false; this.fileRevision++; this.fileBusy = false;
     this.isSending = true;
     this.scrollToLatestMessage();
 
     try {
-      const response = await AgentBridge.callAgent(text, imageForAgent, historyBeforeSend, (progress) => {
+      const response = await AgentBridge.callAgent(questionText, imageForAgent, historyBeforeSend, (progress) => {
         if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
           chatId !== appState.chatSessionId) return;
         this.messages = this.messages.map((item: ChatMessage): ChatMessage => item.id === loadingMessage.id ? {
           id: item.id, role: item.role, text: progress.reply || item.text,
           time: item.time, status: 'sending', progressText: progress.message
         } : item);
-      });
+      }, document);
       if (requestVersion !== this.chatRequestVersion || owner !== appState.currentUser.userId ||
         chatId !== appState.chatSessionId) return;
       this.showGoalSummary = response.learningContext !== undefined;
@@ -1483,6 +1561,7 @@ struct ChatMain {
       this.inputText = text;
       // 失败时把图片还给输入框让用户重试 —— 还的是**相册 URI**（气泡/预览要 URI）
       this.pendingImage = bubbleImage ?? '';
+      this.pendingFileName = fileName; this.pendingFileText = fileText; this.pendingFileTruncated = fileTruncated;
       this.saveMessages();
       this.scrollToLatestMessage();
     }

@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { ReminderNavigation } from '../services/ReminderNavigation';
 import router from '@ohos.router';
 import { common } from '@kit.AbilityKit';
@@ -13,6 +14,8 @@ import { ReminderDeviceService } from '../services/ReminderDeviceService';
 @Entry
 @Component
 struct Reminders {
+  @State statusDetails: boolean = false;
+  @State quietTimesExpanded: boolean = false;
   @State events: ReminderEvent[] = [];
   @State message: string = '';
   @State busy: boolean = false;
@@ -261,110 +264,112 @@ struct Reminders {
         }
         TextInput({ text: this.snoozeMinutes, placeholder: '自定义分钟，5的倍数' }).type(InputType.Number).onChange((value: string) => this.snoozeMinutes = value)
         Row({ space: 12 }) { Button('确认延后').onClick(() => this.confirmSnooze()); Button('取消').onClick(() => this.snoozeItem = null) }
-      }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(12)
+      }.width('100%').padding(12).backgroundColor(UiTheme.tint).borderRadius(8)
     }
   }
   @Builder
   HourButton(hour: number) {
-    Button(`${this.isSelectedHour(hour) ? '✓ ' : ''}${hour}:00`)
-      .layoutWeight(1).height(40).fontSize(14).borderRadius(10)
-      .fontColor(this.isSelectedHour(hour) ? '#FFFFFF' : '#475467')
-      .backgroundColor(this.isSelectedHour(hour) ? '#2563EB' : '#F2F4F7')
+    Button(`${this.isSelectedHour(hour) ? ' ' : ''}${hour}:00`)
+      .layoutWeight(1).height(40).fontSize(14).borderRadius(8)
+      .fontColor(this.isSelectedHour(hour) ? UiTheme.surface : UiTheme.secondary)
+      .backgroundColor(this.isSelectedHour(hour) ? UiTheme.accent : UiTheme.subtle)
       .enabled(!this.busy && this.settingsReady).onClick(() => this.chooseHour(hour))
   }
   build() {
     Column() {
-      PageHeader({ title: '提醒设置', detail: '提醒时间与通知', onBack: () => router.back() })
+      PageHeader({ title: '提醒设置', onBack: () => router.back() })
       Scroll() {
-        Column({ space: 14 }) {
-          Column({ space: 8 }) {
-            Text(!this.settingsReady ? '正在检查通知状态…' : !this.pushConfigured ? '通知服务暂未开通' : !this.permission ? '请允许系统通知' : !this.deviceReady ? '此设备尚未连接通知服务' : '学习通知')
-              .fontSize(17).fontWeight(FontWeight.Bold).fontColor('#101828').width('100%')
-            Text(this.permission ? '系统通知权限：已开启' : '系统通知权限未开启：需要你允许应用发送通知。')
-              .fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
-            Text(!this.settingsReady ? '检查完成后会显示当前可用的提醒方式。' : !this.pushConfigured ? '需要由知学 Mate 的开发团队开通推送服务，你无需额外配置。开通前，离开应用后暂时收不到学习通知。' : !this.deviceReady ? '尚未完成设备连接，请确认网络正常后重试。' : '开启下方开关后，离开应用也能接收学习提醒。实际送达受网络和系统设置影响。')
-              .fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
-            Text('首页待办可照常查看，提醒时间和偏好也可以先保存。')
-              .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-            if (!this.permission) Button('开启系统通知').height(40).fontSize(14).backgroundColor('#2563EB')
-              .enabled(!this.busy).onClick(() => this.requestPermission())
-            if (this.permission && this.pushConfigured && !this.deviceReady) Button('重新连接').height(44).fontSize(14)
-              .enabled(!this.busy).onClick(() => this.load())
-          }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
-          Column({ space: 12 }) {
-            Row() {
-              Text('允许后台通知').fontSize(16).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.settings.enabled }).enabled(!this.busy && this.settingsReady && (this.settings.enabled || (this.pushConfigured && this.permission && this.deviceReady)))
-                .onChange((value: boolean) => { if (value !== this.settings.enabled) void this.save(value); })
-            }.width('100%')
-            Text('每天提醒开始时间').fontSize(15).fontWeight(FontWeight.Medium).width('100%')
-            Row({ space: 10 }) {
-              this.HourButton(9)
-              this.HourButton(12)
-              this.HourButton(18)
-            }.width('100%')
-            Text(!this.settingsReady ? '正在读取已保存的提醒时间…' : (this.pendingHour >= 0 ? `正在保存 ${this.pendingHour}:00…` : `已设置：每天 ${this.selectedHour}:00 后开始安排常规提醒`))
-              .fontSize(13).fontColor('#2563EB').width('100%')
-            Text('这是最早提醒时间，不保证整点发送；没有需要提醒的事项时不会打扰你。')
-              .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-            if (this.message.length > 0) {
-              Text(this.message).fontSize(13).fontColor(this.saved ? '#067647' : '#B54708')
-                .width('100%').padding(10).backgroundColor(this.saved ? '#ECFDF3' : '#FFFAEB').borderRadius(8)
+        Column({ space: 16 }) {
+          Column({ space: 6 }) {
+            Text(!this.settingsReady ? '正在检查通知状态…' : !this.pushConfigured ? '通知服务暂未开通' : !this.permission ? '请允许系统通知' : !this.deviceReady ? '此设备尚未连接通知服务' : '学习通知已就绪')
+              .fontSize(14).fontWeight(FontWeight.Medium).fontColor(!this.pushConfigured ? '#A34612' : UiTheme.ink).width('100%')
+            Text('可先保存提醒偏好，通知送达需服务、系统权限与设备连接就绪。').fontSize(12).lineHeight(19).fontColor(UiTheme.secondary).width('100%')
+            Text(this.statusDetails ? '收起说明 ⌃' : '查看状态与说明 ›').fontSize(12).fontColor(UiTheme.accent).padding({ top: 6, bottom: 6 }).onClick(() => this.statusDetails = !this.statusDetails)
+            if (this.statusDetails) {
+              Text(this.permission ? '系统通知权限：已开启' : '系统通知权限：未开启').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+              Text(!this.pushConfigured ? '推送服务需由开发团队开通；开通前，离开应用后暂时收不到通知。首页待办可照常查看。' : !this.deviceReady ? '设备尚未连接，请检查网络后重试。' : '通知服务与设备已连接，实际送达受网络和系统设置影响。')
+                .fontSize(12).lineHeight(20).fontColor(UiTheme.secondary).width('100%')
             }
+            if (!this.permission) {
+              Button('开启系统通知', { type: ButtonType.Normal }).height(40).fontSize(13).backgroundColor(UiTheme.accent).fontColor('#FFFFFF').borderRadius(8)
+                .enabled(!this.busy).onClick(() => this.requestPermission())
+            }
+            if (this.permission && this.pushConfigured && !this.deviceReady) {
+              Button('重新连接', { type: ButtonType.Normal }).height(40).fontSize(13).backgroundColor(UiTheme.tint).fontColor(UiTheme.accent).borderRadius(8)
+                .enabled(!this.busy).onClick(() => this.load())
+            }
+          }.width('100%').padding(12).backgroundColor(!this.pushConfigured ? '#FFF6EC' : UiTheme.subtle).borderRadius(8)
+          Row() {
+            Column({ space: 4 }) {
+              Text('后台通知（学习提醒推送）').fontSize(14).fontColor(UiTheme.ink)
+              Text(this.permission ? '系统通知权限已开启' : '系统通知权限未开启').fontSize(12).fontColor(UiTheme.secondary)
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Toggle({ type: ToggleType.Switch, isOn: this.settings.enabled }).enabled(!this.busy && this.settingsReady && (this.settings.enabled || (this.pushConfigured && this.permission && this.deviceReady)))
+              .onChange((value: boolean) => { if (value !== this.settings.enabled) void this.save(value); })
+          }.width('100%').constraintSize({ minHeight: 48 })
+          Row() {
+            Column({ space: 5 }) {
+              Text('最早开始时间').fontSize(14).fontColor(UiTheme.ink)
+              Text('在此时间后才安排常规提醒').fontSize(12).fontColor(UiTheme.secondary)
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Text(!this.settingsReady ? '读取中' : this.pendingHour >= 0 ? '保存中…' : `${this.selectedHour}:00 ›`).fontSize(14).fontColor(UiTheme.ink).height(44).padding({ top: 12 })
+              .bindMenu([{ value: '9:00', action: () => { this.chooseHour(9); } }, { value: '12:00', action: () => { this.chooseHour(12); } }, { value: '18:00', action: () => { this.chooseHour(18); } }])
+              .enabled(!this.busy && this.settingsReady)
+          }.width('100%')
+          Row() {
+            Text('免打扰').fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.settings.quietEnabled ?? true }).enabled(!this.busy && this.settingsReady)
+              .onChange((value: boolean) => { if (value !== (this.settings.quietEnabled ?? true)) this.chooseQuietEnabled(value); })
+          }.width('100%').height(40)
+          if (this.settings.quietEnabled ?? true) {
             Row() {
-              Text('免打扰').fontSize(15).fontWeight(FontWeight.Medium).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.settings.quietEnabled ?? true }).enabled(!this.busy && this.settingsReady)
-                .onChange((value: boolean) => { if (value !== (this.settings.quietEnabled ?? true)) this.chooseQuietEnabled(value); })
-            }.width('100%')
-            if (this.settings.quietEnabled ?? true) {
-              Text(this.quietLabel()).fontSize(14).fontColor('#344054').width('100%')
-              Row({ space: 10 }) {
-                Button(`开始 ${this.timeLabel(this.settings.quietStart, this.settings.quietStartMinute ?? 0)}`)
-                  .layoutWeight(1).height(44).fontSize(14).borderRadius(10).backgroundColor('#EFF6FF').fontColor('#2563EB')
+              Text('免打扰时段').fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+              Text(this.quietLabel() + ' ›').fontSize(13).fontColor(UiTheme.secondary)
+            }.width('100%').height(44).onClick(() => this.quietTimesExpanded = !this.quietTimesExpanded)
+            if (this.quietTimesExpanded) {
+              Row({ space: 12 }) {
+                Button(`开始 ${this.timeLabel(this.settings.quietStart, this.settings.quietStartMinute ?? 0)}`, { type: ButtonType.Normal }).layoutWeight(1).height(44).fontSize(13).borderRadius(8).backgroundColor(UiTheme.tint).fontColor(UiTheme.accent)
                   .enabled(!this.busy && this.settingsReady).onClick(() => this.editQuiet(true))
-                Button(`结束 ${this.timeLabel(this.settings.quietEnd, this.settings.quietEndMinute ?? 0)}`)
-                  .layoutWeight(1).height(44).fontSize(14).borderRadius(10).backgroundColor('#EFF6FF').fontColor('#2563EB')
+                Button(`结束 ${this.timeLabel(this.settings.quietEnd, this.settings.quietEndMinute ?? 0)}`, { type: ButtonType.Normal }).layoutWeight(1).height(44).fontSize(13).borderRadius(8).backgroundColor(UiTheme.tint).fontColor(UiTheme.accent)
                   .enabled(!this.busy && this.settingsReady).onClick(() => this.editQuiet(false))
               }.width('100%')
-              Text('点击时间可自由调整，免打扰期间不发送常规学习通知。').fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
             }
+          }
+          Row() {
+            Column({ space: 4 }) {
+              Text('紧急截止例外').fontSize(14).fontColor(UiTheme.ink)
+              Text('任务临近截止时，仍可发送提醒').fontSize(12).fontColor(UiTheme.secondary)
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Toggle({ type: ToggleType.Switch, isOn: this.settings.urgentException }).enabled(!this.busy && this.settingsReady && (this.settings.quietEnabled ?? true))
+              .onChange((value: boolean) => { if (value !== this.settings.urgentException) this.chooseUrgent(value); })
+          }.width('100%').constraintSize({ minHeight: 48 })
+          Divider().color(UiTheme.line)
+          Text('提醒内容').fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+          ForEach(['task', 'exam', 'conflict'], (kind: string) => {
             Row() {
-              Text('紧急截止提醒可在免打扰时发送').fontSize(14).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.settings.urgentException }).enabled(!this.busy && this.settingsReady && (this.settings.quietEnabled ?? true))
-                .onChange((value: boolean) => { if (value !== this.settings.urgentException) this.chooseUrgent(value); })
-            }.width('100%')
-            Text(`每天最多${this.settings.dailyLimit}次，常规提醒最多1次；两次提醒至少间隔${Math.round(this.settings.minimumGapMinutes / 60)}小时。`)
-              .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-          }.padding(16).backgroundColor('#FFFFFF').borderRadius(12).width('100%')
-          Column({ space: 12 }) {
-            Text('哪些事项发送通知').fontSize(16).fontWeight(FontWeight.Medium).width('100%')
-            Text('关闭某类通知后，首页待办仍会显示。').fontSize(12).fontColor('#667085').width('100%')
-            ForEach(['task', 'exam', 'conflict'], (kind: string) => {
               Column({ space: 4 }) {
-                Row() {
-                  Text(this.categoryLabel(kind)).fontSize(14).layoutWeight(1)
-                  Toggle({ type: ToggleType.Switch, isOn: (this.settings.categories ?? ['task', 'exam', 'gap', 'conflict']).includes(kind) })
-                    .enabled(!this.busy && this.settingsReady).onChange((value: boolean) => {
-                      if (value !== (this.settings.categories ?? ['task', 'exam', 'gap', 'conflict']).includes(kind)) this.chooseCategory(kind, value);
-                    })
-                }.width('100%')
-                Text(this.categoryDescription(kind)).fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-              }.width('100%')
-            })
-          }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
-          Column({ space: 8 }) {
-            Row() {
-              Text('首页学习提醒').fontSize(15).fontWeight(FontWeight.Medium).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.settings.studyGapEnabled ?? true }).enabled(!this.busy && this.settingsReady)
-                .onChange((value: boolean) => { if (value !== (this.settings.studyGapEnabled ?? true)) this.chooseStudyGap(value); })
-            }.width('100%')
-            Text('已有专注记录，但连续两天没有新记录时，打开首页并展开“今日安排”，会看到继续学习的提示。有其他待办时优先显示待办。')
-              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
-            Text('只在首页显示，不发送手机通知。关闭后不再显示这条提示。')
-              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
-          }.width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(12)
-        }.padding(16).width('100%').constraintSize({ maxWidth: 960 })
-      }.layoutWeight(1).width('100%').align(Alignment.TopStart)
-    }.height('100%').width('100%').backgroundColor('#F3F6FA')
+                Text(this.categoryLabel(kind)).fontSize(14).fontColor(UiTheme.ink)
+                Text(this.categoryDescription(kind)).fontSize(12).fontColor(UiTheme.secondary).lineHeight(18)
+              }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+              Toggle({ type: ToggleType.Switch, isOn: (this.settings.categories ?? ['task', 'exam', 'gap', 'conflict']).includes(kind) })
+                .enabled(!this.busy && this.settingsReady).onChange((value: boolean) => {
+                  if (value !== (this.settings.categories ?? ['task', 'exam', 'gap', 'conflict']).includes(kind)) this.chooseCategory(kind, value);
+                })
+            }.width('100%').constraintSize({ minHeight: 48 })
+          })
+          Row() {
+            Column({ space: 4 }) {
+              Text('首页学习提醒').fontSize(14).fontColor(UiTheme.ink)
+              Text('连续两天无新专注记录时，在首页提示继续学习；不发送推送。').fontSize(12).fontColor(UiTheme.secondary).lineHeight(18)
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Toggle({ type: ToggleType.Switch, isOn: this.settings.studyGapEnabled ?? true }).enabled(!this.busy && this.settingsReady)
+              .onChange((value: boolean) => { if (value !== (this.settings.studyGapEnabled ?? true)) this.chooseStudyGap(value); })
+          }.width('100%').constraintSize({ minHeight: 48 })
+          Text(`每天最多${this.settings.dailyLimit}次，常规提醒最多1次；两次提醒至少间隔${Math.round(this.settings.minimumGapMinutes / 60)}小时。关闭某类通知后，首页待办仍显示。`)
+            .fontSize(12).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
+          if (this.message) { Text(this.message).fontSize(13).fontColor(this.saved ? UiTheme.success : UiTheme.danger).width('100%').onClick(() => this.load()) }
+        }.padding(20).width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).alignItems(HorizontalAlign.Start)
+      }.layoutWeight(1).width('100%').align(Alignment.TopStart).scrollBar(BarState.Off)
+    }.width('100%').height('100%').backgroundColor(UiTheme.surface)
   }
 }

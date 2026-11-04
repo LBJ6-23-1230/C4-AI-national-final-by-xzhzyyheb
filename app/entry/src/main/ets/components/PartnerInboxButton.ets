@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { appState } from '../data/AppState';
@@ -26,14 +27,14 @@ export struct PartnerInboxButton {
     Stack({ alignContent: Alignment.TopEnd }) {
       Row({ space: 2 }) {
         Image($r('app.media.ic_partner_messages')).width(28).height(28).padding(4)
-        Text('搭子聊天').fontSize(12).fontColor('#475467')
-      }.padding({ left: 4, right: 8 }).height(38).backgroundColor('#F2F4F7').borderRadius(8)
+        Text('搭子消息').fontSize(12).fontColor(UiTheme.secondary)
+      }.padding({ left: 4, right: 8 }).height(38).backgroundColor(UiTheme.subtle).borderRadius(8)
       if (this.unread > 0) {
-        Text(this.unread > 99 ? '99+' : this.unread.toString()).fontSize(10).fontColor('#FFFFFF')
+        Text(this.unread > 99 ? '99+' : this.unread.toString()).fontSize(10).fontColor(UiTheme.surface)
           .padding({ left: 4, right: 4 }).height(16).constraintSize({ minWidth: 16 })
           .textAlign(TextAlign.Center).backgroundColor('#D92D20').borderRadius(8)
       }
-    }.height(38).accessibilityText(`搭子聊天，${this.unread} 条未读`)
+    }.height(44).accessibilityText(`搭子聊天，${this.unread} 条未读`)
       .onClick(() => router.pushUrl({ url: 'pages/PartnerInbox' }))
   }
 }

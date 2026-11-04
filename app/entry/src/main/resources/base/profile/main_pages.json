@@ -16,6 +16,7 @@
     "pages/StudyPlan",
     "pages/ReviewSummary",
     "pages/FocusSetup",
+    "pages/DeviceConnect",
     "pages/FocusTimer",
     "pages/FocusResult",
     "pages/LearningHistory",
@@ -31,6 +32,7 @@
     "pages/LearningRecords",
     "pages/PasswordSetup",
     "pages/KnowledgeCatalog",
-    "pages/TaskDetail"
+    "pages/TaskDetail",
+    "pages/CollaborativeTasks"
   ]
 }

@@ -346,7 +346,7 @@ def _agent_chat():
     receipt = inspect_image(image)
     if receipt["status"] == "invalid":
         return jsonify({"errorCode": "INVALID_IMAGE", "message": receipt["message"], "details": receipt}), 400
-    if not message and not image:
+    if not message and not image and data.get('document') is None:
         return jsonify({
             "reply": "请告诉我你需要什么帮助？",
             "intent": "unknown",
@@ -364,6 +364,13 @@ def _agent_chat():
             or not session_id or len(data["sessionId"].strip()) > 128):
         return jsonify({"errorCode": "BAD_REQUEST", "message": "目标协作需要1至128字符的稳定聊天sessionId", "details": None}), 400
     chat_started = time.monotonic()
+    from app.services.chat_documents import resolve as resolve_document
+    try:
+        message, document = resolve_document(_repository, _identity, session_id, message,
+            data.get('document'), bool(image))
+    except ValueError as error:
+        return jsonify(errorCode='BAD_REQUEST', message=str(error), details=None), 400
+    document_args = {'document_context': document} if document else {}
     result = chat_llm.chat(
         message=message,
         image_base64=image if isinstance(image, str) and image else None,
@@ -373,6 +380,7 @@ def _agent_chat():
         # mock 的 u001/小明 回话（见 `_user_context_for` 的说明）。
         user_context=_user_context_for(_identity),
         session_id=session_id,
+        **document_args,
     )
 
     # 响应结构：契约基线三字段 { reply, intent, card } + 可选 llmUsed。
@@ -434,7 +442,7 @@ def _agent_chat():
         payload["sessionId"] = session_id
     reply_elapsed_ms = round((time.monotonic() - chat_started) * 1000, 2)
     coordination_started = time.monotonic()
-    if data.get("coordinateLearning") is True and _repository and session_id:
+    if data.get("coordinateLearning") is True and _repository and session_id and not document:
         from app.services.learning_context import ensure_chat_context, chat_workflow_id
         from app.services.learning_context import current_chat_workflow
         existing = current_chat_workflow(_repository, _identity, session_id)
@@ -488,6 +496,8 @@ def chat_history_clear():
     """只清空**当前身份**的历史，不再波及其他用户。"""
     identity = _chat_identity()
     chat_llm.clear_history(identity)
+    from app.services.chat_documents import clear
+    clear(_repository, identity)
     return jsonify({"status": "cleared", "userId": identity})
 
 

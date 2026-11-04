@@ -1,3 +1,5 @@
+import { UiTheme } from '../utils/UiTheme';
+import { AppBottomBar } from '../components/AppBottomBar';
 import { ApiFailure } from '../api/ApiResult';
 import router from '@ohos.router';
 import { PageHeader } from '../components/PageHeader';
@@ -32,14 +34,31 @@ struct PartnerInboxPage {
   private async load(more: boolean = false): Promise<void> {
     if (this.loading || !this.active) return;
     this.loading = true;
-    const result = await AgentApiClient.partnerInbox(more ? this.nextPageOffset : 0);
+    const owner: string = this.owner;
+    const gathered: PartnerConversation[] = more ? this.items.slice() : [];
+    let offset: number = more ? this.nextPageOffset : 0;
+    let hasNext: boolean = true;
+    while (hasNext && this.active && owner === appState.currentUser.userId) {
+      const result = await AgentApiClient.partnerInbox(offset);
+      if (!this.active || owner !== appState.currentUser.userId) { this.loading = false; return; }
+      if (!result.ok) {
+        this.notice = '消息暂未同步：' + (result as ApiFailure).error.message + '点击重试。';
+        this.loading = false; return;
+      }
+      result.data.conversations.forEach((item: PartnerConversation) => {
+        if (!gathered.some((old: PartnerConversation) => old.partnerUserId === item.partnerUserId)) gathered.push(item);
+      });
+      if (result.data.hasMore && result.data.nextOffset <= offset) {
+        this.notice = '消息列表尚未完整同步，请点击重试。';
+        this.loading = false; return;
+      }
+      hasNext = result.data.hasMore;
+      offset = result.data.nextOffset;
+    }
+    if (this.active && owner === appState.currentUser.userId) {
+      this.items = gathered; this.nextPageOffset = offset; this.hasMore = false; this.notice = '';
+    }
     this.loading = false;
-    if (!this.active || this.owner !== appState.currentUser.userId) return;
-    if (!result.ok) { this.notice = '消息暂未同步：' + (result as ApiFailure).error.message + ' 点击重试。'; return; }
-    this.notice = '';
-    this.items = more ? this.items.concat(result.data.conversations.filter((next: PartnerConversation) =>
-      !this.items.some((old: PartnerConversation) => old.partnerUserId === next.partnerUserId))) : result.data.conversations;
-    this.nextPageOffset = result.data.nextOffset; this.hasMore = result.data.hasMore;
   }
   private time(value: string): string {
     if (!value) return '';
@@ -48,12 +67,12 @@ struct PartnerInboxPage {
   }
   build() {
     Column() {
-      PageHeader({ title: '搭子消息' })
+      PageHeader({ title: '搭子消息收件箱', detail: '去找搭子', onDetail: () => router.pushUrl({ url: 'pages/PartnerMatch' }) })
       List({ space: 1 }) {
         if (this.notice) { ListItem() { Text(this.notice).fontColor('#B45309').padding(20).onClick(() => this.load()) } }
         if (!this.items.length && !this.loading && !this.notice) {
           ListItem() { Column({ space: 12 }) {
-            Text('还没有搭子会话，先匹配一位一起学习的伙伴。').fontSize(14).fontColor('#667085')
+            Text('还没有搭子会话，先匹配一位一起学习的伙伴。').fontSize(14).fontColor(UiTheme.secondary)
             Button('去匹配搭子').onClick(() => router.pushUrl({ url: 'pages/PartnerMatch' }))
           }.width('100%').padding(24) }
         }
@@ -63,23 +82,24 @@ struct PartnerInboxPage {
               UserAvatar({ nickname: item.partnerName, source: item.avatar, diameter: 44 })
               Column({ space: 7 }) {
                 Row() {
-                  Text(item.partnerName).fontSize(17).fontWeight(FontWeight.Medium).fontColor('#182230').layoutWeight(1)
-                  Text(this.time(item.lastMessageAt)).fontSize(11).fontColor('#98A2B3')
+                  Text(item.partnerName).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+                  Text(this.time(item.lastMessageAt)).fontSize(11).fontColor(UiTheme.muted)
                 }.width('100%')
-                Text(item.lastMessage || '还没有消息，打个招呼吧').fontSize(14).fontColor('#667085').maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
+                Text(item.lastMessage || '还没有消息，打个招呼吧').fontSize(14).fontColor(UiTheme.secondary).maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
                 Row() {
-                  Text((item.sharedCourses.join('、') || '共同课程待确认') + ` · 已结伴 ${item.pairedDays} 天`).fontSize(11).fontColor('#98A2B3').layoutWeight(1).maxLines(1)
+                  Text((item.sharedCourses.join('、') || '共同课程待确认') + ` · 已结伴 ${item.pairedDays} 天`).fontSize(11).fontColor(UiTheme.muted).layoutWeight(1).maxLines(1)
                   if (item.unreadCount > 0) {
-                    Text(item.unreadCount > 99 ? '99+' : `${item.unreadCount}`).fontSize(11).fontColor('#FFFFFF').padding({ left: 6, right: 6 }).backgroundColor('#D92D20').borderRadius(9)
+                    Text(item.unreadCount > 99 ? '99+' : `${item.unreadCount}`).fontSize(11).fontColor(UiTheme.surface).padding({ left: 6, right: 6 }).backgroundColor(UiTheme.accent).borderRadius(9)
                   }
                 }.width('100%')
               }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-            }.width('100%').padding(18).backgroundColor('#FFFFFF')
+            }.width('100%').padding(18).backgroundColor(UiTheme.surface)
               .onClick(() => router.pushUrl({ url: 'pages/PartnerChat', params: { partnerId: item.partnerUserId, partnerName: item.partnerName } }))
           }
         }, (item: PartnerConversation) => item.partnerUserId)
-        if (this.hasMore) { ListItem() { Text('加载更多会话').fontSize(13).fontColor('#667085').padding(20).onClick(() => this.load(true)) } }
+        if (this.loading && !this.items.length) { ListItem() { LoadingProgress().width(28).height(28).margin(20) } }
       }.layoutWeight(1).width('100%')
-    }.width('100%').height('100%').backgroundColor('#F5F6F8')
+      AppBottomBar({ selected: 0 })
+    }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
   }
 }

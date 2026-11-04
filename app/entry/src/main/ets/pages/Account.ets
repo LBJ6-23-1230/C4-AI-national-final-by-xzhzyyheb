@@ -1,3 +1,5 @@
+import { UiTheme } from '../utils/UiTheme';
+import { PageHeader } from '../components/PageHeader';
 import router from '@ohos.router';
 import { UserAvatar } from '../components/UserAvatar';
 import { common } from '@kit.AbilityKit';
@@ -45,6 +47,8 @@ const APP_VERSION_NAME: string = '1.0.0';
 @Entry
 @Component
 struct Account {
+  @State privacyExpanded: boolean = false;
+  @State passwordExpanded: boolean = true;
   @State signedIn: boolean = false;
   @State nickname: string = '';
   @State avatar: string = '';
@@ -92,6 +96,7 @@ struct Account {
   @State aboutLastTapMs: number = 0;
 
   aboutToAppear(): void {
+    this.privacyExpanded = (router.getParams() as Record<string, string>)?.['section'] === 'privacy';
     this.refresh();
     this.loadAccountDetail();
   }
@@ -338,7 +343,7 @@ struct Account {
           this.signedIn
             ? '退出后会回到登录页，学习记录会保留。下次登录可继续使用。'
             : '将回到登录页。你可以用昵称建立自己的账号，或再次以演示身份进入。',
-          this.signedIn ? '退出并返回登录页' : '返回登录页', '#2563EB',
+          this.signedIn ? '退出并返回登录页' : '返回登录页', UiTheme.accent,
           (): void => { this.doSignOut(); },
           (): void => { this.showSignOutConfirm = false; })
       }
@@ -354,207 +359,14 @@ struct Account {
   }
 
   @Builder
-  pageContent() {
-    Column() {
-      // ---------- 顶栏 ----------
-      Row() {
-        Text('← 返回').fontSize(14).fontColor('#64748B').onClick(() => router.back())
-        Blank()
-        Text('我的').fontSize(14).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-      }.width('100%').padding({ left: 16, right: 16, top: 14, bottom: 14 })
-      .backgroundColor('#FFFFFF')
-
-      Scroll() {
-        Column({ space: 16 }) {
-          // ---------- 身份卡 ----------
-          Row({ space: 14 }) {
-            UserAvatar({ source: this.avatar, nickname: this.nickname, diameter: 56 })
-
-            Column({ space: 5 }) {
-              Text(this.nickname.length > 0 ? this.nickname : '体验身份')
-                .fontSize(21).fontWeight(FontWeight.Bold).fontColor('#111827')
-                .width('100%')
-              if (this.phoneMasked.length > 0) {
-                Text(this.phoneMasked).fontSize(13).fontColor('#475467').width('100%')
-              }
-              Text(`账号 ${this.userId}`).fontSize(11).fontColor('#94A3B8').width('100%')
-              if (this.grade.length > 0) {
-                Text(`在读年级：${this.grade}`).fontSize(12).fontColor('#667085').width('100%')
-              }
-              if (this.createdAt.length > 0) {
-                Text(`注册于 ${this.createdAt}`).fontSize(12).fontColor('#667085').width('100%')
-              }
-            }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-          }
-          .width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(14)
-          .border({ width: 1, color: '#E2E8F0' })
-
-          if (this.signedIn) {
-            Button('编辑头像与昵称').width('100%').height(44).fontSize(14)
-              .fontColor('#2563EB').backgroundColor('#EFF6FF').borderRadius(12)
-              .onClick(() => router.pushUrl({ url: 'pages/EditProfile' }))
-          }
-
-          Row({ space: 8 }) {
-            Text(this.sourceLabel)
-              .fontSize(11)
-              .fontColor(this.signedIn ? '#1E6B3A' : '#B45309')
-              .backgroundColor(this.signedIn ? '#ECFDF5' : '#FFFBEB')
-              .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-              .borderRadius(10)
-          }.width('100%').padding({ left: 18, right: 18 })
-
-          // ---------- 提示 ----------
-          if (this.message.length > 0) {
-            Text(this.message)
-              .fontSize(13).lineHeight(20)
-              .fontColor(this.messageIsError ? '#EF4444' : '#475467')
-              .width('100%').padding(12)
-              .backgroundColor(this.messageIsError ? '#FEF2F2' : '#F8FAFC')
-              .borderRadius(10)
-          }
-
-          // 账号安全页只保留账号相关操作；提醒设置统一从“我的”进入。
-          if (!this.signedIn) {
-            Column({ space: 10 }) {
-              Text('你正在用体验身份').fontSize(15).fontWeight(FontWeight.Bold)
-                .fontColor('#1F2937').width('100%')
-              Text(`体验身份固定为 ${ApiDefaults.DEMO_USER_ID}，数据是演示基线（掌握度 42）。`
-                + '用昵称建立一个自己的账号，学习记录才会真正属于你。')
-                .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-              Button('建立我的账号')
-                .width('100%').height(44).fontSize(14).fontColor('#FFFFFF')
-                .backgroundColor('#2563EB').borderRadius(10)
-                // 直接去登录页，不再先弹一次二次确认 —— 游客态没有任何可丢失的状态，
-                // 多这一层只是实测反馈里说的"多了一个不必要的过程"。
-                .onClick(() => { this.goToLogin(); })
-            }
-            .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-            .border({ width: 1, color: '#E2E8F0' })
-          }
-
-          // 「返回登录页」按钮**已删除** —— 它与下方的「退出登录」功能重叠、去向却不同，
-          // 用户实测反馈要「只保留一个」。两者的能力已合并到下面那唯一的身份出口。
-
-          // ---------- 学习搭子 ----------
-          Column({ space: 10 }) {
-            Row() {
-              Text('我的学习搭子').fontSize(15).fontWeight(FontWeight.Bold)
-                .fontColor('#1F2937')
-              Blank()
-              Text('管理 ›').fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
-            }.width('100%')
-              .onClick(() => router.pushUrl({ url: 'pages/PartnerMatch' }))
-
-            if (this.partnerContactNames.length > 0) {
-              Row({ space: 10 }) {
-                Text('🤝').fontSize(20)
-                Column({ space: 3 }) {
-                  Text(this.partnerContactNames.join('、'))
-                    .fontSize(14).fontWeight(FontWeight.Medium).fontColor('#1F2937').width('100%')
-                  Text('已建立学习搭子关系')
-                    .fontSize(11.5).fontColor('#16836F').width('100%')
-                }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-              }.width('100%').padding(12).backgroundColor('#ECFDF5').borderRadius(12)
-            } else if (appState.latestPartner !== null) {
-              Row({ space: 10 }) {
-                Text('🤝').fontSize(20)
-                Column({ space: 3 }) {
-                  Text(`${appState.latestPartner!.matchName} · ${appState.latestPartner!.score}% 匹配`)
-                    .fontSize(14).fontWeight(FontWeight.Medium).fontColor('#1F2937').width('100%')
-                  Text(appState.latestPartner!.studyTime !== null
-                    ? `公共空闲时段 ${appState.latestPartner!.studyTime}`
-                    : '尚未确认公共空闲时段')
-                    .fontSize(11.5).fontColor('#667085').width('100%')
-                }.alignItems(HorizontalAlign.Start).layoutWeight(1)
-              }.width('100%').padding(12).backgroundColor('#F8FAFC').borderRadius(12)
-            } else if (this.partnerContactsLoading || !this.partnerContactsLoaded) {
-              Text('正在同步学习搭子关系…')
-                .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-            } else if (this.partnerContactsError.length > 0) {
-              Text(this.partnerContactsError)
-                .fontSize(12).fontColor('#B45309').lineHeight(19).width('100%')
-            } else {
-              Text('还没有匹配到搭子。按课程、目标、知识互补与空闲时间四因子匹配一位学习伙伴。')
-                .fontSize(12).fontColor('#667085').lineHeight(19).width('100%')
-              Button('去找学习搭子')
-                .width('100%').height(42).fontSize(13).fontColor('#2563EB')
-                .backgroundColor('#EFF6FF').borderRadius(10)
-                .onClick(() => router.pushUrl({ url: 'pages/PartnerMatch' }))
-            }
-          }
-          .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-          .border({ width: 1, color: '#E2E8F0' })
-
-          // ---------- 修改密码 ----------
-          //
-          // 这个入口所在页面以前叫「账号与密码管理」，却**没有任何密码管理能力**
-          // （实测反馈：「APP 目前没有修改密码的入口，需要增加一个用户自己修改密码的功能」）。
-          // 验证码建出来的账号本来是无密码的，所以这里同时承担「首次设置密码」。
-          if (this.signedIn) {
-            Column({ space: 10 }) {
-              Text('修改密码').fontSize(15).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
-              Text('账号已设过密码时需填写原密码；从未设过密码的账号可直接设置新密码。')
-                .fontSize(11).fontColor('#98A2B3').width('100%')
-              TextInput({ placeholder: '原密码（从未设过可留空）', text: this.pwdOld })
-                .type(InputType.Password).height(44).fontSize(14).enabled(!this.pwdBusy)
-                .onChange((value: string) => { this.pwdOld = value; })
-              TextInput({ placeholder: '新密码（至少 6 位）', text: this.pwdNew })
-                .type(InputType.Password).height(44).fontSize(14).enabled(!this.pwdBusy)
-                .onChange((value: string) => { this.pwdNew = value; })
-              TextInput({ placeholder: '再次输入新密码', text: this.pwdConfirm })
-                .type(InputType.Password).height(44).fontSize(14).enabled(!this.pwdBusy)
-                .onChange((value: string) => { this.pwdConfirm = value; })
-              Button(this.pwdBusy ? '提交中…' : '确认修改')
-                .width('100%').height(44).fontSize(14).fontWeight(FontWeight.Bold).fontColor('#FFFFFF')
-                .backgroundColor(this.pwdBusy ? '#93C5FD' : '#3B82F6').borderRadius(12)
-                .enabled(!this.pwdBusy)
-                .onClick(() => { this.doChangePassword(); })
-              // 结果如实展示：成功/失败都用服务端或客户端给出的**真实原因**，
-              // 不自己编一句"修改成功"。
-              if (this.pwdMsg.length > 0) {
-                Text(this.pwdMsg).fontSize(12).lineHeight(18).width('100%')
-                  .fontColor(this.pwdOk ? '#1E6B3A' : '#EF4444')
-              }
-            }
-            .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(14)
-            .border({ width: 1, color: '#E2E8F0' })
-          }
-
-          // ---------- 身份出口（★ 本页唯一一个） ----------
-          //
-          // 原先这里是**两个**按钮：上面那个常驻的「返回登录页」，和这个仅登录后出现的
-          // 「退出登录」。功能重叠但去向不同 —— 后者退出后**留在 App 内**变成游客的「我的」，
-          // 实测反馈：「有两个功能重复的按钮…点击后返回的是小明的游客登录的我的界面，
-          // 不是登录界面，相当于多了一个不必要的过程」。现在合并为一个：
-          // 点击 → 二次确认 → 确定后真正退出并**直接回到登录页**。
-          Button(this.busy ? '处理中…' : (this.signedIn ? '退出登录' : '返回登录页'))
-            .width('100%').height(48).fontSize(15).fontWeight(FontWeight.Bold)
-            .fontColor('#2563EB')
-            .backgroundColor('#FFFFFF').border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
-            .enabled(!this.busy)
-            .onClick(() => this.showSignOutConfirm = true)
-          Text(this.signedIn
-            ? '退出后，学习记录会保留，下次登录可继续使用。'
-            : '返回登录页可以使用手机号登录或注册，或以演示身份重新进入。')
-            .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
-
-          if (AuthStore.encryptionDegraded()) {
-            Text('本机加密服务不可用，本次登录仅在内存中保留，重启后请重新登录。').fontSize(12).fontColor('#B45309').width('100%')
-          }
-
-          // ---------- 注销账号 ----------
-          if (this.signedIn) {
-            Button(this.busy ? '处理中…' : '注销账号')
-              .width('100%').height(44).fontSize(14).fontColor('#EF4444')
-              .backgroundColor('#FFFFFF').border({ width: 1, color: '#FECACA' }).borderRadius(12)
-              .enabled(!this.busy)
-              .onClick(() => this.showDeleteConfirm = true)
-            Text('注销后将无法再登录，账号中的学习记录、聊天和资料会被清除。此操作无法撤销。')
-              .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
-          }
-
-          // ---------- 隐私说明 ----------
+  AccountField(label: string, value: string) {
+    Row({ space: 12 }) {
+      Text(label).fontSize(14).fontColor(UiTheme.ink).width(72)
+      Text(value || '未填写').fontSize(14).fontColor(UiTheme.secondary).layoutWeight(1).copyOption(CopyOptions.InApp)
+    }.width('100%').constraintSize({ minHeight: 42 })
+  }
+  @Builder
+  PrivacyContent() {
           Column({ space: 8 }) {
             Text('隐私说明').fontSize(15).fontWeight(FontWeight.Bold)
               .fontColor('#1F2937').width('100%')
@@ -562,30 +374,23 @@ struct Account {
             // 与实现**相反**：注册强制手机号、后端也存完整号码，并且实现了
             // 手机验证码与密码登录。合规声明与实现不一致比功能缺失更减分，
             // 这里改成如实描述。
-            Text('登录与账号').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%')
+            Text('登录与账号').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
             Text('手机号用于登录，展示时会隐藏中间几位。密码经过安全处理后保存，不会以原文保存。')
-              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
-            Text('学习记录与 AI 功能').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%').margin({ top: 8 })
+              .fontSize(13).fontColor(UiTheme.secondary).lineHeight(21).width('100%')
+            Text('学习记录与 AI 功能').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%').margin({ top: 8 })
             Text('学习记录、计划、练习结果、聊天和上传的资料会保存在云端，方便下次登录继续使用。使用 AI 时，相关问题、资料内容或图片会发送给 AI 服务进行分析。')
-              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
-            Text('位置与提醒').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%').margin({ top: 8 })
+              .fontSize(13).fontColor(UiTheme.secondary).lineHeight(21).width('100%')
+            Text('位置与提醒').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%').margin({ top: 8 })
             Text('学习情境只使用“图书馆”等场所描述，不上传具体坐标。允许通知后，会保存接收提醒所需的设备信息，你可以在提醒设置中关闭通知。')
-              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
-            Text('退出与注销').fontSize(14).fontWeight(FontWeight.Medium).fontColor('#344054').width('100%').margin({ top: 8 })
+              .fontSize(13).fontColor(UiTheme.secondary).lineHeight(21).width('100%')
+            Text('退出与注销').fontSize(14).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%').margin({ top: 8 })
             Text('退出登录会保留学习记录。注销后，账号中的学习记录、聊天和资料会被清除，已上传的原文件会安排删除，所有设备上的登录会失效；注销无法撤销。')
-              .fontSize(13).fontColor('#475467').lineHeight(21).width('100%')
+              .fontSize(13).fontColor(UiTheme.secondary).lineHeight(21).width('100%')
           }
-          .width('100%').padding(16).backgroundColor('#F8FAFC').borderRadius(14)
-
-          // ---------- 关于 / 版本号（★ 开发联调入口，别加可见提示） ----------
-          //
-          // 这一块**故意做得像一句普通的页脚**：默认情形下它就是"关于本应用"，
-          // 评委不会去点；开发/联调同学**连点版本号 5 次**即可进入「接口环境」
-          // （改后端地址、切离线 Fixture）。逻辑见 `onAboutVersionTap()`。
-          //
-          // 为什么不恢复原来的「开发调试：数据源设置 → 配置」卡片：那张卡片在
-          // 「我的」页最显眼的位置，等于把 Fixture 开关摆在评委面前；而正式版
-          // 应当固定走真实后端（`ApiDefaults.DEFAULT_USE_FIXTURE = false`）。
+          .width('100%').padding(16).backgroundColor(UiTheme.subtle).borderRadius(8)
+  }
+  @Builder
+  VersionContent() {
           Column({ space: 3 }) {
             Text('知学 Mate').fontSize(12).fontColor('#B6BFCB').width('100%')
               .textAlign(TextAlign.Center)
@@ -594,15 +399,75 @@ struct Account {
               .onClick(() => { this.onAboutVersionTap(); })
           }
           .width('100%').padding({ top: 14, bottom: 2 })
+  }
 
-          Blank().height(20)
-        }
-        .width('100%').padding(16)
-      }
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-    }
-    .width('100%').height('100%').backgroundColor('#F1F5F9')
+  @Builder
+  pageContent() {
+    Column() {
+      PageHeader({ title: '账号、安全与隐私' })
+      Scroll() {
+        Column({ space: 16 }) {
+          Row() {
+            Blank()
+            Text(this.signedIn ? '编辑资料 ›' : '去登录 ›').fontSize(13).fontColor(UiTheme.accent).padding({ top: 10, bottom: 10 })
+              .onClick(() => { if (this.signedIn) router.pushUrl({ url: 'pages/EditProfile' }); else void this.goToLogin(); })
+          }.width('100%')
+          Column() {
+            this.AccountField('昵称', this.nickname)
+            this.AccountField('手机号', this.phoneMasked)
+            this.AccountField('账号', this.userId)
+            this.AccountField('年级', this.grade)
+            this.AccountField('注册时间', this.createdAt)
+          }.width('100%')
+          if (this.message) { Text(this.message).fontSize(13).fontColor(this.messageIsError ? UiTheme.danger : UiTheme.secondary).lineHeight(21).width('100%') }
+          if (!this.signedIn) {
+            Text(this.sourceLabel).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+            Button('登录或建立我的账号', { type: ButtonType.Normal }).height(44).fontSize(14).width('100%')
+              .fontColor('#FFFFFF').backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => this.goToLogin())
+          }
+          if (this.signedIn) {
+            Divider().color(UiTheme.line)
+            Row() {
+              Text('修改密码').fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+              Text(this.passwordExpanded ? '⌃' : '›').fontSize(22).fontColor(UiTheme.secondary)
+            }.width('100%').constraintSize({ minHeight: 44 }).onClick(() => this.passwordExpanded = !this.passwordExpanded)
+            if (this.passwordExpanded) {
+              TextInput({ text: this.pwdOld, placeholder: '原密码（从未设置可留空）' }).type(InputType.Password).showPasswordIcon(true)
+                .height(44).fontSize(14).borderRadius(8).backgroundColor(UiTheme.subtle).enabled(!this.pwdBusy).onChange((value: string) => this.pwdOld = value)
+              TextInput({ text: this.pwdNew, placeholder: '新密码（6至72位）' }).type(InputType.Password).showPasswordIcon(true)
+                .height(44).fontSize(14).borderRadius(8).backgroundColor(UiTheme.subtle).enabled(!this.pwdBusy).onChange((value: string) => this.pwdNew = value)
+              TextInput({ text: this.pwdConfirm, placeholder: '再次输入新密码' }).type(InputType.Password).showPasswordIcon(true)
+                .height(44).fontSize(14).borderRadius(8).backgroundColor(UiTheme.subtle).enabled(!this.pwdBusy).onChange((value: string) => this.pwdConfirm = value)
+              Button(this.pwdBusy ? '提交中…' : '确认修改', { type: ButtonType.Normal }).height(44).width('100%').fontSize(14)
+                .fontColor(UiTheme.accent).backgroundColor(UiTheme.tint).borderRadius(8).enabled(!this.pwdBusy)
+                .onClick(() => this.doChangePassword())
+              if (this.pwdMsg) { Text(this.pwdMsg).fontSize(13).fontColor(this.pwdOk ? UiTheme.success : UiTheme.danger).lineHeight(20).width('100%') }
+            }
+          }
+          Divider().color(UiTheme.line)
+          Row() {
+            Text('我的学习搭子').fontSize(15).fontColor(UiTheme.ink).layoutWeight(1)
+            Text(this.partnerContactsLoading ? '同步中' : this.partnerContactNames.length > 0 ? `已添加${this.partnerContactNames.length}位 ›` : '查看 ›').fontSize(13).fontColor(UiTheme.secondary)
+          }.width('100%').height(48).onClick(() => router.pushUrl({ url: 'pages/PartnerMatch' }))
+          if (this.partnerContactsError) { Text(this.partnerContactsError).fontSize(12).fontColor(UiTheme.danger).width('100%').onClick(() => this.loadPartnerContacts()) }
+          this.PrivacyContent()
+          this.VersionContent()
+          Text('学习决策记录 ›').fontSize(14).fontColor(UiTheme.secondary).width('100%').padding({ top: 12, bottom: 12 })
+            .onClick(() => router.pushUrl({ url: 'pages/AgentTrace' }))
+          if (AuthStore.encryptionDegraded()) { Text('本机加密服务不可用，本次登录仅在内存中保留，重启后请重新登录。').fontSize(12).fontColor(UiTheme.secondary).width('100%') }
+          Row({ space: 12 }) {
+            Button(this.busy ? '处理中…' : this.signedIn ? '退出登录' : '返回登录页', { type: ButtonType.Normal })
+              .height(44).layoutWeight(1).fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
+              .border({ width: 1, color: UiTheme.line }).borderRadius(8).enabled(!this.busy).onClick(() => this.showSignOutConfirm = true)
+            if (this.signedIn) {
+              Button('注销账号', { type: ButtonType.Normal }).height(44).layoutWeight(1).fontSize(14).fontColor(UiTheme.danger)
+                .backgroundColor(UiTheme.surface).border({ width: 1, color: UiTheme.line }).borderRadius(8).enabled(!this.busy)
+                .onClick(() => this.showDeleteConfirm = true)
+            }
+          }.width('100%')
+        }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding(20).alignItems(HorizontalAlign.Start)
+      }.width('100%').layoutWeight(1).scrollBar(BarState.Off).align(Alignment.TopStart)
+    }.width('100%').height('100%').backgroundColor(UiTheme.surface)
   }
 
   /**
@@ -631,11 +496,11 @@ struct Account {
   @Builder
   StatBlock(value: string, label: string) {
     Column({ space: 4 }) {
-      Text(value).fontSize(19).fontWeight(FontWeight.Bold).fontColor('#0F172A')
-      Text(label).fontSize(11).fontColor('#64748B').textAlign(TextAlign.Center)
+      Text(value).fontSize(19).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+      Text(label).fontSize(11).fontColor(UiTheme.secondary).textAlign(TextAlign.Center)
     }
     .layoutWeight(1).padding({ top: 13, bottom: 13 })
-    .backgroundColor('#F8FAFC').borderRadius(12)
+    .backgroundColor(UiTheme.subtle).borderRadius(8)
   }
 
   /**
@@ -650,20 +515,20 @@ struct Account {
                  onConfirm: () => void, onCancel: () => void) {
     Column() {
       Column({ space: 12 }) {
-        Text(title).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#111827').width('100%')
-        Text(body).fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
+        Text(title).fontSize(17).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
+        Text(body).fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
         Row({ space: 10 }) {
           Button('取消')
-            .layoutWeight(1).height(44).fontSize(14).fontColor('#475467')
-            .backgroundColor('#F1F5F9').borderRadius(10)
+            .layoutWeight(1).height(44).fontSize(14).fontColor(UiTheme.secondary)
+            .backgroundColor(UiTheme.subtle).borderRadius(8)
             .onClick(() => onCancel())
           Button(confirmLabel)
-            .layoutWeight(1).height(44).fontSize(14).fontColor('#FFFFFF')
-            .backgroundColor(confirmColor).borderRadius(10)
+            .layoutWeight(1).height(44).fontSize(14).fontColor(UiTheme.surface)
+            .backgroundColor(confirmColor).borderRadius(8)
             .onClick(() => onConfirm())
         }.width('100%').margin({ top: 4 })
       }
-      .width('86%').padding(20).backgroundColor('#FFFFFF').borderRadius(16)
+      .width('86%').padding(20).backgroundColor(UiTheme.surface).borderRadius(8)
     }
     .width('100%').height('100%')
     .backgroundColor('rgba(15, 23, 42, 0.45)')

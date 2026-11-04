@@ -1,3 +1,6 @@
+import { UiTheme } from '../utils/UiTheme';
+import { AIFloatButton } from '../components/AIFloatButton';
+import { PageHeader } from '../components/PageHeader';
 import { ActionButton } from '../components/ActionButton';
 import { LearningEvidence } from '../utils/LearningEvidence';
 import router from '@ohos.router';
@@ -14,6 +17,7 @@ import { ApiDisplayFormatter } from '../utils/ApiDisplayFormatter';
 @Entry
 @Component
 struct StudyTags {
+  @State showTopics: boolean = false;
   @State isLoading: boolean = true;
   @State errorMessage: string = '';
   @State workflowErrorMessage: string = '';
@@ -28,6 +32,7 @@ struct StudyTags {
   @State courseNames: string[] = [];
   @State selectedCourse: string = '';
   private selectCourse(course: string): void {
+    if (this.selectedCourse !== course) this.showAllMastery = false;
     this.selectedCourse = course;
     this.mastery = this.allMastery.filter((p: KnowledgeMastery) => (p.sourceCourse || '待分类') === course);
     this.buildChartData();
@@ -278,7 +283,7 @@ struct StudyTags {
 
   private visibleMastery(): KnowledgeMastery[] {
     const items: KnowledgeMastery[] = this.sortedMastery();
-    return items.slice(0, 3);
+    return this.showAllMastery ? items : items.slice(0, 3);
   }
 
   private weakMasteryCount(): number {
@@ -340,44 +345,34 @@ struct StudyTags {
   build() {
     Stack() {
       Column() {
+        PageHeader({ title: '学情画像', assistant: true, onBack: () => { router.back(); } })
         Row() {
-          Text('← 返回')
-            .fontSize(14).fontColor('#64748B').fontWeight(FontWeight.Medium)
-            .onClick(() => { router.back(); })
-          Blank()
-          Button(this.isLoading ? '刷新中…' : '刷新', { type: ButtonType.Normal })
-            .height(40).padding({ left: 12, right: 12 }).fontSize(13).fontColor('#64748B')
-            .backgroundColor(Color.Transparent).borderRadius(8)
-            .enabled(!this.isLoading && !this.isStartingWorkflow)
+          Text(`知识画像 V${this.profileVersion}`).fontSize(12).fontColor(UiTheme.secondary).layoutWeight(1)
+          Button(this.isLoading ? '刷新中…' : '刷新', { type: ButtonType.Normal }).height(44).fontSize(13)
+            .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).enabled(!this.isLoading && !this.isStartingWorkflow)
             .onClick(() => { void this.loadProfile(true); })
-          Text(`知识画像 V${this.profileVersion}`)
-            .fontSize(13).fontColor('#2563EB').fontWeight(FontWeight.Bold)
-            .backgroundColor('#EFF6FF').borderRadius(16)
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-        }
-        .width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 })
-        .backgroundColor('#FFFFFF')
+        }.width('100%').padding({ left: 20, right: 20 })
 
       Scroll() {
           Column({ space: 16 }) {
             if (this.isLoading) {
               Column({ space: 10 }) {
                 LoadingProgress().width(32).height(32)
-                Text('正在读取学习画像…').fontSize(14).fontColor('#64748B')
+                Text('正在读取学习画像…').fontSize(14).fontColor(UiTheme.secondary)
               }
               .width('100%').padding(32).alignItems(HorizontalAlign.Center)
             } else {
               if (this.errorMessage.length > 0) {
                 Text(this.errorMessage).fontSize(13).fontColor('#B45309').lineHeight(19)
                   .width('100%').padding(12).backgroundColor('#FFFBEB')
-                  .border({ width: 1, color: '#FDE68A' }).borderRadius(12)
+                  .border({ width: 1, color: '#FDE68A' }).borderRadius(8)
               }
 
               // 实测反馈：「学习画像和学情画像有什么区别？点开之后跳转的界面是一样的」。
               // 它们确实是**同一页** —— 数据只有一份，差别只在"看"还是"改"。
               // 与其让用户猜，不如在页面上直接讲清楚。
               Text('查看各课程的练习表现与验证记录。')
-                .fontSize(11).fontColor('#98A2B3').lineHeight(17).width('100%')
+                .fontSize(11).fontColor(UiTheme.muted).lineHeight(17).width('100%')
 
               Select(this.courseNames.map((name: string): SelectOption => { return { value: name }; }))
                 .value(this.selectedCourse || '选择课程').width('100%').onSelect((index: number) => this.selectCourse(this.courseNames[index]))
@@ -385,24 +380,28 @@ struct StudyTags {
                 Text('有内容尚未识别出所属课程，请手动匹配 ›').fontSize(13).fontColor('#B45309').width('100%')
                   .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } }))
               }
+              Text(this.showTopics ? '收起课程主题' : '查看课程主题 ›').fontSize(13).fontColor(UiTheme.secondary)
+                .padding({ top: 8, bottom: 8 }).onClick(() => this.showTopics = !this.showTopics)
+              if (this.showTopics) {
               ForEach(this.courseTopics().slice(0, 3), (group: TopicGroup) => {
-                Column({ space: 8 }) {
+                Column({ space: 4 }) {
                   Text(`${group.topicGroupName} · ${group.masteryScore === null ? '未测评' : '近期正确率 ' + group.masteryScore + '%'} · ${group.evidenceQuestionCount}道有效题 ${this.selectedTopic === group.topicGroupId ? '↑' : '↓'}`)
-                    .fontSize(15).fontColor(group.masteryScore === null ? '#667085' : group.masteryScore < 60 ? '#C2410C' : group.masteryScore < 80 ? '#2563EB' : '#0F766E')
+                    .fontSize(14).lineHeight(20).constraintSize({ minHeight: 40 }).fontColor(group.masteryScore === null ? UiTheme.secondary : group.masteryScore < 60 ? '#C2410C' : group.masteryScore < 80 ? UiTheme.accent : '#0F766E')
                     .width('100%').onClick(() => this.selectedTopic = this.selectedTopic === group.topicGroupId ? '' : group.topicGroupId)
                   if (this.selectedTopic === group.topicGroupId) {
                     ForEach(group.memberPoints, (member: TopicMember) => {
                       Text(`${member.name} · ${member.masteryScore === null ? '待测评' : member.masteryScore + '%'} · 开始专项练习 ›`)
-                        .fontSize(13).fontColor('#475467').width('100%').padding(8)
+                        .fontSize(13).fontColor(UiTheme.secondary).width('100%').padding(8)
                         .onClick(() => router.pushUrl({ url: 'pages/ExercisePractice', params: { knowledgePointId: member.knowledgePointId, courseName: group.sourceCourse } }))
                     }, (member: TopicMember) => member.knowledgePointId)
                   }
-                }.width('100%').padding(14).backgroundColor('#FFFFFF').borderRadius(12)
+                }.width('100%').padding({ top: 2, bottom: 2 }).backgroundColor(UiTheme.surface)
               }, (group: TopicGroup) => group.topicGroupId)
+              }
               if (this.mastery.length > 0) {
-                if (this.chartDims.length >= 3) {
+                if (this.showTopics && this.chartDims.length >= 3) {
                   Column({ space: 8 }) {
-                    Text(this.selectedCourse + ' · 课程主题近期正确率').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#111827')
+                    Text(this.selectedCourse + ' · 课程主题近期正确率').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
                     Text(`显示本课程最需要关注的 ${this.chartDims.length} 个主题；点击下方主题查看细分知识点。`)
                       .fontSize(13).fontColor('#6B7280')
                     RadarChart({
@@ -413,184 +412,183 @@ struct StudyTags {
                       strengthIndices: this.chartStrong
                     })
                   }
-                  .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
-                  .shadow({ radius: 8, color: '#10000000', offsetX: 0, offsetY: 4 })
-                } else {
-                  Text(`当前有 ${this.chartDims.length} 个已测维度，至少3个才展示雷达图；下方可查看具体作答证据。`).fontSize(13).fontColor('#667085').width('100%')
+                  .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+
                 }
 
                 Column({ space: 10 }) {
                   Row() {
-                    Text('优先关注').fontSize(17).fontWeight(FontWeight.Bold).fontColor('#111827')
+                    Text(this.showAllMastery ? '全部知识点' : '优先关注').fontSize(17).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
                     Blank()
-                    Text(`共 ${this.mastery.length} 个知识点`).fontSize(12).fontColor('#667085')
+                    Text(`共 ${this.mastery.length} 个知识点`).fontSize(12).fontColor(UiTheme.secondary)
                   }.width('100%')
-                  Text(`按近期练习表现排列，默认只展示最需要提升的 ${Math.min(3, this.mastery.length)} 项。`)
-                    .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
+                  Text(this.showAllMastery ? '按近期练习表现排列，展示当前课程全部知识点。' : `按近期练习表现排列，默认只展示最需要提升的 ${Math.min(3, this.mastery.length)} 项。`)
+                    .fontSize(12).fontColor(UiTheme.secondary).lineHeight(18).width('100%')
                   Row({ space: 8 }) {
                     Text(`待提升 ${this.weakMasteryCount()}`)
-                      .fontSize(12).fontColor('#B42318').backgroundColor('#FEF3F2')
-                      .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12)
+                      .fontSize(12).fontColor(UiTheme.danger).backgroundColor('#FEF3F2')
+                      .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(8)
                     Text(`当前表现较稳定 ${this.masteredCount()}`)
                       .fontSize(12).fontColor('#0F766E').backgroundColor('#ECFDF5')
-                      .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(12)
+                      .padding({ left: 10, right: 10, top: 6, bottom: 6 }).borderRadius(8)
                   }.width('100%')
                   ForEach(this.visibleMastery(), (item: KnowledgeMastery) => {
                     Column({ space: 7 }) {
                       Row() {
                         Text(item.knowledgePointName).fontSize(15).fontWeight(FontWeight.Medium)
-                          .fontColor('#1F2937').layoutWeight(1).maxLines(1)
+                          .fontColor(UiTheme.ink).layoutWeight(1).maxLines(1)
                         Text(this.assessed(item) ? LearningEvidence.label(item) : '未测评').fontSize(11)
-                          .fontColor(LearningEvidence.score(item) < 60 ? '#B42318' : (LearningEvidence.score(item) >= 80 ? '#0F766E' : '#B45309'))
+                          .fontColor(LearningEvidence.score(item) < 60 ? UiTheme.danger : (LearningEvidence.score(item) >= 80 ? '#0F766E' : '#B45309'))
                           .margin({ right: 8 })
-                        Text(LearningEvidence.hasAccuracy(item) ? `${LearningEvidence.score(item)}` : '—').fontSize(22).fontWeight(FontWeight.Bold).fontColor('#2563EB')
-                        Text(LearningEvidence.hasAccuracy(item) ? '%' : '').fontSize(11).fontColor('#64748B').margin({ top: 7 })
+                        Text(LearningEvidence.hasAccuracy(item) ? `${LearningEvidence.score(item)}` : '—').fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+                        Text(LearningEvidence.hasAccuracy(item) ? '%' : '').fontSize(11).fontColor(UiTheme.secondary).margin({ top: 7 })
                       }.width('100%').alignItems(VerticalAlign.Center)
                       if (LearningEvidence.hasAccuracy(item)) { Progress({ value: LearningEvidence.score(item), total: 100, type: ProgressType.Linear })
-                        .color(LearningEvidence.score(item) < 60 ? '#F97316' : '#2563EB')
+                        .color(LearningEvidence.score(item) < 60 ? '#F97316' : UiTheme.accent)
                         .backgroundColor('#ECEFF3').height(6).borderRadius(8) }
                       Text(LearningEvidence.detail(item))
-                        .fontSize(11).fontColor('#98A2B3').maxLines(1)
+                        .fontSize(11).fontColor(UiTheme.muted).maxLines(1)
                     }
-                    .width('100%').padding(12).backgroundColor('#F8FAFC')
-                    .border({ width: 1, color: '#E2E8F0' }).borderRadius(12)
+                    .width('100%').padding({ top: 12, bottom: 12 }).backgroundColor(UiTheme.surface)
+                    .border({ width: { bottom: 1 }, color: UiTheme.line })
                   }, (item: KnowledgeMastery) => item.knowledgePointId)
                   if (this.mastery.length > 0) {
-                    Button(`已展示 ${Math.min(3, this.mastery.length)} 项 · 查看全部 ${this.mastery.length} 项 ›`)
-                      .width('100%').height(40).fontSize(13).fontColor('#2563EB')
-                      .backgroundColor('#EFF6FF').borderRadius(10)
-                      .onClick(() => router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { courseName: this.selectedCourse } }))
+                    Button(this.showAllMastery ? '收起，显示优先关注的3项 ⌃' : `已展示 ${Math.min(3, this.mastery.length)} 项 · 查看全部 ${this.mastery.length} 项 ›`)
+                      .width('100%').height(40).fontSize(13).fontColor(UiTheme.accent)
+                      .backgroundColor(UiTheme.tint).borderRadius(8)
+                      .onClick(() => this.showAllMastery = !this.showAllMastery)
                   }
                 }
-                .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
-                .shadow({ radius: 8, color: '#10000000', offsetX: 0, offsetY: 4 })
+                .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+
               } else {
                 Column({ space: 10 }) {
-                  Text('尚未建立知识画像').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937')
+                  Text('尚未建立知识画像').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
                     .width('100%')
                   Text('完成一次诊断或练习后，系统会在这里展示掌握度和证据。'
                     + '导入课程或讲义后，服务端会写入你的知识点加入候选池；选定课程和本次时长后再安排任务。')
-                    .fontSize(14).fontColor('#64748B').lineHeight(22).width('100%')
+                    .fontSize(14).fontColor(UiTheme.secondary).lineHeight(22).width('100%')
                   Button('导入课程 / 资料').width('100%').height(44).fontSize(14).fontWeight(FontWeight.Bold)
-                    .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+                    .fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
                     .onClick(() => router.pushUrl({ url: 'pages/CourseImport', params: { initialTab: 'import' } }))
                   Button('去对话建立学习目标').width('100%').height(44).fontSize(14)
-                    .fontColor('#2563EB').backgroundColor('#FFFFFF')
-                    .border({ width: 1, color: '#BFDBFE' }).borderRadius(12)
+                    .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
+                    .border({ width: 1, color: '#BFDBFE' }).borderRadius(8)
                     .onClick(() => {
                       appState.setChatPrompt('帮我安排今天的学习：先看看我哪些知识点最薄弱，再给一个今天能做完的计划。');
                       router.pushUrl({ url: 'pages/ChatMain' });
                     })
-                }.width('100%').padding(20).backgroundColor('#FFFFFF').borderRadius(16)
+                }.width('100%').padding(20).backgroundColor(UiTheme.surface).borderRadius(8)
               }
 
               if (this.history.length > 0) {
                 Column({ space: 10 }) {
                   Row() {
-                    Text(`掌握度变化 ${this.meaningfulHistory().length} 次 ${this.showHistory ? '↑' : '↓'}`).onClick(() => this.showHistory = !this.showHistory).fontSize(17).fontWeight(FontWeight.Bold).fontColor('#111827')
+                    Text(`掌握度变化 ${this.meaningfulHistory().length} 次 ${this.showHistory ? '↑' : '↓'}`).onClick(() => this.showHistory = !this.showHistory).fontSize(17).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
                     Blank()
                   }.width('100%')
                   if (this.showHistory) {
                   Text('只展示分数真实发生变化的记录。')
-                    .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
+                    .fontSize(12).fontColor(UiTheme.secondary).lineHeight(18).width('100%')
                   if (this.meaningfulHistory().length === 0) {
                     Column({ space: 5 }) {
-                      Text('暂无有效变化').fontSize(15).fontWeight(FontWeight.Medium).fontColor('#475467')
+                      Text('暂无有效变化').fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.secondary)
                       Text('完成并提交一次专项练习后，这里会显示具体知识点、前后分数和增减幅度。')
-                        .fontSize(12).fontColor('#98A2B3').lineHeight(18).textAlign(TextAlign.Center)
+                        .fontSize(12).fontColor(UiTheme.muted).lineHeight(18).textAlign(TextAlign.Center)
                     }.width('100%').padding(18).alignItems(HorizontalAlign.Center)
-                      .backgroundColor('#F8FAFC').borderRadius(10)
+                      .backgroundColor(UiTheme.subtle).borderRadius(8)
                   }
                   ForEach(this.visibleHistory(), (item: MasteryHistory) => {
                     Column({ space: 8 }) {
                       Row() {
                         Column({ space: 3 }) {
                           Text(this.historyKnowledgePoint(item)).fontSize(14).fontWeight(FontWeight.Medium)
-                            .fontColor('#1F2937')
+                            .fontColor(UiTheme.ink)
                           Text(`${ApiDisplayFormatter.timestamp(item.timestamp)} · ${ApiDisplayFormatter.evidenceSource(item.source)}`)
-                            .fontSize(11).fontColor('#98A2B3').maxLines(1)
+                            .fontSize(11).fontColor(UiTheme.muted).maxLines(1)
                         }.layoutWeight(1).alignItems(HorizontalAlign.Start)
                         Text(this.historyDelta(item)).fontSize(18).fontWeight(FontWeight.Bold)
-                          .fontColor(item.newScore > item.oldScore ? '#0F766E' : '#B42318')
+                          .fontColor(item.newScore > item.oldScore ? '#0F766E' : UiTheme.danger)
                           .padding({ left: 9, right: 9, top: 4, bottom: 4 })
-                          .backgroundColor(item.newScore > item.oldScore ? '#ECFDF5' : '#FEF3F2').borderRadius(10)
+                          .backgroundColor(item.newScore > item.oldScore ? '#ECFDF5' : '#FEF3F2').borderRadius(8)
                       }.width('100%').onClick(() => this.toggleHistoryEvidence(item))
                       Row({ space: 8 }) {
-                        Text(`${item.oldScore}`).fontSize(13).fontColor('#64748B')
-                        Text('→').fontSize(13).fontColor('#98A2B3')
-                        Text(`${item.newScore} 分`).fontSize(16).fontWeight(FontWeight.Bold).fontColor('#2563EB')
+                        Text(`${item.oldScore}`).fontSize(13).fontColor(UiTheme.secondary)
+                        Text('→').fontSize(13).fontColor(UiTheme.muted)
+                        Text(`${item.newScore} 分`).fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
                         Blank()
                         Text(this.isHistoryExpanded(item) ? '收起 ↑' : '练习详情 ↓')
-                          .fontSize(12).fontWeight(FontWeight.Medium).fontColor('#2563EB')
+                          .fontSize(12).fontWeight(FontWeight.Medium).fontColor(UiTheme.accent)
                       }.width('100%').onClick(() => this.toggleHistoryEvidence(item))
                       if (this.isHistoryExpanded(item)) {
                         if (this.evidenceForHistory(item).length === 0) {
-                          Text('该次变化暂未返回可展示的证据详情。').fontSize(12).fontColor('#667085')
+                          Text('该次变化暂未返回可展示的证据详情。').fontSize(12).fontColor(UiTheme.secondary)
                         } else {
                           ForEach(this.evidenceForHistory(item), (evidence: Evidence) => {
                             Text(`${ApiDisplayFormatter.evidenceSource(evidence.sourceType)} · ${ApiDisplayFormatter.metric(evidence.metric)} · ${this.evidenceValue(evidence)}`)
-                              .fontSize(12).fontColor('#475467').lineHeight(18).width('100%')
+                              .fontSize(12).fontColor(UiTheme.secondary).lineHeight(18).width('100%')
                           }, (evidence: Evidence) => evidence.id)
                         }
                       }
-                    }.width('100%').padding(12).backgroundColor('#EFF6FF').borderRadius(10)
+                    }.width('100%').padding(12).backgroundColor(UiTheme.tint).borderRadius(8)
                   }, (item: MasteryHistory) => item.timestamp)
                   if (this.meaningfulHistory().length > HISTORY_PREVIEW_COUNT) {
                     Button(this.showAllHistory ? '收起变化记录 ↑' : `查看全部 ${this.meaningfulHistory().length} 次变化 ↓`)
-                      .width('100%').height(40).fontSize(13).fontColor('#2563EB')
-                      .backgroundColor('#EFF6FF').borderRadius(10)
+                      .width('100%').height(40).fontSize(13).fontColor(UiTheme.accent)
+                      .backgroundColor(UiTheme.tint).borderRadius(8)
                       .onClick(() => { this.showAllHistory = !this.showAllHistory; })
                   }
                   }
                 }
-                .width('100%').padding(16).backgroundColor('#FFFFFF').borderRadius(16)
+                .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
               }
 
               if (this.mastery.length > 0) {
                 Column({ space: 12 }) {
-                  Text('建议下一步').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#1F2937').width('100%')
-                  Text(this.weaknessSummary()).fontSize(13).fontColor('#475467').lineHeight(20).width('100%')
+                  Text('建议下一步').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
+                  Text(this.weaknessSummary()).fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
                   Button(this.hasAssessment() ? '开始专项练习' : '开始诊断练习', { type: ButtonType.Normal })
                     .width('100%').height(48).fontSize(15).fontWeight(FontWeight.Bold)
-                    .fontColor('#FFFFFF').backgroundColor('#2563EB').borderRadius(12)
+                    .fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
                     .enabled(!this.isStartingWorkflow)
                     .onClick(() => this.openRecommendedPractice())
                   Button('查看学习计划 →', { type: ButtonType.Normal })
-                    .width('100%').height(40).fontSize(14).fontColor('#2563EB')
+                    .width('100%').height(40).fontSize(14).fontColor(UiTheme.accent)
                     .backgroundColor(Color.Transparent).borderRadius(8)
                     .enabled(!this.isStartingWorkflow)
                     .onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
-                }.width('100%').padding(18).backgroundColor('#FFFFFF').borderRadius(18)
+                }.width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
                   .border({ width: 1, color: '#BFDBFE' })
               }
 
               Column({ space: 10 }) {
                 Button(this.showMoreActions ? '收起更多操作 ↑' : '更多操作 ↓', { type: ButtonType.Normal })
-                  .width('100%').height(44).fontSize(13).fontColor('#64748B')
+                  .width('100%').height(44).fontSize(13).fontColor(UiTheme.secondary)
                   .backgroundColor(Color.Transparent).borderRadius(8)
                   .onClick(() => { this.showMoreActions = !this.showMoreActions; })
                 if (this.showMoreActions) {
                   Text('需要重新评估整体学情时，可重新诊断并更新计划。')
-                    .fontSize(12).fontColor('#667085').lineHeight(18).width('100%')
+                    .fontSize(12).fontColor(UiTheme.secondary).lineHeight(18).width('100%')
                   ActionButton({ label: this.isStartingWorkflow ? '正在启动诊断…' : '重新诊断并更新计划', available: !this.isStartingWorkflow, onAction: () => { void this.startDiagnosis(); } })
                 }
               }.width('100%')
 
               if (this.workflowErrorMessage.length > 0) {
                 Text(this.workflowErrorMessage).fontSize(13).fontColor('#B45309').lineHeight(19)
-                  .width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(10)
+                  .width('100%').padding(12).backgroundColor('#FFFBEB').borderRadius(8)
               }
 
             }
           }
           .width('100%').padding({ left: 16, right: 16, top: 16, bottom: 96 })
         }
-        .layoutWeight(1).backgroundColor('#F3F6FA')
+        .layoutWeight(1).backgroundColor(UiTheme.canvas).align(Alignment.TopStart)
       }
       .width('100%').height('100%')
+      AIFloatButton()
       }.width('100%').height('100%')
   }
 }
 
-const MASTERY_PREVIEW_COUNT: number = 4;
+const MASTERY_PREVIEW_COUNT: number = 3;
 const HISTORY_PREVIEW_COUNT: number = 3;

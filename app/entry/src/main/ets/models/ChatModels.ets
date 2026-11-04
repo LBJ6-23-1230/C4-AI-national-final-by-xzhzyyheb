@@ -162,6 +162,9 @@ export interface ChatProfileUpdates {
 
 /** 错题分析的结构化结果（后端 `wrongAnalysis`）。 */
 export interface WrongAnalysis {
+  answer?: string;
+  explanation?: string;
+  reason?: string;
   courseName?: string;
   questionNumber?: string;
   reply?: string;

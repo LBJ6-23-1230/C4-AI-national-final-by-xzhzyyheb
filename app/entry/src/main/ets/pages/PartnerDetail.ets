@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import router from '@ohos.router';
 import { PageHeader } from '../components/PageHeader';
 import { UserAvatar } from '../components/UserAvatar';
@@ -23,23 +24,23 @@ struct PartnerDetail {
   }
   build() {
     Column() {
-      PageHeader({ title: '搭子资料' })
+      PageHeader({ title: '搭子资料', detail: '返回会话', onDetail: () => router.back() })
       Scroll() {
         Column({ space: 20 }) {
           if (this.item !== null) {
             UserAvatar({ nickname: this.item.partnerName, source: this.item.avatar, diameter: 64 })
             Text(this.item.partnerName).fontSize(22).fontWeight(FontWeight.Medium)
-            Text(`已结伴 ${this.item.pairedDays} 天`).fontSize(15).fontColor('#667085')
-            Text('结伴日期：' + (this.item.pairedAt ? new Date(this.item.pairedAt).toLocaleDateString() : '暂无记录')).fontSize(13).fontColor('#98A2B3')
+            Text(`已结伴 ${this.item.pairedDays} 天`).fontSize(15).fontColor(UiTheme.secondary)
+            Text('结伴日期：' + (this.item.pairedAt ? new Date(this.item.pairedAt).toLocaleDateString() : '暂无记录')).fontSize(13).fontColor(UiTheme.muted)
             Text('共同学习课程').fontSize(17).fontWeight(FontWeight.Medium)
-            Text(this.item.sharedCourses.join('、') || '待双方确认').fontSize(15).fontColor('#475467')
+            Text(this.item.sharedCourses.join('、') || '待双方确认').fontSize(15).fontColor(UiTheme.secondary)
             Text('共同关注的知识点').fontSize(17).fontWeight(FontWeight.Medium)
-            Text(this.item.sharedKnowledgePoints.join('、') || '暂无共同知识点记录').fontSize(15).fontColor('#475467')
-            Text(this.item.sharedStudyMinutes === null ? '暂无已确认的共同学习时长' : `共同学习 ${this.item.sharedStudyMinutes} 分钟`).fontSize(13).fontColor('#98A2B3')
+            Text(this.item.sharedKnowledgePoints.join('、') || '暂无共同知识点记录').fontSize(15).fontColor(UiTheme.secondary)
+            Text(this.item.sharedStudyMinutes === null ? '暂无已确认的共同学习时长' : `共同学习 ${this.item.sharedStudyMinutes} 分钟`).fontSize(13).fontColor(UiTheme.muted)
           }
-          if (this.notice) { Text(this.notice).fontColor('#667085') }
+          if (this.notice) { Text(this.notice + ' 点击重试').fontSize(14).fontColor(UiTheme.secondary).onClick(() => this.load()) }
         }.width('100%').padding(24).alignItems(HorizontalAlign.Start)
       }.align(Alignment.TopStart).layoutWeight(1).width('100%')
-    }.width('100%').height('100%').backgroundColor('#F5F6F8')
+    }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
   }
 }

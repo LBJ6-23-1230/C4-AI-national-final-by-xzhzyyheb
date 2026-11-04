@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { image } from '@kit.ImageKit';
 import { AvatarCropGeometry, AvatarCropRect } from '../utils/AvatarCropGeometry';
 
@@ -38,18 +39,18 @@ export struct AvatarCropper {
   build() {
     Column() {
       Row() {
-        Button('取消').fontSize(14).backgroundColor(Color.Transparent).fontColor('#64748B')
+        Button('取消').fontSize(14).backgroundColor(Color.Transparent).fontColor(UiTheme.secondary)
           .enabled(!this.busy).onClick(() => this.onCancel())
         Blank()
-        Text('裁剪头像').fontSize(18).fontWeight(FontWeight.Bold).fontColor('#172033')
+        Text('裁剪头像').fontSize(18).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
         Blank()
-        Button('重置').fontSize(14).backgroundColor(Color.Transparent).fontColor('#2563EB')
+        Button('重置').fontSize(14).backgroundColor(Color.Transparent).fontColor(UiTheme.accent)
           .enabled(!this.busy).onClick(() => { this.zoom = 1; this.offsetX = 0; this.offsetY = 0; })
-      }.width('100%').padding(12).backgroundColor('#FFFFFF')
+      }.width('100%').padding(12).backgroundColor(UiTheme.surface)
       Scroll() {
         Column({ space: 20 }) {
           Text('拖动图片调整位置，双指或滑动下方滑块缩放')
-            .fontSize(13).fontColor('#667085').textAlign(TextAlign.Center)
+            .fontSize(13).fontColor(UiTheme.secondary).textAlign(TextAlign.Center)
           Stack() {
             if (this.pixels !== undefined) {
               Image(this.pixels).width(this.imageWidth * this.factor()).height(this.imageHeight * this.factor())
@@ -57,8 +58,8 @@ export struct AvatarCropper {
                 .draggable(false).hitTestBehavior(HitTestMode.None)
             }
             Circle().width('100%').height('100%').fill(Color.Transparent)
-              .stroke('#FFFFFF').strokeWidth(2).hitTestBehavior(HitTestMode.None)
-          }.width('100%').aspectRatio(1).clip(true).backgroundColor('#111827')
+              .stroke(UiTheme.surface).strokeWidth(2).hitTestBehavior(HitTestMode.None)
+          }.width('100%').aspectRatio(1).clip(true).backgroundColor(UiTheme.ink)
             .border({ width: 1, color: '#CBD5E1' }).enabled(!this.busy)
             .accessibilityText('头像裁剪区域，可拖动图片调整位置')
             .onAreaChange((oldArea: Area, area: Area) => {
@@ -83,21 +84,21 @@ export struct AvatarCropper {
                 .onActionUpdate((event: GestureEvent) => this.changeZoom(this.pinchStartZoom * event.scale))
             ))
           Row({ space: 12 }) {
-            Text('缩小').fontSize(12).fontColor('#667085')
+            Text('缩小').fontSize(12).fontColor(UiTheme.secondary)
             Slider({ value: this.zoom, min: 1, max: 4, step: 0.01 }).layoutWeight(1)
               .enabled(!this.busy).onChange((value: number) => this.changeZoom(value))
-            Text('放大').fontSize(12).fontColor('#667085')
+            Text('放大').fontSize(12).fontColor(UiTheme.secondary)
           }.width('100%')
-          Text('圆圈内为头像显示范围').fontSize(12).fontColor('#667085')
+          Text('圆圈内为头像显示范围').fontSize(12).fontColor(UiTheme.secondary)
           if (this.errorText.length > 0) {
-            Text(this.errorText).fontSize(13).fontColor('#B42318')
+            Text(this.errorText).fontSize(13).fontColor(UiTheme.danger)
           }
           Button(this.busy ? '正在处理…' : '确认裁剪').width('100%').height(48)
-            .fontSize(16).backgroundColor('#2563EB').enabled(!this.busy)
+            .fontSize(16).backgroundColor(UiTheme.accent).enabled(!this.busy)
             .onClick(() => this.onConfirm(AvatarCropGeometry.region(this.imageWidth, this.imageHeight,
               this.viewport, this.zoom, this.offsetX, this.offsetY)))
         }.width('100%').constraintSize({ maxWidth: 460 }).padding(20)
       }.width('100%').layoutWeight(1)
-    }.width('100%').height('100%').backgroundColor('#F3F6FA')
+    }.width('100%').height('100%').backgroundColor(UiTheme.canvas)
   }
 }

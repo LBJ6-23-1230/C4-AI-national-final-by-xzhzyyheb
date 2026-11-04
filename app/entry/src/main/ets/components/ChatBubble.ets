@@ -1,3 +1,4 @@
+import { UiTheme } from '../utils/UiTheme';
 import { ChatCard, ChatMessage } from '../models/ChatModels';
 
 @Component
@@ -42,30 +43,30 @@ export struct ChatBubble {
             .height(84)
             .objectFit(ImageFit.Cover)
             .borderRadius(8)
-            .backgroundColor('#E2E8F0')
+            .backgroundColor(UiTheme.line)
         }
 
         if (this.message.status === 'sending') {
           if (this.message.text.length > 0) {
             Text(this.message.text).fontSize(15).lineHeight(22).fontColor('#1F2933')
-              .padding(12).backgroundColor('#FFFFFF').borderRadius(8)
+              .padding(12).backgroundColor(UiTheme.surface).borderRadius(8)
           }
           Row({ space: 5 }) {
             LoadingProgress().width(18).height(18).color('#8E99A8')
             Text(`${this.message.progressText || '正在等待回复'} · ${this.waitSeconds}秒`)
               .fontSize(12)
-              .fontColor('#64748B')
+              .fontColor(UiTheme.secondary)
           }
           .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-          .backgroundColor('#FFFFFF')
+          .backgroundColor(UiTheme.surface)
           .borderRadius(8)
         } else {
           Text(this.message.text)
             .fontSize(15)
             .lineHeight(22)
-            .fontColor(this.isUser() ? '#FFFFFF' : '#1F2933')
+            .fontColor(this.isUser() ? UiTheme.surface : '#1F2933')
             .padding({ left: 14, right: 14, top: 11, bottom: 11 })
-            .backgroundColor(this.isUser() ? '#2563EB' : '#FFFFFF')
+            .backgroundColor(this.isUser() ? UiTheme.accent : UiTheme.surface)
             .borderRadius(8)
         }
 
@@ -91,30 +92,30 @@ export struct ChatBubble {
       Row() {
         Text(this.getCardLabel(card))
           .fontSize(12)
-          .fontColor('#2563EB')
+          .fontColor(UiTheme.accent)
           .fontWeight(FontWeight.Medium)
         Blank()
         Text('查看')
           .fontSize(12)
-          .fontColor('#64748B')
+          .fontColor(UiTheme.secondary)
       }
       .width('100%')
 
       Text(card.title)
         .fontSize(15)
         .fontWeight(FontWeight.Medium)
-        .fontColor('#111827')
+        .fontColor(UiTheme.ink)
         .maxLines(1)
       Text(card.summary)
         .fontSize(13)
-        .fontColor('#64748B')
+        .fontColor(UiTheme.secondary)
         .lineHeight(18)
         .maxLines(2)
     }
     .width(226)
     .padding(12)
-    .backgroundColor('#F8FAFC')
-    .border({ width: 1, color: '#E2E8F0' })
+    .backgroundColor(UiTheme.subtle)
+    .border({ width: 1, color: UiTheme.line })
     .borderRadius(8)
   }
 
