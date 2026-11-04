@@ -93,6 +93,11 @@ _test_*/
 # ---- 决赛整理：本机备份与制作缓存（保留在原位置） ----
 /.local-work/
 /server/zhixue-agent-server/.local-work/
+# 设备验收含账号学习记录，仅留本机；可提交不含账号数据的结果摘要与构建日志。
+/deliverables/pending-task-count-20261104/screenshots/
+/deliverables/pending-task-count-20261104/device-check.json
+/deliverables/profile-statistics-20261104/screenshots/
+/deliverables/profile-statistics-20261104/device-check.json
 /ppt_bg_work/
 /tmp/
 /output/

@@ -1,5 +1,6 @@
 import { DeviceSummary } from '../components/DeviceSummary';
 import { AppBottomBar } from '../components/AppBottomBar';
+import { LearningStatCard } from '../components/LearningStatCard';
 import { UiTheme } from '../utils/UiTheme';
 import { CourseReviewReminder } from '../components/CourseReviewReminder';
 import router from '@ohos.router';
@@ -24,6 +25,9 @@ import { LearningCardService } from '../services/LearningCardService';
 import { WorkflowSessionStore } from '../cache/WorkflowSessionStore';
 import { AuthClient } from '../api/AuthClient';
 import { AuthStore } from '../api/AuthStore';
+import { TodayOverview } from '../api/ReminderModels';
+import { TodayStore } from '../services/TodayStore';
+import { PendingTasks } from '../utils/PendingTasks';
 
 @Entry
 @Component
@@ -34,16 +38,18 @@ struct Index {
   @State wrongBookCount: number = -1;
   @State courseCount: number = 0;
   @State urgentCount: number = 0;
-  @State pendingCount: number = 0;
-  @State planProgress: number = 0;
-  @State todayMinutes: number = 0;
-  @State recentFocusCount: number = 0;
-  @State streakDays: number = 0;
+  @State pendingCount: number = appState.getPendingDDLs().length;
+  @State pendingTaskCount: number = -1;
+  @State planProgress: number = appState.getPlanProgress();
+  @State todayMinutes: number = appState.getFocusSummary().todayMinutes;
+  @State focusCount: number = appState.focusSessions.length;
+  @State streakDays: number = appState.getFocusSummary().streakDays;
   @State refreshKey: number = 0;
   @State profileNickname: string = appState.authNickname;
   @State profileAvatar: string = appState.authAvatar;
 
   private onLearningDataChanged(): void {
+    if (this.isPageActive) this.ensurePlan();
     this.profileNickname = appState.authNickname;
     this.profileAvatar = appState.authAvatar;
     this.courseCount = appState.courses.length;
@@ -52,15 +58,60 @@ struct Index {
     if (this.activeTab === 2) void this.loadWrongBookCount();
     this.urgentCount = appState.getUrgentDDLs().length;
     this.refreshKey++;
-    if (this.isPageActive) this.ensurePlan();
   }
 
   private onFocusDataChanged(): void {
     const summary = appState.getFocusSummary();
     this.planProgress = appState.getPlanProgress();
     this.todayMinutes = summary.todayMinutes;
-    this.recentFocusCount = summary.recentSessions.length;
+    this.focusCount = appState.focusSessions.length;
     this.streakDays = summary.streakDays;
+    this.pendingCount = appState.getPendingDDLs().length;
+    this.updatePendingTaskCount();
+  }
+
+  private pendingOverview: TodayOverview | null = null;
+  private pendingOverviewKey: string = '';
+  private pendingRequestVersion: number = 0;
+
+  private updatePendingTaskCount(): void {
+    const owner: string = appState.currentUser.userId;
+    const key: string = TodayStore.key(owner);
+    if (key !== this.pendingOverviewKey) {
+      this.pendingOverviewKey = key;
+      this.pendingOverview = TodayStore.read(getContext(this) as common.Context, owner);
+    }
+    this.pendingTaskCount = PendingTasks.count(this.pendingOverview, appState.getPendingDDLs().length,
+      (id: string): boolean => appState.isTaskCompleted(id, 'pending'));
+  }
+
+  private async loadPendingTasks(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const key: string = TodayStore.key(owner);
+    const version: number = ++this.pendingRequestVersion;
+    const result = await AgentApiClient.getToday();
+    if (!this.isPageActive || version !== this.pendingRequestVersion ||
+      owner !== appState.currentUser.userId || key !== TodayStore.key(owner)) return;
+    if (result.ok && result.data.userId === owner) {
+      this.pendingOverviewKey = key;
+      this.pendingOverview = result.data;
+      TodayStore.save(getContext(this) as common.Context, result.data);
+      this.updatePendingTaskCount();
+    }
+  }
+
+  /** Show local facts immediately, then reconcile cloud data without clearing the cards. */
+  private async refreshLearningStatistics(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const requestVersion: number = ++this.statisticsRequestVersion;
+    try {
+      await Promise.all([appState.syncLearningData(), appState.syncFocusSessions(), this.loadPendingTasks()]);
+    } catch (error) {
+      console.warn('学习统计同步失败，保留本机记录');
+    } finally {
+      if (this.isPageActive && requestVersion === this.statisticsRequestVersion &&
+        owner === appState.currentUser.userId) this.onLearningDataChanged();
+    }
   }
 
   onPageShow(): void {
@@ -74,6 +125,7 @@ struct Index {
     // 从导入、计划或专注页返回时，首页的推荐与计划提示都要重新对账。
     void this.loadAgentPlan(true);
     void this.loadProactiveDecision();
+    void this.refreshLearningStatistics();
   }
   @State isWorkflowRefreshing: boolean = false;
   @State isAgentPlanLoading: boolean = false;
@@ -98,6 +150,7 @@ struct Index {
   private workflowRequestVersion: number = 0;
   private planRequestVersion: number = 0;
   private proactiveRequestVersion: number = 0;
+  private statisticsRequestVersion: number = 0;
   private isPageActive: boolean = false;
   /** 首帧 onPageShow 与 aboutToAppear 属于同一次进入，避免重复请求。 */
   private hasShownOnce: boolean = false;
@@ -106,10 +159,10 @@ struct Index {
   aboutToAppear(): void {
     this.isPageActive = true;
     this.applyInitialTab();
-    this.ensurePlan();
-    this.refreshKey++;
+    this.onLearningDataChanged();
     void this.loadAgentPlan(true);
     void this.loadProactiveDecision();
+    void this.refreshLearningStatistics();
   }
 
   /**
@@ -146,6 +199,8 @@ struct Index {
     this.workflowRequestVersion++;
     this.planRequestVersion++;
     this.proactiveRequestVersion++;
+    this.statisticsRequestVersion++;
+    this.pendingRequestVersion++;
     this.isWorkflowRefreshing = false;
     this.isAgentPlanLoading = false;
     this.isProactiveLoading = false;
@@ -216,6 +271,7 @@ struct Index {
     this.agentPlanKind = state.kind;
     this.agentPlanMessage = state.errorMessage;
     this.isAgentPlanLoading = false;
+    this.onFocusDataChanged();
   }
 
   private isFixture(): boolean {
@@ -564,17 +620,6 @@ struct Index {
     .border({ width: 1, color: this.agentPlanKind === 'error' ? '#FECACA' : UiTheme.line })
   }
 
-  /** 「我的」标签的统计块（任务完成度 / 专注次数等）。 */
-  @Builder
-  StatCard(value: string, label: string, target: string = '') {
-    Column({ space: 6 }) {
-      Text(value).fontSize(19).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
-      Text(label).fontSize(11).fontColor(UiTheme.secondary)
-        .textAlign(TextAlign.Center).lineHeight(17)
-    }.layoutWeight(1).constraintSize({ minHeight: 90 }).padding({ left: 3, right: 3, top: 10, bottom: 10 })
-      .onClick(() => { if (target.length > 0) router.pushUrl({ url: target, params: { initialTab: 'ddls', ddlFilter: 'pending' } }); })
-  }
-
   /** 页头副标题：按标签切换，说明这一页能做什么。 */
   private headerSubtitle(): string {
     if (this.activeTab === 1) return '多智能体助学团：学情诊断 · 学习规划 · 专项练习 · 效果测评 · 阶段复盘。';
@@ -698,7 +743,11 @@ struct Index {
       return;
     }
     this.activeTab = index;
-    if (index === 2) void this.loadWrongBookCount();
+    this.onLearningDataChanged();
+    if (index === 3) {
+      void this.loadAgentPlan(true);
+      void this.refreshLearningStatistics();
+    }
   }
 
   /**
@@ -955,11 +1004,11 @@ struct Index {
               }.width('100%').padding({ top: 20, bottom: 24 })
                 .onClick(() => router.pushUrl({ url: appState.isSignedIn ? 'pages/EditProfile' : 'pages/Login' }))
               Row() {
-                this.StatCard(`${this.planProgress}%`, '任务\n完成度')
-                this.StatCard(`${this.todayMinutes}分钟`, '今日\n专注')
-                this.StatCard(`${this.recentFocusCount}次`, '专注\n记录 ›', 'pages/LearningHistory')
-                this.StatCard(`${this.streakDays}天`, '连续\n学习')
-                this.StatCard(`${this.pendingCount}项`, '待处理\n作业 ›', 'pages/CourseImport')
+                LearningStatCard({ value: `${this.planProgress}%`, label: '任务\n完成度' })
+                LearningStatCard({ value: `${this.todayMinutes}分钟`, label: '今日\n专注' })
+                LearningStatCard({ value: `${this.focusCount}次`, label: '专注\n记录 ›', target: 'pages/LearningHistory' })
+                LearningStatCard({ value: `${this.streakDays}天`, label: '连续\n学习' })
+                LearningStatCard({ value: this.pendingTaskCount < 0 ? '—' : `${this.pendingTaskCount}项`, label: '待办\n任务 ›', target: 'pages/CourseImport' })
               }.width('100%').border({ width: 1, color: UiTheme.line }).borderRadius(8).margin({ bottom: 24 })
               this.PanelRow($r('app.media.feature_assessment'), '学习报告', '', 'pages/ReviewSummary')
               this.PanelRow($r('app.media.feature_focus'), '专注记录', '', 'pages/LearningHistory')

@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-04",
+  "package": "知学Mate-我的统计刷新修复-20261104-signed.hap",
+  "size": 5274468,
+  "sha256": "7030f58121b31e31a64fee997d58f8f10e6e664d08d6334a8dc2d852014a062d",
+  "build": "HarmonyOS debug: BUILD SUCCESSFUL",
+  "signature": "verify-app success",
+  "statisticsRegressionChecks": 10,
+  "backendChanges": false
+}

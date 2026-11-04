@@ -6,7 +6,10 @@ import { AgentApiClient } from '../api/AgentApiClient';
 
 /** Persistent cache is keyed by account and only used after identity recovery. */
 export class TodayStore {
-  private static key(owner: string): string { return `${AgentApiClient.getConfig().baseUrl}:${owner}`; }
+  static key(owner: string): string {
+    const config = AgentApiClient.getConfig();
+    return `${config.useFixture ? 'fixture' : config.baseUrl}:${owner}`;
+  }
   static firstDisplay(context: common.Context, owner: string): boolean {
     try {
       const store = preferences.getPreferencesSync(context, { name: 'today_panel_preferences' });

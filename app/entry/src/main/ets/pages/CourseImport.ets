@@ -4,7 +4,10 @@ import { AppBottomBar } from '../components/AppBottomBar';
 import { UiTheme } from '../utils/UiTheme';
 import { PageHeader } from '../components/PageHeader';
 import { ReminderNavigation } from '../services/ReminderNavigation';
-import { ReminderEvent } from '../api/ReminderModels';
+import { ReminderEvent, TodayOverview } from '../api/ReminderModels';
+import { common } from '@kit.AbilityKit';
+import { TodayStore } from '../services/TodayStore';
+import { PendingTasks } from '../utils/PendingTasks';
 import router from '@ohos.router';
 import { picker } from '@kit.CoreFileKit';
 import { fileIo } from '@kit.CoreFileKit';
@@ -28,7 +31,9 @@ struct CourseImport {
   @StorageLink('learningSyncConflict') learningSyncConflict: boolean = false;
   @StorageLink('knowledgeSyncMessage') knowledgeSyncMessage: string = '';
   @StorageLink('learningDataRevision') @Watch('onLearningDataChanged') learningDataRevision: number = 0;
+  @StorageLink('focusDataRevision') @Watch('onLearningDataChanged') focusDataRevision: number = 0;
   @State otherTasks: ReminderEvent[] = [];
+  @State pendingTodoCount: number = -1;
   @State addingTodo: string = '';
   @State todoMessage: string = '';
   @State todayTaskIds: string[] = [];
@@ -36,6 +41,8 @@ struct CourseImport {
   private todoActive: boolean = false;
   private todoRevision: number = 0;
   private todoLoadVersion: number = 0;
+  private todoOverview: TodayOverview | null = null;
+  private todoOverviewKey: string = '';
   private todayDate(): string {
     const now: Date = new Date();
     return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
@@ -51,14 +58,16 @@ struct CourseImport {
   }
   private async loadOtherTasks(): Promise<void> {
     const owner: string = appState.currentUser.userId;
+    const key: string = TodayStore.key(owner);
     const version: number = ++this.todoLoadVersion;
     const results = await Promise.all([AgentApiClient.getToday(), AgentApiClient.getCurrentPlan()]);
-    if (!this.todoActive || owner !== appState.currentUser.userId || version !== this.todoLoadVersion) return;
+    if (!this.todoActive || owner !== appState.currentUser.userId || version !== this.todoLoadVersion || key !== TodayStore.key(owner)) return;
     const today = results[0]; const plan = results[1];
-    if (today.ok) {
-      const items: ReminderEvent[] = (today.data.allTasks || []).filter((item: ReminderEvent) => item.sourceType !== 'ddl' && (item.kind === 'exam' || item.kind === 'task'));
-      this.otherTasks = items.filter((item: ReminderEvent) => item.kind === 'exam' || !items.some((exam: ReminderEvent) =>
-        exam.kind === 'exam' && exam.knowledgePointId && exam.knowledgePointId === item.knowledgePointId && exam.courseName === item.courseName));
+    if (today.ok && today.data.userId === owner) {
+      this.todoOverviewKey = key;
+      this.todoOverview = today.data;
+      TodayStore.save(getContext(this) as common.Context, today.data);
+      this.syncUrgentCount();
     }
     if (plan.ok) this.syncTodayMembership(plan.data);
     else if ((plan as ApiFailure).error.statusCode === 404) this.syncTodayMembership(null);
@@ -187,6 +196,16 @@ struct CourseImport {
   /** 数据变了就同步刷新徽章数字（见 `urgentDdlCount` 的说明）。 */
   private syncUrgentCount(): void {
     this.urgentDdlCount = appState.getUrgentDDLs().length;
+    const owner: string = appState.currentUser.userId;
+    const key: string = TodayStore.key(owner);
+    if (key !== this.todoOverviewKey) {
+      this.todoOverviewKey = key;
+      this.todoOverview = TodayStore.read(getContext(this) as common.Context, owner);
+    }
+    this.otherTasks = PendingTasks.otherTasks(this.todoOverview,
+      (id: string): boolean => appState.isTaskCompleted(id, 'pending'));
+    this.pendingTodoCount = PendingTasks.count(this.todoOverview, appState.getPendingDDLs().length,
+      (id: string): boolean => appState.isTaskCompleted(id, 'pending'));
   }
 
   private goBack(): void {
@@ -861,15 +880,16 @@ struct CourseImport {
               Row() {
                 Text('全部待办').fontSize(18).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).layoutWeight(1)
                 // 读 @State 而不是直接调 appState（后者不在 ArkUI 依赖追踪里，删完不刷新）。
-                Text(`${this.urgentDdlCount} 项紧急`).fontSize(12).fontColor(UiTheme.danger).fontWeight(FontWeight.Medium)
-                  .backgroundColor('#FEF2F2').borderRadius(8).padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                Text(this.pendingTodoCount < 0 ? '待同步' : `${this.pendingTodoCount}项待处理`).fontSize(12).fontColor(UiTheme.accent).fontWeight(FontWeight.Medium)
+                  .backgroundColor(UiTheme.tint).borderRadius(8).padding({ left: 10, right: 10, top: 4, bottom: 4 })
               }.width('100%').margin({ bottom: 8 })
+              Text('未完成的作业、复习与学习任务').fontSize(12).fontColor(UiTheme.secondary).width('100%').margin({ bottom: 8 })
 
               if (this.ddlDetailId.length > 0 && !this.ddlList.some((ddl: HomeworkDDL) => ddl.id === this.ddlDetailId)) {
                 Text('该提醒对应的作业已删除或尚未同步，请刷新作业列表。').fontSize(13).fontColor('#B45309')
               }
               if (this.todoMessage) { Text(this.todoMessage).fontSize(13).fontColor(UiTheme.secondary).width('100%').padding({ top: 8, bottom: 8 }) }
-              if (this.ddlFilter !== 'completed') ForEach(this.otherTasks.slice(0, 20), (item: ReminderEvent) => {
+              if (this.ddlFilter !== 'completed') ForEach(this.otherTasks, (item: ReminderEvent) => {
                 Column({ space: 8 }) {
                   Text(item.title).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
                   Text(`${item.courseName} · ${item.kind === 'exam' ? '复习任务' : '学习任务'}`).fontSize(12).fontColor(UiTheme.secondary).width('100%')
@@ -893,6 +913,10 @@ struct CourseImport {
                     .onClick(() => this.activeTab = 'import')
                 }.width('100%').padding(24).alignItems(HorizontalAlign.Center)
               } else {
+                Row() {
+                  Text('作业DDL').fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
+                  Text(`${this.urgentDdlCount}项临近截止`).fontSize(12).fontColor(UiTheme.danger)
+                }.width('100%').margin({ top: 12, bottom: 8 })
                 Row({ space: 8 }) {
                 this.DdlFilter('全部', 'all')
                 this.DdlFilter('待处理', 'pending')
