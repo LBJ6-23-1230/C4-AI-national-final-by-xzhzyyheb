@@ -34,11 +34,15 @@ def send(event, device, delivery):
         raise PushFailure('invalid_project')
     jwt = Path(os.environ['HUAWEI_PUSH_JWT_FILE']).read_text(encoding='utf-8').strip()
     # Keep notification contents minimal; no mastery scores or wrong answers.
+    options = dict(ttl=300, notifyId=int(delivery['deliveryId'][-7:], 16))
+    if os.getenv('HUAWEI_PUSH_TEST_MESSAGE', '').strip() == '1':
+        # Huawei test messages: <=10 tokens and <=1000/day, useful before the
+        # self-classification category is approved. Remove this flag afterwards.
+        options['testMessage'] = True
     payload = dict(payload=dict(notification=dict(category=os.getenv('HUAWEI_PUSH_CATEGORY', 'MARKETING'),
         title='知学 Mate · 今日事项', body='有一项学习安排需要处理，打开查看。',
         clickAction=dict(actionType=0), foregroundShow=False)),
-        target=dict(token=[device['pushToken']]), pushOptions=dict(ttl=300,
-        notifyId=int(delivery['deliveryId'][-7:], 16)))
+        target=dict(token=[device['pushToken']]), pushOptions=options)
     req = Request(f'https://push-api.cloud.huawei.com/v3/{project}/messages:send',
         data=json.dumps(payload).encode(), headers={'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + jwt, 'push-type': '0'}, method='POST')
