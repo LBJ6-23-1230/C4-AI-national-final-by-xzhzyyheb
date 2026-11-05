@@ -63,9 +63,9 @@ def relationship(owner, partner):
 @learning_upgrade_api.route('/api/v1/partners/<partner>/messages', methods=['GET', 'POST'])
 def messages(partner):
     owner = authenticated()
-    relationship(owner, partner)
     room = hashlib.sha256('\0'.join(sorted([owner, partner])).encode()).hexdigest()
     if request.method == 'GET':
+        relationship(owner, partner)
         cursor = request.args.get('after', '')
         records = sorted([x for x in repo().list('partner_messages') if x.get('roomId') == room],
                          key=lambda x: x['messageId'])
@@ -91,6 +91,7 @@ def messages(partner):
             abort(400)
     identity = hashlib.sha256((owner + ':' + key).encode()).hexdigest()
     with repo().transaction():
+        relationship(owner, partner)
         previous = repo().get('partner_message_keys', identity)
         if previous:
             if previous['roomId'] != room or previous['text'] != text or previous['image'] != image:

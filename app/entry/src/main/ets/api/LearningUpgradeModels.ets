@@ -56,3 +56,5 @@ export interface PartnerInbox { conversations: PartnerConversation[]; totalUnrea
 export interface PartnerSummary { conversation: PartnerConversation; }
 export interface PartnerReadRequest { lastReadMessageId: string; }
 export interface PartnerReadResult { status: string; lastReadMessageId: string; }
+export interface EndPartnerRequest { pairedAt: string; }
+export interface EndPartnerResult { status: string; }

@@ -10,7 +10,6 @@ import { ChatNavigation } from '../services/ChatNavigation';
 import { AIFloatButton } from '../components/AIFloatButton';
 import { AgentApiClient } from '../api/AgentApiClient';
 import {
-  PartnerCandidateBasicInfo,
   PartnerCandidateProfile,
   PartnerContact,
   PartnerInvitation,
@@ -47,6 +46,7 @@ struct PartnerMatch {
   private matchRequestVersion: number = 0;
   private preferencesRequestVersion: number = 0;
   private invitationsRequestVersion: number = 0;
+  private outboxRequestVersion: number = 0;
   private contactsRequestVersion: number = 0;
   private ownsRequest(owner: string, page: number): boolean {
     return this.pageActive && owner === appState.currentUser.userId && page === this.pageVersion;
@@ -166,6 +166,8 @@ struct PartnerMatch {
    * 只往本机周计划里插一条任务 —— 所谓邀请从来没有离开过发起人的手机。
    */
   @State incomingInvitations: PartnerInvitation[] = [];
+  @State pendingInviteTargets: string[] = [];
+  @State onlineInviteError: string = '';
   /** 接受之后真正"联系起来"的搭子名（服务端双向登记）。 */
   @State contacts: PartnerContact[] = [];
   @State contactNames: string[] = [];
@@ -173,6 +175,8 @@ struct PartnerMatch {
   @State showMatchFactors: boolean = false;
   @State inviteBusy: string = '';
   @State inviteError: string = '';
+  @State endingPartnerId: string = '';
+  @State contactNotice: string = '';
   private collaborativeTaskId: string = '';
   /** 本页是否还在栈上（见 `onPageHide`）。 */
   private pageActive: boolean = true;
@@ -186,6 +190,7 @@ struct PartnerMatch {
       // 收件箱与匹配结果互不依赖，但都必须在进页面时拉一次 ——
       // 邀请是**别人**发起的状态变化，不主动拉就永远看不到。
       this.loadInvitations();
+      void this.loadOutbox();
       this.loadContacts();
     }
   }
@@ -207,6 +212,7 @@ struct PartnerMatch {
     const request: number = ++this.matchRequestVersion;
     this.partnerLoading = true;
     this.partnerError = '';
+    this.onlineInviteError = '';
     this.onlineBest = null;
     this.onlineOthers = [];
     try {
@@ -280,48 +286,6 @@ struct PartnerMatch {
   }
 
   /**
-   * 把后端的真实匹配结果转成本地协同任务流程认识的 `PartnerMatch`。
-   *
-   * 为什么需要：离线分支用 `LocalAgentService` 本地算分、直接产出 `PartnerMatch`；
-   * 在线分支拿到的是后端算好的 `PartnerRankedCandidate`（含五因子拆解）。
-   * 原先在线分支**根本走不到"发起邀请"**，只能浏览 —— 用户反馈的
-   * "联机模式流程走不完"就是这个。
-   *
-   *  因子与得分**全部来自后端**（`onlineBest.factors` / `.score`），
-   * 这里只做结构转换，不重新算分、不编数字。
-   */
-  private onlineAsPartner(): PartnerMatchType | null {
-    if (this.onlineBest === null) {
-      return null;
-    }
-    const candidate: PartnerCandidateProfile = this.onlineBest.candidate;
-    const factors: PartnerMatchFactors = this.onlineBest.factors;
-    const rows: MatchFactor[] = [
-      { label: '学习目标匹配', score: `${factors.goal}`, match: factors.goal > 0, detail: '后端五因子算分' },
-      { label: '空闲时间重叠', score: `${factors.timeOverlap}`, match: factors.timeOverlap > 0,
-        detail: `重叠 ${factors.overlapMinutes} 分钟` },
-      { label: '知识互补', score: `${factors.knowledgeComplement}`, match: factors.knowledgeComplement > 0,
-        detail: '强项与弱项互补程度' },
-      { label: '基础信息相近', score: `${factors.basicMatch}`, match: factors.basicMatch > 0,
-        detail: '年级与专业相近度' },
-      { label: '学习稳定性', score: `${factors.stability}`, match: factors.stability > 0,
-        detail: '近期学习活跃度' }
-    ];
-    const info: PartnerCandidateBasicInfo | undefined = candidate.basicInfo;
-    const displayName: string = info !== undefined && info.name !== undefined && info.name.length > 0
-      ? info.name : '学习搭子';
-    return {
-      matchName: displayName,
-      userId: candidate.userId,
-      score: this.onlineBest.score,
-      reasons: [`后端综合匹配分 ${this.onlineBest.score}`],
-      studyTime: null,
-      duration: factors.overlapMinutes,
-      matchFactors: rows
-    };
-  }
-
-  /**
    * 在线（真实后端）匹配结果的「发起学习邀请」。
    *
    *  与离线分支的关键差别：**必须先真的把邀请发到服务端**。
@@ -332,19 +296,13 @@ struct PartnerMatch {
    * 对方根本收不到，那正是本工程禁止的"静默假成功"。
    */
   private async confirmOnlinePartner(): Promise<void> {
-    if (this.inviteBusy.length > 0) return;
+    if (this.inviteBusy.length > 0 || this.onlineBest === null) return;
     const owner: string = appState.currentUser.userId;
     const page: number = this.pageVersion;
-    const partner: PartnerMatchType | null = this.onlineAsPartner();
-    if (partner === null || this.onlineBest === null) {
-      return;
-    }
     const targetId: string = this.onlineBest.candidate.userId;
-    const targetName: string = partner.matchName;
-    // 后端如实标注对方是真实账号还是演示同学（见 ApiModels 的 PartnerInvitation 注释）。
-    const isDemoTarget: boolean = this.onlineBest.candidate.accountKind !== 'account';
+    if (this.pendingInviteTargets.includes(targetId) || this.isContact(targetId)) return;
 
-    this.inviteError = '';
+    this.onlineInviteError = '';
     this.inviteBusy = targetId;
     const result: ApiResult<PartnerInvitationResponse> =
       await AgentApiClient.createPartnerInvitation({
@@ -356,16 +314,30 @@ struct PartnerMatch {
     this.inviteBusy = '';
 
     if (!result.ok) {
-      this.inviteError = `邀请没有发出去：${PartnerMatch.describeFailure<PartnerInvitationResponse>(result)}`;
+      if (this.onlineBest?.candidate.userId === targetId) {
+        this.onlineInviteError = `邀请没有发出去：${PartnerMatch.describeFailure<PartnerInvitationResponse>(result)}`;
+      }
+      void this.loadContacts();
       return;
     }
-    // 邀请真实送达 / 记为演示对象 —— 两种情况的说法**必须不同**，
-    // 不能让用户以为小红（演示同学，没有账号）会给他回消息。
-    const notice: string = isDemoTarget
-      ? `已记录向 ${targetName} 的邀请。注意：${targetName} 是演示同学（没有真实账号），不会真的回复。`
-      : `已向 ${targetName} 发出学习邀请。对方登录后会在「搭子与协同」页看到，并可选择接受或拒绝。`;
-    this.invitationSent = true;
-    this.inviteError = notice;
+    this.outboxRequestVersion++;
+    if (!this.pendingInviteTargets.includes(targetId)) this.pendingInviteTargets = [...this.pendingInviteTargets, targetId];
+    void this.loadOutbox();
+  }
+
+  private async loadOutbox(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.outboxRequestVersion;
+    const result = await AgentApiClient.listPartnerInvitations('outbox');
+    if (result.ok && this.ownsRequest(owner, page) && request === this.outboxRequestVersion) {
+      this.pendingInviteTargets = result.data.invitations
+        .filter((item: PartnerInvitation) => item.status === 'pending').map((item: PartnerInvitation) => item.toUserId);
+    }
+  }
+
+  private isContact(userId: string): boolean {
+    return this.contacts.some((contact: PartnerContact) => contact.partnerUserId === userId);
   }
 
   /** 收件箱：只含**待处理**的邀请（处理过的由后端过滤掉）。 */
@@ -396,6 +368,42 @@ struct PartnerMatch {
       this.contacts = result.data.contacts;
       this.contactNames = result.data.contacts.map((item: PartnerContact) => item.partnerName);
     }
+  }
+
+  private confirmEndPartner(contact: PartnerContact): void {
+    if (this.endingPartnerId) return;
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    AlertDialog.show({
+      title: '解除学习搭子',
+      message: `解除后，你和${contact.partnerName}将从彼此的搭子名单和会话列表中移除。再次结伴需要重新邀请。`,
+      primaryButton: { value: '取消', action: () => {} },
+      secondaryButton: { value: '确认解除', fontColor: UiTheme.danger, action: () => {
+        if (this.ownsRequest(owner, page)) void this.endPartner(contact, owner, page);
+      } }
+    });
+  }
+
+  private async endPartner(contact: PartnerContact, owner: string, page: number): Promise<void> {
+    if (this.endingPartnerId) return;
+    this.endingPartnerId = contact.partnerUserId;
+    this.contactNotice = '';
+    this.inviteError = '';
+    const result = await AgentApiClient.endPartnerRelationship(contact.partnerUserId, { pairedAt: contact.pairedAt });
+    if (!this.ownsRequest(owner, page)) return;
+    this.endingPartnerId = '';
+    if (result.ok) {
+      this.contacts = this.contacts.filter((item: PartnerContact) => item.partnerUserId !== contact.partnerUserId);
+      this.contactNames = this.contacts.map((item: PartnerContact) => item.partnerName);
+      this.pendingInviteTargets = this.pendingInviteTargets.filter((userId: string) => userId !== contact.partnerUserId);
+      this.incomingInvitations = this.incomingInvitations.filter((item: PartnerInvitation) => item.fromUserId !== contact.partnerUserId);
+      this.contactNotice = `已解除与${contact.partnerName}的搭子关系。`;
+    } else {
+      this.inviteError = `解除失败：${(result as ApiFailure).error.message}`;
+    }
+    void this.loadContacts();
+    void this.loadOutbox();
+    void this.loadInvitations();
   }
 
   /**
@@ -444,6 +452,7 @@ struct PartnerMatch {
       void this.loadOnlineMatch();
       void this.loadPreferences();
       void this.loadInvitations();
+      void this.loadOutbox();
       void this.loadContacts();
     }
   }
@@ -460,6 +469,9 @@ struct PartnerMatch {
     this.partnerLoading = false;
     this.preferencesSaving = false;
     this.inviteBusy = '';
+    this.endingPartnerId = '';
+    this.pendingInviteTargets = [];
+    this.contacts = [];
     this.onlineBest = null;
     this.onlineOthers = [];
     this.incomingInvitations = [];
@@ -684,12 +696,12 @@ Text(`${generatedPartner.score}%`).fontSize(22).fontWeight(FontWeight.Bold).font
                     .onClick(() => this.invitationCourse = course)
                 }, (course: string) => course)
                 Button(this.inviteBusy === item.candidate.userId
-                  ? '正在发送邀请…' : (this.invitationSent ? '查看搭子消息' : '邀请一起学习'))
+                  ? '正在发送邀请…' : (this.isContact(item.candidate.userId) || this.pendingInviteTargets.includes(item.candidate.userId) ? '查看搭子消息' : '邀请一起学习'))
                   .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.surface)
                   .backgroundColor(UiTheme.accent).borderRadius(8)
                   .enabled(this.inviteBusy.length === 0)
                   .onClick(() => {
-                    if (this.invitationSent) {
+                    if (this.isContact(item.candidate.userId) || this.pendingInviteTargets.includes(item.candidate.userId)) {
                       router.pushUrl({ url: 'pages/PartnerInbox' });
                     } else {
                       // 这条路径现在是**真的**发一个服务端邀请（见 confirmOnlinePartner）：
@@ -697,6 +709,13 @@ Text(`${generatedPartner.score}%`).fontSize(22).fontWeight(FontWeight.Bold).font
                       void this.confirmOnlinePartner();
                     }
                   })
+                if (this.isContact(item.candidate.userId)) {
+                  Text('已成为学习搭子').fontSize(13).fontColor(UiTheme.secondary).width('100%')
+                } else if (this.pendingInviteTargets.includes(item.candidate.userId)) {
+                  Text('已发送申请，等待搭子同意').fontSize(13).fontColor(UiTheme.secondary).width('100%')
+                } else if (this.onlineInviteError) {
+                  Text(this.onlineInviteError).fontSize(13).fontColor(UiTheme.danger).width('100%')
+                }
               }
               .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
     }
@@ -764,13 +783,26 @@ Text(`${generatedPartner.score}%`).fontSize(22).fontWeight(FontWeight.Bold).font
                 .width('100%').padding(12).backgroundColor('#FEF2F2')
                 .border({ width: 1, color: '#FECACA' }).borderRadius(8)
             }
+            if (this.contactNotice) {
+              Text(this.contactNotice).fontSize(13).fontColor(UiTheme.ink).width('100%').padding(12)
+                .backgroundColor(UiTheme.subtle).borderRadius(UiTheme.radius)
+            }
             ForEach(this.contacts, (contact: PartnerContact) => {
               Column({ space: 8 }) {
                 Text(contact.partnerName).fontSize(17).fontWeight(FontWeight.Bold)
                 Text('结伴于 ' + new Date(contact.pairedAt).toLocaleDateString() + ' · 已结伴 ' + Math.max(0, Math.floor((Date.now() - new Date(contact.pairedAt).getTime()) / 86400000)) + '天').fontSize(13).fontColor(UiTheme.secondary)
-                Button('与搭子聊天 →').onClick(() => router.pushUrl({ url: 'pages/PartnerChat', params: { partnerId: contact.partnerUserId, partnerName: contact.partnerName } }))
+                Row({ space: 10 }) {
+                  Button('与搭子聊天 →', { type: ButtonType.Normal }).layoutWeight(1).height(UiTheme.touch)
+                    .fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint).borderRadius(UiTheme.radius)
+                    .enabled(this.endingPartnerId !== contact.partnerUserId)
+                    .onClick(() => router.pushUrl({ url: 'pages/PartnerChat', params: { partnerId: contact.partnerUserId, partnerName: contact.partnerName } }))
+                  Button(this.endingPartnerId === contact.partnerUserId ? '解除中…' : '解除搭子', { type: ButtonType.Normal })
+                    .height(UiTheme.touch).fontSize(14).fontColor(UiTheme.danger).backgroundColor(UiTheme.surface)
+                    .border({ width: 1, color: UiTheme.line }).borderRadius(UiTheme.radius)
+                    .enabled(this.endingPartnerId.length === 0).onClick(() => this.confirmEndPartner(contact))
+                }.width('100%')
               }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
-            }, (contact: PartnerContact) => contact.partnerUserId)
+            }, (contact: PartnerContact) => `${contact.partnerUserId}:${contact.pairedAt}`)
             if (this.contactNames.length > 0) {
               Text(`已建立学习搭子：${this.contactNames.join('、')}`)
                 .fontSize(12).fontColor('#0F766E').width('100%').padding(12)

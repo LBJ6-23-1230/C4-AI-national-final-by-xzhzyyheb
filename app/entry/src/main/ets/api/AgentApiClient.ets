@@ -1,6 +1,6 @@
 import { TaskSplitRequest, AssessmentActionRequest, CalendarRequest, PointClassification, ProfileResponse } from './ApiModels';
 import { ManualTaskRequest, SharedTasks, SharedTaskRequest, ChatFileRequest, ChatFile, TodayItemRequest } from './StudyTaskModels';
-import { PartnerInbox, PartnerSummary, PartnerReadRequest, PartnerReadResult } from './LearningUpgradeModels';
+import { PartnerInbox, PartnerSummary, PartnerReadRequest, PartnerReadResult, EndPartnerRequest, EndPartnerResult } from './LearningUpgradeModels';
 import { CourseSettings, CourseSettingRequest } from './LearningUpgradeModels';
 import { PartnerMessages, PartnerMessageRequest, PartnerMessageResult, ScannedQuestionRequest, SavedScannedQuestion, LearningReview, ReviewRequest, ReviewTasks, ReviewTaskRequest } from './LearningUpgradeModels';
 import { AuthSelectAccountRequest } from './AuthModels';
@@ -116,6 +116,9 @@ export class AgentApiClient {
   }
   static async markPartnerRead(partner: string, body: PartnerReadRequest): Promise<ApiResult<PartnerReadResult>> {
     return AgentApiClient.request<PartnerReadResult>(http.RequestMethod.POST, `/api/v1/partners/${encodeURIComponent(partner)}/read`, body);
+  }
+  static async endPartnerRelationship(partner: string, body: EndPartnerRequest): Promise<ApiResult<EndPartnerResult>> {
+    return AgentApiClient.request<EndPartnerResult>(http.RequestMethod.POST, `/api/v1/partners/${encodeURIComponent(partner)}/end`, body);
   }
 
   static async courseSettings(): Promise<ApiResult<CourseSettings>> {

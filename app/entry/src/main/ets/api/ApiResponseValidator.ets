@@ -129,6 +129,7 @@ export class ApiResponseValidator {
     if (route === '/api/v1/partner-conversations') return ApiResponseValidator.hasArray(data, 'conversations') && ApiResponseValidator.hasNumber(data, 'totalUnread');
     if (route.endsWith('/summary') && route.indexOf('/api/v1/partners/') === 0) return ApiResponseValidator.isRecordField(data, 'conversation');
     if (route.endsWith('/read') && route.indexOf('/api/v1/partners/') === 0) return ApiResponseValidator.hasString(data, 'lastReadMessageId');
+    if (method === 'POST' && route.endsWith('/end') && route.indexOf('/api/v1/partners/') === 0) return data['status'] === 'ended';
     if (method === 'GET' && route.indexOf('/api/v1/partners/') === 0) {
       return ApiResponseValidator.hasArray(data, 'messages') && ApiResponseValidator.hasString(data, 'cursor') && ApiResponseValidator.hasBoolean(data, 'hasMore');
     }

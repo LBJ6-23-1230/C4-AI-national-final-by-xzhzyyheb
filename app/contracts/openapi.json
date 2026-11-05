@@ -5990,6 +5990,94 @@
         }
       }
     },
+    "/api/v1/partners/{partner}/end": {
+      "post": {
+        "summary": "解除当前学习搭子关系",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndPartnerResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "搭子关系不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "需要先完成首次密码设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "搭子关系已更新",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "partner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndPartnerRequest"
+              }
+            }
+          }
+        },
+        "description": "任一方可解除当前结伴关系，双方将从彼此的搭子名单和会话列表中移除。以 pairedAt 确认当前关系，避免旧请求解除重新建立的关系。"
+      }
+    },
     "/api/v1/plans/current/tasks/schedule": {
       "post": {
         "summary": "Add only the selected deferred task, preserving current tasks and extending the total-minute budget only when needed",
@@ -12033,6 +12121,33 @@
         "required": [
           "status",
           "lastReadMessageId"
+        ]
+      },
+      "EndPartnerRequest": {
+        "type": "object",
+        "properties": {
+          "pairedAt": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "搭子名单中返回的结伴时间"
+          }
+        },
+        "required": [
+          "pairedAt"
+        ]
+      },
+      "EndPartnerResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ended"
+            ]
+          }
+        },
+        "required": [
+          "status"
         ]
       },
       "PlanTaskScheduleRequest": {

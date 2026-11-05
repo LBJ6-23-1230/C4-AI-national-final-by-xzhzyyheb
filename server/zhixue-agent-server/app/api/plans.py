@@ -134,17 +134,17 @@ def sync_assignments():
 		return jsonify(errorCode='BAD_REQUEST', message='加入本日计划需要选择具体任务'), 400
 	from zoneinfo import ZoneInfo
 	selected_date = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat() if data.get('scheduleToday') else None
-	# Once migrated, device snapshots cannot overwrite canonical facts.
-	if _repository.get('learning_sync_state', owner):
-		from app.services.learning_data import snapshot
-		rows = [dict(r, completed=r.get('completed', False)) for r in snapshot(_repository, owner)['homeworkDDLs']]
-	try:
-		validate_assignments(rows)
-		if selected is not None and (not isinstance(selected, str) or not any(r["id"] == selected and not r["completed"] for r in rows)):
-			raise ValueError("请选择一项待处理作业")
-	except ValueError as error:
-		return jsonify({"errorCode": "BAD_REQUEST", "message": str(error)}), 400
 	with PROFILE_LOCK, _repository.transaction():
+		# Read canonical assignments and update the plan in the same transaction.
+		if _repository.get('learning_sync_state', owner):
+			from app.services.learning_data import snapshot
+			rows = [dict(r, completed=r.get('completed', False)) for r in snapshot(_repository, owner)['homeworkDDLs']]
+		try:
+			validate_assignments(rows)
+			if selected is not None and (not isinstance(selected, str) or not any(r["id"] == selected and not r["completed"] for r in rows)):
+				raise ValueError("请选择一项待处理作业")
+		except ValueError as error:
+			return jsonify({"errorCode": "BAD_REQUEST", "message": str(error)}), 400
 		previous = next((p for p in _repository.list("plans") if plan_belongs_to(p, owner)), None)
 		if previous is None and not rows:
 			return jsonify({"errorCode": "NOT_FOUND", "message": "current plan not found"}), 404

@@ -24,6 +24,7 @@
     POST   /api/v1/agent/partner-invitations/<id>/accept   接受
     POST   /api/v1/agent/partner-invitations/<id>/decline  不接受
     POST   /api/v1/agent/partner-invitations/<id>/dismiss  叉掉（无视）
+    POST   /api/v1/partners/<partner>/end                 解除搭子关系
 
 ## 四条纪律
 
@@ -41,9 +42,9 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, abort, jsonify, request
 
-from app.api.identity import resolve_user_id
+from app.api.identity import current_user_id, resolve_user_id
 from app.api.validation import MAX_ID_CHARS, bad_request, bounded_str, json_object
 
 partner_invite_api = Blueprint("partner_invite", __name__)
@@ -174,21 +175,25 @@ def _respond_in_transaction(invitation_id: str, responder: str, status: str):
 		invitation["status"] = status
 		invitation["respondedAt"] = _now()
 		saves.append((COLLECTION, invitation_id, invitation))
-	# Same-action retries are idempotent and also repair older partial accepts.
+	# Same-action retries repair older partial accepts without reopening ended relationships.
 	if status == ACCEPTED:
-		saves.extend(_contact_records(invitation))
+		saves.extend(_contact_records(invitation, allow_new_pairing=previous_status == PENDING))
 	if saves:
 		_repository.apply_batch([], saves)
 
 	return jsonify({"invitation": _public(invitation)})
 
 
-def _contact_records(invitation: dict) -> list:
+def _contact_records(invitation: dict, *, allow_new_pairing: bool) -> list:
 	left, right = invitation["fromUserId"], invitation["toUserId"]
+	links = [(owner, other, _repository.get("contacts", f"{owner}:{other}"))
+		for owner, other in ((left, right), (right, left))]
+	if not allow_new_pairing and any(contact and contact.get("status") == "ended" for _, _, contact in links):
+		return []
 	saves = []
-	for owner, other in ((left, right), (right, left)):
+	for owner, other, contact in links:
 		contact_id = f"{owner}:{other}"
-		if _repository.get("contacts", contact_id) is not None:
+		if contact and contact.get("status") != "ended":
 			continue
 		saves.append(("contacts", contact_id, {
 			"contactId": contact_id,
@@ -259,7 +264,14 @@ def create_invitation():
 		"createdAt": _now(),
 		"respondedAt": "",
 	}
-	if _repository is not None:
+	with _repository.transaction():
+		contact = _repository.get("contacts", f"{sender}:{target}")
+		if contact and contact.get("status") != "ended":
+			return jsonify(errorCode="CONFLICT", message="你们已经是学习搭子", details=None), 409
+		for previous in _list_all():
+			if (previous.get("fromUserId") == sender and previous.get("toUserId") == target
+					and previous.get("status") == PENDING and previous.get("courseName", "") == course):
+				return jsonify(invitation=_public(previous)), 201
 		_repository.save(COLLECTION, invitation_id, invitation)
 	return jsonify({"invitation": _public(invitation)}), 201
 
@@ -313,7 +325,7 @@ def list_contacts():
 	if _repository is None:
 		return jsonify({"userId": me, "contacts": []})
 	items = [item for item in _repository.list("contacts")
-		if isinstance(item, dict) and item.get("userId") == me]
+		if isinstance(item, dict) and item.get("userId") == me and item.get("status") != "ended"]
 	items.sort(key=lambda item: str(item.get("pairedAt", "")), reverse=True)
 	return jsonify({
 		"userId": me,
@@ -323,3 +335,40 @@ def list_contacts():
 			"pairedAt": item.get("pairedAt", ""),
 		} for item in items],
 	})
+
+
+@partner_invite_api.post("/api/v1/partners/<partner>/end")
+def end_partner_relationship(partner: str):
+	owner = current_user_id()
+	if not owner:
+		abort(401)
+	if owner == partner or len(partner) > MAX_ID_CHARS:
+		abort(400)
+	data, error = json_object()
+	if error is not None:
+		return error
+	paired_at, error = bounded_str(data.get("pairedAt"), "pairedAt", 64, allow_empty=True)
+	if error is not None:
+		return error
+
+	with _repository.transaction():
+		key = f"{owner}:{partner}"
+		contact = _repository.get("contacts", key)
+		if not contact:
+			abort(404)
+		if contact.get("pairedAt", "") != paired_at:
+			return jsonify(errorCode="CONFLICT", message="搭子关系已更新，请刷新后重试", details=None), 409
+		if contact.get("status") != "ended":
+			stamp = _now()
+			reverse_key = f"{partner}:{owner}"
+			reverse = _repository.get("contacts", reverse_key)
+			saves = [("contacts", key, dict(contact, status="ended", endedAt=stamp))]
+			if reverse:
+				saves.append(("contacts", reverse_key, dict(reverse, status="ended", endedAt=stamp)))
+			for invitation in _list_all():
+				if (invitation.get("status") == PENDING
+						and {invitation.get("fromUserId"), invitation.get("toUserId")} == {owner, partner}):
+					saves.append((COLLECTION, invitation["invitationId"],
+						dict(invitation, status=DISMISSED, respondedAt=stamp)))
+			_repository.apply_batch([], saves)
+	return jsonify(status="ended")

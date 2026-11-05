@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 import pytest
 from app.repositories.json_repository import JsonRepository
 from app.repositories.sqlite_repository import SQLiteRepository
@@ -58,6 +59,23 @@ def test_new_device_read_and_empty_legacy_snapshot_preserve_assignments(repo):
     assert reconcile(plan, []) == plan
     assert sync.snapshot(repo, 'bob')['courses'] == []
     assert sync.apply(repo, 'alice', change('import', courses=[course()], homeworkDDLs=[ddl()])) == first
+
+
+def test_sync_before_explicit_add_keeps_other_ddls_deferred(repo):
+    today = datetime.now(ZoneInfo('Asia/Shanghai')).date()
+    due = (today + timedelta(days=1)).isoformat()
+    repo.save('plans', 'alice-plan', dict(planId='alice-plan', userId='alice', version=1,
+        tasks=[], unscheduledTasks=[], constraints={'availableMinutes': 120},
+        calendarDays=[dict(date=today.isoformat(), minutes=120, scheduledMinutes=0)]))
+    sync.apply(repo, 'alice', change('import', homeworkDDLs=[
+        dict(ddl(), id='chosen', dueDate=due), dict(ddl(), id='other', dueDate=due)
+    ]))
+    synced = repo.get('plans', 'alice-plan')
+    assert not synced['tasks']
+    assert [task['taskId'] for task in synced['unscheduledTasks']] == ['chosen', 'other']
+    updated = reconcile(synced, sync.snapshot(repo, 'alice')['homeworkDDLs'], selected_id='chosen')
+    assert [task['taskId'] for task in updated['tasks']] == ['chosen']
+    assert [task['taskId'] for task in updated['unscheduledTasks']] == ['other']
 
 
 def test_versions_deletion_and_old_device_cannot_resurrect(repo):

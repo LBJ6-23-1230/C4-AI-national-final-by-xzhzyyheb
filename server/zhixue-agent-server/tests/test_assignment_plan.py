@@ -1,5 +1,7 @@
 from copy import deepcopy
+from datetime import datetime, timedelta
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -35,6 +37,39 @@ def test_sync_add_complete_and_empty_device_snapshot_preserves_tasks(tmp_path, m
     assert next(t for t in completed['tasks'] if t['taskId'] == row['id'])['status'] == 'completed'
     removed = client.post(URL, json={'assignments': []}).get_json()
     assert removed == completed  # Empty device cache is not a deletion request.
+
+
+@pytest.mark.parametrize('calendar', [False, True])
+@pytest.mark.parametrize('schedule_today', [False, True])
+def test_explicit_assignment_add_never_fills_spare_budget_with_other_tasks(tmp_path, calendar, schedule_today):
+    client = create_app(tmp_path / 'selected-assignment.json').test_client()
+    plan = plans._repository.get('plans', 'plan-demo-001')
+    today = datetime.now(ZoneInfo('Asia/Shanghai')).date()
+    tomorrow = (today + timedelta(days=1)).isoformat()
+    future = dict(plan['tasks'][0], scheduledDate=tomorrow)
+    deferred = dict(future, taskId='unrelated', deferredReason='等候安排')
+    deferred.pop('scheduledDate')
+    plan.update(tasks=[future], unscheduledTasks=[deferred], constraints={'availableMinutes': 300})
+    if calendar:
+        plan['calendarDays'] = [
+            {'date': today.isoformat(), 'minutes': 300, 'scheduledMinutes': 0},
+            {'date': tomorrow, 'minutes': 300, 'scheduledMinutes': future['durationMinutes']},
+        ]
+        plan['calendarUnscheduledMinutes'] = deferred['durationMinutes']
+    plans._repository.save('plans', plan['planId'], plan)
+    rows = [dict(assignment(key), dueDate=tomorrow) for key in ('selected', 'another-ddl')]
+    payload = dict(assignments=rows, selectedId='selected', scheduleToday=schedule_today)
+    result = client.post(URL, json=payload)
+    assert result.status_code == 200
+    updated = result.get_json()
+    assert updated['tasks'][0] == future
+    assert [t['taskId'] for t in updated['tasks'][1:]] == ['selected']
+    assert updated['unscheduledTasks'][0] == deferred
+    assert [t['taskId'] for t in updated['unscheduledTasks'][1:]] == ['another-ddl']
+    if calendar or schedule_today:
+        assert updated['tasks'][1]['scheduledDate'] == today.isoformat()
+    assert client.post(URL, json=payload).get_json() == updated
+    assert client.post(URL, json={'assignments': rows}).get_json() == updated
 
 
 def test_new_account_sync_repairs_existing_local_ddls_and_isolates_identity(tmp_path):

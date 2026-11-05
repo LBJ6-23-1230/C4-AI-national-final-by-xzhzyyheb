@@ -68,6 +68,56 @@ def test_read_is_private_and_cannot_consume_another_room(inbox_setup):
     assert all(x['partnerUserId'] != first[0] for x in inbox['conversations'])
 
 
+def test_either_partner_can_end_relationship_and_old_requests_cannot_restore_it(inbox_setup):
+    client, repository, people = inbox_setup
+    sender, recipient, unrelated = people
+    invitations = '/api/v1/agent/partner-invitations'
+    contacts = '/api/v1/agent/partner-contacts'
+    repository.delete('contacts', sender[0] + ':' + recipient[0])
+    repository.delete('contacts', recipient[0] + ':' + sender[0])
+
+    def invite():
+        response = client.post(invitations, headers=sender[1], json={'toUserId': recipient[0]})
+        assert response.status_code == 201
+        return response.get_json()['invitation']
+
+    def accept(invitation):
+        return client.post(f"{invitations}/{invitation['invitationId']}/accept", headers=recipient[1])
+
+    first = invite()
+    assert invite()['invitationId'] == first['invitationId']
+    cross = client.post(invitations, headers=recipient[1], json={'toUserId': sender[0]}).get_json()['invitation']
+    assert accept(first).status_code == 200
+    send(client, sender, recipient, 'before-end', '学习记录')
+    end_url = f'/api/v1/partners/{sender[0]}/end'
+    paired_at = accept(first).get_json()['invitation']['respondedAt']
+    payload = {'pairedAt': paired_at}
+    assert client.post(end_url, json=payload).status_code == 401
+    assert client.post(f'/api/v1/partners/{recipient[0]}/end', headers=unrelated[1], json=payload).status_code == 404
+    assert client.post(end_url, headers=recipient[1], json=payload).get_json() == {'status': 'ended'}
+    assert client.post(end_url, headers=recipient[1], json=payload).status_code == 200
+    assert accept(first).status_code == 200
+    assert client.post(f"{invitations}/{cross['invitationId']}/accept", headers=sender[1]).status_code == 409
+    for owner, partner in [(sender, recipient), (recipient, sender)]:
+        assert all(row['partnerUserId'] != partner[0]
+                   for row in client.get(contacts, headers=owner[1]).get_json()['contacts'])
+        assert all(row['partnerUserId'] != partner[0] for row in
+                   client.get('/api/v1/partner-conversations', headers=owner[1]).get_json()['conversations'])
+        messages = f'/api/v1/partners/{partner[0]}/messages'
+        assert client.get(messages, headers=owner[1]).status_code == 404
+        assert client.post(messages, headers=owner[1], json={'clientId': 'after-end', 'text': '消息'}).status_code == 404
+    assert client.get(f'/api/v1/partners/{unrelated[0]}/summary', headers=sender[1]).status_code == 200
+
+    second = invite()
+    assert second['invitationId'] != first['invitationId']
+    assert accept(second).status_code == 200
+    assert client.post(end_url, headers=recipient[1], json=payload).status_code == 409
+    summary = client.get(f'/api/v1/partners/{sender[0]}/summary', headers=recipient[1])
+    assert summary.status_code == 200
+    assert client.post(f'/api/v1/partners/{recipient[0]}/end', headers=sender[1],
+                       json={'pairedAt': summary.get_json()['conversation']['pairedAt']}).status_code == 200
+
+
 def test_manual_course_is_canonical_and_does_not_fabricate_mastery(inbox_setup):
     client, repository, people = inbox_setup
     owner, headers = people[0]

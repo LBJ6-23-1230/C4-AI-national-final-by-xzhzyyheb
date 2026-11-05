@@ -112,7 +112,8 @@ struct CourseImport {
   }
   @State addToToday: boolean = false;
   @State ddlFilter: string = 'all';
-  @State addingAssignment: boolean = false;
+  @State addingAssignmentId: string = '';
+  private assignmentRevision: number = 0;
   @State ddlEditOpen: boolean = false;
   @State editingDdlId: string = '';
   @State editDdlTitle: string = '';
@@ -142,7 +143,14 @@ struct CourseImport {
     this.refreshLearningData();
     void appState.syncLearningData();
   }
-  onPageHide(): void { this.todoActive = false; this.todoRevision++; this.todoLoadVersion++; this.addingTodo = ''; }
+  onPageHide(): void {
+    this.todoActive = false;
+    this.todoRevision++;
+    this.todoLoadVersion++;
+    this.assignmentRevision++;
+    this.addingTodo = '';
+    this.addingAssignmentId = '';
+  }
   aboutToDisappear(): void { this.onPageHide(); }
   @State jsonInputText: string = '';
   @State importType: string = 'course';
@@ -339,23 +347,48 @@ struct CourseImport {
   }
 
   private async confirmAssignment(ddl: HomeworkDDL): Promise<void> {
+    if (this.addingAssignmentId || appState.isTaskCompleted(ddl.id, 'pending')) return;
+    const owner: string = appState.currentUser.userId;
+    const revision: number = ++this.assignmentRevision;
+    this.addingAssignmentId = ddl.id;
     const result = await AgentApiClient.getCurrentPlan();
-    if (!result.ok) { void this.addAssignment(ddl); return; }
-    const now: Date = new Date();
-    const today: string = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    if (!this.ownsAssignmentRequest(owner, revision)) return;
+    if (!result.ok) {
+      if ((result as ApiFailure).error.statusCode === 404) {
+        await this.addAssignment(ddl, owner, revision);
+      } else {
+        this.addingAssignmentId = '';
+        this.importMessage = '暂时无法读取学习计划，请重试。';
+        this.importStatus = 'error';
+      }
+      return;
+    }
+    const today: string = this.todayDate();
     const scheduled: number = result.data.tasks.filter((task) => task.taskId !== ddl.id && task.parentTaskId !== ddl.id && task.status !== 'completed' && (!task.scheduledDate || task.scheduledDate <= today)).reduce((sum: number, task) => sum + task.durationMinutes, 0);
     const available: number = result.data.budgetSummary?.availableMinutes ?? 0;
     const total: number = Math.max(available, scheduled + ddl.estimatedMinutes);
-    if (total <= available) { void this.addAssignment(ddl); return; }
-    AlertDialog.show({ title: '确认增加可用学习时间', message: `加入「${ddl.title}」需要将本次预算从${available}分钟调整为${total}分钟。也可取消后在本周计划安排到其他日期。`,
-      primaryButton: { value: '暂不加入', action: () => {} }, secondaryButton: { value: '确认增加并加入', action: () => { void this.addAssignment(ddl); } } });
+    if (total <= available) { await this.addAssignment(ddl, owner, revision); return; }
+    const cancel = (): void => {
+      if (this.ownsAssignmentRequest(owner, revision)) this.addingAssignmentId = '';
+    };
+    AlertDialog.show({
+      title: '确认增加可用学习时间',
+      message: `加入「${ddl.title}」需要将本次预算从${available}分钟调整为${total}分钟。也可取消后在本周计划安排到其他日期。`,
+      cancel: cancel,
+      primaryButton: { value: '暂不加入', action: cancel },
+      secondaryButton: { value: '确认增加并加入', action: () => { void this.addAssignment(ddl, owner, revision); } }
+    });
   }
 
-  private async addAssignment(ddl: HomeworkDDL): Promise<void> {
-    if (this.addingAssignment || appState.isTaskCompleted(ddl.id, 'pending')) return;
-    this.addingAssignment = true;
+  private ownsAssignmentRequest(owner: string, revision: number): boolean {
+    return this.todoActive && appState.currentUser.userId === owner && revision === this.assignmentRevision;
+  }
+
+  private async addAssignment(ddl: HomeworkDDL, owner: string, revision: number): Promise<void> {
+    if (!this.ownsAssignmentRequest(owner, revision) || this.addingAssignmentId !== ddl.id) return;
     try {
       const result = await new PlanViewModel().syncAssignments(ddl.id, this.addToToday);
+      if (!this.ownsAssignmentRequest(owner, revision)) return;
       if (result.ok) {
         this.openPlan();
       } else {
@@ -363,7 +396,7 @@ struct CourseImport {
         this.importStatus = 'error';
       }
     } finally {
-      this.addingAssignment = false;
+      if (this.ownsAssignmentRequest(owner, revision)) this.addingAssignmentId = '';
     }
   }
 
@@ -653,9 +686,9 @@ struct CourseImport {
           Text(`截止：${ddl.dueDate}`).fontSize(12).fontColor(UiTheme.secondary).width('100%')
         }.layoutWeight(1).alignItems(HorizontalAlign.Start)
         if (!appState.isTaskCompleted(ddl.id, 'pending')) {
-          Button(this.addingAssignment ? '加入中' : this.addToToday ? '加入本日计划' : '加入计划', { type: ButtonType.Normal }).height(40).fontSize(12)
+          Button(this.addingAssignmentId === ddl.id ? '加入中…' : this.addToToday ? '加入本日计划' : '加入计划', { type: ButtonType.Normal }).height(40).fontSize(12)
             .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).border({ width: 1, color: UiTheme.line }).borderRadius(8)
-            .enabled(!this.addingAssignment).onClick(() => { void this.confirmAssignment(ddl); })
+            .enabled(this.addingAssignmentId.length === 0).onClick(() => { void this.confirmAssignment(ddl); })
         }
       }.width('100%').alignItems(VerticalAlign.Top)
       Row({ space: 20 }) {

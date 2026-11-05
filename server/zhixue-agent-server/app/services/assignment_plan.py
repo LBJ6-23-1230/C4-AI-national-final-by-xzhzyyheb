@@ -1,6 +1,7 @@
 """Reconcile an account's local DDL snapshot without inventing study time."""
 from copy import deepcopy
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from app.tools.time_budget import fit_plan_to_budget
 
@@ -67,55 +68,60 @@ def reconcile(plan, rows, selected_id=None, *, authoritative=False, selected_dat
         else:
             task["deferredReason"] = previous.get("deferredReason") or "作业已同步，选择可用时间或点击加入计划后安排"
             deferred.append(task)
-    result.update(tasks=regular, unscheduledTasks=deferred)
-    if selected_id and selected_date:
+    today = selected_date or datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
+    if selected_id:
         children = [t for t in deferred if t.get('parentTaskId') == selected_id]
         regular.extend(children)
         deferred[:] = [t for t in deferred if t.get('parentTaskId') != selected_id]
         for task in regular:
             if task.get('status') != 'completed' and (task['taskId'] == selected_id or task.get('parentTaskId') == selected_id):
-                task['scheduledDate'] = selected_date
                 task.pop('deferredReason', None)
+                if selected_date or (result.get('calendarDays') is not None and not task.get('scheduledDate')):
+                    task['scheduledDate'] = today
+    for key, tasks in (('tasks', regular), ('unscheduledTasks', deferred)):
+        order = {task['taskId']: index for index, task in enumerate(plan.get(key, []))}
+        tasks.sort(key=lambda task: order.get(task['taskId'], len(order)))
+        result[key] = tasks
     # Ignore snapshot ordering when nothing about the actual assignments changed.
     # In particular a page refresh must preserve the user's explicit selection.
-    current_ddls = {key: task for key, task in existing.items() if task.get("source") == "ddl"}
-    next_ddls = {t["taskId"]: t for t in regular + deferred if t.get("source") == "ddl"}
-    if not selected_id and current_ddls == next_ddls and result == plan:
-        return deepcopy(plan)
+    if not selected_id and result == plan:
+        return result
     budget = plan.get("constraints", {}).get("availableMinutes")
-    if selected_id:
-        # Adding a specific assignment is an explicit commitment to its duration.
-        budget = max(budget or 0, sum(t["durationMinutes"] for t in regular if t.get("status") != "completed"
-                     and (not selected_date or not t.get('scheduledDate') or t['scheduledDate'] <= selected_date)))
-        if budget > 1440:
-            raise ValueError("当前安排超过一天，请先调整计划时间")
-    # Reading an unchanged DDL snapshot must not re-fit a deliberate task selection.
-    if selected_id and selected_date:
-        # This explicit action commits the selected assignment to today without
-        # moving unrelated future tasks or re-running the automatic scheduler.
+    if selected_id or authoritative:
+        # Keep the existing placement while syncing assignment facts or adding
+        # a specific task. Only an explicit add may extend the current budget.
         scheduled = sum(t['durationMinutes'] for t in regular if t.get('status') != 'completed'
-                        and (not t.get('scheduledDate') or t['scheduledDate'] <= selected_date))
-        result['constraints'] = dict(result.get('constraints', {}), availableMinutes=budget)
-        result['budgetSummary'] = dict(availableMinutes=budget, scheduledMinutes=scheduled,
-            unallocatedMinutes=max(0, budget - scheduled),
+                        and (not t.get('scheduledDate') or t['scheduledDate'] <= today))
+        if selected_id:
+            budget = max(budget or 0, scheduled)
+            if budget > 1440:
+                raise ValueError("当前安排超过一天，请先调整计划时间")
+            result['constraints'] = dict(result.get('constraints', {}), availableMinutes=budget)
+        available = budget or 0
+        result['budgetSummary'] = dict(availableMinutes=available, scheduledMinutes=scheduled,
+            unallocatedMinutes=max(0, available - scheduled),
             unscheduledMinutes=sum(t['durationMinutes'] for t in deferred if t.get('status') != 'completed'))
+        if scheduled > available:
+            result['budgetSummary']['conflictMinutes'] = scheduled - available
         if result.get('calendarDays') is not None:
             days = result['calendarDays']
-            current = next((day for day in days if day['date'] == selected_date), None)
-            if current is None:
-                current = dict(date=selected_date, minutes=0)
+            current = next((day for day in days if day['date'] == today), None)
+            if current is None and selected_id and scheduled:
+                current = dict(date=today, minutes=0)
                 days.append(current)
                 days.sort(key=lambda day: day['date'])
-            current.update(minutes=max(current['minutes'], scheduled), scheduledMinutes=scheduled)
-            for day in days:
-                if day['date'] != selected_date:
-                    day['scheduledMinutes'] = sum(t['durationMinutes'] for t in regular
-                        if t.get('status') != 'completed' and t.get('scheduledDate') == day['date'])
+            if current is not None:
+                if selected_id:
+                    current['minutes'] = max(current['minutes'], scheduled)
+                current['scheduledMinutes'] = scheduled
+            if selected_date or authoritative:
+                for day in days:
+                    if day['date'] > today:
+                        day['scheduledMinutes'] = sum(t['durationMinutes'] for t in regular
+                            if t.get('status') != 'completed' and t.get('scheduledDate') == day['date'])
             if 'calendarUnscheduledMinutes' in result:
                 result['calendarUnscheduledMinutes'] = result['budgetSummary']['unscheduledMinutes']
     elif result != plan and plan.get('calendarDays'):
-        from datetime import datetime
-        from zoneinfo import ZoneInfo
         from app.services.calendar_plan import schedule
         today = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
         days = [dict(date=d['date'], minutes=d['minutes']) for d in plan['calendarDays'] if d['date'] >= today]

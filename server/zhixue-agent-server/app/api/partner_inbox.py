@@ -89,10 +89,10 @@ def partner_summary(partner):
 @partner_inbox_api.post('/api/v1/partners/<partner>/read')
 def mark_read(partner):
     owner = authenticated()
-    relationship(owner, partner)
     cursor = string(body(), 'lastReadMessageId', 160, True)
     room = room_id(owner, partner)
     with repo().transaction():
+        relationship(owner, partner)
         message = repo().get('partner_messages', cursor)
         if not message or message.get('roomId') != room:
             abort(404)
