@@ -213,7 +213,7 @@ export class AppState {
     if (this.focusResultDraft !== null && this.focusSessions.some(
       (item: FocusSession) => item.taskId === this.focusResultDraft?.taskId)) this.focusResultDraft = null;
     if (this.focusResultDraft !== null) this.focusRuntime = null;
-    if (this.focusRuntime !== null && this.focusRuntime.task.mode !== 'strict' &&
+    if (this.focusRuntime !== null && this.focusRuntime.shared !== true && this.focusRuntime.task.mode !== 'strict' &&
       this.focusRuntime.task.allowBackgroundTiming !== true && this.focusRuntime.backgroundReason !== 'screenOff') {
       // Cold recovery never assumes that time away was spent studying.
       this.focusRuntime = FocusClock.pauseOnDeparture(this.focusRuntime, this.focusRuntime.lastUpdatedAt);
@@ -1150,6 +1150,25 @@ export class AppState {
     return true;
   }
 
+  /** Replace only the matching shared runtime; never overwrite an unrelated local draft. */
+  public applySharedFocusRuntime(runtime: FocusRuntime | null, sessionId: string): boolean {
+    if (runtime !== null && runtime.ownerId !== this.currentUser.userId) return false;
+    if (this.focusRuntime !== null && this.focusRuntime.sessionId !== sessionId) return false;
+    if (this.focusResultDraft !== null && this.focusResultDraft.taskId !== sessionId) return false;
+    const previous = this.focusRuntime;
+    const previousTask = this.activeFocusTask;
+    this.focusRuntime = runtime;
+    if (runtime !== null) this.activeFocusTask = runtime.task;
+    else if (previous !== null && this.activeFocusTask === previous.task) this.activeFocusTask = null;
+    if (!this.persistLearningData()) {
+      this.focusRuntime = previous;
+      this.activeFocusTask = previousTask;
+      return false;
+    }
+    this.notifyFocusDataChanged();
+    return true;
+  }
+
   public pauseFocusOnDeparture(): boolean {
     return this.handleFocusDeparture('navigation');
   }
@@ -1200,12 +1219,12 @@ export class AppState {
     return true;
   }
 
-  public saveFocusSession(session: FocusSession): string {
+  public saveFocusSession(session: FocusSession, alreadySynced: boolean = false): string {
     if (this.focusSessions.some((saved: FocusSession) => saved.taskId === session.taskId)) {
       return 'duplicate';
     }
     this.focusSessions.push(session);
-    if (!AgentApiClient.getConfig().useFixture && this.isSignedIn) this.pendingFocusSessions.push(session);
+    if (!alreadySynced && !AgentApiClient.getConfig().useFixture && this.isSignedIn) this.pendingFocusSessions.push(session);
     if (!this.persistLearningData()) {
       this.focusSessions = this.focusSessions.filter((item: FocusSession) => item.taskId !== session.taskId);
       this.pendingFocusSessions = this.pendingFocusSessions.filter((item: FocusSession) => item.taskId !== session.taskId);
@@ -1213,6 +1232,16 @@ export class AppState {
     }
     this.notifyFocusDataChanged();
     return 'saved';
+  }
+
+  public acceptSharedFocusRecord(session: FocusSession): void {
+    const index: number = this.focusSessions.findIndex((item: FocusSession) => item.taskId === session.taskId);
+    if (index >= 0) this.focusSessions[index] = session;
+    else this.focusSessions.push(session);
+    this.pendingFocusSessions = this.pendingFocusSessions.filter((item: FocusSession) => item.taskId !== session.taskId);
+    this.restoreFocusStatuses();
+    this.persistLearningData();
+    this.notifyFocusDataChanged();
   }
 
   /** Rebuild completion from persisted facts even if the app exited before overlay save. */

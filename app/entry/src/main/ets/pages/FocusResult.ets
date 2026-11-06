@@ -8,6 +8,7 @@ import { AIFloatButton } from '../components/AIFloatButton';
 import { ChatNavigation } from '../services/ChatNavigation';
 import { AgentApiClient } from '../api/AgentApiClient';
 import { DistributedStateService } from '../services/DistributedStateService';
+import { FocusSessionSyncService } from '../services/FocusSessionSyncService';
 
 @Entry
 @Component
@@ -20,6 +21,7 @@ struct FocusResult {
   @State saved: boolean = false;
   @State resultSession: FocusSession | null = null;
   @State saveError: string = '';
+  @State saving: boolean = false;
   @StorageLink('focusSyncMessage') focusSyncMessage: string = '';
   private ownerId: string = '';
   private fallbackTaskId: string = `focus-${Date.now()}`;
@@ -38,6 +40,16 @@ struct FocusResult {
       this.actualMinutes = appState.focusResultDraft.actualMinutes;
       this.pauseCount = appState.focusResultDraft.pauseCount;
       this.interruptionCount = appState.focusResultDraft.interruptionCount;
+      const shared = FocusSessionSyncService.getInstance().getSnapshot().session;
+      if (shared?.sessionId === this.resultSession.taskId && shared.record !== undefined && shared.record !== null) {
+        this.resultSession = shared.record;
+        this.assessment = shared.record.selfAssessment;
+        this.saved = true;
+        const active = appState.activeFocusTask;
+        if (active !== null && active.course === shared.record.course && active.task === shared.record.task &&
+          active.planTaskId === shared.record.planTaskId) appState.clearFocusTask();
+        appState.clearFocusResultDraft();
+      }
     }
   }
 
@@ -51,6 +63,7 @@ struct FocusResult {
     const status = this.assessment === 'completed' ? 'completed' :
       ((draft?.status === 'interrupted' || this.interruptionCount > 0) ? 'interrupted' : 'not_completed');
     return {
+      shared: draft?.shared,
       taskId: draft?.taskId ?? this.fallbackTaskId,
       planTaskId: draft?.planTaskId ?? focusTask?.planTaskId,
       course: draft?.course ?? focusTask?.course ?? '数据结构',
@@ -67,8 +80,8 @@ struct FocusResult {
     };
   }
 
-  private save(): void {
-    if (this.saved) {
+  private async save(): Promise<void> {
+    if (this.saved || this.saving) {
       return;
     }
     if (appState.currentUser.userId !== this.ownerId) {
@@ -80,9 +93,27 @@ struct FocusResult {
       return;
     }
     const proposed: FocusSession = this.currentSession();
+    let sharedSaved: boolean = false;
+    const sharedService = FocusSessionSyncService.getInstance();
+    const shared = sharedService.getSnapshot().session;
+    if (proposed.shared === true || shared?.sessionId === proposed.taskId) {
+      this.saving = true;
+      if (shared === null) await DistributedStateService.getInstance().refresh();
+      const current = sharedService.getSnapshot().session;
+      if (current?.sessionId !== proposed.taskId) {
+        this.saveError = '暂时无法读取这次共享专注，请联网后重试。'; this.saving = false; return;
+      }
+      if (!['completed', 'abandoned'].includes(current.state) && !(await sharedService.finish(this.assessment))) {
+        this.saveError = sharedService.getSnapshot().lastError; this.saving = false; return;
+      }
+      if (appState.currentUser.userId !== this.ownerId) { this.saving = false; return; }
+      sharedSaved = true;
+      this.saving = false;
+    }
     const existing: FocusSession | undefined = appState.focusSessions.find(
       (item: FocusSession) => item.taskId === proposed.taskId);
-    const session: FocusSession = existing ?? proposed;
+    const canonical = sharedService.getSnapshot().session?.record;
+    const session: FocusSession = sharedSaved && canonical !== undefined && canonical !== null ? canonical : (existing ?? proposed);
     this.assessment = session.selfAssessment;
     // 重复 taskId（同一条专注被结算两次，例如快速连点"保存这次记录"）。
     //
@@ -90,7 +121,7 @@ struct FocusResult {
     //   ① `focusResultDraft` 不被清掉，下次进结算页还会看到上一条的旧数据；
     //   ② 计划不回写，可页面照样显示"已保存"，用户以为进度更新了（假成功）。
     // 正确做法：照常走完"清理 + 回写"，只在文案上如实说明这是重复提交。
-    const saveStatus: string = appState.saveFocusSession(session);
+    const saveStatus: string = appState.saveFocusSession(session, sharedSaved);
     if (saveStatus === 'failed') {
       this.saveError = '本机保存失败，请重试；当前结果仍保留在本页。';
       return;
@@ -144,7 +175,7 @@ struct FocusResult {
     //   漏掉这一步会造成跨设备"僵尸任务"：本机已经结算完，另一台设备上
     //   却一直显示「手机正在专注：xxx」并提供"接着做"按钮，点了会进入一个
     //   早已结束的任务。必须与本地状态一起清理。
-    DistributedStateService.getInstance().clearFocusTask();
+    if (!sharedSaved) DistributedStateService.getInstance().clearFocusTask();
     this.saved = true;
     void appState.syncFocusSessions();
   }
@@ -216,8 +247,8 @@ struct FocusResult {
             }, (value: string) => value)
             if (this.saveError) { Text(this.saveError).fontSize(13).fontColor(UiTheme.danger).width('100%') }
             if (!this.saved) {
-              Button('保存这次记录', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15).fontColor('#FFFFFF')
-                .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => this.save())
+              Button(this.saving ? '正在同步…' : '保存这次记录', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15).fontColor('#FFFFFF')
+                .backgroundColor(UiTheme.accent).borderRadius(8).enabled(!this.saving).onClick(() => { void this.save(); })
             } else {
               if (!this.isFixture()) { Button('重试同步', { type: ButtonType.Normal }).height(44).fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).onClick(() => { void appState.syncFocusSessions(); }) }
               Button('查看更新计划', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15).fontColor('#FFFFFF')

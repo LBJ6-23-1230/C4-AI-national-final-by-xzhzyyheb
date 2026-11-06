@@ -111,7 +111,8 @@ function loadPage(name, directory = 'pages') {
     WorkflowViewModel: class {
       refreshStatus(...args) { return network.workflowStatus(...args); }
       getErrorMessage() { return 'offline'; }
-    }, VoiceInputService: class { async dispose() {} },
+    }, VoiceInputService: class { async dispose() {} async stop() {} },
+    TextInputController: class { stopEditing() {} },
     ClientCache: { getWorkflow: () => ({ sessionId: 'workflow' }), getWorkflowStatus: () => null,
       currentOwnerUserId: () => appState.currentUser.userId },
     AgentBridge: { callAgent: (...args) => network.chat(...args), loadHistory: () => network.history(), loadChatImage: (...args) => network.chatImage(...args) }

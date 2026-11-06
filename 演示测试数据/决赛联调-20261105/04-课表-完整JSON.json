@@ -1,0 +1,46 @@
+{
+  "courses": [
+    {
+      "courseName": "数据库系统原理",
+      "examDate": "2026-11-24",
+      "priority": "高",
+      "studyHours": 2,
+      "status": "近期复习不足"
+    },
+    {
+      "courseName": "概率论与数理统计",
+      "examDate": "2026-11-19",
+      "priority": "高",
+      "studyHours": 1,
+      "status": "近期复习不足"
+    },
+    {
+      "courseName": "编译原理",
+      "examDate": "2026-11-27",
+      "priority": "高",
+      "studyHours": 5,
+      "status": "近期复习良好"
+    },
+    {
+      "courseName": "软件工程导论",
+      "examDate": "2026-12-03",
+      "priority": "中",
+      "studyHours": 4,
+      "status": "近期复习正常"
+    },
+    {
+      "courseName": "大学英语（四）",
+      "examDate": "2026-12-15",
+      "priority": "中",
+      "studyHours": 3,
+      "status": "近期复习正常"
+    },
+    {
+      "courseName": "马克思主义基本原理",
+      "examDate": "2026-12-28",
+      "priority": "低",
+      "studyHours": 1,
+      "status": "近期复习不足"
+    }
+  ]
+}

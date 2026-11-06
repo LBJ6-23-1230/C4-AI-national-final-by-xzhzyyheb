@@ -1,5 +1,29 @@
 /** Lightweight runtime guards for JSON received from the api-contract-v0.3 endpoints. */
 export class ApiResponseValidator {
+  private static isSharedFocus(payload: Record<string, Object>): boolean {
+    if (!['userId', 'deviceId'].every((key: string) => ApiResponseValidator.hasString(payload, key)) ||
+      !ApiResponseValidator.hasNumber(payload, 'serverTime')) return false;
+    if (payload['session'] === null) return true;
+    if (!ApiResponseValidator.isRecord(payload['session'])) return false;
+    const session = payload['session'] as Record<string, Object>;
+    if (!['sessionId', 'leaderDeviceId', 'leaderLabel'].every((key: string) => ApiResponseValidator.hasString(session, key)) ||
+      !['revision', 'elapsedMs', 'remainingMs', 'startedAt', 'updatedAt'].every((key: string) => ApiResponseValidator.hasNumber(session, key)) ||
+      !['running', 'paused', 'completed', 'abandoned'].includes(session['state'] as string) ||
+      !ApiResponseValidator.hasArray(session, 'participants') || !ApiResponseValidator.isRecord(session['task']) ||
+      !ApiResponseValidator.isRecord(session['lastEvent'])) return false;
+    const task = session['task'] as Record<string, Object>;
+    return ['course', 'task'].every((key: string) => ApiResponseValidator.hasString(task, key)) &&
+      ApiResponseValidator.hasNumber(task, 'plannedMinutes') &&
+      ['normal', 'strict'].includes(task['mode'] as string) &&
+      ['countdown', 'stopwatch'].includes(task['timerType'] as string) &&
+      (session['participants'] as Object[]).every((value: Object) => {
+        if (!ApiResponseValidator.isRecord(value)) return false;
+        const participant = value as Record<string, Object>;
+        return ['deviceId', 'deviceLabel', 'role'].every((key: string) => ApiResponseValidator.hasString(participant, key)) &&
+          ApiResponseValidator.hasNumber(participant, 'lastSeen') && ApiResponseValidator.hasBoolean(participant, 'online') &&
+          ApiResponseValidator.hasBoolean(participant, 'background');
+      });
+  }
   private static isCollaboration(payload: Record<string, Object>): boolean {
     if (!['userId', 'deviceId'].every((key: string) => ApiResponseValidator.hasString(payload, key)) ||
       !ApiResponseValidator.hasNumber(payload, 'serverTime') || !ApiResponseValidator.hasArray(payload, 'devices') ||
@@ -68,6 +92,8 @@ export class ApiResponseValidator {
     const data: Record<string, Object> = payload as Record<string, Object>;
     // 一律用去查询串的路径做匹配，避免 `?a=b` 让精确比较失效。
     const route: string = ApiResponseValidator.basePath(path);
+    if (route === '/api/v1/focus-session') return ApiResponseValidator.isSharedFocus(data);
+    if (route === '/api/v1/focus-session/actions') return ApiResponseValidator.isSharedFocus(data);
     if (route === '/api/v1/plans/current/today-items') return ApiResponseValidator.isPlan(data);
     if (route === '/api/v1/chat-files') return ApiResponseValidator.hasString(data, 'fileName') &&
       ApiResponseValidator.hasString(data, 'text') && ApiResponseValidator.hasBoolean(data, 'truncated');

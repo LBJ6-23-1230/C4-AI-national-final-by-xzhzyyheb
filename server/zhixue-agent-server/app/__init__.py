@@ -209,6 +209,8 @@ def create_app(repository_path: str | Path | None = None) -> Flask:
     app.register_blueprint(learning_data_api)
     from app.api.device_collaboration import device_collaboration_api
     app.register_blueprint(device_collaboration_api)
+    from app.api.shared_focus import shared_focus_api
+    app.register_blueprint(shared_focus_api)
     from app.api.study_tasks import study_tasks_api
     app.register_blueprint(study_tasks_api)
 

@@ -1,16 +1,42 @@
 # 最新安装包
 
-`知学Mate-signed.hap` 已更新为 **2026-11-05 Push 版 debug 签名包**，代码基线为 2026-11-04 的 `5016807`（待办统计统一修复 + “我的”统计刷新修复）。
+当前 `知学Mate-signed.hap` 为 **2026-11-06 14:26 构建的 1.0.1（1000001）debug 签名包**。
 
-- 大小：**5,292,684 字节**
-- SHA-256：`ed8ed4f053a2d19b80402e3a1ef70e5dc1674f14dfe56fd36b9472ab4341678e`
-- 构建：2026-11-05 11:05，debug 构建
-- 签名：使用 2026-11-05 新建的调试 Profile `zhixue-debug-push-20261105`
-- 旧 Profile 备份：`zhixue-signing/com.zhixue.mateDebug-20261105-before-push.p7b.bak`
-- 验签：官方 `verify-app` 通过（`profile type is: debug`、`Digest verify result: true`）
-- 安装：Pura 90 模拟器覆盖安装、启动通过
-- 检查：15 项统计专项 + 11 项待办/同步检查通过
+- 包含共享专注会话和对话页“按住说话”改造，前后端必须一起更新。
+- 大小：**5,458,127 字节**。
+- SHA-256：`015d180a15752bf541342c1f538dc76aed264539885b2f579a74fb7fc0498310`。
+- 干净构建及官方 `verify-app` 验签通过，沿用本机三设备 debug Profile。
+- 2026-11-06 15:15 已在 Pura 90 模拟器（API 24）覆盖安装并启动：`bm dump` 为 1.0.1（1000001），`aa dump` 为 `#FOREGROUND`，首页与学习搭子页正常，见 `evidence/emulator-check-20261106-1.0.1.log` 与 `evidence/emulator-pura90-1.0.1-home-20261106.jpeg`。
+- [修改范围、验证结果与真机复测步骤](../deliverables/collaboration-voice-20261106/README.md)。双真机和真实语音识别仍需复测。
+
+## 2026-11-05 历史记录
+
+以下内容描述上一个安装包，不代表当前 HAP。
+
+`知学Mate-signed.hap` 已更新为 **2026-11-05 22:29 构建的 debug 签名包**，代码基线为最新 `main` 的 `1bb2e411`（fix: scope assignment scheduling and manage study partners）。
+
+- 大小：**5,318,217 字节**
+- SHA-256：`ef0670d46be74f4deded19c62d16732f14fc49304707ba581397af4180ab22cb`
+- 构建：2026-11-05 22:29，debug 构建（`assembleHap`，BUILD SUCCESSFUL）
+- 签名 Profile：**`zhixue-debug-push-20261105Debug (1).p7b`（4,295 B，`E78EB8AD…51B9`）**
+  - 2026-11-05 22:09 由 AGC 重新签发，绑定 **3 台设备**：
+    - `11F34EC7…AF10`（本次新增）
+    - `3DEC080E…1CDB`
+    - `89135BA5…96A1`
+  - 上一版双设备 Profile（`8E3934BD…67F9`，4,228 B）已备份为 `zhixue-signing/com.zhixue.mateDebug-20261105-before-3dev.p7b.bak`
+  - 仓库 `zhixue-signing/com.zhixue.mateDebug.p7b` 与 `E:\zhixue-signing\com.zhixue.mateDebug.p7b` 均已更新为同一份
+- 验签：官方 `verify-app` 通过（`profile type is: debug`、`Digest verify result: true`、`verify-app success`）；HAP 内嵌 Profile 哈希与新 p7b 完全一致
+- 安装：Pura 90 模拟器覆盖安装成功、`aa start` 成功；恢复登录态并加载真实数据（用户 `xzh`、「今日待办 15 项」），截图见 `核查截图-20261105/08-Pura90-三设备Profile-首页.jpeg`
+- 检查：后端 `980 passed, 30 skipped`；11 个前端行为检查脚本全部 exit 0（代码未变，沿用 21:20 的结论）
 - 说明：`app-privilege-capabilities` 为空是正常的（应用特权字段，不是 Push 开关）；Push 能力由 AGC 推送服务/开放能力控制
-- 注意：默认接口仍是 `http://10.0.2.2:5000`；真机演示前需在 App「接口环境」改为电脑 WLAN IP
+- 注意：默认接口仍是 `http://10.0.2.2:5000`；真机演示前需在 App「接口环境」改为电脑 WLAN IP。本机 IP 会随 Wi-Fi 变化（21:00 为 `10.82.98.80`，22:50 漫游到 WHUT-ISP 后为 `10.77.112.129`），演示当天以 `ipconfig` 为准
 
-[项目核查报告](../项目核查报告-20261105.md)
+## 版本演进（仅签名 Profile 变化，代码未动）
+
+| 时间 | HAP 大小 | HAP SHA-256 | Profile | 设备数 |
+|---|---:|---|---|---:|
+| 21:07 | 5,318,100 | `fcebbd17…20e7` | `2669B918…4C8F` | 1 |
+| 21:42 | 5,318,149 | `4b3ae7aa…0fb0b` | `8E3934BD…67F9` | 2 |
+| **22:29** | **5,318,217** | **`ef0670d4…22cb`** | **`E78EB8AD…51B9`** | **3** |
+
+[项目核查报告](../项目核查报告-20261105-最新.md)

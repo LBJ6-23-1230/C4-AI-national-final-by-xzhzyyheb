@@ -79,7 +79,7 @@ export class FocusLifecycleService {
   static leavePage(): void {
     FocusLifecycleService.pageVisible = false;
     FocusLifecycleService.clearPending();
-    appState.handleFocusDeparture('navigation');
+    // Moving inside the app keeps the same focus clock running.
   }
 
   private static screenUnlocked(): void {
@@ -100,7 +100,7 @@ export class FocusLifecycleService {
         ? 'screenOff' : (FocusLifecycleService.foreground ? 'navigation' : 'background');
       // Unlocking back into the focus page continues the same session. Waking to
       // the launcher/another app follows the selected background timing policy.
-      if (!(FocusLifecycleService.pendingWake && FocusLifecycleService.foreground && FocusLifecycleService.pageVisible)) {
+      if (reason !== 'navigation' && !(FocusLifecycleService.pendingWake && FocusLifecycleService.foreground && FocusLifecycleService.pageVisible)) {
         appState.handleFocusDeparture(reason, FocusLifecycleService.departedAt);
       }
     }

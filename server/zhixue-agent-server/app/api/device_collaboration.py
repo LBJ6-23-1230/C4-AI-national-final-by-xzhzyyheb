@@ -14,7 +14,7 @@ def collaboration():
         return jsonify(errorCode='BAD_REQUEST', message='设备请求过大'), 413
     repo = current_app.extensions['repository']
     try:
-        with repo.transaction():
+        with repo.transaction(user_id=owner):
             result = execute(repo, owner, request.get_json(silent=True))
         return jsonify(result)
     except CollaborationError as error:

@@ -7,6 +7,7 @@ import { AgentApiClient } from '../api/AgentApiClient';
 import { ApiFailure } from '../api/ApiResult';
 import { CollaborationDevice, CollaborationLink, CollaborationRequest, CollaborationResponse } from '../api/DeviceCollaborationModels';
 import { FocusTask } from '../models/AgentModels';
+import { FocusSessionSyncService } from './FocusSessionSyncService';
 
 export interface DistributedPeer {
   networkId: string;
@@ -31,6 +32,9 @@ export interface DistributedSnapshot {
   available: boolean;
   busy: boolean;
   deliveryText: string;
+  stale: boolean;
+  lastResponseAt: number;
+  localDeviceId: string;
 }
 export type DistributedSnapshotListener = (snapshot: DistributedSnapshot) => void;
 
@@ -59,6 +63,7 @@ export class DistributedStateService {
   private remoteLabel: string = '';
   private lastSyncedAt: number = 0;
   private acknowledgements: Set<string> = new Set<string>();
+  private consumedMessages: Set<string> = new Set<string>();
 
   public static getInstance(): DistributedStateService {
     if (DistributedStateService.instance === null) DistributedStateService.instance = new DistributedStateService();
@@ -79,9 +84,7 @@ export class DistributedStateService {
       void this.refresh();
       this.timer = setInterval(() => { if (this.queued === 0) void this.refresh(); }, 5000);
     } else {
-      void this.send('offline');
-      this.response = null;
-      this.clearRemote();
+      void this.send('background');
       this.notify();
     }
   }
@@ -102,6 +105,7 @@ export class DistributedStateService {
     this.deviceId = '';
     this.deviceKey = '';
     this.acknowledgements.clear();
+    this.consumedMessages.clear();
     this.clearRemote();
     return identity.length > 0;
   }
@@ -140,6 +144,15 @@ export class DistributedStateService {
   public isReady(): boolean { return this.getSnapshot().sessionReady; }
   public setListener(listener: DistributedSnapshotListener | null): void { this.listener = listener; }
   public async refresh(): Promise<boolean> { return this.send('heartbeat'); }
+  public consumeRemoteTask(): void {
+    if (this.response !== null) this.response.links.forEach((link: CollaborationLink) => {
+      if (link.received !== null) {
+        this.consumedMessages.add(link.received.messageId);
+        void this.send('consume', '', link.invitationId, undefined, link.received.messageId);
+      }
+    });
+    this.clearRemote(); this.notify();
+  }
   public async invite(id: string): Promise<boolean> { return this.send('invite', id); }
   public async respond(invitation: string, accept: boolean): Promise<boolean> {
     return this.send(accept ? 'accept' : 'reject', '', invitation);
@@ -157,10 +170,8 @@ export class DistributedStateService {
     this.timer = -1;
     this.foreground = false;
     this.enabled = false;
-    await this.send('offline');
-    this.response = null;
+    await this.send('background');
     this.registered = false;
-    this.clearRemote();
     this.notify();
   }
   private async send(action: string, target: string = '', invitation: string = '', task?: FocusTask,
@@ -175,21 +186,22 @@ export class DistributedStateService {
   }
   private async perform(generation: number, action: string, target: string, invitation: string,
     task?: FocusTask, message: string = ''): Promise<boolean> {
-    if (!this.reconcileIdentity() || generation !== this.generation || (!this.foreground && action !== 'offline')) return false;
+    if (!this.reconcileIdentity() || generation !== this.generation || (!this.foreground && !['offline', 'background'].includes(action))) return false;
     if (!this.loadInstallation()) { this.notify(); return false; }
     const identity: string = this.identity;
     const owner: string = AuthStore.getUserId();
     try {
       if (!this.registered) {
-        if (action === 'offline') return true;
+        if (action === 'offline' || action === 'background') return true;
         const registration = await AgentApiClient.deviceCollaboration({ action: 'register', deviceId: this.deviceId,
           deviceKey: this.deviceKey, deviceLabel: this.label });
         if (!this.isCurrent(identity, generation)) return false;
         if (!registration.ok) { this.fail(registration as ApiFailure); return false; }
         if (registration.data.userId !== owner || registration.data.deviceId !== this.deviceId) return false;
         this.registered = true;
+        if (this.context !== null) FocusSessionSyncService.getInstance().configure(this.context, this.deviceId, this.deviceKey);
         this.apply(registration.data);
-        if (action === 'heartbeat') return true;
+        if (action === 'heartbeat') { await FocusSessionSyncService.getInstance().refresh(); return true; }
       }
       const request: CollaborationRequest = { action: action, deviceId: this.deviceId, deviceKey: this.deviceKey };
       if (target) request.targetDeviceId = target;
@@ -202,9 +214,10 @@ export class DistributedStateService {
       if (!result.ok) { this.fail(result as ApiFailure); return false; }
       if (result.data.userId !== owner || result.data.deviceId !== this.deviceId) return false;
       this.apply(result.data);
+      if (action !== 'background' && action !== 'offline') await FocusSessionSyncService.getInstance().refresh();
       return true;
     } catch (_) {
-      if (this.isCurrent(identity, generation)) { this.lastError = '连接服务暂时不可用，请检查网络后重试。'; this.response = null; this.clearRemote(); this.notify(); }
+      if (this.isCurrent(identity, generation)) { this.lastError = '连接服务暂时不可用，请检查网络后重试。'; this.notify(); }
       return false;
     }
   }
@@ -215,8 +228,7 @@ export class DistributedStateService {
     this.lastError = failure.error.statusCode === 404 && failure.error.code !== 'DEVICE_COLLABORATION'
       ? '连接服务尚未更新，请更新后端后重试。' : failure.error.message;
     if ([401, 403, 404].includes(failure.error.statusCode)) this.registered = false;
-    this.response = null;
-    this.clearRemote();
+    if ([401, 403].includes(failure.error.statusCode)) { this.response = null; this.clearRemote(); }
     this.notify();
   }
   private apply(response: CollaborationResponse): void {
@@ -228,7 +240,7 @@ export class DistributedStateService {
       const link: CollaborationLink = response.links[i];
       if (link.state !== 'connected' || link.received === null) continue;
       const received = link.received;
-      if (received.task !== null && received.sentAt * 1000 >= this.lastSyncedAt) {
+      if (received.task !== null && !this.consumedMessages.has(received.messageId) && received.sentAt * 1000 >= this.lastSyncedAt) {
         this.remoteTask = received.task;
         this.remoteLabel = link.peerDeviceLabel;
         this.lastSyncedAt = received.sentAt * 1000;
@@ -246,12 +258,14 @@ export class DistributedStateService {
   private clearRemote(): void { this.remoteTask = null; this.remoteLabel = ''; this.lastSyncedAt = 0; }
   public getSnapshot(): DistributedSnapshot {
     const available: boolean = this.reconcileIdentity();
-    const response: CollaborationResponse | null = this.foreground && Date.now() - this.lastResponseAt < 15000 ? this.response : null;
+    const response: CollaborationResponse | null = this.response;
+    const stale: boolean = response !== null && (Date.now() - this.lastResponseAt >= 15000 || this.lastError.length > 0);
     const links: CollaborationLink[] = response !== null ? response.links : [];
     const devices: CollaborationDevice[] = response !== null ? response.devices : [];
     const connected: CollaborationLink[] = links.filter((link: CollaborationLink) => link.state === 'connected');
     const peers: DistributedPeer[] = connected.map((link: CollaborationLink) => {
-      const peer: DistributedPeer = { networkId: link.peerDeviceId, deviceLabel: link.peerDeviceLabel, online: true };
+      const peer: DistributedPeer = { networkId: link.peerDeviceId, deviceLabel: link.peerDeviceLabel,
+        online: !stale && devices.some((device: CollaborationDevice) => device.deviceId === link.peerDeviceId && device.online) };
       return peer;
     });
     const sent: CollaborationLink[] = connected.filter((link: CollaborationLink) => link.sentMessageId.length > 0);
@@ -263,7 +277,8 @@ export class DistributedStateService {
       remoteTask: response !== null ? this.remoteTask : null, remoteDeviceLabel: response !== null ? this.remoteLabel : '',
       lastSyncedAt: response !== null ? this.lastSyncedAt : 0, lastError: this.lastError, devices: devices, links: links,
       incomingCount: links.filter((link: CollaborationLink) => link.state === 'pending' && link.incoming).length,
-      available: available, busy: this.queued > 0, deliveryText: delivery };
+      available: available, busy: this.queued > 0, deliveryText: delivery, stale: stale,
+      lastResponseAt: this.lastResponseAt, localDeviceId: this.deviceId };
   }
   private notify(): void {
     if (this.listener !== null) { try { this.listener(this.getSnapshot()); } catch (_) {} }

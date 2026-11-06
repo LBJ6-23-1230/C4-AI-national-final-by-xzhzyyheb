@@ -1,0 +1,74 @@
+{
+  "ddls": [
+    {
+      "courseName": "概率论与数理统计",
+      "title": "第七章 参数估计习题（含附加题）",
+      "dueDate": "2026-11-07",
+      "priority": "高",
+      "estimatedMinutes": 50
+    },
+    {
+      "courseName": "数据库系统原理",
+      "title": "SQL 查询优化实验报告",
+      "dueDate": "2026-11-09",
+      "priority": "高",
+      "estimatedMinutes": 75
+    },
+    {
+      "courseName": "大学英语（四）",
+      "title": "Unit 6 听力精听与转写",
+      "dueDate": "2026-11-11",
+      "priority": "低",
+      "estimatedMinutes": 25
+    },
+    {
+      "courseName": "编译原理",
+      "title": "LL(1) 分析表构造作业",
+      "dueDate": "2026-11-12",
+      "priority": "高",
+      "estimatedMinutes": 80
+    },
+    {
+      "courseName": "软件工程导论",
+      "title": "需求规格说明书初稿",
+      "dueDate": "2026-11-13",
+      "priority": "中",
+      "estimatedMinutes": 90
+    },
+    {
+      "courseName": "大学英语（四）",
+      "title": "议论文互评（第二稿）",
+      "dueDate": "2026-11-15",
+      "priority": "中",
+      "estimatedMinutes": 40
+    },
+    {
+      "courseName": "概率论与数理统计",
+      "title": "历年真题限时训练（2019 卷）",
+      "dueDate": "2026-11-18",
+      "priority": "中",
+      "estimatedMinutes": 120
+    },
+    {
+      "courseName": "马克思主义基本原理",
+      "title": "实践报告：乡村振兴调研提纲",
+      "dueDate": "2026-11-20",
+      "priority": "中",
+      "estimatedMinutes": 60
+    },
+    {
+      "courseName": "数据库系统原理",
+      "title": "事务隔离级别对比（小组）",
+      "dueDate": "2026-11-23",
+      "priority": "低",
+      "estimatedMinutes": 45
+    },
+    {
+      "courseName": "软件工程导论",
+      "title": "团队项目迭代二演示",
+      "dueDate": "2026-11-30",
+      "priority": "低",
+      "estimatedMinutes": 30
+    }
+  ]
+}

@@ -7345,14 +7345,14 @@
     },
     "/api/v1/device-collaboration": {
       "post": {
-        "summary": "同账号设备连接、前台在线状态与专注任务接收确认",
+        "summary": "同账号设备配对、状态与任务接收确认",
         "operationId": "deviceCollaboration",
         "security": [
           {
             "BearerAuth": []
           }
         ],
-        "description": "仅在服务端已认证的账号内发现设备。register需deviceLabel；invite需targetDeviceId；accept/reject/disconnect需invitationId；publish需messageId和task；clear需messageId；ack需invitationId和messageId，且只能确认对端消息。25秒无心跳失效，邀请60秒过期。offline主动断开；重返前台不会恢复旧连接。仅同步任务设置，不迁移计时进度。",
+        "description": "仅发现当前认证账号的设备。首次邀请须对端确认；显式disconnect才解除配对。background与offline标记暂时离线，保留配对和未消费任务，重新联网自动恢复。前台90秒内为在线，后台5分钟内为后台状态；邀请60秒过期，任务保留24小时。ack仅表示送达，consume表示已采用，均须invitationId与messageId。此接口兼容旧任务广播；共享计时使用focus-session接口。",
         "requestBody": {
           "required": true,
           "content": {
@@ -7874,6 +7874,201 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/focus-session": {
+      "get": {
+        "summary": "读取同账号的共享专注时钟",
+        "operationId": "getSharedFocusSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Device-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Device-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前账号本机可见会话，所有时间均为Unix毫秒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedFocusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效参数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "设备凭据不符或尚未配对",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "设备未登记或会话不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "请求超过16KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突或已有进行中的专注；采纳snapshot后重新操作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedFocusConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/focus-session/actions": {
+      "post": {
+        "summary": "共享专注开始、接管、暂停、继续与结算",
+        "operationId": "sharedFocusAction",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "同一账号只有一份进行中的专注。计时以服务端时钟为准，接管不重置计时。clientId使重试幂等；expectedRevision防止过期操作覆盖另一端状态。complete/abandon以sessionId为记录键，仅生成一条专注记录并回写关联计划。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedFocusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "当前账号本机可见会话，所有时间均为Unix毫秒",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedFocusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "无效参数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要登录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "设备凭据不符或尚未配对",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "设备未登记或会话不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "请求超过16KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "版本冲突或已有进行中的专注；采纳snapshot后重新操作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedFocusConflict"
                 }
               }
             }
@@ -13266,6 +13461,10 @@
           },
           "allowBackgroundTiming": {
             "type": "boolean"
+          },
+          "planTaskId": {
+            "type": "string",
+            "maxLength": 128
           }
         },
         "required": [
@@ -13290,6 +13489,9 @@
           "lastSeen": {
             "type": "integer",
             "description": "上次前台心跳的Unix毫秒时间"
+          },
+          "background": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -13320,6 +13522,10 @@
           "ackedAt": {
             "type": "number",
             "description": "接收端确认时间，Unix秒；0为未确认"
+          },
+          "consumedAt": {
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": [
@@ -13372,6 +13578,12 @@
           "acknowledgedAt": {
             "type": "integer",
             "description": "对方确认本机最新消息的Unix毫秒时间；0为未确认"
+          },
+          "peerOnline": {
+            "type": "boolean"
+          },
+          "peerBackground": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -13401,7 +13613,9 @@
               "publish",
               "clear",
               "ack",
-              "offline"
+              "offline",
+              "background",
+              "consume"
             ]
           },
           "deviceId": {
@@ -13722,6 +13936,269 @@
             "maximum": 1440
           }
         }
+      },
+      "SharedFocusParticipant": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "deviceLabel": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "leader",
+              "follower"
+            ]
+          },
+          "lastSeen": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "background": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deviceId",
+          "deviceLabel",
+          "role",
+          "lastSeen",
+          "online",
+          "background"
+        ]
+      },
+      "SharedFocusEvent": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "deviceLabel": {
+            "type": "string"
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "clientId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "by",
+          "deviceLabel",
+          "at",
+          "clientId"
+        ]
+      },
+      "SharedFocusSession": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "running",
+              "paused",
+              "completed",
+              "abandoned"
+            ]
+          },
+          "task": {
+            "$ref": "#/components/schemas/DeviceFocusTask"
+          },
+          "leaderDeviceId": {
+            "type": "string"
+          },
+          "leaderLabel": {
+            "type": "string"
+          },
+          "elapsedMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "remainingMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "startedAt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "updatedAt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedFocusParticipant"
+            }
+          },
+          "lastEvent": {
+            "$ref": "#/components/schemas/SharedFocusEvent"
+          },
+          "pauseCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "interruptionCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "record": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FocusSession"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "sessionId",
+          "revision",
+          "state",
+          "task",
+          "leaderDeviceId",
+          "leaderLabel",
+          "elapsedMs",
+          "remainingMs",
+          "startedAt",
+          "updatedAt",
+          "participants",
+          "lastEvent"
+        ]
+      },
+      "SharedFocusResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "serverTime": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "session": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SharedFocusSession"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "userId",
+          "deviceId",
+          "serverTime",
+          "session"
+        ]
+      },
+      "SharedFocusRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "start",
+              "join",
+              "handoff",
+              "pause",
+              "resume",
+              "complete",
+              "abandon",
+              "heartbeat",
+              "leave"
+            ]
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "deviceKey": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "clientId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "targetDeviceId": {
+            "type": "string"
+          },
+          "task": {
+            "$ref": "#/components/schemas/DeviceFocusTask"
+          },
+          "selfAssessment": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "partial",
+              "not_completed"
+            ]
+          },
+          "occurredAt": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "action",
+          "deviceId",
+          "deviceKey",
+          "clientId",
+          "expectedRevision"
+        ]
+      },
+      "SharedFocusConflict": {
+        "type": "object",
+        "properties": {
+          "errorCode": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/SharedFocusResponse"
+          }
+        },
+        "required": [
+          "errorCode",
+          "message"
+        ]
       }
     },
     "responses": {

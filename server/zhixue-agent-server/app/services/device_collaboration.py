@@ -1,7 +1,7 @@
 """Explicit, account-scoped device pairing and acknowledged task delivery.
 
-Presence means a foreground client contacted this server recently. A successful
-publish only means queued; only the receiving installation can acknowledge it.
+Pairing survives presence loss. A successful publish only means queued; only
+the receiving installation can acknowledge it. Explicit disconnect revokes trust.
 """
 from copy import deepcopy
 import hashlib
@@ -10,7 +10,9 @@ import json
 import time
 import uuid
 
-PRESENCE_SECONDS = 25
+PRESENCE_SECONDS = 90
+BACKGROUND_SECONDS = 300
+MESSAGE_SECONDS = 24 * 60 * 60
 INVITE_SECONDS = 60
 DEVICES = 'collaboration_devices'
 LINKS = 'collaboration_links'
@@ -34,7 +36,13 @@ def key(owner, identity):
 
 
 def online(device, now):
-    return bool(device and device['available'] and now - device['lastSeen'] < PRESENCE_SECONDS)
+    return bool(device and device.get('available') and not device.get('background')
+                and now - device['lastSeen'] < PRESENCE_SECONDS)
+
+
+def background(device, now):
+    return bool(device and device.get('background') and
+                now - device.get('backgroundAt', device['lastSeen']) < BACKGROUND_SECONDS)
 
 
 def task_value(raw):
@@ -48,10 +56,12 @@ def task_value(raw):
         raise CollaborationError('专注设置不正确', 400)
     if type(raw.get('allowBackgroundTiming', False)) is not bool:
         raise CollaborationError('专注设置不正确', 400)
-    # Local plan identifiers and timing progress are not portable across devices.
-    return dict(course=text(raw, 'course', 100), task=text(raw, 'task', 500),
+    value = dict(course=text(raw, 'course', 100), task=text(raw, 'task', 500),
                 plannedMinutes=minutes, mode=mode, timerType=timer, source='collaborative',
                 allowBackgroundTiming=raw.get('allowBackgroundTiming', False))
+    if raw.get('planTaskId') is not None:
+        value['planTaskId'] = text(raw, 'planTaskId')
+    return value
 
 
 def execute(repo, owner, data, now=None):
@@ -59,7 +69,7 @@ def execute(repo, owner, data, now=None):
     if not isinstance(data, dict):
         raise CollaborationError('设备请求格式不正确', 400)
     action = text(data, 'action', 32)
-    if action not in {'register', 'heartbeat', 'invite', 'accept', 'reject', 'disconnect', 'publish', 'clear', 'ack', 'offline'}:
+    if action not in {'register', 'heartbeat', 'invite', 'accept', 'reject', 'disconnect', 'publish', 'clear', 'ack', 'consume', 'offline', 'background'}:
         raise CollaborationError('不支持的设备操作', 400)
     device_id, secret = text(data, 'deviceId'), text(data, 'deviceKey')
     if len(secret) < 32:
@@ -69,26 +79,31 @@ def execute(repo, owner, data, now=None):
     secret_hash = hashlib.sha256(secret.encode()).hexdigest()
     if device and not hmac.compare_digest(device['keyHash'], secret_hash):
         raise CollaborationError('设备凭据无效，请重新连接', 403)
+    before_device = deepcopy(device)
     if action == 'register':
         label = text(data, 'deviceLabel', 80)
         if not device:
             if len(repo.query(DEVICES, {'userId': owner})) >= 20:
                 raise CollaborationError('登记设备已达上限，请联系管理员清理旧设备')
             device = dict(userId=owner, deviceId=device_id, keyHash=secret_hash)
-        device.update(deviceLabel=label, lastSeen=now, available=True)
+        device.update(deviceLabel=label, lastSeen=now, available=True, background=False)
     elif not device:
         raise CollaborationError('请先登记本机设备', 404)
 
     devices = {d['deviceId']: d for d in repo.query(DEVICES, {'userId': owner})}
-    # Expire before refreshing this client's lease; reconnecting cannot revive an old link.
+    # Presence and consent are independent: network loss never revokes pairing.
     links = repo.query(LINKS, {'userId': owner})
+    before_links = {l['linkId']: deepcopy(l) for l in links}
     for link in links:
         if link['state'] == 'pending' and now >= link['expiresAt']:
             link.update(state='expired', tasks={})
-        if link['state'] in ('pending', 'connected') and not all(online(devices.get(d), now) for d in link['members']):
-            link.update(state='disconnected', tasks={})
+        link['tasks'] = {source: message for source, message in link.get('tasks', {}).items()
+                         if now - message['sentAt'] < MESSAGE_SECONDS}
 
-    device.update(lastSeen=now, available=action != 'offline')
+    device.update(lastSeen=now, available=action not in ('offline', 'background'),
+                  background=action == 'background')
+    if action == 'background':
+        device['backgroundAt'] = now
     devices[device_id] = device
     selected = None
     if action == 'invite':
@@ -105,7 +120,7 @@ def execute(repo, owner, data, now=None):
                 links.remove(selected)
             selected = replacement
             links.append(selected)
-    elif action in ('accept', 'reject', 'disconnect', 'ack'):
+    elif action in ('accept', 'reject', 'disconnect', 'ack', 'consume'):
         selected = next((l for l in links if l['invitationId'] == text(data, 'invitationId') and device_id in l['members']), None)
         if not selected:
             raise CollaborationError('连接请求已失效，请刷新后重试', 404)
@@ -125,6 +140,8 @@ def execute(repo, owner, data, now=None):
             if selected['state'] != 'connected' or not message or message['messageId'] != text(data, 'messageId'):
                 raise CollaborationError('任务已更新，请刷新后重试')
             message['ackedAt'] = message['ackedAt'] or now
+            if action == 'consume':
+                message['consumedAt'] = message.get('consumedAt') or now
     elif action in ('publish', 'clear'):
         message_id = text(data, 'messageId')
         task = task_value(data.get('task')) if action == 'publish' else None
@@ -138,13 +155,13 @@ def execute(repo, owner, data, now=None):
                     raise CollaborationError('任务编号已被使用')
                 continue
             link['tasks'][device_id] = dict(messageId=message_id, task=task, sentAt=now, ackedAt=0)
-    if action == 'offline':
-        for link in links:
-            if device_id in link['members'] and link['state'] in ('pending', 'connected'):
-                link.update(state='disconnected', tasks={})
-    repo.apply_batch([], [(DEVICES, record_key, device)] + [(LINKS, l['linkId'], l) for l in links])
+    saves = [(DEVICES, record_key, device)] if device != before_device else []
+    saves.extend((LINKS, l['linkId'], l) for l in links if l != before_links.get(l['linkId']))
+    if saves:
+        repo.apply_batch([], saves)
     peers = [dict(deviceId=d['deviceId'], deviceLabel=d['deviceLabel'], online=online(d, now),
-                  lastSeen=int(d['lastSeen'] * 1000)) for d in devices.values() if d['deviceId'] != device_id]
+                  background=background(d, now), lastSeen=int(d['lastSeen'] * 1000))
+             for d in devices.values() if d['deviceId'] != device_id]
     views = []
     for link in links:
         if device_id not in link['members']:
@@ -152,10 +169,13 @@ def execute(repo, owner, data, now=None):
         peer_id = next(d for d in link['members'] if d != device_id)
         peer = devices.get(peer_id, {})
         incoming = deepcopy(link['tasks'].get(peer_id)) if link['state'] == 'connected' else None
+        if incoming and incoming.get('consumedAt'):
+            incoming = None
         outgoing = link['tasks'].get(device_id) if link['state'] == 'connected' else None
         views.append(dict(invitationId=link['invitationId'], peerDeviceId=peer_id,
                           peerDeviceLabel=peer.get('deviceLabel', '另一台设备'),
                           state=link['state'], incoming=link['requester'] != device_id,
+                          peerOnline=online(peer, now), peerBackground=background(peer, now),
                           expiresAt=int(link['expiresAt'] * 1000),
                           received=incoming, sentMessageId=outgoing['messageId'] if outgoing else '',
                           acknowledgedAt=int(outgoing['ackedAt'] * 1000) if outgoing else 0))

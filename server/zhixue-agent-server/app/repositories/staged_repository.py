@@ -23,10 +23,10 @@ class StagedRepository(Repository):
         if hasattr(self.repository, "purge_user_data"):
             self._purge_users.add(user_id)
 
-    def transaction(self):
+    def transaction(self, user_id=None):
         # Nested business helpers may create another overlay. Keep the backing
         # transaction open until the outer overlay publishes all its changes.
-        return self.repository.transaction()
+        return self.repository.transaction(user_id=user_id) if user_id is not None else self.repository.transaction()
 
     def get(self, collection, item_id):
         key = (collection, item_id)

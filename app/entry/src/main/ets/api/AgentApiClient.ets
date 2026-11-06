@@ -9,6 +9,7 @@ import { AuthProfileUpdateRequest } from './AuthModels';
 import { LearningPreferencesRequest, DocumentPointsRequest } from './ApiModels';
 import { http } from '@kit.NetworkKit';
 import { CollaborationRequest, CollaborationResponse } from './DeviceCollaborationModels';
+import { SharedFocusRequest, SharedFocusResponse } from './SharedFocusModels';
 import { LearningChanges, LearningSnapshot, LearningEffect } from './LearningSyncModels';
 import { ExerciseSourcesResponse } from './ApiModels';
 import { LearningContext } from './ApiModels';
@@ -66,6 +67,13 @@ export class AgentApiClient {
   }
   static async deviceCollaboration(body: CollaborationRequest): Promise<ApiResult<CollaborationResponse>> {
     return AgentApiClient.request<CollaborationResponse>(http.RequestMethod.POST, '/api/v1/device-collaboration', body, 10000);
+  }
+  static async sharedFocus(deviceId: string, deviceKey: string): Promise<ApiResult<SharedFocusResponse>> {
+    return AgentApiClient.request<SharedFocusResponse>(http.RequestMethod.GET,
+      '/api/v1/focus-session', undefined, 10000, { 'X-Device-Id': deviceId, 'X-Device-Key': deviceKey });
+  }
+  static async sharedFocusAction(body: SharedFocusRequest): Promise<ApiResult<SharedFocusResponse>> {
+    return AgentApiClient.request<SharedFocusResponse>(http.RequestMethod.POST, '/api/v1/focus-session/actions', body, 10000);
   }
   static async getLearningRecords(cursor: string = '', chatSessionId: string = ''): Promise<ApiResult<LearningRecords>> {
     return AgentApiClient.request<LearningRecords>(http.RequestMethod.GET, `/api/v1/learning-records?limit=20&cursor=${encodeURIComponent(cursor)}&chatSessionId=${encodeURIComponent(chatSessionId)}`);
@@ -549,7 +557,7 @@ export class AgentApiClient {
   }
 
   private static async request<T>(method: http.RequestMethod, path: string, body?: Object,
-    readTimeoutOverrideMs?: number): Promise<ApiResult<T>> {
+    readTimeoutOverrideMs?: number, extraHeaders?: Record<string, string>): Promise<ApiResult<T>> {
     const methodName: string = AgentApiClient.methodName(method);
     if (AgentApiClient.config.useFixture) return FixtureApiTransport.request<T>(methodName, path, body);
 
@@ -566,6 +574,7 @@ export class AgentApiClient {
         'Accept': 'application/json',
         'X-API-Contract-Version': API_CONTRACT_VERSION
       };
+      if (extraHeaders !== undefined) Object.keys(extraHeaders).forEach((key: string) => { header[key] = extraHeaders[key]; });
       if (body !== undefined) {
         header['Content-Type'] = 'application/json';
       }

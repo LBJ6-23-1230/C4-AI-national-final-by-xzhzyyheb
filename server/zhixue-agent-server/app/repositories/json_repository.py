@@ -32,7 +32,7 @@ class JsonRepository(Repository):
 		self._lease()
 
 	@contextmanager
-	def transaction(self):
+	def transaction(self, user_id=None):
 		with self._write_lock:
 			yield self
 

@@ -77,6 +77,9 @@ desktop.ini
 !/server/zhixue-agent-server/evidence/proactive-20261030-pytest.log
 !/server/zhixue-agent-server/evidence/proactive-final-*-20261030.log
 !/server/zhixue-agent-server/evidence/proactive-validator-20261030.log
+# 2026-11-06 协同/语音轮次的构建、验签与模拟器核查证据（README 中引用）。
+!/evidence/collaboration-20261106-*.log
+!/evidence/emulator-check-20261106-1.0.1.log
 *.process.lock
 .venv-clean*/
 
@@ -103,6 +106,7 @@ _test_*/
 /output/
 /.chart-data-*/
 /.codex-doc-review/
+/.workbuddy/
 
 # 决赛仓库：私钥与本机环境
 *.p12

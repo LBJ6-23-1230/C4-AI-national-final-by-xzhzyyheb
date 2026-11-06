@@ -25,7 +25,8 @@ function harness(api, shared = {}) {
     deviceInfo: { marketName: '', productModel: 'emulator', deviceType: 'phone' },
     util: { generateRandomUUID: () => `${state.owner}-${++counter}-${'random'.repeat(6)}` },
     preferences: { getPreferencesSync: () => ({ getSync: (k, v) => values.has(k) ? values.get(k) : v,
-      putSync: (k, v) => values.set(k, v), flushSync: () => {} }) }
+      putSync: (k, v) => values.set(k, v), flushSync: () => {} }) },
+    FocusSessionSyncService: { getInstance: () => ({ configure() {}, refresh: async () => true }) }
   });
   for (const [source, name] of [[serviceSource, 'DistributedStateService'], [validatorSource, 'ApiResponseValidator']]) {
     const input = source.replace(/^import .*;\r?\n/gm, '').replace(/export /g, '') + `\nglobalThis.${name} = ${name};`;
@@ -38,7 +39,9 @@ function harness(api, shared = {}) {
 const success = data => ({ ok: true, data, source: 'network' });
 const failure = (code = 0) => ({ ok: false, error: { statusCode: code, message: '网络失败' }, source: 'network' });
 function response(body, state, links = []) {
-  return { userId: state.owner, deviceId: body.deviceId, serverTime: state.now, devices: [], links };
+  return { userId: state.owner, deviceId: body.deviceId, serverTime: state.now,
+    devices: links.map(l => ({ deviceId: l.peerDeviceId, deviceLabel: l.peerDeviceLabel,
+      online: true, background: false, lastSeen: state.now })), links };
 }
 function link(overrides = {}) {
   return { invitationId: 'invite-1', peerDeviceId: 'tablet', peerDeviceLabel: '学习平板', state: 'connected',
@@ -66,13 +69,22 @@ async function unit() {
   const ackCount = calls.filter(c => c.action === 'ack').length;
   await h.service.refresh(); await settle(h.service);
   check(calls.filter(c => c.action === 'ack').length === ackCount, 'Pending local ACKs are not repeatedly enqueued');
+  h.service.consumeRemoteTask(); await h.service.refresh();
+  check(h.service.getSnapshot().remoteTask === null, 'An adopted legacy task does not reappear on the next poll');
   links[0].received = { messageId: 'clear', task: null, sentAt: 101, ackedAt: 1 };
   await h.service.refresh();
   check(h.service.getSnapshot().remoteTask === null, 'Source ending focus clears the remote task');
   h.state.now += 16000;
-  check(h.service.getSnapshot().onlinePeerCount === 0, 'Stale responses cannot keep a peer online');
+  check(h.service.getSnapshot().stale && h.service.getSnapshot().links.length === 1 &&
+    !h.service.getSnapshot().peers[0].online, 'Stale responses preserve pairing and explicitly mark presence unknown');
   fail = true; await h.service.refresh();
-  check(h.service.getSnapshot().onlinePeerCount === 0 && h.service.getSnapshot().lastError, 'Transport failure clears connection claims');
+  check(h.service.getSnapshot().stale && h.service.getSnapshot().links.length === 1 &&
+    h.service.getSnapshot().lastError, 'Transport failure retains the last snapshot with a retryable error');
+  fail = false; h.service.setForeground(false); await settle(h.service);
+  check(calls.some(c => c.action === 'background') && !calls.some(c => c.action === 'offline') &&
+    h.service.getSnapshot().links.length === 1, 'Moving to the background retains pairing without an offline disconnect');
+  h.service.setForeground(true); await settle(h.service);
+  check(!h.service.getSnapshot().stale, 'Returning to the foreground refreshes the retained pairing');
   h.state.fixture = true; calls = []; await h.service.refresh();
   check(calls.length === 0 && !h.service.getSnapshot().available, 'Offline demo cannot register or discover real devices');
   h.state.fixture = false; h.state.token = ''; await h.service.refresh();
@@ -123,7 +135,8 @@ async function live() {
     // Separate persistent installations must have distinct IDs, including same-form devices.
     b.service.deviceId = 'live-tablet'; b.service.deviceKey = 't'.repeat(64);
     b.service.identity = b.service.currentIdentity();
-    await a.service.rename('手机'); await b.service.rename('学习平板');
+    check(await a.service.rename('手机'), 'First installation registers: ' + a.service.getSnapshot().lastError);
+    check(await b.service.rename('学习平板'), 'Second installation registers: ' + b.service.getSnapshot().lastError);
     await a.service.refresh();
     const peer = a.service.getSnapshot().devices.find(d => d.deviceLabel === '学习平板');
     check(!!peer, 'Real API discovers second installation by name');

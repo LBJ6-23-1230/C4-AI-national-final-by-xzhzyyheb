@@ -92,23 +92,25 @@ function focus(mode = 'normal', timerType = 'countdown', allowBackgroundTiming =
   assert.equal(page.remainingSeconds, 3540);
   page.onPageHide(); page.aboutToDisappear();
   context.FocusLifecycleService.resolvePending();
-  assert.equal(state.focusRuntime.paused, true);
-  assert.equal(state.focusRuntime.pauseCount, 1);
+  assert.equal(state.focusRuntime.paused, false); // Internal navigation keeps one clock.
+  assert.equal(state.focusRuntime.pauseCount, 0);
   assert.equal(state.focusRuntime.interruptionCount, 0);
   assert.equal(timers.size, 0);
   now += 35 * 60000;
   page.onPageShow();
-  assert.equal(page.remainingSeconds, 3540);
-  assert.equal(page.paused, true);
-  assert(page.statusText().includes('自动暂停'));
+  assert.equal(page.remainingSeconds, 1440);
+  assert.equal(page.paused, false);
   assert.equal(state.focusResultDraft, null);
-  page.togglePause();
   now += 10000;
   [...timers.values()][0]();
-  assert.equal(page.remainingSeconds, 3530);
+  assert.equal(page.remainingSeconds, 1430);
   assert.equal(page.paused, false);
   page.goBackToSetup();
   assert.equal(backs, 1);
+  assert.equal(state.focusRuntime.paused, false);
+  // Switching applications after leaving the timer page still applies background policy.
+  context.FocusLifecycleService.onBackground();
+  context.FocusLifecycleService.resolvePending();
   assert.equal(state.focusRuntime.paused, true);
 
   page = focus('normal', 'stopwatch');
@@ -117,8 +119,8 @@ function focus(mode = 'normal', timerType = 'countdown', allowBackgroundTiming =
   context.FocusLifecycleService.resolvePending();
   now += 3600000;
   page.onPageShow();
-  assert.equal(page.elapsedSeconds, 120);
-  assert.equal(page.paused, true);
+  assert.equal(page.elapsedSeconds, 3720);
+  assert.equal(page.paused, false);
 
   page = focus();
   now += 30000;
@@ -136,7 +138,7 @@ function focus(mode = 'normal', timerType = 'countdown', allowBackgroundTiming =
   page.onPageHide(); page.aboutToDisappear();
   context.FocusLifecycleService.resolvePending();
   assert.equal(state.focusRuntime.paused, false);
-  assert.equal(state.focusRuntime.interruptionCount, 1);
+  assert.equal(state.focusRuntime.interruptionCount, 0); // Internal navigation is not an interruption.
   now += 60000;
   page.onPageShow();
   assert.equal(page.remainingSeconds, 3480);

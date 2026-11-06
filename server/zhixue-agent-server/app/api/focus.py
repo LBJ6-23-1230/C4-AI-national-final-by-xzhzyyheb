@@ -100,65 +100,77 @@ def submit_focus_session():
     session, guard = _validated(data)
     if guard is not None:
         return guard
+    with PROFILE_LOCK, _repository.transaction(user_id=owner):
+        try:
+            return jsonify(persist_focus_session(_repository, owner, session))
+        except ValueError as error:
+            return _error(str(error), 409)
+
+
+def persist_focus_session(repository, owner, session):
+    """Record canonical facts once; caller owns the account transaction.
+
+    Shared sessions use the same path so plan progress and study-partner progress
+    cannot diverge from ordinary focus completion.
+    """
     key = hashlib.sha256(f"{owner}\0{session['taskId']}".encode()).hexdigest()
-    with PROFILE_LOCK, _repository.transaction():
-        previous = _repository.get("focus_sessions", key)
-        if previous is not None:
-            if previous["session"] != session:
-                return _error("this focus event ID was already used for different facts", 409)
-            return jsonify(previous["response"])
-        saves = []
-        matched = False
-        for plan in _repository.list("plans"):
-            if not plan_belongs_to(plan, owner):
-                continue
-            updated = deepcopy(plan)
-            changed = False
-            for task in [*updated.get("tasks", []), *updated.get("unscheduledTasks", [])]:
-                if task.get("taskId") == session.get("planTaskId"):
-                    matched = True
-                    if session["selfAssessment"] == "completed" and task.get("status") != "completed":
-                        task["status"] = "completed"
-                        changed = True
-            if changed:
-                completed_deferred = [t for t in updated.get("unscheduledTasks", []) if t.get("status") == "completed"]
-                updated["tasks"] = [*updated.get("tasks", []), *completed_deferred]
-                updated["unscheduledTasks"] = [t for t in updated.get("unscheduledTasks", []) if t.get("status") != "completed"]
-                if "budgetSummary" in updated:
-                    summary = dict(updated["budgetSummary"])
-                    from zoneinfo import ZoneInfo
-                    today = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
-                    summary["scheduledMinutes"] = sum(t["durationMinutes"] for t in updated["tasks"] if t.get("status") != "completed" and (not updated.get('calendarDays') or t.get('scheduledDate') == today))
-                    if updated.get('calendarDays'):
-                        for day in updated['calendarDays']:
-                            day['scheduledMinutes'] = sum(t['durationMinutes'] for t in updated['tasks'] if t.get('status') != 'completed' and t.get('scheduledDate') == day['date'])
-                    summary["unallocatedMinutes"] = summary["availableMinutes"] - summary["scheduledMinutes"]
-                    summary["unscheduledMinutes"] = sum(t["durationMinutes"] for t in updated["unscheduledTasks"])
-                    updated["budgetSummary"] = summary
-                # Task progress changes state, not the schedule's plan version.
-                # Later plan writers must preserve these task IDs and statuses.
-                saves.append(("plans", updated["planId"], updated))
-        if matched and session['selfAssessment'] == 'completed':
-            task_id = session.get('planTaskId')
-            manual = _repository.get('study_tasks', task_id)
-            if manual and manual.get('userId') == owner:
-                manual['status'] = 'completed'
-                saves.append(('study_tasks', task_id, manual))
-            shared = _repository.get('shared_study_tasks', task_id)
-            if shared and shared.get('status') == 'accepted' and owner in shared.get('members', []):
-                shared['progress'][owner] = 'completed'
-                saves.append(('shared_study_tasks', task_id, shared))
-        event_id = f"focus-{key}"
-        response = {"userId": owner, "eventId": event_id, "session": session,
-                    "planTaskMatched": matched}
-        saves.extend([
-            ("focus_sessions", key, {"userId": owner, "session": session, "response": response}),
-            ("learning_events", event_id, {"eventId": event_id, "userId": owner,
-                "type": "FocusCompleted", "objectId": session["taskId"],
-                "occurredAt": session["endedAt"], "planTaskId": session.get("planTaskId"),
-                "selfAssessment": session["selfAssessment"], "status": "recorded"}),
-        ])
-        _repository.apply_batch([], saves)
-        from app.services.reminders import reconcile
-        reconcile(_repository, owner)
-        return jsonify(response)
+    previous = repository.get("focus_sessions", key)
+    if previous is not None:
+        if previous["session"] != session:
+            raise ValueError("this focus event ID was already used for different facts")
+        return previous["response"]
+    saves = []
+    matched = False
+    for plan in repository.list("plans"):
+        if not plan_belongs_to(plan, owner):
+            continue
+        updated = deepcopy(plan)
+        changed = False
+        for task in [*updated.get("tasks", []), *updated.get("unscheduledTasks", [])]:
+            if task.get("taskId") == session.get("planTaskId"):
+                matched = True
+                if session["selfAssessment"] == "completed" and task.get("status") != "completed":
+                    task["status"] = "completed"
+                    changed = True
+        if changed:
+            completed_deferred = [t for t in updated.get("unscheduledTasks", []) if t.get("status") == "completed"]
+            updated["tasks"] = [*updated.get("tasks", []), *completed_deferred]
+            updated["unscheduledTasks"] = [t for t in updated.get("unscheduledTasks", []) if t.get("status") != "completed"]
+            if "budgetSummary" in updated:
+                summary = dict(updated["budgetSummary"])
+                from zoneinfo import ZoneInfo
+                today = datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
+                summary["scheduledMinutes"] = sum(t["durationMinutes"] for t in updated["tasks"] if t.get("status") != "completed" and (not updated.get('calendarDays') or t.get('scheduledDate') == today))
+                if updated.get('calendarDays'):
+                    for day in updated['calendarDays']:
+                        day['scheduledMinutes'] = sum(t['durationMinutes'] for t in updated['tasks'] if t.get('status') != 'completed' and t.get('scheduledDate') == day['date'])
+                summary["unallocatedMinutes"] = summary["availableMinutes"] - summary["scheduledMinutes"]
+                summary["unscheduledMinutes"] = sum(t["durationMinutes"] for t in updated["unscheduledTasks"])
+                updated["budgetSummary"] = summary
+            # Task progress changes state, not the schedule's plan version.
+            # Later plan writers must preserve these task IDs and statuses.
+            saves.append(("plans", updated["planId"], updated))
+    if matched and session['selfAssessment'] == 'completed':
+        task_id = session.get('planTaskId')
+        manual = repository.get('study_tasks', task_id)
+        if manual and manual.get('userId') == owner:
+            manual['status'] = 'completed'
+            saves.append(('study_tasks', task_id, manual))
+        shared = repository.get('shared_study_tasks', task_id)
+        if shared and shared.get('status') == 'accepted' and owner in shared.get('members', []):
+            shared['progress'][owner] = 'completed'
+            saves.append(('shared_study_tasks', task_id, shared))
+    event_id = f"focus-{key}"
+    response = {"userId": owner, "eventId": event_id, "session": session,
+                "planTaskMatched": matched}
+    saves.extend([
+        ("focus_sessions", key, {"userId": owner, "session": session, "response": response}),
+        ("learning_events", event_id, {"eventId": event_id, "userId": owner,
+            "type": "FocusCompleted", "objectId": session["taskId"],
+            "occurredAt": session["endedAt"], "planTaskId": session.get("planTaskId"),
+            "selfAssessment": session["selfAssessment"], "status": "recorded"}),
+    ])
+    repository.apply_batch([], saves)
+    from app.services.reminders import reconcile
+    reconcile(repository, owner)
+    return response

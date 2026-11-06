@@ -24,7 +24,7 @@ class Repository(ABC):
 					break
 		return rows
 
-	def transaction(self):
+	def transaction(self, user_id=None):
 		"""Persistent backends serialize read/decide/write operations here."""
 		raise NotImplementedError
 

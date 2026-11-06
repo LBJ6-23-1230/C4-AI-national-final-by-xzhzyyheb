@@ -59,7 +59,7 @@ def test_delivery_requires_exact_receiver_ack_and_clear(repo):
     assert result['links'][0]['acknowledgedAt'] == 0
     received = command(repo, 'tablet')['links'][0]['received']
     assert received['task']['task'] == task()['task'] and received['task']['source'] == 'collaborative'
-    assert 'planTaskId' not in received['task'] and received['ackedAt'] == 0
+    assert received['task']['planTaskId'] == 'phone-only' and received['ackedAt'] == 0
     with pytest.raises(service.CollaborationError):
         command(repo, 'phone', 'ack', invitationId=invitation, messageId='message-1')
     command(repo, 'tablet', 'ack', invitationId=invitation, messageId='message-1')
@@ -115,21 +115,49 @@ def test_reject_cancel_and_stale_invitation(repo):
         command(repo, 'tablet', 'accept', invitationId=new)
 
 
-def test_foreground_presence_expires_and_never_revives_connection(repo):
+def test_presence_expiry_preserves_pairing_and_automatically_recovers(repo):
     pair(repo)
-    result = command(repo, 'phone', now=1026)
-    assert not result['devices'][0]['online'] and result['links'][0]['state'] == 'disconnected'
-    assert command(repo, 'tablet', now=1027)['links'][0]['state'] == 'disconnected'
-    assert command(repo, 'phone', 'invite', now=1028, targetDeviceId='tablet')['links'][0]['state'] == 'pending'
+    result = command(repo, 'phone', now=1091)
+    assert not result['devices'][0]['online'] and result['links'][0]['state'] == 'connected'
+    assert command(repo, 'tablet', now=1092)['links'][0]['state'] == 'connected'
+    assert command(repo, 'phone', 'invite', now=1093, targetDeviceId='tablet')['links'][0]['state'] == 'connected'
 
 
-def test_background_disconnect_clears_task(repo):
+def test_background_and_offline_preserve_pairing_and_pending_task(repo):
     pair(repo)
     command(repo, 'phone', 'publish', messageId='message', task=task())
-    command(repo, 'phone', 'offline')
-    result = command(repo, 'tablet')
-    assert not result['devices'][0]['online'] and result['links'][0]['received'] is None
-    assert result['links'][0]['state'] == 'disconnected'
+    command(repo, 'phone', 'background')
+    result = command(repo, 'tablet', now=1120)
+    assert not result['devices'][0]['online'] and result['devices'][0]['background']
+    assert result['links'][0]['received']['messageId'] == 'message'
+    assert result['links'][0]['state'] == 'connected'
+    command(repo, 'phone', 'offline', now=1121)
+    assert command(repo, 'tablet', now=1122)['links'][0]['received']['messageId'] == 'message'
+    assert command(repo, 'phone', now=1123)['links'][0]['state'] == 'connected'
+
+
+def test_exact_task_consumption_and_ttl(repo):
+    invitation = pair(repo)
+    command(repo, 'phone', 'publish', messageId='message', task=task())
+    with pytest.raises(service.CollaborationError):
+        command(repo, 'tablet', 'consume', invitationId=invitation, messageId='different')
+    command(repo, 'tablet', 'consume', invitationId=invitation, messageId='message')
+    assert command(repo, 'tablet')['links'][0]['received'] is None
+    assert command(repo, 'phone')['links'][0]['acknowledgedAt'] > 0
+    command(repo, 'phone', 'publish', messageId='next-message', task=task())
+    assert command(repo, 'tablet', now=1000 + service.MESSAGE_SECONDS)['links'][0]['received'] is None
+
+
+def test_heartbeat_writes_only_changed_device(repo, monkeypatch):
+    pair(repo)
+    writes = []
+    original = repo.apply_batch
+    def track(deletes, saves):
+        writes.extend(saves)
+        return original(deletes, saves)
+    monkeypatch.setattr(repo, 'apply_batch', track)
+    command(repo, 'phone', now=1001)
+    assert len(writes) == 1 and writes[0][0] == service.DEVICES
 
 
 def test_invitation_expiry_despite_live_heartbeats(repo):

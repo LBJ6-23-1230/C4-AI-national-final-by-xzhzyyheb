@@ -319,6 +319,7 @@ export interface FocusTask {
 }
 
 export interface FocusSession {
+  shared?: boolean;
   taskId: string;
   planTaskId?: string;
   course: string;
@@ -335,6 +336,7 @@ export interface FocusSession {
 }
 
 export interface FocusRuntime {
+  shared?: boolean;
   sessionId: string;
   ownerId: string;
   task: FocusTask;

@@ -1,0 +1,1 @@
+PASS: task selection without side effects; normal/strict confirmation; duration bounds; exact-task practice; resume; stale-task, cancellation, account and persistence guards.

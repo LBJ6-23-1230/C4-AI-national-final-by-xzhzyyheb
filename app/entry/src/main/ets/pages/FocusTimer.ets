@@ -7,6 +7,7 @@ import { FocusSession, FocusSessionStatus, FocusTask, FocusRuntime } from '../mo
 import { FocusClock } from '../utils/FocusClock';
 import { AIFloatButton } from '../components/AIFloatButton';
 import { FocusLifecycleService } from '../services/FocusLifecycleService';
+import { FocusSessionSyncService } from '../services/FocusSessionSyncService';
 
 @Entry
 @Component
@@ -19,11 +20,14 @@ struct FocusTimer {
   @State showExitConfirm: boolean = false;
   @State showCompleteConfirm: boolean = false;
   @State saveError: string = '';
+  @State actionBusy: boolean = false;
+  @State sharedStatus: string = '';
   private timerId: number = -1;
   private runtime: FocusRuntime | null = null;
   private ownerId: string = '';
   private lastCheckpointAt: number = 0;
   private pageHidden: boolean = false;
+  private openingResult: boolean = false;
 
   aboutToAppear(): void {
     this.ownerId = appState.currentUser.userId;
@@ -83,6 +87,35 @@ struct FocusTimer {
   /** Elapsed time advances only while the runtime is running. */
   private updateClock(): void {
     if (this.runtime === null || this.ownerId !== appState.currentUser.userId) return;
+    if (this.runtime.shared === true) {
+      const snapshot = FocusSessionSyncService.getInstance().getSnapshot();
+      const session = snapshot.session;
+      if (session !== null && session.sessionId === this.runtime.sessionId) {
+        this.sharedStatus = `${session.leaderLabel}${session.leaderDeviceId === snapshot.localDeviceId ? '（本机）' : '正在使用'} · ${snapshot.stale ? '连接中断，恢复后同步' : '共享计时'}`;
+        if (['completed', 'abandoned'].includes(session.state)) {
+          this.stopTimer();
+          if (!this.openingResult && session.record !== undefined && session.record !== null) {
+            this.openingResult = true;
+            if (appState.setFocusResultDraft(session.record)) router.replaceUrl({ url: 'pages/FocusResult' });
+          }
+          return;
+        }
+        this.elapsedSeconds = Math.floor(session.elapsedMs / 1000);
+        this.remainingSeconds = Math.ceil(session.remainingMs / 1000);
+        this.paused = session.state === 'paused';
+        this.pauseCount = session.pauseCount ?? 0;
+        this.runtime.elapsedMs = session.elapsedMs;
+        this.runtime.lastUpdatedAt = Date.now();
+        this.runtime.paused = this.paused;
+        this.runtime.pauseCount = this.pauseCount;
+        this.runtime.interruptionCount = session.interruptionCount ?? 0;
+        return;
+      }
+      this.paused = true;
+      this.saveError = snapshot.lastError || '共享专注暂不可用，请返回设置并重新连接设备。';
+      this.stopTimer();
+      return;
+    }
     this.runtime = FocusClock.advance(this.runtime);
     const seconds: number = Math.floor(this.runtime.elapsedMs / 1000);
     const plannedSeconds: number = (appState.activeFocusTask?.plannedMinutes ?? 30) * 60;
@@ -167,6 +200,7 @@ struct FocusTimer {
   private buildSession(status: FocusSessionStatus): FocusSession {
     const focusTask: FocusTask | null = appState.activeFocusTask;
     return {
+      shared: this.runtime?.shared,
       taskId: this.runtime?.sessionId ?? `focus-${Date.now()}`,
       planTaskId: focusTask?.planTaskId,
       course: focusTask?.course ?? '数据结构',
@@ -189,16 +223,35 @@ struct FocusTimer {
   }
 
   private openResult(status: FocusSessionStatus): void {
+    if (this.openingResult) return;
     this.updateClock();
     if (appState.currentUser.userId !== this.ownerId) {
       this.stopTimer();
       router.back();
       return;
     }
+    if (this.runtime?.shared === true && !this.paused) {
+      void this.pauseForResult(status);
+      return;
+    }
+    this.enterResult(status);
+  }
+
+  private async pauseForResult(status: FocusSessionStatus): Promise<void> {
+    if (this.actionBusy) return;
+    this.actionBusy = true;
+    const service = FocusSessionSyncService.getInstance();
+    if (await service.pause()) { this.updateClock(); this.enterResult(status); }
+    else this.saveError = service.getSnapshot().lastError;
+    this.actionBusy = false;
+  }
+
+  private enterResult(status: FocusSessionStatus): void {
     if (!appState.setFocusResultDraft(this.buildSession(status))) {
       this.saveError = '结算草稿保存失败，请重试；计时记录仍然保留。';
       return;
     }
+    this.openingResult = true;
     this.stopTimer();
     router.pushUrl({ url: 'pages/FocusResult' });
   }
@@ -207,12 +260,20 @@ struct FocusTimer {
     this.openResult('completed');
   }
 
-  private togglePause(): void {
+  private async togglePause(): Promise<void> {
     if (this.isStrict()) {
       return;
     }
     this.updateClock();
     if (this.runtime === null) return;
+    if (this.runtime.shared === true) {
+      if (this.actionBusy) return;
+      this.actionBusy = true;
+      const service = FocusSessionSyncService.getInstance();
+      const ok = this.paused ? await service.resume() : await service.pause();
+      this.saveError = ok ? '' : service.getSnapshot().lastError;
+      this.updateClock(); this.actionBusy = false; return;
+    }
     const next: FocusRuntime = FocusClock.advance(this.runtime);
     next.paused = !this.paused;
     next.autoPaused = false;
@@ -273,7 +334,15 @@ struct FocusTimer {
     this.openResult('not_completed');
   }
 
-  private leaveWithoutRecord(): void {
+  private async leaveWithoutRecord(): Promise<void> {
+    if (this.runtime?.shared === true) {
+      if (this.actionBusy) return;
+      this.actionBusy = true;
+      const service = FocusSessionSyncService.getInstance();
+      const ok = await service.abandon();
+      this.actionBusy = false;
+      if (!ok) { this.saveError = service.getSnapshot().lastError; return; }
+    }
     if (!appState.discardFocusRecovery()) {
       this.saveError = '未能保存放弃操作，请重试。';
       return;
@@ -303,12 +372,13 @@ struct FocusTimer {
   }
 
   private modeHint(): string {
+    if (this.runtime?.shared === true) return '这是同一次共享专注。应用内换页、锁屏或切后台继续计时；暂停、继续与结算同步到已连接设备。';
     if (this.isStrict()) {
       return '严格模式：没有暂停，提前退出会记录为中断。';
     }
     return appState.activeFocusTask?.allowBackgroundTiming === true
       ? '后台计时已开启：返回、切换应用和息屏后继续计时。'
-      : '后台计时已关闭：返回或切换应用会暂停；息屏继续计时。';
+      : '后台计时已关闭：切换应用会暂停；应用内换页和息屏继续计时。';
   }
 
   build() {
@@ -318,6 +388,7 @@ struct FocusTimer {
         Scroll() {
           Column({ space: 18 }) {
             DeviceSummary({ compact: true })
+            if (this.sharedStatus) { Text(this.sharedStatus).fontSize(13).fontColor(UiTheme.secondary).width('100%') }
             Divider().color(UiTheme.line)
             if (this.saveError.length > 0) { Text(this.saveError).fontSize(13).fontColor(UiTheme.danger).width('100%') }
             Column({ space: 14 }) {
@@ -325,13 +396,15 @@ struct FocusTimer {
               Text(this.displayTime()).fontSize(64).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
               Text(this.isStrict() ? '严格模式' : '普通模式').fontSize(13).fontColor(UiTheme.accent)
                 .padding({ left: 10, right: 10, top: 5, bottom: 5 }).backgroundColor(UiTheme.tint).borderRadius(8)
-              Text(this.paused ? this.statusText() : this.isStrict() ? '严格 · 不可暂停' : appState.activeFocusTask?.allowBackgroundTiming === true ? '普通 · 后台计时开启' : '普通 · 后台计时关闭')
+              Text(this.paused ? this.statusText() : this.runtime?.shared === true ?
+                (this.isStrict() ? '严格共享 · 后台继续计时' : '共享专注 · 后台继续计时') : this.isStrict() ?
+                '严格 · 不可暂停' : appState.activeFocusTask?.allowBackgroundTiming === true ? '普通 · 后台计时开启' : '普通 · 后台计时关闭')
                 .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).textAlign(TextAlign.Center)
             }.width('100%').padding({ top: 44, bottom: 32 })
             if (!this.isStrict()) {
               Button(this.paused ? '继续专注' : '暂停', { type: ButtonType.Normal }).width('100%').height(48)
                 .fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.surface).backgroundColor(UiTheme.accent)
-                .borderRadius(8).onClick(() => this.togglePause())
+                .borderRadius(8).enabled(!this.actionBusy).onClick(() => { void this.togglePause(); })
             }
             Button('完成本次专注', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15)
               .fontColor('#FFFFFF').backgroundColor(UiTheme.accent).borderRadius(8)
@@ -393,7 +466,7 @@ struct FocusTimer {
               Button('保存为未完成').width('100%').height(42).fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
                 .border({ width: 1, color: UiTheme.accent }).borderRadius(8)
                 .onClick(() => this.saveIncompleteAndLeave())
-              Button('不保存，返回设置').width('100%').height(42).fontSize(14).fontColor('#8A3A2B').backgroundColor(UiTheme.surface)
+              Button(this.runtime?.shared === true ? '结束共享专注，返回设置' : '不保存，返回设置').width('100%').height(42).fontSize(14).fontColor('#8A3A2B').backgroundColor(UiTheme.surface)
                 .border({ width: 1, color: '#D6B3A7' }).borderRadius(8)
                 .onClick(() => this.leaveWithoutRecord())
             }

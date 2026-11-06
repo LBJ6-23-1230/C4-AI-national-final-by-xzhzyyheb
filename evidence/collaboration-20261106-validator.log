@@ -1,0 +1,36 @@
+==============================================================================
+① 真正的不变量：AgentApiClient 会发的调用，校验器必须都有分支
+==============================================================================
+  AgentApiClient 字面量/模板/路径变量调用: 92 个
+  校验器分支: 精确 52 条 / 前缀 24 条
+
+✅ 无缺口：AgentApiClient 发出的每个调用都有校验分支
+  客户端调用的契约声明缺口: 0 个
+
+==============================================================================
+② 契约有、但前端尚未接入的接口（属'声明了但没人用'，不是缺陷）
+==============================================================================
+     DELETE /api/agent/history
+     DELETE /api/v1/reminder-devices
+     GET    /api/agent/health
+     GET    /api/agent/history
+     GET    /api/agent/images/{fileId}
+     GET    /api/agent/user-data
+     GET    /api/v1/documents/{documentId}/download
+     GET    /api/v1/experiments/snapshot
+     GET    /api/v1/knowledge-bases/{kbId}/documents
+     GET    /api/v1/reminder-devices
+     POST   /api/agent/chat
+     POST   /api/agent/health
+
+  这些接口若将来被 AgentApiClient 接入，**必须同时补校验分支**，
+  否则会复现 P0-1。本脚本在那之前就能发现（① 会立刻变红）。
+
+==============================================================================
+③ 联调闸门覆盖率（审计 R1 的核心问题）
+==============================================================================
+  实际 HTTP 请求数: 134；失败数: 0
+  成功场景操作: 24；仅负向场景操作: 65
+  负向覆盖不代表完整业务通过；逐操作范围见 evidence/feedback3-http-coverage.json
+  新闸门使用实际 ApiResponseValidator.ets，而非 Python 校验副本。
+结论：PASS

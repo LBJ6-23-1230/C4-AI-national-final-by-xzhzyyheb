@@ -13,7 +13,7 @@ export class FocusClock {
     const limit: number = value.task.timerType === 'stopwatch' ? 86400000 : value.task.plannedMinutes * 60000;
     const finishedAt: number | undefined = value.finishedAt ?? ((!value.paused && elapsed >= limit)
       ? value.lastUpdatedAt + Math.max(0, limit - value.elapsedMs) : undefined);
-    return { sessionId: value.sessionId, ownerId: value.ownerId, task: value.task,
+    return { sessionId: value.sessionId, ownerId: value.ownerId, task: value.task, shared: value.shared,
       elapsedMs: Math.min(limit, elapsed), lastUpdatedAt: Math.max(now, value.lastUpdatedAt),
       paused: value.paused, pauseCount: value.pauseCount, interruptionCount: value.interruptionCount,
       finishedAt: finishedAt, autoPaused: value.autoPaused, backgroundReason: value.backgroundReason };
@@ -30,6 +30,7 @@ export class FocusClock {
   }
 
   static depart(value: FocusRuntime, reason: FocusDepartureReason, now: number = Date.now()): FocusRuntime {
+    if (reason === 'navigation' || value.shared === true) return FocusClock.advance(value, now);
     if (value.paused) return value;
     if (reason !== 'screenOff' && value.task.mode !== 'strict' && value.task.allowBackgroundTiming !== true) {
       return FocusClock.pauseOnDeparture(value, now);

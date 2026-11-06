@@ -1,0 +1,17 @@
+PASS first appearance reads local facts before network completion
+PASS cloud data arriving after the cards are visible refreshes all numbers
+PASS a late plan response refreshes completion without another page event
+PASS focus completion also refreshes the pending assignment count
+PASS offline retries keep existing nonzero statistics
+学习统计同步失败，保留本机记录
+PASS a genuinely empty account clears the previous display to zero
+PASS switching to My refreshes local data and retries both cloud sources
+PASS returning from a child refreshes data and recalculates the day totals
+PASS hidden pages and switched accounts ignore late statistics callbacks
+PASS My and the pending list include four assignments and three reviews once each
+PASS completed, ignored and non-task events cannot inflate the count
+PASS more than twenty tasks are counted and passed to the list without truncation
+PASS a delayed pending snapshot updates the counter and stays available offline
+PASS account and server changes cannot reuse another pending snapshot
+PASS SDK-generated card propagates changed props into visible Text
+15 profile statistics regressions passed.

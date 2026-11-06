@@ -84,6 +84,11 @@ struct ChatMain {
   @State isWorkflowLoading: boolean = false;
   @State workflowMessage: string = '';
   @State isListening: boolean = false;
+  @State voiceMode: boolean = false;
+  @State voiceReady: boolean = false;
+  @State voicePressing: boolean = false;
+  @State isVoiceStarting: boolean = false;
+  @State isVoiceFinalizing: boolean = false;
   @State voiceMessage: string = '';
   @State showHistory: boolean = false;
   @State showLearningFunctions: boolean = false;
@@ -190,6 +195,10 @@ struct ChatMain {
   /** 首帧的 `onPageShow` 与 `aboutToAppear` 是同一次进入，不重复请求。 */
   private hasShownOnce: boolean = false;
   private voiceInputService: VoiceInputService = new VoiceInputService();
+  private inputController: TextInputController = new TextInputController();
+  private voiceRequestVersion: number = 0;
+  private voiceTurnStarted: boolean = false;
+  private voiceDraft: string = '';
 
   aboutToAppear(): void {
     this.isPageActive = true;
@@ -241,7 +250,7 @@ struct ChatMain {
     this.isGoalLoading = false;
     this.workflowRequestVersion++;
     this.isWorkflowLoading = false;
-    this.isListening = false;
+    this.cancelVoiceInput();
     void this.voiceInputService.dispose();
   }
 
@@ -268,6 +277,7 @@ struct ChatMain {
 
   onPageHide(): void {
     this.closeImagePreview();
+    this.cancelVoiceInput();
     this.isPageActive = false;
     this.goalRequestVersion++;
     // Keep a same-session chat request alive while a pushed page covers it.
@@ -1195,10 +1205,6 @@ struct ChatMain {
           Text(this.isListening ? '●' : 'i')
             .fontSize(11).fontColor(this.isListening ? UiTheme.danger : UiTheme.accent)
           Text(this.voiceMessage).fontSize(12).fontColor(UiTheme.secondary).layoutWeight(1)
-          if (this.isListening) {
-            Text('完成').fontSize(12).fontWeight(FontWeight.Bold).fontColor(UiTheme.danger)
-              .onClick(() => { void this.stopVoiceInput(); })
-          }
         }.width('100%').padding({ left: 10, right: 10, top: 7, bottom: 7 })
           .backgroundColor(this.isListening ? '#FEF2F2' : UiTheme.tint).borderRadius(8)
       }
@@ -1233,55 +1239,71 @@ struct ChatMain {
       }
 
       Row({ space: 8 }) {
-        // 语音输入按钮。
-        //  图标必须用系统 Symbol 字体（`sys.symbol.*`），不要用 emoji：
-        //   原先写的是 `Button(this.isListening ? '■' : '')`，
-        //   emoji 字形取决于系统 emoji 字体，在不同设备/版本上大小、基线、
-        //   配色都不一致，且在部分精简镜像里根本不渲染。
-        //   Symbol 由 HM Symbol 字体提供，可随 fontSize / fontColor 精确控制。
-        //   符号名取自本机 SDK 资源表
-        //   `sdk/default/openharmony/toolchains/id_defined.json`（type == "symbol"），
-        //   已核实 `mic` / `stop_circle_fill` / `camera` 均存在。
+        // Voice mode keeps a stable press target while the recognized text changes.
         Button({ type: ButtonType.Normal, stateEffect: true }) {
-          SymbolGlyph(this.isListening
-            ? $r('sys.symbol.stop_circle_fill')
-            : $r('sys.symbol.mic'))
-            .fontSize(20)
-            .fontColor([this.isListening ? UiTheme.surface : UiTheme.ink])
+          SymbolGlyph(this.voiceMode ? $r('sys.symbol.camera') : $r('sys.symbol.mic'))
+            .fontSize(22).fontColor([UiTheme.ink])
         }
-        .backgroundColor(this.isListening ? UiTheme.danger : UiTheme.surface)
-        .width(44)
-        .height(44)
-        .borderRadius(8)
-        .enabled(!this.isSending)
-        .onClick(() => { void this.toggleVoiceInput(); })
-        // 拍照上传按钮。语义是"拍照识别错题"，因此用相机图标而非相册/图片图标。
+        .backgroundColor(UiTheme.surface).width(44).height(44).borderRadius(8)
+        .enabled(!this.isSending && !this.isVoiceStarting && !this.isListening)
+        .accessibilityText(this.voiceMode ? '添加图片' : '切换到按住说话')
+        .onClick(() => {
+          if (this.voiceMode) void this.pickImage();
+          else void this.toggleVoiceMode();
+        })
+        if (this.voiceMode) {
+          Button({ type: ButtonType.Normal, stateEffect: false }) {
+            Column({ space: 2 }) {
+              Text(this.voicePressing && this.inputText.length > 0 ? this.inputText :
+                (this.isVoiceStarting ? '正在打开麦克风…' : (this.isListening ? '正在聆听…' : '按住说话')))
+                .fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).maxLines(3)
+              if (this.voicePressing && this.voiceTurnStarted) {
+                Text('松开完成').fontSize(11).fontColor(UiTheme.secondary)
+              }
+            }.width('100%').padding({ top: 10, bottom: 10 })
+          }
+          .layoutWeight(1).constraintSize({ minHeight: 44, maxHeight: 108 }).borderRadius(8)
+          .backgroundColor(this.voicePressing ? UiTheme.tint : UiTheme.subtle)
+          .enabled(this.voiceReady && !this.isSending && !this.fileBusy)
+          .accessibilityText('按住说话，松开后可编辑识别文字')
+          .onTouch((event: TouchEvent) => {
+            if (event.type === TouchType.Down) this.voicePressing = true;
+            else if (event.type === TouchType.Up) void this.endVoiceHold(false);
+            else if (event.type === TouchType.Cancel) void this.endVoiceHold(true);
+          })
+          .gesture(LongPressGesture({ repeat: false, duration: 200 })
+            .onAction(() => { void this.startVoiceInput(); })
+            .onActionEnd(() => { void this.endVoiceHold(false); })
+            .onActionCancel(() => { void this.endVoiceHold(true); }))
+          Button({ type: ButtonType.Normal, stateEffect: true }) {
+            SymbolGlyph($r('sys.symbol.keyboard')).fontSize(23).fontColor([UiTheme.ink])
+          }
+          .width(44).height(44).borderRadius(8).backgroundColor(UiTheme.surface)
+          .enabled(!this.isVoiceStarting && !this.isListening)
+          .accessibilityText('切换到键盘输入').onClick(() => { void this.toggleVoiceMode(); })
+        } else {
+          TextInput({ placeholder: '问学习建议、错题、计划或搭子', text: this.inputText, controller: this.inputController })
+            .height(44).layoutWeight(1).fontSize(14).placeholderColor(UiTheme.muted)
+            .fontColor(UiTheme.ink).backgroundColor(UiTheme.subtle).borderRadius(8)
+            .onChange((value: string) => {
+              // Once the user edits, late ASR results must never overwrite their correction.
+              if (this.isVoiceFinalizing) {
+                this.cancelVoiceInput();
+                this.voiceMessage = '已保留文字，可修改后发送。';
+              }
+              this.inputText = value;
+            })
+        }
         Button({ type: ButtonType.Normal, stateEffect: true }) {
-          Text('+').fontSize(28).fontColor(UiTheme.ink)
+          SymbolGlyph($r('sys.symbol.plus')).fontSize(24).fontColor([UiTheme.ink])
+        }.backgroundColor(UiTheme.surface).width(44).height(44).borderRadius(8)
+          .enabled(!this.isSending && !this.isVoiceStarting && !this.isListening)
+          .accessibilityText('添加图片、文件或选择学习功能').onClick(() => this.showLearningFunctions = true)
+        if (!this.voiceMode) {
+          Button('发送').fontSize(14).fontColor(UiTheme.surface)
+            .backgroundColor(this.canSend() ? UiTheme.accent : '#CBD5E1').height(44).borderRadius(8)
+            .enabled(this.canSend()).onClick(() => this.sendMessage())
         }
-        .backgroundColor(UiTheme.surface)
-        .width(44)
-        .height(44)
-        .borderRadius(8)
-        .enabled(!this.isSending)
-        .accessibilityText('添加图片、文件或选择学习功能').onClick(() => this.showLearningFunctions = true)
-        TextInput({ placeholder: '问学习建议、错题、计划或搭子', text: this.inputText })
-          .height(40)
-          .layoutWeight(1)
-          .fontSize(14)
-          .placeholderColor(UiTheme.muted)
-          .fontColor(UiTheme.ink)
-          .backgroundColor(UiTheme.subtle)
-          .borderRadius(8)
-          .onChange((value: string) => this.inputText = value)
-        Button('发送')
-          .fontSize(14)
-          .fontColor(UiTheme.surface)
-          .backgroundColor(this.canSend() ? UiTheme.accent : '#CBD5E1')
-          .height(40)
-          .borderRadius(8)
-          .enabled(this.canSend())
-          .onClick(() => this.sendMessage())
       }
       .width('100%')
     }
@@ -1291,10 +1313,12 @@ struct ChatMain {
   }
 
   private canSend(): boolean {
-    return !this.isSending && !this.fileBusy && (this.inputText.trim().length > 0 || this.pendingImage.length > 0 || this.pendingFileText.length > 0);
+    return !this.isSending && !this.fileBusy && !this.isVoiceStarting && !this.isListening && !this.isVoiceFinalizing &&
+      (this.inputText.trim().length > 0 || this.pendingImage.length > 0 || this.pendingFileText.length > 0);
   }
 
   private resetChat(): void {
+    this.cancelVoiceInput();
     this.goalRequestVersion++;
     this.chatRequestVersion++;
     this.learningContext = null;
@@ -1319,49 +1343,110 @@ struct ChatMain {
     appState.chatSessionId = '';
   }
 
-  private async toggleVoiceInput(): Promise<void> {
-    if (this.isListening) {
-      await this.stopVoiceInput();
+  private async toggleVoiceMode(): Promise<void> {
+    if (this.voiceMode) {
+      this.cancelVoiceInput();
       return;
     }
-    await this.startVoiceInput();
-  }
-
-  private async startVoiceInput(): Promise<void> {
-    this.voiceMessage = '';
+    this.cancelVoiceInput();
+    this.voiceMode = true;
+    this.voiceReady = false;
+    this.inputController.stopEditing();
+    this.voiceMessage = '正在准备麦克风…';
+    const revision: number = this.voiceRequestVersion;
+    const owner: string = appState.currentUser.userId;
     const context: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
     const permissions: Permissions[] = ['ohos.permission.MICROPHONE'];
     try {
       const result = await abilityAccessCtrl.createAtManager().requestPermissionsFromUser(context, permissions);
+      if (!this.isCurrentVoiceRequest(revision, owner) || !this.voiceMode) return;
       if (result.authResults.length === 0 || result.authResults[0] !== 0) {
+        this.voiceMode = false;
         this.voiceMessage = '麦克风权限未开启，可在系统设置中允许后重试。';
         return;
       }
+      this.voiceReady = true;
+      this.voiceMessage = '按住说话，松开后可修改文字再发送。';
     } catch (error) {
+      if (!this.isCurrentVoiceRequest(revision, owner)) return;
+      this.voiceMode = false;
       this.voiceMessage = '无法申请麦克风权限，请在系统设置中检查权限。';
-      return;
     }
+  }
 
+  private isCurrentVoiceRequest(revision: number, owner: string): boolean {
+    return this.isPageActive && revision === this.voiceRequestVersion && owner === appState.currentUser.userId;
+  }
+
+  private async startVoiceInput(): Promise<void> {
+    if (!this.isPageActive || !this.voiceMode || !this.voiceReady || !this.voicePressing ||
+      this.isSending || this.fileBusy || this.isVoiceStarting || this.isListening || this.isVoiceFinalizing) return;
+    const revision: number = ++this.voiceRequestVersion;
+    const owner: string = appState.currentUser.userId;
+    this.voiceTurnStarted = true;
+    this.voiceDraft = this.inputText;
+    this.isVoiceStarting = true;
+    this.voiceMessage = '正在打开麦克风，请保持按住…';
     const callbacks: VoiceInputCallbacks = new VoiceInputCallbacks(
       (listening: boolean): void => {
+        if (!this.isCurrentVoiceRequest(revision, owner)) return;
         this.isListening = listening;
-        if (listening) this.voiceMessage = '正在聆听，点击红色停止按钮后生成文字。';
+        this.isVoiceStarting = false;
+        if (listening) this.voiceMessage = '正在聆听，松开后可编辑识别文字。';
       },
       (text: string, isFinal: boolean): void => {
-        this.inputText = text;
-        this.voiceMessage = isFinal ? '已转换为文字，可修改后发送。' : '正在识别…';
+        if (!this.isCurrentVoiceRequest(revision, owner)) return;
+        this.inputText = this.voiceDraft + text;
+        this.voiceMessage = this.voicePressing ? '正在识别，松开后可修改。' : '正在整理识别结果，可直接修改文字。';
       },
       (message: string): void => {
+        if (!this.isCurrentVoiceRequest(revision, owner)) return;
         this.isListening = false;
+        this.isVoiceStarting = false;
+        this.isVoiceFinalizing = false;
+        if (!this.voicePressing) this.voiceMode = false;
         this.voiceMessage = message;
+      },
+      (): void => {
+        if (!this.isCurrentVoiceRequest(revision, owner)) return;
+        this.isListening = false;
+        this.isVoiceStarting = false;
+        this.isVoiceFinalizing = false;
+        if (!this.voicePressing) this.voiceMode = false;
+        this.voiceMessage = this.inputText === this.voiceDraft ? '未识别到语音，请重新按住说话。' : '已转换为文字，可修改后发送。';
       }
     );
     await this.voiceInputService.start(callbacks);
   }
 
-  private async stopVoiceInput(): Promise<void> {
-    this.voiceMessage = '正在整理识别结果…';
+  private async endVoiceHold(cancelled: boolean): Promise<void> {
+    this.voicePressing = false;
+    if (!this.voiceTurnStarted) return;
+    this.voiceTurnStarted = false;
+    if (cancelled) {
+      const draft: string = this.voiceDraft;
+      this.cancelVoiceInput();
+      this.inputText = draft;
+      this.voiceMessage = '已取消本次语音输入。';
+      return;
+    }
+    this.voiceMode = false;
+    if (!this.isListening && !this.isVoiceStarting) return;
+    this.isVoiceFinalizing = true;
+    this.voiceMessage = '正在整理识别结果，可直接修改文字。';
     await this.voiceInputService.stop(true);
+  }
+
+  private cancelVoiceInput(): void {
+    this.voiceRequestVersion++;
+    this.voiceMode = false;
+    this.voiceReady = false;
+    this.voicePressing = false;
+    this.voiceTurnStarted = false;
+    this.isVoiceStarting = false;
+    this.isVoiceFinalizing = false;
+    this.isListening = false;
+    void this.voiceInputService.stop(false);
   }
 
   private async pickDocument(): Promise<void> {

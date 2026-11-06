@@ -6,6 +6,8 @@ import { CollaborationDevice, CollaborationLink } from '../api/DeviceCollaborati
 import { AgentApiClient } from '../api/AgentApiClient';
 import { AuthStore } from '../api/AuthStore';
 import { appState } from '../data/AppState';
+import { FocusSessionSyncService, SharedFocusSnapshot } from '../services/FocusSessionSyncService';
+import { ConnectionDiagnostics } from '../services/ConnectionDiagnostics';
 
 @Entry
 @Component
@@ -14,17 +16,32 @@ struct DeviceConnect {
   @State name: string = '';
   @State working: boolean = false;
   @State notice: string = '';
+  @State shared: SharedFocusSnapshot = FocusSessionSyncService.getInstance().getSnapshot();
+  @State now: number = Date.now();
+  @State diagnostic: string = '';
+  @State checking: boolean = false;
   private service: DistributedStateService = DistributedStateService.getInstance();
+  private focusSync: FocusSessionSyncService = FocusSessionSyncService.getInstance();
   private timer: number = -1;
   private signature: string = '';
+  private active: boolean = false;
+  private diagnosticVersion: number = 0;
   aboutToAppear(): void {
+    this.active = true;
     this.refreshView();
     this.name = this.snapshot.localDeviceLabel;
     void this.service.refresh();
     this.timer = setInterval(() => this.refreshView(), 1000);
   }
-  aboutToDisappear(): void { if (this.timer !== -1) clearInterval(this.timer); this.timer = -1; }
+  aboutToDisappear(): void {
+    this.active = false;
+    this.diagnosticVersion++;
+    if (this.timer !== -1) clearInterval(this.timer);
+    this.timer = -1;
+  }
   private refreshView(): void {
+    this.now = Date.now();
+    this.shared = this.focusSync.getSnapshot();
     const snapshot = this.service.getSnapshot();
     const signature: string = JSON.stringify(snapshot);
     if (signature !== this.signature) { this.snapshot = snapshot; this.signature = signature; }
@@ -35,25 +52,61 @@ struct DeviceConnect {
     this.notice = '';
     try {
       let ok: boolean = false;
-      if (action === 'refresh') ok = await this.service.refresh();
+      if (action === 'refresh') {
+        ok = await this.service.refresh();
+        if (ok) await this.focusSync.refresh();
+      }
       else if (action === 'invite') ok = await this.service.invite(id);
       else if (action === 'accept' || action === 'reject') ok = await this.service.respond(id, action === 'accept');
       else if (action === 'disconnect') ok = await this.service.disconnect(id);
       else if (action === 'rename') ok = await this.service.rename(this.name);
-      else if (action === 'share' && appState.focusRuntime !== null) ok = await this.service.shareFocusTask(appState.focusRuntime.task);
+      else if (action === 'handoff') ok = await this.focusSync.handoff();
+      if (!this.active) return;
       this.refreshView();
       if (ok) this.notice = action === 'invite' ? '请求已发送，请在对方设备上确认。' :
-        action === 'accept' ? '已连接，可以同步专注任务。' : action === 'share' ? '任务已发送，正在等待对方接收确认。' :
+        action === 'accept' ? '已连接，可以接续同一次专注。' :
         action === 'rename' ? '设备名称已保存。' : action === 'disconnect' ? '已断开连接。' : '';
-      else this.notice = this.snapshot.lastError || '操作未完成，请刷新后重试。';
+      else this.notice = this.shared.lastError || this.snapshot.lastError || '操作未完成，请刷新后重试。';
+      if (ok && action === 'handoff') router.pushUrl({ url: 'pages/FocusTimer' });
     } finally { this.working = false; }
   }
   private stateText(link: CollaborationLink): string {
     if (link.state === 'pending') return link.incoming ? '请求连接这台设备' : '等待对方确认（60秒内）';
-    if (link.state === 'connected') return link.sentMessageId ? (link.acknowledgedAt > 0 ? '任务已收到' : '任务已发送，等待接收确认') : '已连接，尚未发送任务';
+    if (link.state === 'connected') {
+      if (this.snapshot.stale) return '已配对 · 等待恢复同步';
+      const device = this.snapshot.devices.find((item: CollaborationDevice) => item.deviceId === link.peerDeviceId);
+      if (device !== undefined && !device.online) return '已配对 · 对端在后台或暂时离线';
+      return link.sentMessageId ? (link.acknowledgedAt > 0 ? '已连接 · 对方已收到任务' : '已连接 · 等待对方接收确认') : '已连接';
+    }
     if (link.state === 'rejected') return '对方已拒绝，可重新发起';
     if (link.state === 'expired') return '请求已过期，可重新发起';
-    return '已断开，请确认两端应用均在前台';
+    return '已断开，可重新发起连接';
+  }
+  private syncText(): string {
+    if (this.snapshot.lastResponseAt === 0) return '尚未同步';
+    const seconds: number = Math.max(0, Math.floor((this.now - this.snapshot.lastResponseAt) / 1000));
+    return `${this.snapshot.stale ? '同步中断 · ' : ''}最近同步 ${seconds} 秒前`;
+  }
+  private hasActiveSession(): boolean {
+    return this.shared.session !== null && (this.shared.session.state === 'running' || this.shared.session.state === 'paused');
+  }
+  private clockText(): string {
+    const session = this.shared.session;
+    if (session === null) return '';
+    const seconds: number = Math.max(0, Math.floor((session.task.timerType === 'stopwatch' ? session.elapsedMs : session.remainingMs) / 1000));
+    return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
+  }
+  private async diagnose(): Promise<void> {
+    if (this.checking) return;
+    this.checking = true;
+    const version: number = ++this.diagnosticVersion;
+    const owner: string = AuthStore.getUserId();
+    const address: string = AgentApiClient.getConfig().baseUrl;
+    const result = await ConnectionDiagnostics.check();
+    if (!this.active || version !== this.diagnosticVersion) return;
+    this.checking = false;
+    if (owner !== AuthStore.getUserId() || address !== AgentApiClient.getConfig().baseUrl) return;
+    this.diagnostic = result.message;
   }
   private availableDevices(): CollaborationDevice[] {
     return this.snapshot.devices.filter((device: CollaborationDevice) => device.online &&
@@ -67,6 +120,7 @@ struct DeviceConnect {
       this.notice = '请先完成或放弃本机上次专注，再接收新任务。'; return;
     }
     appState.setFocusTask(task);
+    this.service.consumeRemoteTask();
     router.pushUrl({ url: 'pages/FocusSetup' });
   }
   @Builder
@@ -95,9 +149,9 @@ struct DeviceConnect {
       Scroll() {
         Column({ space: 20 }) {
           Text('手机、平板接着学').fontSize(22).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
-          Text('两台设备登录同一个知学账号并联网，保持应用在前台。在这里选择设备，由对方确认后连接。无需连接同一 Wi-Fi。')
+          Text('两台设备登录同一个知学账号，使用同一后端地址。在这里选择设备，由对方确认后连接。首次配对时请打开两端应用。')
             .fontSize(14).fontColor(UiTheme.secondary).lineHeight(22).width('100%')
-          Text('当前同步课程、任务名称和专注设置；接收后需要手动开始，计时进度不会接续。')
+          Text('连接后可接续同一次专注，暂停、继续和完成会同步到另一台设备。')
             .fontSize(13).fontColor(UiTheme.secondary).width('100%')
           if (!this.snapshot.available) {
             Text(AgentApiClient.getConfig().useFixture ? '离线演示模式无法连接设备，请先切换到联机模式。' : '请先登录，两台设备需要使用同一知学账号。')
@@ -105,6 +159,14 @@ struct DeviceConnect {
             Button(AuthStore.isSignedIn() ? '连接设置' : '去登录').height(44).backgroundColor(UiTheme.accent)
               .onClick(() => router.pushUrl({ url: AuthStore.isSignedIn() ? 'pages/ApiEnvironment' : 'pages/Login' }))
           } else {
+            Column({ space: 8 }) {
+              Text(`当前账号 · ${AuthStore.getUserId().slice(-6)}`).fontSize(14).fontColor(UiTheme.ink).width('100%')
+              Text(`后端地址 · ${AgentApiClient.getConfig().baseUrl}`).fontSize(12).fontColor(UiTheme.secondary).width('100%')
+              Text(this.syncText()).fontSize(12).fontColor(this.snapshot.stale ? UiTheme.danger : UiTheme.secondary).width('100%')
+              Button(this.checking ? '正在检查…' : '检查连接').height(44).fontSize(14).backgroundColor(UiTheme.subtle)
+                .fontColor(UiTheme.accent).enabled(!this.checking).onClick(() => { void this.diagnose(); })
+              if (this.diagnostic) { Text(this.diagnostic).fontSize(13).fontColor(UiTheme.secondary).width('100%') }
+            }.width('100%').alignItems(HorizontalAlign.Start)
             Column({ space: 12 }) {
               Text('本机名称').fontSize(14).fontColor(UiTheme.secondary).width('100%')
               Row({ space: 12 }) {
@@ -113,7 +175,8 @@ struct DeviceConnect {
                 Button('保存').height(44).fontSize(14).backgroundColor(UiTheme.accent).enabled(!this.working && this.name.trim().length > 0)
                   .onClick(() => { void this.run('rename'); })
               }.width('100%')
-              Text(this.snapshot.sessionReady ? '本机已就绪' : '正在连接服务…').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+              Text(this.snapshot.stale ? '保留上次连接，正在重试同步' : this.snapshot.sessionReady ? '本机已就绪' : '等待连接服务')
+                .fontSize(12).fontColor(UiTheme.secondary).width('100%')
             }.width('100%')
             if (this.notice || this.snapshot.lastError) {
               Text(this.notice || this.snapshot.lastError).fontSize(14).fontColor(UiTheme.secondary).width('100%')
@@ -124,20 +187,30 @@ struct DeviceConnect {
                 ForEach(this.snapshot.links, (link: CollaborationLink) => { this.LinkRow(link) }, (link: CollaborationLink) => link.invitationId)
               }.width('100%')
             }
-            if (this.snapshot.remoteTask !== null) {
+            if (this.hasActiveSession() && this.shared.session !== null) {
+              Column({ space: 10 }) {
+                Text(`${this.shared.session.leaderLabel} · ${this.shared.session.state === 'paused' ? '已暂停' : '正在专注'}`)
+                  .fontSize(14).fontColor(UiTheme.secondary).width('100%')
+                Text(this.shared.session.task.task).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+                Text(`${this.shared.session.task.timerType === 'stopwatch' ? '已专注' : '剩余'} ${this.clockText()}`)
+                  .fontSize(20).fontColor(UiTheme.ink).width('100%')
+                Text(`会话 ${this.shared.session.sessionId.slice(-12)}`).fontSize(12).fontColor(UiTheme.secondary).width('100%')
+                if (this.shared.stale || this.shared.lastError) {
+                  Text(this.shared.lastError || '同步中断，恢复网络后继续同步。').fontSize(13).fontColor(UiTheme.danger).width('100%')
+                }
+                Button('在这台设备继续').height(44).backgroundColor(UiTheme.accent)
+                  .enabled(!this.working && !this.shared.busy && !this.shared.stale).onClick(() => { void this.run('handoff'); })
+              }.width('100%').alignItems(HorizontalAlign.Start).padding(16).backgroundColor(UiTheme.tint).borderRadius(8)
+            } else if (this.snapshot.remoteTask !== null) {
               Column({ space: 12 }) {
                 Text(`来自${this.snapshot.remoteDeviceLabel}的任务`).fontSize(14).fontColor(UiTheme.secondary).width('100%')
                 Text(this.snapshot.remoteTask.task).fontSize(17).fontColor(UiTheme.ink).width('100%')
                 Button('使用此任务').height(44).backgroundColor(UiTheme.accent).onClick(() => this.adopt())
               }.width('100%').alignItems(HorizontalAlign.Start).padding(16).backgroundColor(UiTheme.tint).borderRadius(8)
             }
-            if (this.snapshot.onlinePeerCount > 0 && appState.focusRuntime !== null) {
-              Button('发送当前专注任务').height(44).width('100%').backgroundColor(UiTheme.accent).enabled(!this.working)
-                .onClick(() => { void this.run('share'); })
-            }
             Column({ space: 12 }) {
               Row() {
-                Text('同账号在线设备').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+                Text('可连接的设备').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
                 Blank()
                 Button('刷新').height(44).fontSize(14).backgroundColor(UiTheme.subtle).fontColor(UiTheme.accent).enabled(!this.working)
                   .onClick(() => { void this.run('refresh'); })
@@ -150,11 +223,14 @@ struct DeviceConnect {
                 }.width('100%')
               }, (device: CollaborationDevice) => device.deviceId)
               if (this.availableDevices().length === 0) {
-                Text('没有可连接的新设备。请在另一台设备登录同一账号，并打开此页面；设备列表约每5秒更新。')
+                Text(this.snapshot.stale ? '正在恢复连接，设备列表保留上次同步结果。' :
+                  this.snapshot.links.some((link: CollaborationLink) => link.state === 'connected') ? '已连接当前发现的设备，可直接接续专注。' :
+                  this.snapshot.incomingCount > 0 || this.snapshot.links.some((link: CollaborationLink) => link.state === 'pending') ?
+                    '连接请求正在等待确认。' : '暂未发现新设备。请核对两端账号尾号与后端地址，并打开另一台设备的应用。')
                   .fontSize(14).fontColor(UiTheme.secondary).lineHeight(22).width('100%')
               }
             }.width('100%')
-            Text('离开应用会断开协同。网络异常或设备关闭后，在线状态最长约25秒失效；重新打开后需再次确认连接。')
+            Text('锁屏、切后台会保留配对和专注会话。回到前台会自动刷新；只有点击“断开连接”才会解除配对。')
               .fontSize(12).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
           }
         }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding({ left: 20, right: 20, top: 16, bottom: 32 })

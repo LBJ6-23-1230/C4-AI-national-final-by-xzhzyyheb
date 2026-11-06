@@ -86,7 +86,7 @@ class SQLiteRepository(Repository):
 			self._connection.close()
 
 	@contextmanager
-	def transaction(self):
+	def transaction(self, user_id=None):
 		"""Serialize read/decide/write operations across processes, with rollback."""
 		with self._lock:
 			outer = self._transaction_depth == 0
