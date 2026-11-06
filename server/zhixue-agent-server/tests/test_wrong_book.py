@@ -1,4 +1,6 @@
 """Wrong-book flow: review, auto-add, grouping, practice and removal."""
+import time
+
 from app import create_app
 
 
@@ -17,9 +19,7 @@ def test_wrong_answer_is_reviewed_and_auto_added_by_course(tmp_path):
 	assert review[0]["correct"] is False
 	assert review[0]["inWrongBook"] is True
 	assert review[0]["explanationSource"] == "fallback"
-	# 即使测试环境没有配置模型，也不能再退回“请重新核对概念”的空泛占位文案。
-	assert len(review[0]["explanation"]) >= 80
-	assert "A. 根-左-右" in review[0]["explanation"]
+	assert review[0]["explanation"] == ""
 
 	book = client.get("/api/v1/wrong-book").get_json()
 	assert book["total"] == 1
@@ -68,5 +68,12 @@ def test_submission_uses_llm_detailed_review(monkeypatch, tmp_path):
 		"answers": [{"exerciseId": "exercise-preorder-001", "answer": "C"}],
 	})
 	assert response.status_code == 200
-	assert "B 是后序" in response.get_json()["review"][0]["explanation"]
-	assert response.get_json()["review"][0]["explanationSource"] == "llm"
+	result = response.get_json()
+	assert result["reviewStatus"] == "pending"
+	assert result["review"][0]["explanation"] == ""
+	deadline = time.monotonic() + 3
+	while result["reviewStatus"] == "pending" and time.monotonic() < deadline:
+		result = client.get(f'/api/v1/exercise-submissions/{result["submissionId"]}').get_json()
+		time.sleep(.02)
+	assert "B 是后序" in result["review"][0]["explanation"]
+	assert result["review"][0]["explanationSource"] == "llm"

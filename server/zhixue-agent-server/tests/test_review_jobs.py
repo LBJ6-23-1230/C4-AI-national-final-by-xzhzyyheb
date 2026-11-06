@@ -15,7 +15,6 @@ from app.repositories.sqlite_repository import SQLiteRepository
 @pytest.mark.parametrize("backend", ["json", "sqlite"])
 def test_slow_review_backfills_replay_without_regrading(tmp_path, monkeypatch, backend):
     monkeypatch.setenv("ZHIXUE_DB", backend)
-    monkeypatch.setenv("LLM_REVIEW_WAIT_SECONDS", "0.01")
     client = create_app(tmp_path / "review.json").test_client()
     repository = exercises._repository
     release = threading.Event()
@@ -27,6 +26,7 @@ def test_slow_review_backfills_replay_without_regrading(tmp_path, monkeypatch, b
         assert release.wait(5)
         return {q["exerciseId"]: "详细解析" * 20 for q in questions}, {q["exerciseId"] for q in questions}
 
+    monkeypatch.setattr(exercises.exercise_gen, "generation_available", lambda: True)
     monkeypatch.setattr(exercises.exercise_gen, "generate_review_explanations", slow)
     original = review_jobs.attach
     def attach(future, *args):
@@ -41,7 +41,8 @@ def test_slow_review_backfills_replay_without_regrading(tmp_path, monkeypatch, b
         assert time.monotonic() - started < 1
         assert response.status_code == 200
         first = response.get_json()
-        assert first["review"][0]["explanationSource"] == "fallback"
+        assert first["reviewStatus"] == "pending"
+        assert first["review"][0]["explanation"] == ""
         profile = deepcopy(repository.get("profiles", "demo-user"))
         release.set()
         assert completed.wait(3)
@@ -85,7 +86,6 @@ def test_fifty_concurrent_submissions_return_with_bounded_model_work(tmp_path, m
     repo = exercises._repository
     pool = review_jobs.ReviewPool(4, 8)
     monkeypatch.setattr(review_jobs, "_pool", pool)
-    monkeypatch.setenv("LLM_REVIEW_WAIT_SECONDS", "0.01")
     release = threading.Event()
     lock = threading.Lock()
     running = 0
@@ -99,6 +99,7 @@ def test_fifty_concurrent_submissions_return_with_bounded_model_work(tmp_path, m
         with lock:
             running -= 1
         return {}, set()
+    monkeypatch.setattr(exercises.exercise_gen, "generation_available", lambda: True)
     monkeypatch.setattr(exercises.exercise_gen, "generate_review_explanations", slow)
     def submit(number):
         with app.test_client() as client:
@@ -112,7 +113,8 @@ def test_fifty_concurrent_submissions_return_with_bounded_model_work(tmp_path, m
             results = list(callers.map(submit, range(50)))
         assert all(status == 200 and duration < 5 for status, duration in results)
         assert len(repo.list("submissions")) == 50
-        assert peak == 4
+        with lock:
+            assert 1 <= peak <= 4
     finally:
         release.set()
         pool.executor.shutdown(wait=True)
@@ -154,17 +156,18 @@ def test_callback_preserves_edits_deletions_ownership_and_is_idempotent(tmp_path
         repo.close()
 
 
-def test_worker_failure_and_queue_full_fall_back(monkeypatch, caplog):
+def test_queue_full_marks_review_unavailable(tmp_path, monkeypatch, caplog):
     pool = review_jobs.ReviewPool(1, 0)
     monkeypatch.setattr(review_jobs, "_pool", pool)
-    monkeypatch.setenv("LLM_REVIEW_WAIT_SECONDS", "0")
     release = threading.Event()
     future = pool.submit(lambda: release.wait(5))
-    q = {"exerciseId": "q", "options": ["A. a", "B. b"]}
+    repo = JsonRepository(tmp_path / "queue.json")
+    pending = {"response": {"userId": "u", "review": [], "reviewStatus": "pending"}}
+    repo.save("submissions", "s", pending)
     try:
         with caplog.at_level("INFO"):
-            fallback, ids, pending = review_jobs.prepare([q], {"q": "B"}, {"q": "A"})
-        assert fallback["q"] and not ids and pending is None
+            review_jobs.start(repo, "s", pending, {}, [], {}, {})
+        assert repo.get("submissions", "s")["response"]["reviewStatus"] == "failed"
         assert "reason=queue_full" in caplog.text
     finally:
         release.set()
@@ -192,17 +195,12 @@ def test_sqlite_conditional_update_serializes_independent_connections(tmp_path):
         second.close()
 
 
-def test_worker_failure_does_not_expose_private_errors(monkeypatch, caplog):
-    q = {"exerciseId": "q", "options": ["A. a", "B. b"]}
-    pool = review_jobs.ReviewPool(1, 0)
-    monkeypatch.setattr(review_jobs, "_pool", pool)
-    monkeypatch.setenv("LLM_REVIEW_WAIT_SECONDS", "1")
-    def fail(*args):
-        raise ValueError("private content must not be logged")
-    monkeypatch.setattr(exercises.exercise_gen, "generate_review_explanations", fail)
-    try:
-        fallback, ids, pending = review_jobs.prepare([q], {"q": "B"}, {"q": "A"})
-        assert fallback["q"] and not ids and pending is None
-        assert "private content" not in caplog.text
-    finally:
-        pool.executor.shutdown(wait=True)
+def test_worker_failure_does_not_expose_private_errors(tmp_path, caplog):
+    repo = JsonRepository(tmp_path / "failure.json")
+    pending = {"response": {"userId": "u", "review": [], "reviewStatus": "pending"}}
+    repo.save("submissions", "s", pending)
+    future = Future()
+    review_jobs.attach(future, repo, "s", pending, {})
+    future.set_exception(ValueError("private content must not be logged"))
+    assert repo.get("submissions", "s")["response"]["reviewStatus"] == "failed"
+    assert "private content" not in caplog.text

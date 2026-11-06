@@ -1,5 +1,5 @@
-"""Bounded review work and conditional, score-neutral enrichment."""
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+"""Bounded background review work and score-neutral updates."""
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import logging
 import math
@@ -49,25 +49,13 @@ def pool():
         return _pool
 
 
-def prepare(questions, answers, keys):
-    fallback = {q["exerciseId"]: exercise_gen._fallback_review_explanation(
-        q, answers[q["exerciseId"]], keys[q["exerciseId"]]) for q in questions}
-    if not questions:
-        return fallback, set(), None
-    future = pool().submit(exercise_gen.generate_review_explanations,
-                           deepcopy(questions), dict(answers), dict(keys))
+def start(repository, submission_id, expected, wrong_snapshots, questions, answers, keys):
+    future = pool().submit(exercise_gen.generate_review_explanations, questions, answers, keys)
     if future is None:
-        logger.info("review_fallback reason=queue_full")
-        return fallback, set(), None
-    try:
-        explanations, ids = future.result(timeout=_setting("LLM_REVIEW_WAIT_SECONDS", 2, 30))
-        return explanations, ids, None
-    except TimeoutError:
-        logger.info("review_fallback reason=wait_budget")
-        return fallback, set(), future
-    except Exception:
-        logger.warning("review_fallback reason=worker_failed")
-        return fallback, set(), None
+        logger.info("review_job status=failed reason=queue_full")
+        apply_result(repository, submission_id, expected, wrong_snapshots, {}, set())
+    else:
+        attach(future, repository, submission_id, expected, wrong_snapshots)
 
 
 def apply_result(repository, submission_id, expected, wrong_snapshots, explanations, ids):
@@ -99,29 +87,10 @@ def attach(future, repository, submission_id, expected, wrong_snapshots):
     def complete(done):
         try:
             explanations, ids = done.result()
-            updated = deepcopy(expected)
-            owner = expected["response"]["userId"]
-            changed = []
-            for row in updated["response"]["review"]:
-                key = row["exerciseId"]
-                if row.get("explanationSource") == "fallback" and key in ids and explanations.get(key):
-                    row.update(explanation=explanations[key], explanationSource="llm")
-                    changed.append(key)
-            updated["response"]["reviewStatus"] = "completed" if changed else "failed"
-            # Compare the full snapshot so resets, edits and duplicate callbacks win.
-            if not repository.compare_and_save("submissions", submission_id, expected, updated):
-                return
-            for key in changed:
-                previous = wrong_snapshots.get(key)
-                if previous and previous.get("userId") == owner:
-                    replacement = dict(previous, explanation=explanations[key])
-                    repository.compare_and_save("wrong_book", f"{owner}:{key}", previous, replacement)
-            logger.info("review_backfill status=completed count=%s", len(changed))
         except Exception:
-            failed = deepcopy(expected)
-            failed["response"]["reviewStatus"] = "failed"
-            repository.compare_and_save("submissions", submission_id, expected, failed)
-            # Do not log exception text: provider errors may contain user content.
-            logger.warning("review_backfill status=failed")
+            # Provider errors can contain user content.
+            logger.warning("review_job status=failed reason=worker_error")
+            explanations, ids = {}, set()
+        apply_result(repository, submission_id, expected, wrong_snapshots, explanations, ids)
 
     future.add_done_callback(complete)

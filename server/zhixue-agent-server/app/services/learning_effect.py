@@ -5,7 +5,7 @@ import hashlib
 import re
 from zoneinfo import ZoneInfo
 
-RULE_VERSION = 'practice-evidence-v1'
+RULE_VERSION = 'practice-evidence-v2'
 
 
 def timestamp(raw):
@@ -72,13 +72,21 @@ def statistics(repo, owner, now=None):
         recent = all_items[-20:]
         correct = sum(i['correct'] for i in recent)
         accuracy = round(correct / len(recent) * 100)
+        # Give new evidence twice the weight of older evidence. Eight neutral
+        # pseudo-questions keep a small or lucky sample from looking conclusive.
+        older = all_items[:-len(recent)]
+        mastery_score = round(100 * (4 + correct + .5 * sum(i['correct'] for i in older))
+                              / (8 + len(recent) + .5 * len(older)))
         point_rounds = rounds[point]
         last = all_items[-1]['timestamp']
         varied = any(i.get('difficulty') == 'easy' for i in recent) and any(i.get('difficulty') in ('medium', 'hard') for i in recent)
         recent_rounds = len({i['submissionId'] for i in recent})
-        status = 'evidence_limited' if len(recent) < 8 or recent_rounds < 2 else 'needs_practice'
-        if len(recent) >= 8 and recent_rounds >= 2 and varied and accuracy >= 80:
-            status = 'stable'
+        challenging_count = sum(i.get('difficulty') in ('medium', 'hard') for i in recent)
+        status = 'needs_practice'
+        if len(recent) < 8 or recent_rounds < 2:
+            status = 'evidence_limited'
+        elif accuracy >= 80 and mastery_score >= 70:
+            status = 'stable' if varied or challenging_count >= 12 else 'evidence_limited'
         if now - last >= timedelta(days=7):
             status = 'retest_due'
         baseline = next((r for r in point_rounds if r['count'] >= 3 and 'unknown' not in r['difficulties']), None)
@@ -92,7 +100,10 @@ def statistics(repo, owner, now=None):
         if delayed:
             latest = delayed[-1]
             retention = 'preliminary_good' if latest['correct'] / latest['count'] >= .8 else 'needs_review'
-        result[point] = dict(assessmentStatus=status, effectiveQuestionCount=len(recent), correctCount=correct,
+        if retention == 'needs_review' and status == 'stable':
+            status = 'needs_practice'
+        result[point] = dict(assessmentStatus=status, effectiveQuestionCount=len(recent),
+            evidenceAdjustedScore=mastery_score, totalEvidenceQuestionCount=len(all_items), correctCount=correct,
             recentAccuracy=accuracy, lastAssessedAt=last.isoformat(), assessmentRoundCount=len(point_rounds),
             performanceChange=change, retentionStatus=retention, ruleVersion=RULE_VERSION)
     return result

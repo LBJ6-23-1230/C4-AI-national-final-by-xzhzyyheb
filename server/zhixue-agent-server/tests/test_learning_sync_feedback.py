@@ -133,6 +133,25 @@ def test_repeated_questions_do_not_inflate_evidence_and_delayed_new_questions_do
     assert effect.statistics(repo, 'bob', stamp + timedelta(days=2)) == {}
 
 
+
+def test_mastery_weighs_unique_sample_size_and_recent_performance(repo):
+    stamp = datetime(2026, 10, 28, 8, tzinfo=timezone.utc)
+    submit(repo, 'lucky', stamp, [True] * 3, 'lucky')
+    lucky = effect.statistics(repo, 'alice', stamp)['stack']
+    assert lucky['recentAccuracy'] == 100
+    assert lucky['totalEvidenceQuestionCount'] == 3
+    assert lucky['assessmentStatus'] == 'evidence_limited'
+
+    repo.delete('submissions', 'lucky')
+    for i in range(20):
+        submit(repo, f'round-{i}', stamp + timedelta(minutes=i),
+               [True, True, True, True, False], f'new-{i}')
+    measured = effect.statistics(repo, 'alice', stamp + timedelta(hours=1))['stack']
+    assert measured['recentAccuracy'] == 80 and measured['totalEvidenceQuestionCount'] == 100
+    assert measured['evidenceAdjustedScore'] > lucky['evidenceAdjustedScore']
+    assert measured['assessmentStatus'] == 'stable'
+
+
 def test_focus_only_does_not_claim_mastery_and_today_excludes_yesterday(repo):
     stamp = datetime(2026, 10, 30, 3, tzinfo=timezone.utc)
     repo.save('focus_sessions', 'yesterday', dict(userId='alice', session=dict(endedAt=(stamp-timedelta(days=1)).isoformat(),

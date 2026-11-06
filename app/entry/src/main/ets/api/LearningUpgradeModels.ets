@@ -5,13 +5,18 @@ export interface PartnerMessage {
   image: string;
   createdAt: string;
   clientId: string;
+  replyTo?: string;
+  recalled?: boolean;
+  sharedTaskId?: string;
+  forwarded?: boolean;
 }
 export interface PartnerMessages {
   messages: PartnerMessage[];
   cursor: string;
   hasMore: boolean;
+  recalledMessageIds?: string[];
 }
-export interface PartnerMessageRequest { clientId: string; text: string; image: string; }
+export interface PartnerMessageRequest { clientId: string; text: string; image: string; replyTo?: string; forwarded?: boolean; }
 export interface PartnerMessageResult { message: PartnerMessage; }
 export interface ScannedQuestionRequest { stem: string; courseName: string; knowledgePointName: string; explanation: string; }
 export interface SavedScannedQuestion { item: Object; }

@@ -179,7 +179,7 @@ struct ReviewSummary {
             }.width('100%')
             if (this.showDetails) {
               Text(this.data.timeAttribution || '').fontSize(12).fontColor(UiTheme.secondary).width('100%')
-              Text('每个知识点使用最近20道不同题目的首次作答；重复原题不增加验证记录。少量样本只提供初步结果；新题用于复核当前表现，没有可比前测时不计算提升。')
+              Text('先推荐到期复测的知识点，其次是需要巩固的知识点；同类优先最近练过的。掌握估计参考历次有效新题，最近20题权重较高。题量、练习轮次、题目难度和复测情况共同决定评估状态。重复原题不增加证据，没有可比前测时不计算提升。')
                 .fontSize(12).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
             }
           }

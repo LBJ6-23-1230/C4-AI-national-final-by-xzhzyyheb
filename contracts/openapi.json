@@ -5244,6 +5244,92 @@
         }
       }
     },
+    "/api/v1/partners/{partner}/messages/{message_id}/recall": {
+      "post": {
+        "summary": "撤回两分钟内自己发送的搭子消息",
+        "operationId": "recallPartnerMessage",
+        "parameters": [
+          {
+            "name": "partner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已撤回的消息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerMessageResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数无效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "登录失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有撤回权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "消息或搭子关系不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "消息已超过撤回时限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/wrong-book/scanned": {
       "post": {
         "summary": "逐题保存拍照识别题",
@@ -8581,6 +8667,15 @@
               "retest_due"
             ]
           },
+          "evidenceAdjustedScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "totalEvidenceQuestionCount": {
+            "type": "integer",
+            "minimum": 0
+          },
           "effectiveQuestionCount": {
             "type": "integer",
             "minimum": 0
@@ -11887,6 +11982,19 @@
           },
           "clientId": {
             "type": "string"
+          },
+          "replyTo": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "recalled": {
+            "type": "boolean"
+          },
+          "forwarded": {
+            "type": "boolean"
+          },
+          "sharedTaskId": {
+            "type": "string"
           }
         }
       },
@@ -11968,6 +12076,13 @@
           "image": {
             "type": "string",
             "maxLength": 3000000
+          },
+          "replyTo": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "forwarded": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -11988,6 +12103,14 @@
           },
           "hasMore": {
             "type": "boolean"
+          },
+          "recalledMessageIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            },
+            "description": "当前游标及之前已经撤回的消息 ID。"
           }
         },
         "required": [

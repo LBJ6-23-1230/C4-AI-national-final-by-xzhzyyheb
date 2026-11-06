@@ -3,7 +3,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const ts = require(process.argv[2] || 'typescript');
 const source = fs.readFileSync('app/entry/src/main/ets/pages/CourseImport.ets', 'utf8').replace(/\r\n/g, '\n');
-const a = source.indexOf('  private todayDate('), b = source.indexOf('  @State addToToday:', a);
+const a = source.indexOf('  private todayDate('), b = source.indexOf('  @State ddlFilter:', a);
 assert(a >= 0 && b > a);
 let dialog, writes = [], cached;
 const state = { currentUser:{userId:'alice'}, isTaskCompleted:()=>false };
@@ -22,7 +22,7 @@ const task = {taskId:'planned',knowledgePointId:'linked',sourceCourse:'数据结
 function fixture() {
   const page = new context.Todos();
   Object.assign(page,{todoActive:true,todoRevision:0,todoLoadVersion:0,addingTodo:'',todoMessage:'',todayTaskIds:[],todayPointIds:[],otherTasks:[]});
-  page.syncUrgentCount=()=>{page.otherTasks=context.PendingTasks.otherTasks(page.todoOverview,()=>false);};
+  page.syncTodoList=()=>{page.otherTasks=context.PendingTasks.otherTasks(page.todoOverview,()=>false);};
   page.todayDate=()=> '2026-11-04'; return page;
 }
 (async()=>{
@@ -30,6 +30,8 @@ function fixture() {
   check(page.isTodoInToday(item),'Review and plan items match by the actual knowledge point');
   check(!page.isTodoInToday({...item,courseName:'其他课程'}),'A same-named point in another course is not already joined');
   check(!page.isTodoInToday({...item,kind:'task',objectId:'another'}),'Task membership uses its own task ID');
+  page.syncTodayMembership({tasks:[{...task,parentTaskId:'assignment'}]});
+  check(page.todayTaskIds.includes('assignment'),'An assignment with a step scheduled today is shown as already in the plan');
   api.getToday=async()=>({ok:true,data:{userId:'alice',allTasks:[item,{...item,kind:'task',sourceId:'planned',eventId:'task-1'}]}});
   api.getCurrentPlan=async()=>({ok:true,data:{version:1,tasks:[task],unscheduledTasks:[]}});
   page=fixture(); await page.loadOtherTasks();

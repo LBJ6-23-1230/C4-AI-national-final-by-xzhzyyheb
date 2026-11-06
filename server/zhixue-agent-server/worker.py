@@ -29,7 +29,7 @@ def main():
             if args.once:
                 break
             if not worked:
-                stop.wait(2)
+                stop.wait(1)
     finally:
         repository.close()
 

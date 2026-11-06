@@ -86,9 +86,9 @@ def test_response_interruption_after_commit_is_replayable_without_model_or_updat
 
 
 def test_slow_review_model_cannot_block_submission(tmp_path, monkeypatch):
-    """逐题解析是增强项：模型比预算慢时必须先交卷，不能拖到客户端读超时。"""
+    """Slow AI work must not hold up grading or the submit response."""
     client = create_app(tmp_path / "slow-review.json").test_client()
-    monkeypatch.setenv("LLM_REVIEW_WAIT_SECONDS", "0.3")
+    monkeypatch.setattr(exercises.exercise_gen, "generation_available", lambda: True)
 
     def slow_review(*args, **kwargs):
         time.sleep(2.0)
@@ -104,4 +104,5 @@ def test_slow_review_model_cannot_block_submission(tmp_path, monkeypatch):
     body = response.get_json()
     assert body["assessment"]["score"] == 66.67
     assert elapsed < 1.5, f"交卷被解析拖住了：{elapsed:.2f}s"
-    assert [item["explanationSource"] for item in body["review"]] == ["fallback", "fallback", "fallback"]
+    assert body["reviewStatus"] == "pending"
+    assert all(not item["explanation"] for item in body["review"])

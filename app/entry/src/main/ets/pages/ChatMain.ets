@@ -1,3 +1,7 @@
+import { pasteboard } from '@kit.BasicServicesKit';
+import { UserAvatar } from '../components/UserAvatar';
+import { ChatComposer } from '../components/ChatComposer';
+import { ChatMessageAction } from '../components/ChatMessageActions';
 import { ChatFile } from '../api/StudyTaskModels';
 import { picker, fileIo } from '@kit.CoreFileKit';
 import { util } from '@kit.ArkTS';
@@ -64,6 +68,7 @@ struct ChatMain {
   @State todayRevision: number = 0;
   @State messages: ChatMessage[] = [];
   @State inputText: string = '';
+  @State menuMessageId: string = '';
   @State pendingFileName: string = '';
   @State pendingFileTruncated: boolean = false;
   @State pendingFileText: string = '';
@@ -993,42 +998,85 @@ struct ChatMain {
     this.previewNotice = original.length > 0 ? '' : '原图暂时无法加载，当前显示缩略图';
   }
 
+  private async copyChatMessage(text: string): Promise<void> {
+    this.menuMessageId = '';
+    try {
+      await pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text));
+      this.getUIContext().getPromptAction().showToast({ message: '已复制' });
+    } catch (_) {
+      this.getUIContext().getPromptAction().showToast({ message: '复制失败，请重试' });
+    }
+  }
+
+  @Builder
+  private MessageActions(message: ChatMessage) {
+    Row() {
+      if (message.text) {
+        ChatMessageAction({ icon: $r('sys.symbol.rectangle_on_rectangle'), label: '复制', onAction: () => { void this.copyChatMessage(message.text); } })
+      }
+      if (message.role === 'user' && message.text && !this.inputText) {
+        ChatMessageAction({ icon: $r('sys.symbol.square_and_pencil'), label: '编辑', onAction: () => {
+          this.menuMessageId = '';
+          if (this.inputText) return;
+          this.cancelVoiceInput();
+          this.inputText = message.text;
+        } })
+      }
+      if (message.image) {
+        ChatMessageAction({ icon: $r('sys.symbol.picture'), label: '查看', onAction: () => {
+          this.menuMessageId = '';
+          void this.openImagePreview(message);
+        } })
+      }
+    }.padding(4)
+  }
+
   @Builder
   private MessageBubble(message: ChatMessage) {
-    Row() {
+    Row({ space: 10 }) {
       if (message.role === 'user') {
         Blank()
       }
 
       Column({ space: 8 }) {
-        if (message.image !== undefined && message.image.length > 0) {
-          Image(message.image)
-            .width(112)
-            .height(84)
-            .objectFit(ImageFit.Cover)
-            .borderRadius(8)
-            .backgroundColor(UiTheme.line)
-            .onClick(() => { void this.openImagePreview(message); })
-        }
-
-        if (message.status === 'sending') {
-          Row({ space: 5 }) {
-            Text('').width(6).height(6).borderRadius(3).backgroundColor('#8E99A8')
-            Text('').width(6).height(6).borderRadius(3).backgroundColor('#B3BBC6')
-            Text('').width(6).height(6).borderRadius(3).backgroundColor('#D0D6DE')
+        Column({ space: 8 }) {
+          if (message.image !== undefined && message.image.length > 0) {
+            Image(message.image)
+              .width(112)
+              .height(84)
+              .objectFit(ImageFit.Cover)
+              .borderRadius(8)
+              .backgroundColor(UiTheme.line)
+              .onClick(() => { void this.openImagePreview(message); })
           }
-          .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-          .backgroundColor(UiTheme.surface)
-          .borderRadius(8)
-        } else {
-          Text(message.text)
-            .fontSize(15)
-            .lineHeight(22)
-            .fontColor(message.role === 'user' ? UiTheme.surface : '#1F2933')
-            .padding({ left: 14, right: 14, top: 11, bottom: 11 })
-            .backgroundColor(message.role === 'user' ? UiTheme.accent : UiTheme.surface)
+
+          if (message.status === 'sending') {
+            Row({ space: 5 }) {
+              Text('').width(6).height(6).borderRadius(3).backgroundColor('#8E99A8')
+              Text('').width(6).height(6).borderRadius(3).backgroundColor('#B3BBC6')
+              Text('').width(6).height(6).borderRadius(3).backgroundColor('#D0D6DE')
+            }
+            .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+            .backgroundColor(UiTheme.surface)
             .borderRadius(8)
-        }
+          } else {
+            Text(message.text)
+              .fontSize(15)
+              .lineHeight(22)
+              .fontColor(message.role === 'user' ? UiTheme.surface : '#1F2933')
+              .padding({ left: 14, right: 14, top: 11, bottom: 11 })
+              .backgroundColor(message.role === 'user' ? UiTheme.accent : UiTheme.surface)
+              .borderRadius(8)
+          }
+        }.alignItems(message.role === 'user' ? HorizontalAlign.End : HorizontalAlign.Start)
+          .gesture(LongPressGesture().onAction(() => {
+            if (message.status !== 'sending' && (message.text || message.image)) this.menuMessageId = message.id;
+          }))
+          .bindPopup(this.menuMessageId === message.id, {
+            builder: this.MessageActions(message), placement: Placement.Top, enableArrow: true,
+            popupColor: '#353535', backgroundBlurStyle: BlurStyle.NONE, autoCancel: true,
+            onStateChange: (event) => { if (!event.isVisible && this.menuMessageId === message.id) this.menuMessageId = ''; }
+          })
 
         if (message.role === 'agent' && message.status === 'done' && message.sourceLabel !== undefined) {
           Text(message.sourceLabel)
@@ -1055,11 +1103,13 @@ struct ChatMain {
       .alignItems(message.role === 'user' ? HorizontalAlign.End : HorizontalAlign.Start)
       .width('78%')
 
-      if (message.role !== 'user') {
+      if (message.role === 'user') {
+        UserAvatar({ nickname: appState.authNickname || '我', source: appState.authAvatar, diameter: 36 })
+      } else {
         Blank()
       }
     }
-    .width('100%')
+    .width('100%').alignItems(VerticalAlign.Top)
     .justifyContent(message.role === 'user' ? FlexAlign.End : FlexAlign.Start)
     .padding({ left: 16, right: 16, top: 5, bottom: 5 })
   }
@@ -1238,74 +1288,27 @@ struct ChatMain {
         .width('100%')
       }
 
-      Row({ space: 8 }) {
-        // Voice mode keeps a stable press target while the recognized text changes.
-        Button({ type: ButtonType.Normal, stateEffect: true }) {
-          SymbolGlyph(this.voiceMode ? $r('sys.symbol.camera') : $r('sys.symbol.mic'))
-            .fontSize(22).fontColor([UiTheme.ink])
-        }
-        .backgroundColor(UiTheme.surface).width(44).height(44).borderRadius(8)
-        .enabled(!this.isSending && !this.isVoiceStarting && !this.isListening)
-        .accessibilityText(this.voiceMode ? '添加图片' : '切换到按住说话')
-        .onClick(() => {
-          if (this.voiceMode) void this.pickImage();
-          else void this.toggleVoiceMode();
-        })
-        if (this.voiceMode) {
-          Button({ type: ButtonType.Normal, stateEffect: false }) {
-            Column({ space: 2 }) {
-              Text(this.voicePressing && this.inputText.length > 0 ? this.inputText :
-                (this.isVoiceStarting ? '正在打开麦克风…' : (this.isListening ? '正在聆听…' : '按住说话')))
-                .fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).maxLines(3)
-              if (this.voicePressing && this.voiceTurnStarted) {
-                Text('松开完成').fontSize(11).fontColor(UiTheme.secondary)
-              }
-            }.width('100%').padding({ top: 10, bottom: 10 })
+      ChatComposer({
+        draft: this.inputText, placeholder: '问学习建议、错题、计划或搭子', maxLength: 0,
+        toolsLabel: '添加图片、文件或选择学习功能', busy: this.isSending || this.fileBusy,
+        canSend: this.canSend(), voiceMode: this.voiceMode, voiceReady: this.voiceReady,
+        voicePressing: this.voicePressing, voiceTurnStarted: this.voiceTurnStarted,
+        startingVoice: this.isVoiceStarting, listening: this.isListening, inputController: this.inputController,
+        onDraftChange: (value: string) => {
+          if (this.isVoiceFinalizing && value !== this.inputText) {
+            this.cancelVoiceInput();
+            this.voiceMessage = '已保留文字，可修改后发送。';
           }
-          .layoutWeight(1).constraintSize({ minHeight: 44, maxHeight: 108 }).borderRadius(8)
-          .backgroundColor(this.voicePressing ? UiTheme.tint : UiTheme.subtle)
-          .enabled(this.voiceReady && !this.isSending && !this.fileBusy)
-          .accessibilityText('按住说话，松开后可编辑识别文字')
-          .onTouch((event: TouchEvent) => {
-            if (event.type === TouchType.Down) this.voicePressing = true;
-            else if (event.type === TouchType.Up) void this.endVoiceHold(false);
-            else if (event.type === TouchType.Cancel) void this.endVoiceHold(true);
-          })
-          .gesture(LongPressGesture({ repeat: false, duration: 200 })
-            .onAction(() => { void this.startVoiceInput(); })
-            .onActionEnd(() => { void this.endVoiceHold(false); })
-            .onActionCancel(() => { void this.endVoiceHold(true); }))
-          Button({ type: ButtonType.Normal, stateEffect: true }) {
-            SymbolGlyph($r('sys.symbol.keyboard')).fontSize(23).fontColor([UiTheme.ink])
-          }
-          .width(44).height(44).borderRadius(8).backgroundColor(UiTheme.surface)
-          .enabled(!this.isVoiceStarting && !this.isListening)
-          .accessibilityText('切换到键盘输入').onClick(() => { void this.toggleVoiceMode(); })
-        } else {
-          TextInput({ placeholder: '问学习建议、错题、计划或搭子', text: this.inputText, controller: this.inputController })
-            .height(44).layoutWeight(1).fontSize(14).placeholderColor(UiTheme.muted)
-            .fontColor(UiTheme.ink).backgroundColor(UiTheme.subtle).borderRadius(8)
-            .onChange((value: string) => {
-              // Once the user edits, late ASR results must never overwrite their correction.
-              if (this.isVoiceFinalizing) {
-                this.cancelVoiceInput();
-                this.voiceMessage = '已保留文字，可修改后发送。';
-              }
-              this.inputText = value;
-            })
-        }
-        Button({ type: ButtonType.Normal, stateEffect: true }) {
-          SymbolGlyph($r('sys.symbol.plus')).fontSize(24).fontColor([UiTheme.ink])
-        }.backgroundColor(UiTheme.surface).width(44).height(44).borderRadius(8)
-          .enabled(!this.isSending && !this.isVoiceStarting && !this.isListening)
-          .accessibilityText('添加图片、文件或选择学习功能').onClick(() => this.showLearningFunctions = true)
-        if (!this.voiceMode) {
-          Button('发送').fontSize(14).fontColor(UiTheme.surface)
-            .backgroundColor(this.canSend() ? UiTheme.accent : '#CBD5E1').height(44).borderRadius(8)
-            .enabled(this.canSend()).onClick(() => this.sendMessage())
-        }
-      }
-      .width('100%')
+          this.inputText = value;
+        },
+        onVoiceToggle: () => { void this.toggleVoiceMode(); },
+        onVoiceDown: () => { this.voicePressing = true; },
+        onVoiceStart: () => { void this.startVoiceInput(); },
+        onVoiceEnd: (cancelled: boolean) => { void this.endVoiceHold(cancelled); },
+        onImage: () => { void this.pickImage(); },
+        onTools: () => { this.showLearningFunctions = true; },
+        onSend: () => { void this.sendMessage(); }
+      })
     }
     .width('100%')
     .padding({ left: 14, right: 14, top: 10, bottom: 14 })

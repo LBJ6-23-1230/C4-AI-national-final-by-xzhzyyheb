@@ -64,12 +64,12 @@ struct StudyTags {
     }
     let weakest: KnowledgeMastery = this.mastery.filter((p: KnowledgeMastery) => this.assessed(p))[0];
     for (let index: number = 1; index < this.mastery.length; index++) {
-      if (this.assessed(this.mastery[index]) && LearningEvidence.score(this.mastery[index]) < LearningEvidence.score(weakest)) {
+      if (this.assessed(this.mastery[index]) && (LearningEvidence.masteryEstimate(this.mastery[index]) ?? 100) < (LearningEvidence.masteryEstimate(weakest) ?? 100)) {
         weakest = this.mastery[index];
       }
     }
     if (!LearningEvidence.hasAccuracy(weakest)) return `「${weakest.knowledgePointName}」已有历史记录，建议完成新题验证当前表现。`;
-    return `当前最薄弱的是「${weakest.knowledgePointName}」，近期练习正确率 ${LearningEvidence.score(weakest)}%。`
+    return `优先练习「${weakest.knowledgePointName}」，近期练习正确率 ${LearningEvidence.score(weakest)}%。`
       + '先围绕这个知识点练习，再根据结果调整计划。';
   }
 
@@ -80,11 +80,11 @@ struct StudyTags {
   private openRecommendedPractice(): void {
     const points: KnowledgeMastery[] = this.mastery.filter((point: KnowledgeMastery) => this.assessed(point))
       .sort((left: KnowledgeMastery, right: KnowledgeMastery): number =>
-        LearningEvidence.score(left) - LearningEvidence.score(right));
+        (LearningEvidence.masteryEstimate(left) ?? 100) - (LearningEvidence.masteryEstimate(right) ?? 100));
     if (points.length > 0 && points[0].classificationRequired) {
       router.pushUrl({ url: 'pages/KnowledgeCatalog', params: { matching: 'true' } });
     } else if (points.length > 0) {
-      router.pushUrl({ url: 'pages/ExercisePractice', params: { knowledgePointId: points[0].knowledgePointId } });
+      router.pushUrl({ url: 'pages/ExercisePractice', params: { knowledgePointId: points[0].knowledgePointId, courseName: points[0].sourceCourse || this.selectedCourse } });
     } else {
       router.pushUrl({ url: 'pages/ExercisePractice' });
     }
@@ -274,7 +274,7 @@ struct StudyTags {
     const items: KnowledgeMastery[] = this.mastery.slice();
     items.sort((left: KnowledgeMastery, right: KnowledgeMastery): number => {
       if (this.assessed(left) !== this.assessed(right)) return this.assessed(left) ? -1 : 1;
-      const scoreDiff: number = LearningEvidence.score(left) - LearningEvidence.score(right);
+      const scoreDiff: number = (LearningEvidence.masteryEstimate(left) ?? 100) - (LearningEvidence.masteryEstimate(right) ?? 100);
       if (scoreDiff !== 0) return scoreDiff;
       return this.evidenceCount(right.knowledgePointId) - this.evidenceCount(left.knowledgePointId);
     });
@@ -287,7 +287,7 @@ struct StudyTags {
   }
 
   private weakMasteryCount(): number {
-    return this.mastery.filter((item: KnowledgeMastery): boolean => LearningEvidence.hasAccuracy(item) && LearningEvidence.score(item) < 60).length;
+    return this.mastery.filter((item: KnowledgeMastery): boolean => item.assessmentStatus === 'needs_practice').length;
   }
 
   private masteredCount(): number {
@@ -422,7 +422,7 @@ struct StudyTags {
                     Blank()
                     Text(`共 ${this.mastery.length} 个知识点`).fontSize(12).fontColor(UiTheme.secondary)
                   }.width('100%')
-                  Text(this.showAllMastery ? '按近期练习表现排列，展示当前课程全部知识点。' : `按近期练习表现排列，默认只展示最需要提升的 ${Math.min(3, this.mastery.length)} 项。`)
+                  Text('综合新题数量、近期与历史作答。状态也会参考练习轮次、题目难度和复测情况。')
                     .fontSize(12).fontColor(UiTheme.secondary).lineHeight(18).width('100%')
                   Row({ space: 8 }) {
                     Text(`待提升 ${this.weakMasteryCount()}`)
@@ -434,20 +434,35 @@ struct StudyTags {
                   }.width('100%')
                   ForEach(this.visibleMastery(), (item: KnowledgeMastery) => {
                     Column({ space: 7 }) {
-                      Row() {
+                      Row({ space: 8 }) {
                         Text(item.knowledgePointName).fontSize(15).fontWeight(FontWeight.Medium)
-                          .fontColor(UiTheme.ink).layoutWeight(1).maxLines(1)
-                        Text(this.assessed(item) ? LearningEvidence.label(item) : '未测评').fontSize(11)
-                          .fontColor(LearningEvidence.score(item) < 60 ? UiTheme.danger : (LearningEvidence.score(item) >= 80 ? '#0F766E' : '#B45309'))
-                          .margin({ right: 8 })
-                        Text(LearningEvidence.hasAccuracy(item) ? `${LearningEvidence.score(item)}` : '—').fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
-                        Text(LearningEvidence.hasAccuracy(item) ? '%' : '').fontSize(11).fontColor(UiTheme.secondary).margin({ top: 7 })
-                      }.width('100%').alignItems(VerticalAlign.Center)
-                      if (LearningEvidence.hasAccuracy(item)) { Progress({ value: LearningEvidence.score(item), total: 100, type: ProgressType.Linear })
-                        .color(LearningEvidence.score(item) < 60 ? '#F97316' : UiTheme.accent)
-                        .backgroundColor('#ECEFF3').height(6).borderRadius(8) }
-                      Text(LearningEvidence.detail(item))
-                        .fontSize(11).fontColor(UiTheme.muted).maxLines(1)
+                          .fontColor(UiTheme.ink).layoutWeight(1)
+                        if (!item.classificationRequired) {
+                          Button('开始练习', { type: ButtonType.Normal }).height(44).fontSize(13)
+                            .fontColor(UiTheme.accent).backgroundColor(UiTheme.tint).borderRadius(8)
+                            .onClick(() => router.pushUrl({ url: 'pages/ExercisePractice', params: {
+                              knowledgePointId: item.knowledgePointId, courseName: item.sourceCourse || this.selectedCourse
+                            } }))
+                        }
+                      }.width('100%')
+                      Row({ space: 8 }) {
+                        Text(LearningEvidence.label(item)).fontSize(12)
+                          .fontColor(item.assessmentStatus === 'stable' ? '#0F766E' : UiTheme.secondary)
+                        Blank()
+                        if (item.evidenceAdjustedScore !== undefined) {
+                          Text('掌握估计 ' + item.evidenceAdjustedScore + '/100').fontSize(13).fontWeight(FontWeight.Medium)
+                            .fontColor(UiTheme.accent)
+                        }
+                      }.width('100%')
+                      if (item.evidenceAdjustedScore !== undefined) {
+                        Progress({ value: item.evidenceAdjustedScore, total: 100, type: ProgressType.Linear })
+                          .color(UiTheme.accent).backgroundColor(UiTheme.line).height(6).borderRadius(8)
+                      }
+                      Text(LearningEvidence.detail(item)).fontSize(12).fontColor(UiTheme.secondary).width('100%')
+                      if ((item.totalEvidenceQuestionCount ?? 0) > 0) {
+                        Text('累计有效新题 ' + item.totalEvidenceQuestionCount + ' 道 · ' + (item.assessmentRoundCount ?? 0) + ' 轮')
+                          .fontSize(12).fontColor(UiTheme.secondary).width('100%')
+                      }
                     }
                     .width('100%').padding({ top: 12, bottom: 12 }).backgroundColor(UiTheme.surface)
                     .border({ width: { bottom: 1 }, color: UiTheme.line })

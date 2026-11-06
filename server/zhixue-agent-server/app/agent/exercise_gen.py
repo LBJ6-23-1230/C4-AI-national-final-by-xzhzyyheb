@@ -167,7 +167,8 @@ _REVIEW_USER_PROMPT = """请为下面这组已经判分的单项选择题生成�
 1. 正确选项为什么正确，给出关键概念或推导过程；
 2. 其余每个选项为什么不成立；
 3. 结合用户选择指出容易混淆之处和一个可操作的记忆/检查方法。
-不要只写“正确答案是 X”，也不要重新判分。每题建议 120—260 个汉字。
+结合题干的实际术语、数据或执行步骤展开；遇到顺序或计算题，列出关键中间结果。
+避免通用模板、重复题干和猜测用户为何出错。每题建议 100—170 个汉字。
 
 题目 JSON：
 {questions}
@@ -218,7 +219,7 @@ def generate_review_explanations(questions: list[dict[str, Any]],
 				_REVIEW_USER_PROMPT.format(
 					questions=json.dumps(requested, ensure_ascii=False, separators=(",", ":"))),
 				temperature=0.2,
-				max_tokens=min(4000, 900 + len(requested) * 650),
+				max_tokens=min(3600, 350 + len(requested) * 420),
 				response_json=True,
 				request_type="review",
 			)

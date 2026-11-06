@@ -281,7 +281,7 @@ def shared_tasks():
                 message_id = now() + '-' + uuid4().hex
                 repo().save('partner_messages', message_id, dict(messageId=message_id, roomId=room,
                     userId=owner, senderId=owner, text=f"协同任务邀请：「{shared['title']}」，{shared['scheduledDate']}，各{shared['durationMinutes']}分钟。你的分工：{shared['parts'][partner]}。请在协同任务页确认或拒绝，确认后加入双方计划。",
-                    image='', createdAt=now(), clientId=message_id))
+                    image='', createdAt=now(), clientId=message_id, sharedTaskId=key))
         else:
             key = string(data, 'taskId', 128, True)
             shared = repo().get('shared_study_tasks', key)
@@ -319,7 +319,7 @@ def shared_tasks():
                     message_id = now() + '-' + uuid4().hex
                     repo().save('partner_messages', message_id, dict(messageId=message_id, roomId=room,
                         userId=owner, senderId=owner, text=f"提醒一起完成「{shared['title']}」：你的分工是{shared['parts'][partner]}。需要帮助可以在这里商量。",
-                        image='', createdAt=now(), clientId=message_id))
+                        image='', createdAt=now(), clientId=message_id, sharedTaskId=key))
                     repo().save('shared_task_reminders', reminder_key, dict(createdAt=now(), userId=owner))
             else:
                 abort(400)

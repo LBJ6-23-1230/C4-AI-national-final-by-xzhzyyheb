@@ -18,6 +18,8 @@ struct CollaborativeTasks {
   @State showCreate: boolean = false;
   @State partnerId: string = '';
   @State partnerName: string = '';
+  @State focusedTaskId: string = '';
+  private conversationPartner: string = '';
   @State title: string = '';
   @State course: string = '';
   @State day: string = '';
@@ -33,6 +35,8 @@ struct CollaborativeTasks {
     this.owner = appState.currentUser.userId;
     const params = router.getParams() as Record<string, string>;
     this.partnerId = params?.['partnerId'] || ''; this.partnerName = params?.['partnerName'] || '';
+    this.conversationPartner = this.partnerId;
+    this.focusedTaskId = params?.['taskId'] || '';
     const now: Date = new Date(); this.day = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
     this.active = true; void this.load(); void this.loadContacts();
   }
@@ -50,7 +54,8 @@ struct CollaborativeTasks {
   }
   private async loadContacts(): Promise<void> {
     const result = await AgentApiClient.listPartnerContacts();
-    if (this.owns() && result.ok) this.contacts = result.data.contacts;
+    if (this.owns() && result.ok) this.contacts = result.data.contacts.filter((contact: PartnerContact) =>
+      !this.conversationPartner || contact.partnerUserId === this.conversationPartner);
   }
   private async action(request: SharedTaskRequest): Promise<void> {
     if (this.busy) return;
@@ -80,6 +85,10 @@ struct CollaborativeTasks {
       plannedMinutes: task.durationMinutes, source: 'collaborative', mode: 'normal', timerType: 'countdown', planTaskId: task.taskId } as FocusTask);
     router.pushUrl({ url: 'pages/FocusSetup' });
   }
+  private visibleTasks(): SharedTask[] {
+    return this.tasks.filter((task: SharedTask) => this.focusedTaskId ? task.taskId === this.focusedTaskId :
+      !this.conversationPartner || task.partnerId === this.conversationPartner);
+  }
   @Builder
   CreateForm() {
     Column({ space: 12 }) {
@@ -102,10 +111,12 @@ struct CollaborativeTasks {
         Column({ space: 16 }) {
           Text('一起完成一件事').fontSize(23).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
           Text('双方确认安排后加入各自的学习计划，完成进度分别同步。').fontSize(13).lineHeight(21).fontColor(UiTheme.secondary).width('100%')
-          Button('新建协同任务', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15).fontColor('#FFFFFF').backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => { this.notice = ''; this.showCreate = true; })
+          if (!this.focusedTaskId) {
+            Button('新建协同任务', { type: ButtonType.Normal }).width('100%').height(46).fontSize(15).fontColor('#FFFFFF').backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => { this.notice = ''; this.showCreate = true; })
+          }
           if (this.notice) { Text(this.notice).fontSize(13).fontColor(UiTheme.secondary).width('100%') }
-          if (!this.tasks.length) { Text('还没有协同安排，先与搭子约定任务和分工。').fontSize(14).fontColor(UiTheme.secondary).width('100%') }
-          ForEach(this.tasks, (task: SharedTask) => {
+          if (!this.visibleTasks().length) { Text(this.focusedTaskId ? '暂无可显示的协同任务详情。' : '还没有协同安排，先与搭子约定任务和分工。').fontSize(14).fontColor(UiTheme.secondary).width('100%') }
+          ForEach(this.visibleTasks(), (task: SharedTask) => {
             Column({ space: 10 }) {
               Text(task.title).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
               Text(`${task.courseName} · ${task.scheduledDate} · 各${task.durationMinutes}分钟`).fontSize(13).fontColor(UiTheme.secondary).width('100%')

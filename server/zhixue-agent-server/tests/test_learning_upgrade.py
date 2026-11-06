@@ -53,6 +53,28 @@ def test_image_messages_validated(setup):
     assert response.status_code == 201
 
 
+def test_partner_quote_and_recall_keep_cursor_and_retry_consistent(setup):
+    client, _, headers, ids = setup
+    sender_url = f'/api/v1/partners/{ids[1]}/messages'
+    receiver_url = f'/api/v1/partners/{ids[0]}/messages'
+    original = {'clientId': 'original', 'text': '私有学习安排'}
+    message_id = client.post(sender_url, json=original, headers=headers[0]).get_json()['message']['messageId']
+    reply = {'clientId': 'quote', 'text': '收到', 'replyTo': message_id}
+    assert client.post(receiver_url, json=reply, headers=headers[1]).get_json()['message']['replyTo'] == message_id
+    cursor = client.get(receiver_url, headers=headers[1]).get_json()['cursor']
+    assert client.post(f'{receiver_url}/{message_id}/recall', headers=headers[1]).status_code == 403
+    for _ in range(2):
+        result = client.post(f'{sender_url}/{message_id}/recall', headers=headers[0])
+        assert result.get_json()['message']['recalled']
+        assert result.get_json()['message']['text'] == ''
+    result = client.get(receiver_url, query_string={'after': cursor}, headers=headers[1]).get_json()
+    assert result['recalledMessageIds'] == [message_id]
+    assert not result['messages']
+    assert client.post(sender_url, json=original, headers=headers[0]).get_json()['message']['recalled']
+    assert client.post(sender_url, json={**original, 'text': '冲突'}, headers=headers[0]).status_code == 409
+    assert client.post(receiver_url, json={**reply, 'clientId': 'new-quote'}, headers=headers[1]).status_code == 409
+
+
 def test_scanned_question_opt_in_idempotent_and_not_an_error(setup):
     client, repository, headers, ids = setup
     payload = dict(stem='解释栈的后进先出', courseName='数据结构', knowledgePointName='栈', explanation='示例解析')

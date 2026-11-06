@@ -1,18 +1,13 @@
 """Private conversation summaries and monotonic, per-account read watermarks."""
-import hashlib
 from datetime import datetime, timezone
 
 from flask import Blueprint, abort, jsonify, request
 
-from app.api.learning_upgrade import authenticated, body, repo, relationship, string
+from app.api.learning_upgrade import authenticated, body, repo, relationship, room_id, string
 from app.services.course_names import profile_courses
 from app.services.subject_classification import normalized_mastery, topic_group
 
 partner_inbox_api = Blueprint('partner_inbox', __name__)
-
-
-def room_id(owner, partner):
-    return hashlib.sha256('\0'.join(sorted([owner, partner])).encode()).hexdigest()
 
 
 def summary(owner, partner, contact, messages=None):
@@ -22,7 +17,8 @@ def summary(owner, partner, contact, messages=None):
             if x.get('roomId') == room]
     rows.sort(key=lambda x: x['messageId'])
     read = repository.get('partner_reads', owner + ':' + room) or {}
-    unread = sum(x.get('senderId') != owner and x['messageId'] > read.get('lastReadMessageId', '') for x in rows)
+    unread = sum(not x.get('recalled') and x.get('senderId') != owner and
+                 x['messageId'] > read.get('lastReadMessageId', '') for x in rows)
     account = repository.get('users', partner) or {}
     left = repository.get('profiles', owner) or {}
     right = repository.get('profiles', partner) or {}
@@ -44,7 +40,7 @@ def summary(owner, partner, contact, messages=None):
     return dict(partnerUserId=partner, partnerName=account.get('nickname') or contact.get('partnerName') or '学习搭子',
         avatar=account.get('avatar') or '', pairedAt=paired, pairedDays=paired_days,
         sharedCourses=shared, sharedKnowledgePoints=points, sharedStudyMinutes=None,
-        lastMessage=latest.get('text') or ('[图片]' if latest.get('image') else ''),
+        lastMessage='消息已撤回' if latest.get('recalled') else latest.get('text') or ('[图片]' if latest.get('image') else ''),
         lastMessageId=latest.get('messageId', ''), lastMessageAt=latest.get('createdAt', ''), unreadCount=unread)
 
 

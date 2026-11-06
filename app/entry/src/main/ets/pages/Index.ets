@@ -46,6 +46,7 @@ struct Index {
   @State streakDays: number = appState.getFocusSummary().streakDays;
   @State refreshKey: number = 0;
   @State profileNickname: string = appState.authNickname;
+  @State studyWindowWidth: number = 0;
   @State profileAvatar: string = appState.authAvatar;
 
   private onLearningDataChanged(): void {
@@ -928,6 +929,58 @@ struct Index {
     ChatNavigation.returnToChat();
   }
 
+  @Builder
+  private StudyFocusSection() {
+    Column() {
+      DeviceSummary()
+      Divider().color(UiTheme.line)
+      if (appState.focusRuntime !== null && appState.focusRuntime.ownerId === appState.currentUser.userId && appState.focusRuntime.finishedAt === undefined) {
+        Column({ space: 8 }) {
+          Text('下一项任务').fontSize(12).fontColor(UiTheme.secondary)
+          Row({ space: 12 }) {
+            Column({ space: 5 }) {
+              Text(appState.activeFocusTask?.task || '继续当前专注').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+              Text(`${appState.activeFocusTask?.course || ''} · ${appState.activeFocusTask?.plannedMinutes || 0} 分钟`).fontSize(12).fontColor(UiTheme.secondary)
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Button('继续专注', { type: ButtonType.Normal }).fontSize(14).height(44).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => router.pushUrl({ url: 'pages/FocusTimer' }))
+          }.width('100%')
+        }.width('100%').padding({ top: 20, bottom: 20 }).alignItems(HorizontalAlign.Start)
+      } else if (this.currentAgentTask() !== null) {
+        Column({ space: 8 }) {
+          Text('下一项任务').fontSize(12).fontColor(UiTheme.secondary)
+          Row({ space: 12 }) {
+            Column({ space: 5 }) {
+              Text(this.currentAgentTask()!.knowledgePointName).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
+              Text(`${this.currentAgentTask()!.sourceCourse || '学习任务'} · ${this.currentAgentTask()!.durationMinutes} 分钟`).fontSize(12).fontColor(UiTheme.secondary)
+              Text('依据：今日或逾期未完成任务，按计划顺序推荐。').fontSize(12).fontColor(UiTheme.secondary)
+              Text('查看和调整计划 ›').fontSize(13).fontColor(UiTheme.accent).onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
+            }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+            Button('开始专注', { type: ButtonType.Normal }).fontSize(14).height(44).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => this.startAgentTask(this.currentAgentTask()!))
+          }.width('100%')
+        }.width('100%').padding({ top: 20, bottom: 20 }).alignItems(HorizontalAlign.Start)
+      } else {
+        this.PanelRow($r('app.media.feature_focus'), '开始专注', '安排本次学习时间', 'pages/FocusSetup')
+      }
+    }.width('100%').alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  private StudyLinks() {
+    Column() {
+      this.PanelRow($r('app.media.feature_courses'), '课程与作业', `${this.courseCount}门 / ${this.pendingCount}项`, 'pages/CourseImport')
+      this.PanelRow($r('app.media.feature_diagnosis'), '错题本', this.wrongBookCount >= 0 ? `${this.wrongBookCount}题` : '', 'pages/WrongBook')
+      this.PanelRow($r('app.media.feature_courses'), '我的知识库', '', 'pages/KnowledgeBase')
+      this.PanelRow($r('app.media.feature_planner'), '学习计划', '', 'pages/StudyPlan')
+      this.PanelRow($r('app.media.feature_review'), '学习目标与考试', '', 'pages/UpcomingExams')
+      if (!this.hasLearningData()) {
+        this.PanelCard('建立课程与学习目标', '导入课程表与作业截止时间，安排自己的学习任务。', '去上传 / 导入数据', 'pages/CourseImport')
+      }
+      if (this.agentPlanMessage.length > 0) this.PlanLoadNotice()
+    }.width('100%').alignItems(HorizontalAlign.Start)
+  }
+
   build() {
     Stack() {
       Column() {
@@ -953,46 +1006,15 @@ struct Index {
               ForEach(this.filteredAgents(), (item: AgentSpec) => { this.AgentCard(item) }, (item: AgentSpec) => item.key)
             }
             if (this.activeTab === 2) {
-              DeviceSummary()
-              Divider().color(UiTheme.line)
-              if (appState.focusRuntime !== null && appState.focusRuntime.ownerId === appState.currentUser.userId && appState.focusRuntime.finishedAt === undefined) {
-                Column({ space: 8 }) {
-                  Text('下一项任务').fontSize(12).fontColor(UiTheme.secondary)
-                  Row({ space: 12 }) {
-                    Column({ space: 5 }) {
-                      Text(appState.activeFocusTask?.task || '继续当前专注').fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
-                      Text(`${appState.activeFocusTask?.course || ''} · ${appState.activeFocusTask?.plannedMinutes || 0} 分钟`).fontSize(12).fontColor(UiTheme.secondary)
-                    }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-                    Button('继续专注', { type: ButtonType.Normal }).fontSize(14).height(44).fontColor(UiTheme.surface)
-                      .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => router.pushUrl({ url: 'pages/FocusTimer' }))
-                  }.width('100%')
-                }.width('100%').padding({ top: 20, bottom: 20 }).alignItems(HorizontalAlign.Start)
-              } else if (this.currentAgentTask() !== null) {
-                Column({ space: 8 }) {
-                  Text('下一项任务').fontSize(12).fontColor(UiTheme.secondary)
-                  Row({ space: 12 }) {
-                    Column({ space: 5 }) {
-                      Text(this.currentAgentTask()!.knowledgePointName).fontSize(17).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink)
-                      Text(`${this.currentAgentTask()!.sourceCourse || '学习任务'} · ${this.currentAgentTask()!.durationMinutes} 分钟`).fontSize(12).fontColor(UiTheme.secondary)
-                      Text('依据：今日或逾期未完成任务，按计划顺序推荐。').fontSize(12).fontColor(UiTheme.secondary)
-                      Text('查看和调整计划 ›').fontSize(13).fontColor(UiTheme.accent).onClick(() => router.pushUrl({ url: 'pages/StudyPlan' }))
-                    }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-                    Button('开始专注', { type: ButtonType.Normal }).fontSize(14).height(44).fontColor(UiTheme.surface)
-                      .backgroundColor(UiTheme.accent).borderRadius(8).onClick(() => this.startAgentTask(this.currentAgentTask()!))
-                  }.width('100%')
-                }.width('100%').padding({ top: 20, bottom: 20 }).alignItems(HorizontalAlign.Start)
+              if (this.studyWindowWidth >= 820) {
+                Row({ space: 28 }) {
+                  Column() { this.StudyFocusSection() }.layoutWeight(1.2)
+                  Column() { this.StudyLinks() }.layoutWeight(1)
+                }.width('100%').alignItems(VerticalAlign.Top)
               } else {
-                this.PanelRow($r('app.media.feature_focus'), '开始专注', '安排本次学习时间', 'pages/FocusSetup')
+                this.StudyFocusSection()
+                this.StudyLinks()
               }
-              this.PanelRow($r('app.media.feature_courses'), '课程与作业', `${this.courseCount}门 / ${this.pendingCount}项`, 'pages/CourseImport')
-              this.PanelRow($r('app.media.feature_diagnosis'), '错题本', this.wrongBookCount >= 0 ? `${this.wrongBookCount}题` : '', 'pages/WrongBook')
-              this.PanelRow($r('app.media.feature_courses'), '我的知识库', '', 'pages/KnowledgeBase')
-              this.PanelRow($r('app.media.feature_planner'), '学习计划', '', 'pages/StudyPlan')
-              this.PanelRow($r('app.media.feature_review'), '学习目标与考试', '', 'pages/UpcomingExams')
-              if (!this.hasLearningData()) {
-                this.PanelCard('建立课程与学习目标', '导入课程表与作业截止时间，安排自己的学习任务。', '去上传 / 导入数据', 'pages/CourseImport')
-              }
-              if (this.agentPlanMessage.length > 0) this.PlanLoadNotice()
             }
             if (this.activeTab === 3) {
               Row({ space: 14 }) {
@@ -1017,9 +1039,10 @@ struct Index {
               this.PanelRow($r('app.media.feature_review'), '提醒设置', '', 'pages/Reminders')
               this.PanelRow($r('app.media.feature_review'), '账号、安全与隐私', '', 'pages/Account')
             }
-          }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth })
+          }.width('100%').constraintSize({ maxWidth: this.activeTab === 2 && this.studyWindowWidth >= 820 ? 1120 : UiTheme.contentWidth })
             .padding({ left: 20, right: 20, bottom: 24 })
-        }.width('100%').layoutWeight(1).align(Alignment.TopStart).scrollBar(BarState.Off)
+        }.width('100%').layoutWeight(1).align(this.activeTab === 2 ? Alignment.Top : Alignment.TopStart).scrollBar(BarState.Off)
+          .onAreaChange((_old: Area, area: Area) => { this.studyWindowWidth = Number(area.width); })
         this.TabBar()
       }.width('100%').height('100%').backgroundColor(UiTheme.surface)
       AIFloatButton({ bottomGap: 100 })

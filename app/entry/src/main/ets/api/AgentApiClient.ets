@@ -139,6 +139,10 @@ export class AgentApiClient {
   static async partnerMessages(partner: string, cursor: string): Promise<ApiResult<PartnerMessages>> {
     return AgentApiClient.request<PartnerMessages>(http.RequestMethod.GET, `/api/v1/partners/${encodeURIComponent(partner)}/messages?after=${encodeURIComponent(cursor)}`);
   }
+  static async recallPartnerMessage(partner: string, id: string): Promise<ApiResult<PartnerMessageResult>> {
+    return AgentApiClient.request<PartnerMessageResult>(http.RequestMethod.POST,
+      `/api/v1/partners/${encodeURIComponent(partner)}/messages/${encodeURIComponent(id)}/recall`);
+  }
   static async sendPartnerMessage(partner: string, body: PartnerMessageRequest): Promise<ApiResult<PartnerMessageResult>> {
     return AgentApiClient.request<PartnerMessageResult>(http.RequestMethod.POST, `/api/v1/partners/${encodeURIComponent(partner)}/messages`, body);
   }

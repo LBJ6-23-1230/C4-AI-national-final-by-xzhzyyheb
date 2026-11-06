@@ -547,17 +547,9 @@ def submit_exercises(set_id: str):
 		if not target or any(questions_by_id[key].get("knowledgePointId") not in allowed for key in submitted_answers):
 			return jsonify({"errorCode": "CONFLICT", "message": "题目与当前目标知识点不一致，请从目标入口重新进入练习", "details": None}), 409
 	review_questions_for_job = [questions_by_id[key] for key in submitted_answers if questions_by_id[key].get("source") != "materials"]
-	durable_review = bool(getattr(_repository, "durable_jobs", False) and review_questions_for_job and exercise_gen.generation_available())
-	if getattr(_repository, "durable_jobs", False):
-		review_explanations = {q["exerciseId"]: exercise_gen._fallback_review_explanation(
-			q, submitted_answers[q["exerciseId"]], answer_keys[q["exerciseId"]]) for q in review_questions_for_job}
-		llm_review_ids, pending_review = set(), None
-	else:
-		review_explanations, llm_review_ids, pending_review = review_jobs.prepare(
-			review_questions_for_job, submitted_answers, answer_keys)
-	for key in submitted_answers:
-		if questions_by_id[key].get("source") == "materials":
-			review_explanations[key] = questions_by_id[key]["explanation"]
+	review_available = bool(review_questions_for_job and exercise_gen.generation_available())
+	durable_review = review_available and getattr(_repository, "durable_jobs", False)
+	review_keys = {key: answer_keys[key] for key in submitted_answers}
 	# ⚠️ 整段"幂等检查 → 判分 → 掌握度回写 → 落盘"必须持锁串行执行。
 	# 详见 `_SUBMIT_LOCK` 的注释：不加锁时并发重复提交会让掌握度增量叠加多次。
 	# 把原逻辑收进内部函数再持锁调用（而不是整段缩进一层），
@@ -575,7 +567,7 @@ def submit_exercises(set_id: str):
 		profile = repository.get("profiles", user_id) if repository else None
 		if profile is None:
 			return jsonify({"errorCode": "NOT_FOUND", "message": "profile not found", "details": {"userId": user_id}}), 404
-		# 判分表、题目与 LLM 解析已在锁外准备；锁内只做确定性判分与持久化。
+		# 判分表与题目已在锁外准备；锁内只做确定性判分与持久化。
 		correct_ids = {exercise_id for exercise_id, answer in submitted_answers.items()
 			if exercise_id in answer_keys and answer == answer_keys[exercise_id]}
 
@@ -597,8 +589,7 @@ def submit_exercises(set_id: str):
 		response = {
 			"userId": user_id,
 			"submissionId": result_id,
-			"reviewStatus": "pending" if durable_review or pending_review is not None else "completed" if llm_review_ids else
-				("basic" if all(questions_by_id[k].get("source") == "materials" for k in submitted_answers) else "unconfigured" if not exercise_gen.generation_available() else "failed"),
+			"reviewStatus": "pending" if review_available else "unconfigured" if review_questions_for_job else "completed",
 			"assessment": assessment.to_dict(),
 			"masteryUpdate": {"knowledgePointId": report_point, "oldScore": report_old,
 				"newScore": report_new},
@@ -608,11 +599,9 @@ def submit_exercises(set_id: str):
 				"selectedAnswer": submitted_answers[exercise_id],
 				"correctAnswer": answer_keys[exercise_id],
 				"correct": exercise_id in correct_ids,
-				"explanation": review_explanations.get(exercise_id)
-					or questions_by_id.get(exercise_id, {}).get("explanation")
-					or f"正确答案是 {answer_keys[exercise_id]}。",
-				"explanationSource": "materials" if questions_by_id.get(exercise_id, {}).get("source") == "materials"
-					else ("llm" if exercise_id in llm_review_ids else "fallback"),
+				"explanation": questions_by_id[exercise_id].get("explanation", "")
+					if questions_by_id[exercise_id].get("source") == "materials" else "",
+				"explanationSource": "materials" if questions_by_id[exercise_id].get("source") == "materials" else "fallback",
 				"sources": questions_by_id.get(exercise_id, {}).get("sources", []),
 			} for exercise_id in submitted_answers if exercise_id in answer_keys],
 		}
@@ -632,15 +621,8 @@ def submit_exercises(set_id: str):
 			profile_model_dict = persist_mastery(repository, user_id, assessment,
 					evidence_id, result_id, timestamp)
 			from app.api.wrong_book import record_submission
-			review_questions = []
-			for key in submitted_answers:
-				if key in questions_by_id:
-					question = dict(questions_by_id[key])
-					question["explanation"] = review_explanations.get(key, question.get("explanation", ""))
-					review_questions.append(question)
 			record_submission(repository, user_id,
-				review_questions,
-				submitted_answers, correct_ids)
+				[questions_by_id[key] for key in submitted_answers], submitted_answers, correct_ids)
 			wrong_ids = {item.get("exerciseId") for item in repository.list("wrong_book")
 				if isinstance(item, dict) and item.get("userId") == user_id}
 			for item in response["review"]:
@@ -693,12 +675,15 @@ def submit_exercises(set_id: str):
 			submission_record['questionFacts'] = question_facts(
 				[questions_by_id[k] for k in submitted_answers], correct_ids)
 			repository.save("submissions", result_id, submission_record)
-			if durable_review:
-				from app.services.job_queue import enqueue
+			if review_available:
 				wrong_snapshots = {key: repository.get("wrong_book", f"{user_id}:{key}") for key in submitted_answers}
-				enqueue(repository, "review", user_id, {"submissionId": result_id, "expected": submission_record,
-					"wrongSnapshots": wrong_snapshots, "questions": review_questions_for_job,
-					"answers": submitted_answers, "keys": {k: answer_keys[k] for k in submitted_answers}}, result_id)
+				if durable_review:
+					from app.services.job_queue import enqueue
+					enqueue(repository, "review", user_id, {"submissionId": result_id, "expected": submission_record,
+						"wrongSnapshots": wrong_snapshots, "questions": review_questions_for_job,
+						"answers": submitted_answers, "keys": review_keys}, result_id)
+				else:
+					post_commit.append((repository.repository, result_id, submission_record, wrong_snapshots))
 			for exercise_id in submitted_answers:
 				repository.save("exercise_usage", f"{user_id}:{exercise_id}", {
 					"userId": user_id, "exerciseId": exercise_id, "submissionId": result_id,
@@ -708,19 +693,14 @@ def submit_exercises(set_id: str):
 			from app.services.reminders import reconcile as reconcile_reminders
 			reconcile_reminders(repository, user_id)
 			repository.commit()
-			if pending_review is not None:
-				wrong_snapshots = {key: repository.get("wrong_book", f"{user_id}:{key}")
-					for key in submitted_answers}
-				post_commit.append((pending_review, repository.repository, result_id,
-					submission_record, wrong_snapshots))
 		return http_response
 
 	with _SUBMIT_LOCK:
 		with (_repository.transaction(user_id) if getattr(_repository, "durable_jobs", False) else _repository.transaction()):
 			response = _do_submit()
-		for job in post_commit:
-			review_jobs.attach(*job)
-		return response
+	for job in post_commit:
+		review_jobs.start(*job, review_questions_for_job, submitted_answers, review_keys)
+	return response
 
 
 @exercises_api.get("/api/v1/exercise-submissions/<path:submission_id>")

@@ -35,7 +35,6 @@ python run.py                                       # 默认监听 0.0.0.0:5000
 | `EMBED_MODEL` | 知识库语义检索向量 | `text-embedding-v3` |
 | `LLM_MAX_RETRIES` | 兼容字段；统一运行层固定关闭 SDK 隐式重试 | `0` |
 | `LLM_ENABLE_THINKING` | Qwen3 思考模式 | `0` |
-| `LLM_REVIEW_WAIT_SECONDS` | 交卷等待逐题解析的预算 | `2` |
 
 两条路径分开是**刻意设计**：识图需要专用视觉模型，工作流决策用更便宜的纯文本
 模型，避免占用 VL 配额。不要为了"统一"改成同一个模型。
@@ -51,7 +50,7 @@ python run.py                                       # 默认监听 0.0.0.0:5000
 
 交卷解析默认最多等待 2 秒，先返回确定性解析并完成计分；后台成功后按未变化的提交/错题记录条件补回，重复提交同一请求可读取新解析。默认每个进程 4 个解析任务运行、8 个排队，超限直接降级。后台任务在重启后不恢复。
 
-`LLM_DECISION_TIMEOUT_SECONDS` 默认 8 秒且不超过 `LLM_TIMEOUT_SECONDS`；`LLM_EMBED_TIMEOUT_SECONDS` 默认 30 秒，涵盖整次编码（每批最多 10 条）。`LLM_REVIEW_WORKERS`、`LLM_REVIEW_QUEUE_SIZE`、`LLM_REVIEW_WAIT_SECONDS` 分别控制解析池、队列和交卷等待预算。
+`LLM_DECISION_TIMEOUT_SECONDS` 默认 8 秒且不超过 `LLM_TIMEOUT_SECONDS`；`LLM_EMBED_TIMEOUT_SECONDS` 默认 30 秒，涵盖整次编码（每批最多 10 条）。`LLM_REVIEW_WORKERS` 和 `LLM_REVIEW_QUEUE_SIZE` 控制本地后台解析池与队列。交卷返回评分后可查询解析状态。
 
 出题缓存保留 5 分钟、进程内最多 256 组，按账号、知识点、题量和资料版本区分；已交卷、明确排除、删除或变更的题与资料不复用。跨 worker 不共享此性能缓存。
 

@@ -4,10 +4,13 @@ export class LearningEvidence {
   static hasAccuracy(point: KnowledgeMastery): boolean { return typeof point.recentAccuracy === 'number'; }
   static accuracyText(point: KnowledgeMastery): string { return LearningEvidence.hasAccuracy(point) ? `${point.recentAccuracy}%` : '待验证'; }
   static score(point: KnowledgeMastery): number { return point.recentAccuracy ?? point.masteryScore; }
+  static masteryEstimate(point: KnowledgeMastery): number | undefined {
+    return point.evidenceAdjustedScore;
+  }
   static label(point: KnowledgeMastery): string {
     const status: string = point.assessmentStatus ?? '';
     if (status === 'unassessed') return '未测评';
-    if (status === 'evidence_limited') return '初步结果';
+    if (status === 'evidence_limited') return '证据较少';
     if (status === 'needs_practice') return '需巩固';
     if (status === 'stable') return '当前表现较稳定';
     if (status === 'retest_due') return '待复测';

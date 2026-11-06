@@ -49,7 +49,12 @@ struct CourseImport {
   }
   private syncTodayMembership(plan: LearningPlan | null): void {
     const tasks: PlanTask[] = (plan?.tasks ?? []).filter((task: PlanTask) => task.status !== 'completed' && (!task.scheduledDate || task.scheduledDate <= this.todayDate()));
-    this.todayTaskIds = tasks.map((task: PlanTask) => task.taskId);
+    const ids: string[] = [];
+    tasks.forEach((task: PlanTask) => {
+      ids.push(task.taskId);
+      if (task.parentTaskId) ids.push(task.parentTaskId);
+    });
+    this.todayTaskIds = ids;
     this.todayPointIds = tasks.map((task: PlanTask) => `${task.sourceCourse || ''}::${task.knowledgePointId}`);
   }
   private isTodoInToday(item: ReminderEvent): boolean {
@@ -67,7 +72,7 @@ struct CourseImport {
       this.todoOverviewKey = key;
       this.todoOverview = today.data;
       TodayStore.save(getContext(this) as common.Context, today.data);
-      this.syncUrgentCount();
+      this.syncTodoList();
     }
     if (plan.ok) this.syncTodayMembership(plan.data);
     else if ((plan as ApiFailure).error.statusCode === 404) this.syncTodayMembership(null);
@@ -110,7 +115,6 @@ struct CourseImport {
       void this.loadOtherTasks();
     } else { this.todoMessage = (result as ApiFailure).error.message; void this.loadOtherTasks(); }
   }
-  @State addToToday: boolean = false;
   @State ddlFilter: string = 'all';
   @State addingAssignmentId: string = '';
   private assignmentRevision: number = 0;
@@ -123,14 +127,18 @@ struct CourseImport {
   @State ddlEditError: string = '';
   private ddlEditOwner: string = '';
   @State ddlDetailId: string = '';
+  @State focusedDdlId: string = '';
   @State activeTab: string = 'courses';
 
   aboutToAppear(): void {
     this.todoActive = true;
     const params = router.getParams() as Record<string, string>;
-    this.addToToday = params?.['addToToday'] === 'true';
     if (params && (params['initialTab'] === 'import' || params['initialTab'] === 'ddls')) this.activeTab = params['initialTab'];
-    if (params && params['focusDdlId']) { this.ddlDetailId = params['focusDdlId']; this.ddlFilter = 'all'; }
+    if (params && params['focusDdlId']) {
+      this.focusedDdlId = params['focusDdlId'];
+      this.ddlDetailId = this.focusedDdlId;
+      this.ddlFilter = 'all';
+    }
     if (params && params['ddlFilter'] === 'pending' && !params['focusDdlId']) this.ddlFilter = 'pending';
     this.refreshLearningData();
     void this.loadOtherTasks();
@@ -169,17 +177,6 @@ struct CourseImport {
   @State refreshKey: number = 0;
   @State courseList: CourseInfo[] = appState.courses;
   @State ddlList: HomeworkDDL[] = appState.homeworkDDLs;
-  /**
-   * 「N 项紧急」徽章的数字（7 天内到期的条数）。
-   *
-   *  必须缓存成 `@State`，**不能在 build 里直接写 `appState.getUrgentDDLs().length`**：
-   * `appState` 是普通类实例、不是 `@Observed`，ArkUI 不把它纳入依赖追踪。
-   * 实测（模拟器，2026-09-26）：删掉一条 DDL 后**列表已经刷新、这个徽章却还是旧数字**
-   * —— 截图里 4 条删成 3 条时，列表变了而右上角仍写着上一步的数。
-   * 所有会改 `ddlList` 的地方都调一次 `syncUrgentCount()`，两边才一致。
-   */
-  @State urgentDdlCount: number = appState.getUrgentDDLs().length;
-
   private filteredDDLs(): HomeworkDDL[] {
     return this.ddlList.filter((ddl: HomeworkDDL): boolean => {
       const done: boolean = appState.isTaskCompleted(ddl.id, 'pending');
@@ -190,6 +187,36 @@ struct CourseImport {
     }).sort((a: HomeworkDDL, b: HomeworkDDL) => a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title));
   }
 
+  private todoCourseName(name: string): string {
+    return name.trim() || '未分类';
+  }
+
+  private visibleOtherTasks(): ReminderEvent[] {
+    if (this.ddlFilter === 'completed') return [];
+    if (this.ddlFilter === 'urgent') {
+      return this.otherTasks.filter((item: ReminderEvent) => {
+        const deadline: number = Date.parse(item.deadline ?? '');
+        return Number.isFinite(deadline) && deadline <= Date.now() + 7 * 86400000;
+      });
+    }
+    return this.otherTasks;
+  }
+
+  private todoCourses(): string[] {
+    const courses: Set<string> = new Set<string>();
+    this.filteredDDLs().forEach((item: HomeworkDDL) => courses.add(this.todoCourseName(item.courseName)));
+    this.visibleOtherTasks().forEach((item: ReminderEvent) => courses.add(this.todoCourseName(item.courseName)));
+    return Array.from(courses).sort((left: string, right: string) => left.localeCompare(right));
+  }
+
+  private courseDDLs(course: string): HomeworkDDL[] {
+    return this.filteredDDLs().filter((item: HomeworkDDL) => this.todoCourseName(item.courseName) === course);
+  }
+
+  private courseOtherTasks(course: string): ReminderEvent[] {
+    return this.visibleOtherTasks().filter((item: ReminderEvent) => this.todoCourseName(item.courseName) === course);
+  }
+
   private onLearningDataChanged(): void {
     this.refreshLearningData();
   }
@@ -197,13 +224,11 @@ struct CourseImport {
   private refreshLearningData(): void {
     this.courseList = appState.courses.slice();
     this.ddlList = appState.homeworkDDLs.slice();
-    this.syncUrgentCount();
+    this.syncTodoList();
     this.refreshKey++;
   }
 
-  /** 数据变了就同步刷新徽章数字（见 `urgentDdlCount` 的说明）。 */
-  private syncUrgentCount(): void {
-    this.urgentDdlCount = appState.getUrgentDDLs().length;
+  private syncTodoList(): void {
     const owner: string = appState.currentUser.userId;
     const key: string = TodayStore.key(owner);
     if (key !== this.todoOverviewKey) {
@@ -260,7 +285,7 @@ struct CourseImport {
         const ddls: HomeworkDDL[] = FileParserService.autoParseDDLs(content);
         appState.importDDLs(ddls);
         this.ddlList = appState.homeworkDDLs.slice();
-        this.syncUrgentCount();
+        this.syncTodoList();
         appState.clearWeeklyPlan();
         this.importStatus = 'success';
         this.importMessage = detected === 'ddl' && intended !== detected
@@ -301,7 +326,7 @@ struct CourseImport {
         const ddls: HomeworkDDL[] = FileParserService.autoParseDDLs(this.jsonInputText);
         appState.importDDLs(ddls);
         this.ddlList = appState.homeworkDDLs.slice();
-        this.syncUrgentCount();
+        this.syncTodoList();
         appState.clearWeeklyPlan();
         this.importStatus = 'success';
         this.importMessage = detected === 'ddl' && this.importType !== detected
@@ -347,7 +372,7 @@ struct CourseImport {
   }
 
   private async confirmAssignment(ddl: HomeworkDDL): Promise<void> {
-    if (this.addingAssignmentId || appState.isTaskCompleted(ddl.id, 'pending')) return;
+    if (this.addingAssignmentId || this.todayTaskIds.includes(ddl.id) || appState.isTaskCompleted(ddl.id, 'pending')) return;
     const owner: string = appState.currentUser.userId;
     const revision: number = ++this.assignmentRevision;
     this.addingAssignmentId = ddl.id;
@@ -363,6 +388,8 @@ struct CourseImport {
       }
       return;
     }
+    this.syncTodayMembership(result.data);
+    if (this.todayTaskIds.includes(ddl.id)) { this.addingAssignmentId = ''; return; }
     const today: string = this.todayDate();
     const scheduled: number = result.data.tasks.filter((task) => task.taskId !== ddl.id && task.parentTaskId !== ddl.id && task.status !== 'completed' && (!task.scheduledDate || task.scheduledDate <= today)).reduce((sum: number, task) => sum + task.durationMinutes, 0);
     const available: number = result.data.budgetSummary?.availableMinutes ?? 0;
@@ -387,12 +414,13 @@ struct CourseImport {
   private async addAssignment(ddl: HomeworkDDL, owner: string, revision: number): Promise<void> {
     if (!this.ownsAssignmentRequest(owner, revision) || this.addingAssignmentId !== ddl.id) return;
     try {
-      const result = await new PlanViewModel().syncAssignments(ddl.id, this.addToToday);
+      const result = await new PlanViewModel().syncAssignments(ddl.id, true);
       if (!this.ownsAssignmentRequest(owner, revision)) return;
       if (result.ok) {
+        this.syncTodayMembership(result.data);
         this.openPlan();
       } else {
-        this.importMessage = `加入计划失败：${(result as ApiFailure).error.message}`;
+        this.importMessage = `加入今日计划失败：${(result as ApiFailure).error.message}`;
         this.importStatus = 'error';
       }
     } finally {
@@ -673,6 +701,22 @@ struct CourseImport {
   }
 
   @Builder
+  OtherTodoItem(item: ReminderEvent) {
+    Column({ space: 8 }) {
+      Text(item.title).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
+      Text(`${item.courseName} · ${item.kind === 'exam' ? '复习任务' : '学习任务'}`).fontSize(12).fontColor(UiTheme.secondary).width('100%')
+      Text(item.reason).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+      Row({ space: 10 }) {
+        Text(item.kind === 'task' ? '任务详情 ›' : '开始本项复习 ›').fontSize(13).fontColor(UiTheme.accent).layoutWeight(1).height(44).padding({ top: 12 })
+          .onClick(() => ReminderNavigation.open(item))
+        Button(this.isTodoInToday(item) ? '已在今日计划' : this.addingTodo === item.eventId ? '加入中…' : '加入今日计划', { type: ButtonType.Normal })
+          .height(44).fontSize(12).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint).borderRadius(8)
+          .enabled(!this.addingTodo && !this.isTodoInToday(item)).onClick(() => this.confirmTodoToday(item))
+      }.width('100%')
+    }.padding(14).width('100%').backgroundColor(UiTheme.surface).borderRadius(8)
+  }
+
+  @Builder
   DDLItem(ddl: HomeworkDDL) {
     Column({ space: 10 }) {
       Row({ space: 10 }) {
@@ -686,9 +730,9 @@ struct CourseImport {
           Text(`截止：${ddl.dueDate}`).fontSize(12).fontColor(UiTheme.secondary).width('100%')
         }.layoutWeight(1).alignItems(HorizontalAlign.Start)
         if (!appState.isTaskCompleted(ddl.id, 'pending')) {
-          Button(this.addingAssignmentId === ddl.id ? '加入中…' : this.addToToday ? '加入本日计划' : '加入计划', { type: ButtonType.Normal }).height(40).fontSize(12)
+          Button(this.todayTaskIds.includes(ddl.id) ? '已在今日计划' : this.addingAssignmentId === ddl.id ? '加入中…' : '加入今日计划', { type: ButtonType.Normal }).height(40).fontSize(12)
             .fontColor(UiTheme.accent).backgroundColor(UiTheme.surface).border({ width: 1, color: UiTheme.line }).borderRadius(8)
-            .enabled(this.addingAssignmentId.length === 0).onClick(() => { void this.confirmAssignment(ddl); })
+            .enabled(this.addingAssignmentId.length === 0 && !this.todayTaskIds.includes(ddl.id)).onClick(() => { void this.confirmAssignment(ddl); })
         }
       }.width('100%').alignItems(VerticalAlign.Top)
       Row({ space: 20 }) {
@@ -860,7 +904,7 @@ struct CourseImport {
         .onClick(() => this.activeTab = 'courses')
 
         Button() {
-          Text('作业DDL').fontSize(14).fontWeight(this.activeTab === 'ddls' ? FontWeight.Bold : FontWeight.Normal)
+          Text('待办与作业').fontSize(14).fontWeight(this.activeTab === 'ddls' ? FontWeight.Bold : FontWeight.Normal)
             .fontColor(this.activeTab === 'ddls' ? UiTheme.accent : UiTheme.secondary)
         }
         .layoutWeight(1).height(40).backgroundColor(this.activeTab === 'ddls' ? UiTheme.tint : UiTheme.surface)
@@ -908,58 +952,55 @@ struct CourseImport {
                 }, (course: CourseInfo) => course.courseId)
               }
             }.width('100%')
+          } else if (this.activeTab === 'ddls' && this.focusedDdlId) {
+            Column({ space: 8 }) {
+              Text('作业详情').fontSize(18).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
+              ForEach(this.ddlList.filter((ddl: HomeworkDDL) => ddl.id === this.focusedDdlId),
+                (ddl: HomeworkDDL) => { this.DDLItem(ddl) }, (ddl: HomeworkDDL) => ddl.id)
+              if (!this.ddlList.some((ddl: HomeworkDDL) => ddl.id === this.focusedDdlId)) {
+                Text('该作业已删除或尚未同步。').fontSize(13).fontColor(UiTheme.secondary)
+              }
+              Button('查看待办与作业', { type: ButtonType.Normal }).height(44).fontColor(UiTheme.accent)
+                .backgroundColor(UiTheme.surface).onClick(() => { this.focusedDdlId = ''; this.ddlDetailId = ''; })
+            }.width('100%').alignItems(HorizontalAlign.Start)
           } else if (this.activeTab === 'ddls') {
             Column({ space: 4 }) {
               Row() {
-                Text('全部待办').fontSize(18).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).layoutWeight(1)
+                Text('待办与作业').fontSize(18).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).layoutWeight(1)
                 // 读 @State 而不是直接调 appState（后者不在 ArkUI 依赖追踪里，删完不刷新）。
                 Text(this.pendingTodoCount < 0 ? '待同步' : `${this.pendingTodoCount}项待处理`).fontSize(12).fontColor(UiTheme.accent).fontWeight(FontWeight.Medium)
                   .backgroundColor(UiTheme.tint).borderRadius(8).padding({ left: 10, right: 10, top: 4, bottom: 4 })
               }.width('100%').margin({ bottom: 8 })
-              Text('未完成的作业、复习与学习任务').fontSize(12).fontColor(UiTheme.secondary).width('100%').margin({ bottom: 8 })
+              Text('按课程查看作业截止日期、复习与学习任务').fontSize(12).fontColor(UiTheme.secondary).width('100%').margin({ bottom: 8 })
 
               if (this.ddlDetailId.length > 0 && !this.ddlList.some((ddl: HomeworkDDL) => ddl.id === this.ddlDetailId)) {
                 Text('该提醒对应的作业已删除或尚未同步，请刷新作业列表。').fontSize(13).fontColor('#B45309')
               }
               if (this.todoMessage) { Text(this.todoMessage).fontSize(13).fontColor(UiTheme.secondary).width('100%').padding({ top: 8, bottom: 8 }) }
-              if (this.ddlFilter !== 'completed') ForEach(this.otherTasks, (item: ReminderEvent) => {
-                Column({ space: 8 }) {
-                  Text(item.title).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
-                  Text(`${item.courseName} · ${item.kind === 'exam' ? '复习任务' : '学习任务'}`).fontSize(12).fontColor(UiTheme.secondary).width('100%')
-                  Text(item.reason).fontSize(13).fontColor(UiTheme.secondary).width('100%')
-                  Row({ space: 10 }) {
-                    Text(item.kind === 'task' ? '任务详情 ›' : '开始本项复习 ›').fontSize(13).fontColor(UiTheme.accent).layoutWeight(1).height(44).padding({ top: 12 })
-                      .onClick(() => ReminderNavigation.open(item))
-                    Button(this.isTodoInToday(item) ? '已在今日计划' : this.addingTodo === item.eventId ? '加入中…' : '加入今日计划', { type: ButtonType.Normal })
-                      .height(44).fontSize(12).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint).borderRadius(8)
-                      .enabled(!this.addingTodo && !this.isTodoInToday(item)).onClick(() => this.confirmTodoToday(item))
-                  }.width('100%')
-                }.padding(14).width('100%').backgroundColor(UiTheme.surface).borderRadius(8)
-              }, (item: ReminderEvent) => item.eventId)
-              if (this.ddlList.length === 0) {
-                Column({ space: 8 }) {
-
-                  Text('还没有作业DDL数据').fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.secondary)
-                  Text('点击上方「导入」标签导入作业列表').fontSize(12).fontColor(UiTheme.muted)
-                  Button('前往导入').fontSize(13).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint)
-                    .border({ width: 1, color: '#BFDBFE' }).borderRadius(8).margin({ top: 4 })
-                    .onClick(() => this.activeTab = 'import')
-                }.width('100%').padding(24).alignItems(HorizontalAlign.Center)
-              } else {
-                Row() {
-                  Text('作业DDL').fontSize(15).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).layoutWeight(1)
-                  Text(`${this.urgentDdlCount}项临近截止`).fontSize(12).fontColor(UiTheme.danger)
-                }.width('100%').margin({ top: 12, bottom: 8 })
-                Row({ space: 8 }) {
+              Row({ space: 8 }) {
                 this.DdlFilter('全部', 'all')
                 this.DdlFilter('待处理', 'pending')
                 this.DdlFilter('临近截止', 'urgent')
                 this.DdlFilter('已完成', 'completed')
+              }.width('100%')
+              if (this.todoCourses().length === 0) {
+                Text('此筛选下暂无任务').fontSize(14).fontColor(UiTheme.secondary)
+                  .width('100%').textAlign(TextAlign.Center).padding(24)
+                if (this.ddlList.length === 0 && this.ddlFilter === 'all') {
+                  Button('导入作业').height(44).fontSize(13).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint)
+                    .onClick(() => this.activeTab = 'import')
+                }
               }
-              ForEach(this.filteredDDLs(), (ddl: HomeworkDDL) => {
-                  this.DDLItem(ddl)
-                }, (ddl: HomeworkDDL) => ddl.id)
-              }
+              ForEach(this.todoCourses(), (course: string) => {
+                Column({ space: 4 }) {
+                  Text(course).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+                    .width('100%').padding({ top: 10, bottom: 10, left: 12 }).backgroundColor(UiTheme.subtle).borderRadius(8)
+                  ForEach(this.courseDDLs(course), (ddl: HomeworkDDL) => { this.DDLItem(ddl) },
+                    (ddl: HomeworkDDL) => ddl.id)
+                  ForEach(this.courseOtherTasks(course), (item: ReminderEvent) => { this.OtherTodoItem(item) },
+                    (item: ReminderEvent) => item.eventId)
+                }.width('100%').margin({ top: 12 })
+              }, (course: string) => course)
             }.width('100%')
           }
         }

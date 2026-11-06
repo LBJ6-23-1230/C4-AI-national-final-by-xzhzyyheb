@@ -25,6 +25,7 @@ struct FocusSetup {
   @State selectedDuration: string = '30';
   @State mode: FocusMode = 'normal';
   @State allowBackgroundTiming: boolean = false;
+  @State shareFocus: boolean = false;
   @State source: FocusSource = 'manual';
   @State timerType: FocusTimerType = 'countdown';
 
@@ -216,7 +217,7 @@ struct FocusSetup {
       allowBackgroundTiming: this.mode === 'normal' && this.allowBackgroundTiming,
       planTaskId: planTaskId
     };
-    if (!AgentApiClient.getConfig().useFixture && appState.isSignedIn) {
+    if (this.shareFocus && !AgentApiClient.getConfig().useFixture && appState.isSignedIn) {
       if (appState.focusRuntime !== null || appState.focusResultDraft !== null) {
         this.startError = '请先恢复或放弃上次专注，再开始新任务。'; this.starting = false; return;
       }
@@ -226,6 +227,9 @@ struct FocusSetup {
         this.startError = service.getSnapshot().lastError || '暂时无法开始共享专注，请检查连接后重试。';
         this.starting = false; this.refreshShared(); return;
       }
+    } else if (this.sharedDescription.length > 0) {
+      this.startError = '已有共享专注正在进行，请先接续或结束该场专注。';
+      this.starting = false; return;
     } else if (!appState.beginFocusRuntime(focusTask)) {
       this.startError = this.recoveryDescription.length > 0
         ? '请先恢复或放弃上次专注，再开始新任务。' : '计时记录保存失败，请重试。';
@@ -277,7 +281,7 @@ struct FocusSetup {
     if (this.mode === 'strict') {
       return '严格专注会隐藏暂停；提前退出需要确认，并留下中断记录。';
     }
-    return '应用内换页和息屏继续计时；共享专注在已连接设备之间保持同一进度。';
+    return '应用内换页和息屏时继续计时。';
   }
 
   private timerHint(): string {
@@ -404,15 +408,25 @@ struct FocusSetup {
               Text('严格（不可暂停，退出记为中断）').fontSize(13).fontColor(UiTheme.ink).layoutWeight(1).onClick(() => this.mode = 'strict')
             }.width('100%').height(36)
             Text(this.modeHint()).fontSize(12).fontColor(UiTheme.secondary).width('100%')
-            if (!AgentApiClient.getConfig().useFixture && appState.isSignedIn) {
-              Text('共享专注在锁屏、切后台时继续计时，状态会同步到已连接设备。')
-                .fontSize(12).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
-            } else if (this.mode === 'normal') {
+            if (this.mode === 'normal' && !this.shareFocus) {
               Row() {
-                Text('允许后台计时').fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
-                Toggle({ type: ToggleType.Switch, isOn: this.allowBackgroundTiming }).onChange((value: boolean) => this.allowBackgroundTiming = value)
-              }.width('100%').height(40)
-              Text(this.allowBackgroundTiming ? '离开应用后继续计时。' : '切换应用将暂停计时（当前关闭）。').fontSize(12).fontColor(UiTheme.secondary).width('100%')
+                Text('后台仍计时').fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+                Toggle({ type: ToggleType.Switch, isOn: this.allowBackgroundTiming })
+                  .accessibilityText('后台仍计时').onChange((value: boolean) => this.allowBackgroundTiming = value)
+              }.width('100%').height(44)
+              Text(this.allowBackgroundTiming ? '切换到其他应用后继续计时。' : '切换到其他应用时暂停计时。')
+                .fontSize(12).fontColor(UiTheme.secondary).width('100%')
+            }
+            if (!AgentApiClient.getConfig().useFixture && appState.isSignedIn) {
+              Row() {
+                Text('与已连接设备共享专注').fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+                Toggle({ type: ToggleType.Switch, isOn: this.shareFocus })
+                  .accessibilityText('与已连接设备共享专注').onChange((value: boolean) => this.shareFocus = value)
+              }.width('100%').height(44)
+              if (this.shareFocus) {
+                Text('共享专注在锁屏、切后台时继续计时，状态同步到已连接设备。')
+                  .fontSize(12).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
+              }
             }
             if (this.startError) { Text(this.startError).fontSize(13).fontColor(UiTheme.danger).width('100%') }
             if (!appState.isDataImported && appState.courses.length <= 3) {

@@ -88,29 +88,33 @@ struct ExercisePractice {
   private observedResetVersion: number = DemoSnapshot.getResetVersion();
   /** 首帧的 `onPageShow` 与 `aboutToAppear` 是同一次进入，不重复请求。 */
   private hasShownOnce: boolean = false;
+  private reviewingSubmission: string = '';
 
-  private reviewSourceLabel(item: ExerciseReview): string {
-    if (item.explanationSource === 'materials') return '资料原文解析';
-    if (item.explanationSource === 'llm') return 'AI 详细解析';
-    const status: string = this.result?.reviewStatus ?? 'basic';
-    if (status === 'pending') return '基础解析 · AI 生成中';
-    if (status === 'unconfigured') return '基础解析 · 模型未配置';
-    if (status === 'failed') return '基础解析 · AI 增强失败';
-    return '基础解析';
+  private hasAiExplanation(item: ExerciseReview): boolean {
+    return (item.explanationSource === 'llm' || item.explanationSource === 'materials') && item.explanation.trim().length > 0;
   }
+
+  private unavailableReviewMessage(): string {
+    if (this.result?.reviewStatus === 'pending') return '正在生成 AI 解析…';
+    if (this.result?.reviewStatus === 'unconfigured') return 'AI 解析服务暂未配置。';
+    return '本题暂未生成 AI 解析。';
+  }
+
   private scheduleReviewRefresh(): void {
-    if (this.reviewTimer !== -1 || this.result?.reviewStatus !== 'pending' || this.reviewPollCount >= 20) return;
+    if (!this.isPageActive || this.reviewTimer !== -1 || this.result?.reviewStatus !== 'pending' || this.reviewPollCount >= 30) return;
     this.reviewTimer = setTimeout(() => {
       this.reviewTimer = -1;
       void this.refreshReview();
-    }, 3000);
+    }, this.reviewPollCount < 6 ? 1000 : 3000);
   }
   private async refreshReview(): Promise<void> {
     const owner: string = appState.currentUser.userId;
     const id: string = this.result?.submissionId ?? '';
-    if (this.isDisposed || !this.isPageActive || id.length === 0) return;
+    if (this.isDisposed || !this.isPageActive || id.length === 0 || this.reviewingSubmission === id) return;
+    this.reviewingSubmission = id;
     this.reviewPollCount++;
     const response = await AgentApiClient.getSubmissionReview(id);
+    if (this.reviewingSubmission === id) this.reviewingSubmission = '';
     if (this.isDisposed || !this.isPageActive || owner !== appState.currentUser.userId || id !== this.result?.submissionId) return;
     if (response.ok) this.result = response.data;
     this.scheduleReviewRefresh();
@@ -130,6 +134,7 @@ struct ExercisePractice {
   private openReview(): void {
     this.resultOffset = this.pageScroller.currentOffset().yOffset;
     this.showReview = true;
+    if (this.result?.reviewStatus === 'pending') void this.refreshReview();
     this.scrollToTop();
   }
   private closeReview(): void {
@@ -202,11 +207,10 @@ struct ExercisePractice {
 
   private showCriteria(): void {
     AlertDialog.show({ title: '练习状态说明',
-      message: '推荐：默认优先展示当前课程已作答、近期正确率较低的3项；搜索时展示匹配项。是展示顺序，不是掌握状态。\n\n' +
-        '需巩固：近期至少8道不同有效题、分布在至少2轮，但尚未同时达到80%正确率及基础/进阶题覆盖。\n\n' +
-        '待复测：有有效作答，但距离最近一次已满7天；只提醒重新验证，不表示已经遗忘。\n\n' +
-        '未测评：没有可核验的有效作答。少于8题或不足2轮时标为“初步结果”。\n\n' +
-        '统计每个知识点最近20道不同题目的首次作答，重复原题不重复增加样本。以上为试行规则。',
+      message: '掌握估计综合历次有效新题，最近20题权重较高。题量少时，估计会更接近中间值。重复原题不增加证据。\n\n' +
+        '证据较少：近期有效题不足8道、练习不足2轮，或题目难度覆盖不足。\n\n' +
+        '表现较稳定：题量和轮次足够、近期正确率至少80%、掌握估计至少70分，且有足够难度覆盖。复测表现偏低时会提示巩固。\n\n' +
+        '待复测：距最近一次有效作答已满7天。未测评：暂无有效作答。',
       confirm: { value: '知道了', action: () => {} } });
   }
 
@@ -239,7 +243,7 @@ struct ExercisePractice {
     const sorted: KnowledgeMastery[] = state.mastery.slice();
     sorted.sort((left: KnowledgeMastery, right: KnowledgeMastery): number =>
       Number((left.effectiveQuestionCount ?? 0) === 0) - Number((right.effectiveQuestionCount ?? 0) === 0) ||
-      LearningEvidence.score(left) - LearningEvidence.score(right));
+      (left.evidenceAdjustedScore ?? LearningEvidence.score(left)) - (right.evidenceAdjustedScore ?? LearningEvidence.score(right)));
     this.pickerEvidence = state.evidence;
     this.pickerHistory = state.history;
     this.pickerOptions = sorted;
@@ -337,7 +341,10 @@ struct ExercisePractice {
 
   onPageShow(): void {
     this.isPageActive = true;
-    this.scheduleReviewRefresh();
+    if (this.result?.reviewStatus === 'pending') {
+      this.reviewPollCount = 0;
+      void this.refreshReview();
+    }
     if (this.consumeDemoReset()) return;
     if (!this.hasShownOnce) {
       this.hasShownOnce = true;
@@ -353,6 +360,8 @@ struct ExercisePractice {
 
   onPageHide(): void {
     this.isPageActive = false;
+    if (this.reviewTimer !== -1) clearTimeout(this.reviewTimer);
+    this.reviewTimer = -1;
     // A covered page still owns its in-flight request and its idempotency key.
   }
 
@@ -688,11 +697,14 @@ struct ExercisePractice {
   }
 
   @Builder
-  ReviewPanel(value: ExerciseSubmissionResult) {
+  ReviewPanel() {
     Column({ space: 16 }) {
-      if (value.reviewStatus === 'pending') {
-        Text('基础解析已可查看，AI 详细解析仍在后台生成。').fontSize(13).fontColor(UiTheme.secondary)
-        Button('刷新解析状态').height(34).fontSize(12).onClick(() => { this.reviewPollCount = 0; void this.refreshReview(); })
+      if (this.result?.reviewStatus === 'pending') {
+        Row({ space: 8 }) {
+          LoadingProgress().width(18).height(18).color(UiTheme.accent)
+          Text('已交卷，AI 正在逐题生成解析。').fontSize(13).fontColor(UiTheme.secondary).layoutWeight(1)
+          Button('刷新').height(44).fontSize(12).onClick(() => { this.reviewPollCount = 0; void this.refreshReview(); })
+        }.width('100%')
       }
       Row() {
         Text('逐题解析').fontSize(23).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
@@ -710,19 +722,19 @@ struct ExercisePractice {
           Row() {
             Text(`第 ${index + 1} 题 · ${item.knowledgePointName}`).fontSize(13)
               .fontWeight(FontWeight.Bold).fontColor(UiTheme.accent).layoutWeight(1)
-            Text(value.review[index].correct ? '回答正确' : '回答错误')
-              .fontSize(12).fontColor(value.review[index].correct ? '#0F766E' : UiTheme.danger)
+            Text(this.result!.review[index].correct ? '回答正确' : '回答错误')
+              .fontSize(12).fontColor(this.result!.review[index].correct ? '#0F766E' : UiTheme.danger)
           }.width('100%')
           Text(item.stem).fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).lineHeight(23)
           Column({ space: 8 }) {
             ForEach(item.options, (option: string) => {
               Row({ space: 8 }) {
                 Text(option).fontSize(14).fontColor(UiTheme.ink).layoutWeight(1).lineHeight(20)
-                if (option.substring(0, 1) === value.review[index].correctAnswer) {
+                if (option.substring(0, 1) === this.result!.review[index].correctAnswer) {
                   Text('正确答案').fontSize(11).fontColor('#0F766E')
                     .padding({ left: 7, right: 7, top: 3, bottom: 3 })
                     .backgroundColor('#ECFDF5').borderRadius(6)
-                } else if (option.substring(0, 1) === value.review[index].selectedAnswer) {
+                } else if (option.substring(0, 1) === this.result!.review[index].selectedAnswer) {
                   Text('你的选择').fontSize(11).fontColor(UiTheme.danger)
                     .padding({ left: 7, right: 7, top: 3, bottom: 3 })
                     .backgroundColor('#FEF3F2').borderRadius(6)
@@ -730,13 +742,12 @@ struct ExercisePractice {
               }.width('100%').padding(10).backgroundColor(UiTheme.subtle).borderRadius(8)
             }, (option: string) => option)
           }.width('100%')
-          Text(`你的答案：${value.review[index].selectedAnswer}　正确答案：${value.review[index].correctAnswer}`)
+          Text(`你的答案：${this.result!.review[index].selectedAnswer}　正确答案：${this.result!.review[index].correctAnswer}`)
             .fontSize(13).fontColor(UiTheme.secondary).width('100%')
           Column({ space: 6 }) {
-            Text(value.review[index].explanationSource === 'materials' ? '资料题解析（模型生成，可查看原文核对）' :
-              this.reviewSourceLabel(value.review[index]))
-              .fontSize(13).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent).width('100%')
-            Text(value.review[index].explanation).fontSize(14).fontColor(UiTheme.ink).lineHeight(22).width('100%')
+            Text('AI 解析').fontSize(13).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent).width('100%')
+            Text(this.hasAiExplanation(this.result!.review[index]) ? this.result!.review[index].explanation : this.unavailableReviewMessage())
+              .fontSize(14).fontColor(UiTheme.ink).lineHeight(22).width('100%')
           }.width('100%').padding(12).backgroundColor(UiTheme.tint).borderRadius(8)
           if (item.source === 'materials') {
             Button('查看本题资料依据').height(36).fontSize(13).onClick(() => this.openSources(item.exerciseId))
@@ -747,7 +758,7 @@ struct ExercisePractice {
             .backgroundColor(this.wrongBookFlags[index] ? '#FEF3F2' : UiTheme.tint)
             .borderRadius(8).onClick(() => this.toggleReviewWrongBook(index))
         }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
-          .border({ width: 1, color: value.review[index].correct ? '#A7F3D0' : '#FECACA' })
+          .border({ width: 1, color: this.result!.review[index].correct ? '#A7F3D0' : '#FECACA' })
       }, (item: Exercise) => item.exerciseId)
       Button('进入错题本刷题').width('100%').height(46).fontSize(15).fontColor(UiTheme.surface)
         .backgroundColor(UiTheme.accent).borderRadius(8)
@@ -759,7 +770,7 @@ struct ExercisePractice {
   ResultPanel(value: ExerciseSubmissionResult) {
     Column({ space: 16 }) {
       Text('诊断结果已生成').fontSize(23).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
-      Text('根据本次答题更新掌握度估计；题量有限，结果供后续学习安排参考。')
+      Text('本轮答题已记录。学情画像会结合历次练习更新掌握估计。')
         .fontSize(13).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
 
       if (this.warningMessage.length > 0) {
@@ -806,7 +817,7 @@ struct ExercisePractice {
 
 
       Text(value.planChangeSummary ?? '本轮测评结果已保存。').fontSize(14).fontColor('#0F766E')
-      Text(`薄弱知识点：${this.weakPointText(value)}`).fontSize(14).fontColor(UiTheme.secondary)
+      Text(`本轮需复习：${this.weakPointText(value)}`).fontSize(14).fontColor(UiTheme.secondary)
 
       ActionButton({ label: '查看题目与逐题解析', onAction: () => this.openReview() })
 
@@ -959,7 +970,7 @@ struct ExercisePractice {
                 Button('退出等待').onClick(() => this.leaveWaiting())
               }.width('100%').padding(28)
             } else if (this.result !== null && this.showReview) {
-              this.ReviewPanel(this.result)
+              this.ReviewPanel()
             } else if (this.result !== null) {
               this.ResultPanel(this.result)
             } else if (this.exercises.length === 0) {

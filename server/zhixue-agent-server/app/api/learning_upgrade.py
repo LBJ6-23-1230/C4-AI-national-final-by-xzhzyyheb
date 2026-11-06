@@ -47,6 +47,10 @@ def authenticated():
     return owner
 
 
+def room_id(owner, partner):
+    return hashlib.sha256('\0'.join(sorted([owner, partner])).encode()).hexdigest()
+
+
 def relationship(owner, partner):
     if owner == partner:
         abort(400)
@@ -63,19 +67,25 @@ def relationship(owner, partner):
 @learning_upgrade_api.route('/api/v1/partners/<partner>/messages', methods=['GET', 'POST'])
 def messages(partner):
     owner = authenticated()
-    room = hashlib.sha256('\0'.join(sorted([owner, partner])).encode()).hexdigest()
+    room = room_id(owner, partner)
     if request.method == 'GET':
         relationship(owner, partner)
         cursor = request.args.get('after', '')
         records = sorted([x for x in repo().list('partner_messages') if x.get('roomId') == room],
                          key=lambda x: x['messageId'])
-        page = [x for x in records if x['messageId'] > cursor][:10]
+        unread = [x for x in records if x['messageId'] > cursor]
+        page = unread[:10]
         return jsonify(messages=page, cursor=page[-1]['messageId'] if page else cursor,
-                       hasMore=len([x for x in records if x['messageId'] > cursor]) > 10)
+                       recalledMessageIds=[x['messageId'] for x in records if x.get('recalled') and x['messageId'] <= cursor],
+                       hasMore=len(unread) > 10)
     data = body()
     key = string(data, 'clientId', 128, True)
     text = string(data, 'text', 3000)
     image = string(data, 'image', 3_000_000)
+    reply_to = string(data, 'replyTo', 160)
+    forwarded = data.get('forwarded', False)
+    if type(forwarded) is not bool:
+        abort(400)
     if not text and not image:
         abort(400)
     if image:
@@ -94,14 +104,52 @@ def messages(partner):
         relationship(owner, partner)
         previous = repo().get('partner_message_keys', identity)
         if previous:
-            if previous['roomId'] != room or previous['text'] != text or previous['image'] != image:
+            prior_content = previous.get('contentHash') or message_content_hash(previous['text'], previous['image'])
+            if (previous['roomId'] != room or previous.get('replyTo', '') != reply_to or
+                    previous.get('forwarded', False) != forwarded or
+                    prior_content != message_content_hash(text, image)):
                 abort(409)
-            return jsonify(message=previous)
+            return jsonify(message=repo().get('partner_messages', previous['messageId']) or previous)
+        if reply_to:
+            quoted = repo().get('partner_messages', reply_to)
+            if not quoted or quoted['roomId'] != room or quoted.get('recalled'):
+                abort(409, '原消息已撤回或不可用')
         record = dict(messageId=now() + '-' + uuid4().hex, roomId=room, senderId=owner,
                       text=text, image=image, createdAt=now(), clientId=key, userId=owner)
-        repo().save('partner_messages', record['messageId'], record)
-        repo().save('partner_message_keys', identity, record)
+        if reply_to:
+            record['replyTo'] = reply_to
+        if forwarded:
+            record['forwarded'] = True
+        repo().apply_batch([], [('partner_messages', record['messageId'], record),
+                                ('partner_message_keys', identity, record)])
     return jsonify(message=record), 201
+
+
+def message_content_hash(text, image):
+    return hashlib.sha256((text + '\0' + image).encode()).hexdigest()
+
+
+@learning_upgrade_api.post('/api/v1/partners/<partner>/messages/<message_id>/recall')
+def recall_message(partner, message_id):
+    owner = authenticated()
+    room = room_id(owner, partner)
+    with repo().transaction():
+        relationship(owner, partner)
+        message = repo().get('partner_messages', message_id)
+        if not message or message['roomId'] != room:
+            abort(404)
+        if message['senderId'] != owner or message['clientId'] == message_id:
+            abort(403)
+        if not message.get('recalled'):
+            age = datetime.now(timezone.utc) - datetime.fromisoformat(message['createdAt'])
+            if age.total_seconds() > 120:
+                abort(409, '只能撤回两分钟内发送的消息')
+            identity = hashlib.sha256((owner + ':' + message['clientId']).encode()).hexdigest()
+            content_hash = message_content_hash(message['text'], message['image'])
+            message.update(recalled=True, text='', image='')
+            repo().apply_batch([], [('partner_messages', message_id, message),
+                                    ('partner_message_keys', identity, dict(message, contentHash=content_hash))])
+    return jsonify(message=message)
 
 
 @learning_upgrade_api.post('/api/v1/wrong-book/scanned')

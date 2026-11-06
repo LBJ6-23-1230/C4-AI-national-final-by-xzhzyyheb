@@ -186,6 +186,8 @@ export interface KnowledgeMastery {
   topicGroup?: string;
   assessmentStatus?: string;
   effectiveQuestionCount?: number;
+  evidenceAdjustedScore?: number;
+  totalEvidenceQuestionCount?: number;
   correctCount?: number;
   recentAccuracy?: number | null;
   lastAssessedAt?: string;
