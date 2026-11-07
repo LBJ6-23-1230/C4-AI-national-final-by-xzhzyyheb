@@ -29,6 +29,9 @@ import { TodayOverview } from '../api/ReminderModels';
 import { TodayStore } from '../services/TodayStore';
 import { PendingTasks } from '../utils/PendingTasks';
 
+const WIDE_LAYOUT_MIN_WIDTH: number = 820;
+const WIDE_CONTENT_MAX_WIDTH: number = 1120;
+
 @Entry
 @Component
 struct Index {
@@ -46,7 +49,7 @@ struct Index {
   @State streakDays: number = appState.getFocusSummary().streakDays;
   @State refreshKey: number = 0;
   @State profileNickname: string = appState.authNickname;
-  @State studyWindowWidth: number = 0;
+  @State contentViewportWidth: number = 0;
   @State profileAvatar: string = appState.authAvatar;
 
   private onLearningDataChanged(): void {
@@ -1003,10 +1006,18 @@ struct Index {
                     .onClick(() => this.agentFilter = category)
                 }, (category: string) => category)
               }.width('100%').padding({ top: 12, bottom: 10 })
-              ForEach(this.filteredAgents(), (item: AgentSpec) => { this.AgentCard(item) }, (item: AgentSpec) => item.key)
+              if (this.contentViewportWidth >= WIDE_LAYOUT_MIN_WIDTH) {
+                GridRow({ columns: 2, gutter: { x: 28 } }) {
+                  ForEach(this.filteredAgents(), (item: AgentSpec) => {
+                    GridCol() { this.AgentCard(item) }
+                  }, (item: AgentSpec) => item.key)
+                }.width('100%').alignItems(ItemAlign.Start)
+              } else {
+                ForEach(this.filteredAgents(), (item: AgentSpec) => { this.AgentCard(item) }, (item: AgentSpec) => item.key)
+              }
             }
             if (this.activeTab === 2) {
-              if (this.studyWindowWidth >= 820) {
+              if (this.contentViewportWidth >= WIDE_LAYOUT_MIN_WIDTH) {
                 Row({ space: 28 }) {
                   Column() { this.StudyFocusSection() }.layoutWeight(1.2)
                   Column() { this.StudyLinks() }.layoutWeight(1)
@@ -1039,10 +1050,15 @@ struct Index {
               this.PanelRow($r('app.media.feature_review'), '提醒设置', '', 'pages/Reminders')
               this.PanelRow($r('app.media.feature_review'), '账号、安全与隐私', '', 'pages/Account')
             }
-          }.width('100%').constraintSize({ maxWidth: this.activeTab === 2 && this.studyWindowWidth >= 820 ? 1120 : UiTheme.contentWidth })
+          }.width('100%').constraintSize({
+            maxWidth: (this.activeTab === 1 || this.activeTab === 2) && this.contentViewportWidth >= WIDE_LAYOUT_MIN_WIDTH
+              ? WIDE_CONTENT_MAX_WIDTH : UiTheme.contentWidth
+          })
             .padding({ left: 20, right: 20, bottom: 24 })
-        }.width('100%').layoutWeight(1).align(this.activeTab === 2 ? Alignment.Top : Alignment.TopStart).scrollBar(BarState.Off)
-          .onAreaChange((_old: Area, area: Area) => { this.studyWindowWidth = Number(area.width); })
+        }.width('100%').layoutWeight(1)
+          .align(this.activeTab === 1 || this.activeTab === 2 ? Alignment.Top : Alignment.TopStart)
+          .scrollBar(BarState.Off)
+          .onAreaChange((_old: Area, area: Area) => { this.contentViewportWidth = Number(area.width); })
         this.TabBar()
       }.width('100%').height('100%').backgroundColor(UiTheme.surface)
       AIFloatButton({ bottomGap: 100 })
