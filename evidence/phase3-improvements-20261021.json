@@ -1,0 +1,66 @@
+{
+  "recordDate": "2026-10-21",
+  "baseCommit": "7d58fb707e418b83566201e12e6d721a384fb6be",
+  "hasUncommittedChanges": true,
+  "scope": [
+    "owned material retrieval and grounded exercise generation",
+    "current source lookup and invalidation",
+    "private generated-question grading isolation",
+    "exercise cache and asynchronous owner fences"
+  ],
+  "backend": {
+    "passed": 492,
+    "warnings": 1,
+    "durationSeconds": 31.63,
+    "newRegressionCases": 25,
+    "externalModelsIsolated": true
+  },
+  "frontend": {
+    "buildPassed": true,
+    "buildSeconds": 25.111,
+    "arktsWarningEntries": 130,
+    "actualSourceModuleChecks": "focus/plan and exercise ETS modules passed after TypeScript transpilation with simulated HTTP/Preferences",
+    "log": ".local-work/phase3-20261021/frontend-build-final.log"
+  },
+  "contracts": {
+    "mirrorsByteIdentical": true,
+    "pathCount": 42
+  },
+  "hap": {
+    "path": "app/entry/build/default/outputs/default/entry-default-signed.hap",
+    "sha256": "9f3d68f100c1df592c5125990db3ccff4c645dac0d8ec827fe9a2529f11e26b5",
+    "buildMode": "debug",
+    "verifyAppPassed": true,
+    "verifyLog": ".local-work/phase3-20261021/hap-verify.log",
+    "retainedCopy": ".local-work/phase3-20261021/zhixue-mate-phase3-debug.hap"
+  },
+  "deviceTargets": [],
+  "deviceInstall": "not_run",
+  "realModelCalls": "not_run",
+  "sourceFileSha256": {
+    "server/zhixue-agent-server/app/services/grounded_exercises.py": "4864ea740b8bcdd866fd8b4586f862b42ef7070eb032d78cc375e6cb1bb0763c",
+    "server/zhixue-agent-server/app/api/exercises.py": "44ba1ef6081b062ae1d5a28756e48c6b48dc1de8e36eb0abd1a6c69a20178f1d",
+    "server/zhixue-agent-server/app/api/knowledge.py": "f9b9c4aba34499891aa43c3000259a4ed74ed35220f7ca44a22e9760c4dd8cd3",
+    "server/zhixue-agent-server/app/api/wrong_book.py": "3fbe40fb29dd5ff19bc634986922f82f4e7f103eaad2f78b56540b0d2f9cd589",
+    "server/zhixue-agent-server/app/tools/exercise_tools.py": "a8f26b9a5e892cf8f99dc90a527a9b23b91815969bc6987de7eeb94f74de6364",
+    "server/zhixue-agent-server/tests/test_grounded_exercises.py": "b880409f4142cda6c078819f9ed92fc210f1aecefc52570dee359b4e97b6566a",
+    "server/zhixue-agent-server/tests/test_final_repairs.py": "f7f5eb8671aec42083c66215355cc2c6254024039df1bc6e9c0be0427d50003a",
+    "app/entry/src/main/ets/api/ApiModels.ets": "9fe6e4857a1d44f04af296cdef94964ab3927f10174245a1291b5574438db10c",
+    "app/entry/src/main/ets/api/ApiResponseValidator.ets": "216204e03d2b48a91990eeddc1159b0774cfd48eb834396ffbddd3afb74feeed",
+    "app/entry/src/main/ets/api/AgentApiClient.ets": "f7ba5eb11ae048afa13c2279f53eeeef8402c69adb4b8e57f8dccb40c1f40e62",
+    "app/entry/src/main/ets/viewmodels/ExerciseViewModel.ets": "507a6c84c1e5ab392f8ec10d35b1566d6502e0a06287a12830f7240a6b01032a",
+    "app/entry/src/main/ets/pages/ExercisePractice.ets": "c4d52fe8a8cafbc0b4fcf91672a1daeec878375f4915e5f06df27240cf7ad941",
+    "app/entry/src/main/ets/pages/KnowledgeBase.ets": "c5143e9b226dea0edc4c12b04247ac27e97f31b8debb9da09be31a9b8bddb00b",
+    "contracts/openapi.json": "705865f9ed11491d53891d3b7ea27140239132792b7567e11caff88dd066319b",
+    "app/contracts/openapi.json": "705865f9ed11491d53891d3b7ea27140239132792b7567e11caff88dd066319b",
+    "tools/check_grounded_exercises.js": "fa39048cbbe6b63fd4ffd66ad07fce8aa560681183f1128fdd092106200e4885"
+  },
+  "limitations": [
+    "Provenance checks verify source IDs and exact supporting quotes, not question semantics or answer correctness.",
+    "Grounded retrieval uses exact point/name/heading keywords and at most three fragments, without semantic reranking.",
+    "Citations locate chunks and headings, not original PDF page numbers.",
+    "The document list shows quick exercise entries for the first six extracted points.",
+    "Generation and deletion coordination relies on a single-process business lock.",
+    "Calendar DDL scheduling, unified goal/secretary/chat integration, closed-app reminders and device handoff remain incomplete."
+  ]
+}

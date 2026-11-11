@@ -1,0 +1,20 @@
+[
+  {
+    "path": "structured_review",
+    "model": "qwen3.8-flash",
+    "seconds": 6.23,
+    "llmUsed": true,
+    "source": "model",
+    "fallbackReason": "",
+    "valid": true
+  },
+  {
+    "path": "surplus_budget",
+    "model": "qwen3.8-flash",
+    "seconds": 1.14,
+    "llmUsed": true,
+    "mode": "surplus_model",
+    "fallbackReason": "模型建议已通过任务归属、时长粒度和总额校验",
+    "valid": true
+  }
+]

@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-25",
+  "scope": "backend, persistence, auth, tooling, packaging and contracts",
+  "trackedFilesScanned": 552,
+  "pythonFilesParsed": 162,
+  "jsonFilesParsed": 119,
+  "archiveIntegrityChecks": 8,
+  "backendTests": {
+    "passed": 631,
+    "seconds": 66.25,
+    "newNonUiRegressions": 25,
+    "report": ".local-work/review-20261025/pytest-third-pass-20261025.xml"
+  },
+  "httpOffline": {
+    "passed": 97,
+    "failed": 0,
+    "report": ".local-work/review-20261025/integration-third-pass-final.json"
+  },
+  "contracts": {
+    "paths": 48,
+    "schemas": 81,
+    "bytes": 196709,
+    "mirrorMatches": true
+  },
+  "packaging": {
+    "frontend": "PASS",
+    "backend": "PASS",
+    "output": ".local-work/review-20261025/package-final/output",
+    "submission": "PASS: .local-work/review-20261025/submission-audit.zip"
+  },
+  "externalCapabilitiesPending": [
+    "production SMS adapter",
+    "Huawei trusted credential verification",
+    "live model and physical-device acceptance"
+  ],
+  "reviewReport": "05-决赛准备/非用户端全项目复核-20261025.md"
+}

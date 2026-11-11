@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-26",
+  "scope": "六张截图问题及多课程搭子重合补充",
+  "backendTests": {
+    "passed": 671,
+    "failed": 0
+  },
+  "httpChecks": {
+    "passed": 97,
+    "failed": 0,
+    "port": 5018,
+    "mode": "offline-isolated"
+  },
+  "frontendControllerChecks": 22,
+  "workflowIsolationChecks": 6,
+  "parserChecks": 45,
+  "contractPaths": 52,
+  "native": {
+    "device": "127.0.0.1:5555",
+    "installed": true,
+    "launch": true,
+    "statisticsCards": [
+      {
+        "label": "任务完成度",
+        "width": 675,
+        "height": 263
+      },
+      {
+        "label": "今日专注分钟",
+        "width": 675,
+        "height": 263
+      },
+      {
+        "label": "专注记录次数",
+        "width": 675,
+        "height": 263
+      },
+      {
+        "label": "连续学习天数",
+        "width": 675,
+        "height": 263
+      },
+      {
+        "label": "专注完成率",
+        "width": 675,
+        "height": 263
+      },
+      {
+        "label": "待处理作业",
+        "width": 675,
+        "height": 263
+      }
+    ],
+    "accountDuplicateStatsRemoved": true,
+    "pendingHomeworkEntryAndFilters": true,
+    "rawScreenshots": "private .local-work only"
+  },
+  "vision": {
+    "sample": "built-in sample_wrong.png",
+    "configured": true,
+    "status": "recognized",
+    "knowledgePoint": "哈希表中的哈希冲突概念及处理机制",
+    "questionChars": 93,
+    "wrongType": "",
+    "elapsedSeconds": 10.11
+  },
+  "hap": {
+    "path": "deliverables/screenshot-feedback-20261026/知学Mate-screenshots-20261026-signed.hap",
+    "bytes": 3519066,
+    "sha256": "651636b73aacccad8f20a9574cc2c4002d5aedc696561b64f915fddb08f2f1bc"
+  },
+  "runningBackend": "Existing port5000 process needs manual restart; ownership of generic python run.py could not be proven, so it was not stopped.",
+  "limitations": [
+    "Current-user full image and multi-goal device flow needs latest backend restart",
+    "Full dual-account device acceptance not claimed"
+  ]
+}

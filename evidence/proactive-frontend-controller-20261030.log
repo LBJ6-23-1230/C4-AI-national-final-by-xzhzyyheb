@@ -1,0 +1,48 @@
+PASS wrong-book selection starts empty and applies only explicitly selected questions
+PASS wrong-book group includes photos and unlocks fresh similar practice only after every question
+PASS leaving wrong-book practice rejects a late answer response
+PASS similar-practice route preserves force generation and initial exclusions
+PASS workflow refresh can be retried after completing while hidden
+PASS switching history while sending unlocks new conversation
+PASS late history request cannot expose previous account records
+PASS history request completes while page is covered
+PASS uncertain submit freezes original answers for an identical retry
+PASS definite server rejection permits corrected answers
+PASS exercise load completes while page is covered
+PASS covered submit keeps one idempotency key and adopts result
+PASS failed covered submission is retryable with original key
+PASS destroyed exercise page ignores its old load
+PASS picker completes while hidden and cannot overwrite a newer flow
+PASS identity change rejects old exercise result
+PASS chat response replaces sending bubble while covered
+PASS destroyed chat persists interrupted message and rejects old response
+PASS new chat invalidates previous response
+PASS out-of-order document responses keep selected library
+PASS switching library invalidates search without clearing newer busy flag
+PASS upload into previous library cannot pollute current documents or tab
+PASS old-account library response cannot enter new account page
+PASS actual API validator accepts focus GET/POST and rejects invalid payloads
+PASS late diagnosis confirmation cannot overwrite a newer goal request
+PASS goal history selection serializes mutations and opens the selected task
+PASS intent switching clears stale image prompt and leaves image selection explicit
+PASS only an explicitly started learning reply displays a goal summary
+PASS late document poll cannot restore a deleted document
+PASS document poll stops after server reports deletion
+PASS partner matching ignores an older response after a newer match
+PASS partner contacts and invites cannot cross an account change
+PASS partner preference conflict refreshes version and permits retry
+PASS restored history keeps its image preview and original identifier
+PASS closing image preview rejects a late original response
+PASS old account cannot populate an open image preview
+PASS document reading joins adjacent fragments without repeating overlap
+PASS whole-page diagnosis keeps every question and changes practice selection
+PASS late page diagnosis cannot overwrite a newly selected image
+PASS chat confirmation uses the selected page question diagnosis
+PASS empty page recognition cannot create a phantom question
+PASS actual response parser preserves all diagnoses and legacy single-question results
+PASS review back returns to the same diagnosis without popping its route
+PASS source overlay takes precedence over review when returning
+PASS course next step accepts null, undefined and empty route parameters
+PASS course setup keeps named-course and new-course navigation
+PASS portrait practice opens the weakest assessed point in the selected course
+47 request recovery checks passed (actual controller methods; device UI not exercised).

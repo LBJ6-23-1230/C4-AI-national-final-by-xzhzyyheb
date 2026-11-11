@@ -1,0 +1,32 @@
+2026-11-06 15:07–15:17 模拟器核查（Pura 90 / HarmonyOS-6.1.1.125 / API 24）
+
+一、核查前状态：模拟器不可用
+- 残留 4 个 Emulator.exe：Mate X7(14:37:26)、Pura 90(14:41:23)、MatePad Pro 13(14:45:47)、MateBook Pro(14:46:56)。
+- 均无窗口（MainWindowHandle=0）、工作集约 60 MB、无 qemu 子进程；各机 qemu.log 停留在 2026-11-05。
+- 四份 Emulator.log 都停在 UiMain.cpp(InitFeatureConfig:116) "Enable Bgra Configuration"，未进入 CheckImage/CheckAllSign，即卡在启动初始化阶段。
+- `hdc list targets` 仅有 COM5/COM7（蓝牙串口），没有模拟器目标。
+=> 结论：当时的模拟器不能安装或运行任何 HAP。
+
+二、恢复步骤
+- `Stop-Process` 结束 4 个残留实例。
+- `Emulator.exe -hvd "Pura 90" -path "C:/Users/25468/AppData/Local/Huawei/Emulator/deployed" -imageRoot "C:/Users/25468/AppData/Local/Huawei/Sdk"`（不带 DevEco 的 `-t trace_xxx_commandPipe`）。
+- 启动约 30 s 后 `param get bootevent.boot.completed` 返回 true。
+- hdc 不会自动发现该模拟器；需 `hdc tconn 127.0.0.1:5555`（模拟器宿主侧监听 127.0.0.1:5555）。
+- 首轮启动不稳定：安装完成后 15:10:48 guest 内核 panic（"sysrq triggered crash"，Comm: init），模拟器停在 HarmonyOS 开机动画且 hdc 掉线；结束进程重新启动后恢复正常。
+
+三、HAP 核查
+- `hap/知学Mate-signed.hap`：5,458,127 字节，SHA-256 015d180a15752bf541342c1f538dc76aed264539885b2f579a74fb7fc0498310。
+- 与 `deliverables/collaboration-voice-20261106/知学Mate-协同与按住说话-1.0.1-signed.hap`、`app/entry/build/default/outputs/default/entry-default-signed.hap` 哈希一致；上一版备份 `.local-work/collaboration-20261106/previous-signed.hap` 为 ef0670d4…22cb。
+- 15:16 用官方 `hap-sign-tool.jar verify-app` 复验：profile type is debug、Digest verify result true、verify-app success。
+- 包信息：bundle com.zhixue.mate，versionName 1.0.1 / versionCode 1000001 / buildVersion 20261106，minAPIVersion 24，deviceTypes phone/tablet/2in1，buildMode debug。
+- 签名 Profile 设备列表为 11F34EC7…AF10、3DEC080E…1CDB、89135BA5…96A1（3 台真机）；模拟器 UDID 454D55057494E05838360A2635E7E5794442F99CFCE719158B82C00000000000 不在列表内，但安装成功——模拟器不校验 device-ids，真机仍必须在 Profile 内。
+
+四、安装与运行结果
+- `hdc -t 127.0.0.1:5555 install -r hap\知学Mate-signed.hap` => "install bundle successfully"，8.1 s。
+- `bm dump -n com.zhixue.mate` => versionName 1.0.1、versionCode 1000001（覆盖前为 1.0.0/1000000）。
+- 开发者模式不自动解锁，未解锁时 `aa start` 报 10106102；先 `uinput -T -m 660 2500 660 600 500` 上滑解锁。
+- `aa start -a EntryAbility -b com.zhixue.mate` => "start ability successfully"。
+- `aa dump -l` => state #FOREGROUND；进程 com.zhixue.mate 运行中；hilog 未见 fatal/crash。
+- 界面核对：首页显示「知学 Mate / 今日待办 15 项 / 搭子消息」；我的 → 搭子与协同 → 学习搭子推荐页正常渲染，数据来自本机后端（`GET http://127.0.0.1:5000/ready` => 200 {"status":"ready"}，App 默认 10.0.2.2:5000）。
+- 截图：`evidence/emulator-pura90-1.0.1-home-20261106.jpeg`、`evidence/emulator-pura90-1.0.1-partner-20261106.jpeg`。
+- 麦克风权限弹窗已在模拟器点「允许」；真实 CoreSpeechKit 识别效果仍需真机验收（模拟器无真实麦克风）。

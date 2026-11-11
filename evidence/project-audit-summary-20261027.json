@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-27",
+  "backend": {
+    "tests": 734,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "postgresqlIntegrationTests": 19,
+  "frontendGroups": 9,
+  "requestRecoveryChecks": 29,
+  "harmonyBuild": "passed unsigned debug",
+  "realHttpProbeChecks": 16,
+  "gitHubPushPerformed": false,
+  "reports": [
+    "05-决赛准备/项目检查与修复报告-20261027.md",
+    "05-决赛准备/GitHub手动推送-20261027.md"
+  ]
+}

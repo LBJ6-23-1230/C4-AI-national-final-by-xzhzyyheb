@@ -1,0 +1,993 @@
+# -*- coding: utf-8 -*-
+"""鉴权领域逻辑（纯函数式，不依赖 Flask）。
+
+设计取舍（与 `docs/02-登录界面设计与用户数据库方案.md` 一致）
+--------------------------------------------------------------
+1. 本地账号可设置密码；只保存 Werkzeug 生成的加盐哈希，明文不落库、不回传。
+2. **`demo-user` 是保留的游客身份**。未登录 / 「一键体验」/ 离线 Fixture 全部使用它，
+   因此**演示主链的数值与行为完全不受登录功能影响**（`demo/reset` 依然只作用于 demo-user）。
+3. 手机号规范化后可绑定多个独立账号，公开响应只提供脱敏手机号。
+   数据库及备份应按包含个人信息的运行数据管理，不随源码交付。
+4. 全部函数只接收 `Repository`，便于把 `JsonRepository` 换成 `SqliteRepository`
+   （`app/repositories/sqlite_repository.py` 已实现同一套协议，`create_app` 改一行即可）。
+"""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import re
+import secrets
+import threading
+import uuid
+from datetime import datetime, timedelta, timezone
+from functools import wraps
+from typing import Any
+from werkzeug.security import check_password_hash, generate_password_hash
+from pymupdf import Pixmap
+
+from app.repositories.repository import Repository
+from app.repositories.staged_repository import StagedRepository
+
+USERS = "users"
+SESSIONS = "sessions"
+VERIFICATION_CODES = "verification_codes"
+_HUAWEI_PROVIDER = "agc_phone"
+
+DEMO_USER_ID = "demo-user"
+
+SESSION_TTL_DAYS = 30
+
+VERIFICATION_CODE_TTL_SECONDS = 5 * 60
+VERIFICATION_RESEND_SECONDS = 60
+VERIFICATION_DAILY_LIMIT = 10
+VERIFICATION_MAX_ATTEMPTS = 5
+VERIFICATION_LOCK_SECONDS = 15 * 60
+
+_VERIFICATION_LOCK = threading.RLock()
+_AUTH_LOCK = threading.RLock()
+
+_ALLOWED_GRADES = ("大一", "大二", "大三", "大四", "大五", "研一", "研二", "研三", "博士")
+
+_NICKNAME_MIN = 1
+_NICKNAME_MAX = 16
+_PASSWORD_MIN = 6
+_PASSWORD_MAX = 72
+
+_PHONE_REQUIRED = True
+
+
+class AuthError(Exception):
+    """带契约错误码的鉴权异常，由 API 层转成 HTTP 响应。"""
+
+    def __init__(self, error_code: str, message: str, status: int = 400,
+                 details: dict[str, Any] | None = None) -> None:
+        super().__init__(message)
+        self.error_code = error_code
+        self.message = message
+        self.status = status
+        self.details = details or {}
+
+
+def atomic_auth(function):
+    """Publish account changes once, with cross-worker isolation and rollback.
+
+    Expected auth failures may update verification attempt counters. Commit those
+    counters before re-raising outside the SQLite transaction; unexpected failures
+    discard every staged write. Nested auth helpers share the outer operation.
+    """
+    @wraps(function)
+    def wrapped(repository, *args, **kwargs):
+        if isinstance(repository, StagedRepository):
+            return function(repository, *args, **kwargs)
+        failure = None
+        with _AUTH_LOCK, repository.transaction():
+            staged = StagedRepository(repository)
+            try:
+                result = function(staged, *args, **kwargs)
+            except AuthError as error:
+                failure = error
+            staged.commit()
+        if failure is not None:
+            raise failure
+        return result
+    return wrapped
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _iso(moment: datetime) -> str:
+    return moment.replace(microsecond=0).isoformat()
+
+
+def normalize_nickname(raw: Any) -> str:
+    """昵称清洗：去空白、限长、拒绝空值与换行。
+
+    刻意**不做**敏感词过滤等重型校验——那是服务端策略，不是演示工程的职责；
+    但必须挡住空值、超长与纯空白，否则会污染画像页与搭子匹配的展示。
+    """
+    if not isinstance(raw, str):
+        raise AuthError("VALIDATION_ERROR", "昵称必须是字符串", 400)
+    nickname = raw.strip()
+    if len(nickname) < _NICKNAME_MIN:
+        raise AuthError("VALIDATION_ERROR", "昵称不能为空", 400)
+    if len(nickname) > _NICKNAME_MAX:
+        raise AuthError("VALIDATION_ERROR", f"昵称不能超过 {_NICKNAME_MAX} 个字符", 400)
+    if any(ch in nickname for ch in ("\n", "\r", "\t")):
+        raise AuthError("VALIDATION_ERROR", "昵称不能包含换行或制表符", 400)
+    return nickname
+
+
+def normalize_password(raw: Any, *, required: bool = True) -> str:
+    """Validate a password before hashing or verification; plaintext is never persisted."""
+    if raw is None and not required:
+        return ""
+    if not isinstance(raw, str):
+        raise AuthError("VALIDATION_ERROR", "密码必须是字符串", 400)
+    if len(raw) < _PASSWORD_MIN:
+        raise AuthError("VALIDATION_ERROR", f"密码至少 {_PASSWORD_MIN} 位", 400)
+    if len(raw) > _PASSWORD_MAX:
+        raise AuthError("VALIDATION_ERROR", f"密码不能超过 {_PASSWORD_MAX} 位", 400)
+    return raw
+
+
+def _verify_password(user: dict[str, Any], raw: Any) -> None:
+    """校验密码；**从未设过密码的账号不能用密码登录**。
+
+    ⚠️ 原实现遇到空 `passwordHash` 直接 `return`（本意是"兼容历史免密账号"），
+    但登录接口在**任何**密码下都会走到这里并放行 —— 于是验证码注册出来的账号
+    （`verify_verification_code` → `register_user` 在验证码链路里收不到 password，
+    存的是空串）**用任意密码（含空串、乱码）都能登进去**，密码形同虚设。
+    已按界面路径实测复现：验证码建号 → 密码登录输入 `zzzzzz` → 200。
+
+    这些账号本来就该走验证码登录，所以这里如实拒绝并给出路，而不是静默放行。
+    """
+    stored = user.get("passwordHash")
+    if not isinstance(stored, str) or not stored:
+        raise AuthError(
+            "UNAUTHORIZED",
+            "该账号还没有设置密码，请改用「验证码登录」（或注册时设置密码）。",
+            401)
+    password = normalize_password(raw)
+    if not check_password_hash(stored, password):
+        raise AuthError("UNAUTHORIZED", "账号或密码错误", 401)
+
+
+def normalize_grade(raw: Any) -> str:
+    """年级：允许缺省；给了就必须是白名单内的值（避免前端传任意串污染展示）。"""
+    if raw is None:
+        return ""
+    if not isinstance(raw, str):
+        raise AuthError("VALIDATION_ERROR", "年级必须是字符串", 400)
+    grade = raw.strip()
+    if not grade:
+        return ""
+    if grade not in _ALLOWED_GRADES:
+        raise AuthError("VALIDATION_ERROR", f"年级必须是以下之一：{'/'.join(_ALLOWED_GRADES)}", 400)
+    return grade
+
+
+_PHONE_RE = re.compile(r"^1[3-9]\d{9}$")
+
+
+def normalize_phone(raw: Any, *, required: bool = True) -> str:
+    """手机号清洗与校验。
+
+    接受常见写法并统一：`+86 138-0000-0000`、`138 0000 0000`、
+    `(86)13800000000` → 一律归一为 `13800000000`。
+
+    ⚠️ **不做真实性校验**。真实场景需要短信验证码证明"这个号是本人的"，
+    本函数只保证**格式合法且归一**。验证码链路见
+    `docs/11-用户登录体系方案.md` §5.2。
+    """
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        if required:
+            raise AuthError("VALIDATION_ERROR", "手机号不能为空", 400)
+        return ""
+    if not isinstance(raw, str):
+        raise AuthError("VALIDATION_ERROR", "手机号必须是字符串", 400)
+
+    digits = re.sub(r"[^\d]", "", raw)
+    if digits.startswith("86") and len(digits) == 13:
+        digits = digits[2:]
+    if not _PHONE_RE.match(digits):
+        raise AuthError("VALIDATION_ERROR", "手机号格式不正确（应为 11 位中国大陆号码）", 400)
+    return digits
+
+
+def mask_phone(phone: str) -> str:
+    """脱敏展示：138****0000。
+
+    对外接口一律返回脱敏值 —— 手机号是个人敏感信息，
+    没有必要完整回传给客户端（客户端只需要"能认出是哪个号"）。
+    """
+    if not isinstance(phone, str) or len(phone) != 11:
+        return ""
+    return f"{phone[:3]}****{phone[-4:]}"
+
+
+def _parse_optional_time(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment
+
+
+def _seconds_until(now: datetime, target: datetime) -> int:
+    return max(1, int((target - now).total_seconds() + 0.999))
+
+
+def _verification_hash(code: str, salt: str) -> str:
+    return hashlib.sha256(f"{salt}:{code}".encode("ascii")).hexdigest()
+
+
+def _verification_provider_configured() -> bool:
+    return bool((os.getenv("SMS_PROVIDER") or "").strip())
+
+
+def _verification_production_mode() -> bool:
+    """是否"生产模式"（决定验证码是否回显给客户端）。
+
+    ⚠️ 默认值必须是**生产**。原来写成 `or "development"`，意味着"忘了设
+    `ZHIXUE_ENV`"的部署会**静默进入开发模式**：验证码直接回显在响应里
+    （`devCode`），配合"验证码路径不校验密码"，等于知道手机号就能登入他人账号。
+
+    要开发模式请**显式**设 `ZHIXUE_ENV=development` —— 项目自带的 `.env`
+    就是这么为演示打开的，所以演示链路完全不受影响。
+    """
+    return (os.getenv("ZHIXUE_ENV") or "production").strip().lower() not in {
+        "dev", "development"}
+
+
+def _empty_verification_code(record: dict[str, Any]) -> None:
+    record["codeHash"] = ""
+    record["salt"] = ""
+    record["codeExpiresAt"] = ""
+
+
+def _new_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def _new_user_id() -> str:
+    return f"u-{uuid.uuid4().hex[:12]}"
+
+
+def needs_password_setup(user: dict[str, Any]) -> bool:
+    """Verified Huawei-only accounts authenticate through Account Kit."""
+    huawei_only = (user.get("authProvider") == _HUAWEI_PROVIDER
+                   and user.get("huaweiAccountVerified") is True
+                   and not user.get("phone"))
+    return not user.get("passwordHash") and not huawei_only
+
+
+def _public_user(user: dict[str, Any]) -> dict[str, Any]:
+    """对外的用户视图：**绝不**返回 token、auth_subject 等内部字段。
+
+    手机号以**脱敏形式**返回（`138****0000`）：客户端只需要"能认出是哪个号"，
+    完整号码没有必要回传，减少泄漏面。
+    """
+    return {
+        "userId": user.get("userId"),
+        "nickname": user.get("nickname", ""),
+        "avatar": user.get("avatar", ""),
+        "grade": user.get("grade", ""),
+        "authProvider": user.get("authProvider", "guest"),
+        "phoneMasked": mask_phone(user.get("phone", "")),
+        "hasPhone": bool(user.get("phone")),
+        "needsPasswordSetup": needs_password_setup(user),
+        "createdAt": user.get("createdAt", ""),
+        "lastLoginAt": user.get("lastLoginAt", ""),
+    }
+
+
+def create_session(repository: Repository, user_id: str) -> dict[str, Any]:
+    token = _new_token()
+    expires_at = _now() + timedelta(days=SESSION_TTL_DAYS)
+    session = {
+        "token": token,
+        "userId": user_id,
+        "createdAt": _iso(_now()),
+        "expiresAt": _iso(expires_at),
+    }
+    repository.save(SESSIONS, token, session)
+    return session
+
+
+def resolve_session(repository: Repository, token: str) -> dict[str, Any] | None:
+    """把 token 换成用户；过期或不存在返回 None（不抛异常，便于中间件安全降级）。"""
+    if not token or token.startswith("sha256:"):
+        return None
+    session = repository.get(SESSIONS, token)
+    if session is None:
+        return None
+    expires_raw = str(session.get("expiresAt", ""))
+    try:
+        expires_at = datetime.fromisoformat(expires_raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < _now():
+        repository.delete(SESSIONS, token)
+        return None
+    user_id = str(session.get("userId", ""))
+    if not user_id:
+        return None
+    user = repository.get(USERS, user_id)
+    return user if user is not None and user.get("status") == "active" else None
+
+
+@atomic_auth
+def revoke_session(repository: Repository, token: str) -> bool:
+    if not token or repository.get(SESSIONS, token) is None:
+        return False
+    repository.delete(SESSIONS, token)
+    return True
+
+
+@atomic_auth
+def revoke_all_sessions(repository: Repository, user_id: str) -> int:
+    """注销账号 / 安全事件时清空该用户所有会话。"""
+    deletes: list[tuple[str, str]] = []
+    for session in repository.list(SESSIONS):
+        if session.get("userId") == user_id:
+            deletes.append((SESSIONS, str(session.get("token", ""))))
+    repository.apply_batch(deletes, [])
+    return len(deletes)
+
+
+def find_users_by_nickname(repository: Repository, nickname: Any) -> list[dict[str, Any]]:
+    """按昵称查账号（大小写与首尾空白不敏感）。
+
+    为什么需要它：原先前端「登录」标签下的唯一动作是 `register()`，
+    所以用同一个昵称再点一次会**又建一个新账号**（实测：
+    两次注册 `张三` 得到两个不同 userId）。用户以为自己登录了，
+    实际上旧画像永远读不到 —— 这是登录页最实际的缺陷。
+
+    昵称**不唯一**，所以这里返回列表，由调用方决定：
+    * 恰好 1 个 → 直接登入该账号
+    * 0 个     → 提示"账号不存在，请先注册"
+    * 多个     → 要求用户改用更精确的方式（当前实现返回 409 让用户换昵称）
+    """
+    if not isinstance(nickname, str) or not nickname.strip():
+        return []
+    target = nickname.strip().casefold()
+    matches: list[dict[str, Any]] = []
+    for user in repository.list(USERS):
+        if not isinstance(user, dict) or user.get("status") != "active":
+            continue
+        stored = user.get("nickname")
+        if isinstance(stored, str) and stored.strip().casefold() == target:
+            matches.append(user)
+    return matches
+
+
+@atomic_auth
+def login_by_nickname(repository: Repository, nickname: Any, password: Any = None) -> dict:
+    raise AuthError("VALIDATION_ERROR", "请使用手机号和密码登录，昵称仅用于展示", 400)
+
+
+def find_users_by_phone(repository: Repository, phone: Any) -> list[dict[str, Any]]:
+    normalized = normalize_phone(phone, required=False)
+    if not normalized:
+        return []
+    return sorted([u for u in repository.query(USERS, {"phone": normalized})
+                   if isinstance(u, dict) and u.get("status") == "active" and u.get("phone") == normalized],
+                  key=lambda u: (u.get("createdAt", ""), u["userId"]))
+
+
+def find_user_by_phone(repository: Repository, phone: Any) -> dict[str, Any] | None:
+    users = find_users_by_phone(repository, phone)
+    return users[0] if users else None
+
+
+def _account_choices(repository: Repository, users: list[dict], *, sms: bool = False) -> dict:
+    token = secrets.token_urlsafe(32)
+    repository.save("account_choices", hashlib.sha256(token.encode()).hexdigest(), {
+        "userIds": [u["userId"] for u in users], "sms": sms,
+        "expiresAt": _iso(_now() + timedelta(minutes=5)), "used": False})
+    return {"accounts": [_public_user(u) for u in users], "selectionToken": token}
+
+
+@atomic_auth
+def select_account(repository: Repository, token: Any, account_id: Any, password: Any = None) -> dict:
+    raise AuthError("ACCOUNT_SWITCH_DISABLED", "账号选择已停用，请使用手机号和密码登录；历史重复账号需先迁移", 409)
+
+
+@atomic_auth
+def login_by_phone(repository: Repository, phone: Any, password: Any = None, *, verify_secret: bool = True) -> dict:
+    clean_phone = normalize_phone(phone)
+    if verify_secret:
+        normalize_password(password)
+    users = find_users_by_phone(repository, clean_phone)
+    if not users:
+        raise AuthError("AUTH_INVALID", "手机号或密码不正确", 401)
+    if len(users) != 1:
+        raise AuthError("ACCOUNT_MIGRATION_REQUIRED", "该手机号有历史重复账号，请先由管理员确认主账号并迁移", 409)
+    user = users[0]
+    if verify_secret:
+        try:
+            _verify_password(user, password)
+        except AuthError:
+            raise AuthError("AUTH_INVALID", "手机号或密码不正确", 401)
+    session = create_session(repository, user['userId'])
+    user['lastLoginAt'] = _iso(_now())
+    repository.save(USERS, user['userId'], user)
+    return dict(user=_public_user(user), token=session['token'], expiresAt=session['expiresAt'],
+                needsPasswordSetup=needs_password_setup(user))
+
+
+def _avatar_dimensions(raw: bytes) -> tuple[int, int]:
+    import struct
+    if raw.startswith(b"\x89PNG\r\n\x1a\n") and len(raw) >= 24:
+        return struct.unpack(">II", raw[16:24])
+    if not raw.startswith(b"\xff\xd8\xff"):
+        raise ValueError("invalid raster image")
+    offset = 2
+    while offset < len(raw):
+        if raw[offset] != 255:
+            break
+        while offset < len(raw) and raw[offset] == 255:
+            offset += 1
+        marker = raw[offset]
+        offset += 1
+        if marker in (0xD9, 0xDA):
+            break
+        length = int.from_bytes(raw[offset:offset + 2], "big")
+        if length < 2 or offset + length > len(raw):
+            break
+        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+            height, width = struct.unpack(">HH", raw[offset + 3:offset + 7])
+            return width, height
+        offset += length
+    raise ValueError("invalid image dimensions")
+
+
+def normalize_avatar(value: Any) -> str:
+    """Only persist a small decoded raster image, never a client file path or URL."""
+    import base64
+    if value == "":
+        return ""
+    if not isinstance(value, str) or len(value) > 180000:
+        raise AuthError("VALIDATION_ERROR", "头像图片过大，请重新选择", 400)
+    header, separator, encoded = value.partition(",")
+    if not separator or header not in ("data:image/jpeg;base64", "data:image/png;base64"):
+        raise AuthError("VALIDATION_ERROR", "头像需为 JPEG 或 PNG 图片", 400)
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+        if len(raw) > 128 * 1024:
+            raise ValueError("image too large")
+        if not (raw.startswith(b"\x89PNG\r\n\x1a\n") or raw.startswith(b"\xff\xd8\xff")):
+            raise ValueError("invalid raster image")
+        width, height = _avatar_dimensions(raw)
+        if not (1 <= width <= 512 and 1 <= height <= 512):
+            raise ValueError("invalid dimensions")
+        if width != height:
+            raise ValueError("avatar must be square")
+        pixels = Pixmap(raw)
+        if pixels.width != width or pixels.height != height:
+            raise ValueError("invalid image dimensions")
+    except Exception as error:
+        raise AuthError("VALIDATION_ERROR", "头像无效，请重新选择图片", 400) from error
+    return value
+
+
+def update_account_profile(repository: Repository, user_id: str, data: dict) -> dict:
+    user = repository.get(USERS, user_id)
+    if user is None or user.get("status") != "active":
+        raise AuthError("UNAUTHORIZED", "登录已失效，请重新登录", 401)
+    if not data or set(data) - {"nickname", "avatar"}:
+        raise AuthError("VALIDATION_ERROR", "仅支持修改昵称和头像", 400)
+    updates = {}
+    if "nickname" in data:
+        updates["nickname"] = normalize_nickname(data["nickname"])
+    if "avatar" in data:
+        updates["avatar"] = data["avatar"] if isinstance(data["avatar"], str) and data["avatar"] == user.get("avatar", "") else normalize_avatar(data["avatar"])
+    return _commit_account_profile(repository, user_id, updates)
+
+
+@atomic_auth
+def _commit_account_profile(repository: Repository, user_id: str, updates: dict) -> dict:
+    user = repository.get(USERS, user_id)
+    if user is None or user.get("status") != "active":
+        raise AuthError("UNAUTHORIZED", "登录已失效，请重新登录", 401)
+    if any(user.get(key, "") != value for key, value in updates.items()):
+        user.update(updates)
+        repository.save(USERS, user_id, user)
+    return {"user": _public_user(user)}
+
+
+@atomic_auth
+def change_password(repository: Repository, user_id: Any,
+                    old_password: Any, new_password: Any) -> dict[str, Any]:
+    """修改 / 首次设置密码。**必须已登录**（由 API 层用 Bearer token 解析出 user_id）。
+
+    两种情形，语义不同但都只认"登录态"这一层凭据：
+    * 账号**已设过密码** → 必须验证旧密码，错了返回 401（不能凭 token 直接改掉别人的密码）；
+    * 账号**从未设过密码**（验证码建号）→ 这是"首次设置"，无需旧密码 ——
+      因为此刻能调用的前提就是持有有效会话。
+
+    ⚠️ 为什么要有这个接口：「我的 → 账号与密码管理」这个入口一直存在，
+    但**没有任何密码管理能力**（实测反馈：「APP 目前没有修改密码的入口，
+    需要增加一个用户自己修改密码的功能」）。而且验证码建出来的账号是无密码的，
+    没有这个接口就永远补不上密码。
+
+    本接口**不吊销其它会话**：改密码后当前设备继续可用，换密码不影响正在用的人。
+    """
+    user = repository.get(USERS, user_id) if isinstance(user_id, str) and user_id else None
+    if user is None or user.get("status") != "active":
+        raise AuthError("UNAUTHORIZED", "登录已失效，请重新登录", 401)
+
+    stored = user.get("passwordHash")
+    had_password = isinstance(stored, str) and bool(stored)
+    if had_password:
+        if not check_password_hash(stored, normalize_password(old_password)):
+            raise AuthError("UNAUTHORIZED", "原密码不正确", 401)
+
+    clean_new = normalize_password(new_password)
+    user["passwordHash"] = generate_password_hash(clean_new)
+    repository.save(USERS, user["userId"], user)
+    return {"status": "ok", "hasPassword": True, "wasFirstTime": not had_password}
+
+
+@atomic_auth
+def send_verification_code(repository: Repository, phone: Any,
+                           *, now: datetime | None = None) -> dict[str, Any]:
+    """签发手机号验证码；开发环境回显 devCode，生产环境不回显。
+
+    限流与锁定都作用于同一手机号：60 秒重发间隔、滚动 24 小时最多 10 次。
+    验证码本身只以 `sha256(code + salt)` 形式保存。
+    """
+    clean_phone = normalize_phone(phone)
+    current = now or _now()
+    with _VERIFICATION_LOCK:
+        record = repository.get(VERIFICATION_CODES, clean_phone) or {}
+
+        locked_until = _parse_optional_time(record.get("lockedUntil"))
+        if locked_until is not None and locked_until > current:
+            raise AuthError(
+                "PHONE_LOCKED",
+                "该手机号因验证码错误次数过多已被临时锁定",
+                429,
+                {"retryAfterSeconds": _seconds_until(current, locked_until)},
+            )
+
+        last_sent_at = _parse_optional_time(record.get("lastSentAt"))
+        if last_sent_at is not None:
+            resend_at = last_sent_at + timedelta(seconds=VERIFICATION_RESEND_SECONDS)
+            if current < resend_at:
+                raise AuthError(
+                    "RATE_LIMITED",
+                    f"验证码发送过于频繁，请 {_seconds_until(current, resend_at)} 秒后再试",
+                    429,
+                    {"retryAfterSeconds": _seconds_until(current, resend_at)},
+                )
+
+        window_started_at = _parse_optional_time(record.get("windowStartedAt"))
+        try:
+            send_count = int(record.get("sendCount", 0))
+        except (TypeError, ValueError):
+            send_count = 0
+        window_expired = (
+            window_started_at is None
+            or current >= window_started_at + timedelta(hours=24)
+        )
+        if window_expired:
+            window_started_at = current
+            send_count = 0
+        if send_count >= VERIFICATION_DAILY_LIMIT:
+            raise AuthError(
+                "DAILY_LIMIT_REACHED",
+                f"该手机号 24 小时内最多发送 {VERIFICATION_DAILY_LIMIT} 次验证码",
+                429,
+                {"limit": VERIFICATION_DAILY_LIMIT},
+            )
+
+        if _verification_provider_configured():
+            raise AuthError(
+                "SMS_PROVIDER_UNAVAILABLE",
+                "短信服务商已配置，但当前构建未接入发送适配器",
+                503,
+            )
+        if _verification_production_mode():
+            raise AuthError(
+                "SMS_NOT_CONFIGURED",
+                "生产环境未配置短信服务商，拒绝回显开发验证码",
+                503,
+            )
+
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        salt = secrets.token_hex(16)
+        previous_lock_expired = (
+            locked_until is not None and locked_until <= current)
+        try:
+            failed_attempts = int(record.get("failedAttempts", 0))
+        except (TypeError, ValueError):
+            failed_attempts = 0
+        if previous_lock_expired:
+            failed_attempts = 0
+
+        record.update({
+            "phone": clean_phone,
+            "codeHash": _verification_hash(code, salt),
+            "salt": salt,
+            "codeIssuedAt": _iso(current),
+            "codeExpiresAt": _iso(
+                current + timedelta(seconds=VERIFICATION_CODE_TTL_SECONDS)),
+            "lastSentAt": _iso(current),
+            "windowStartedAt": _iso(window_started_at),
+            "sendCount": send_count + 1,
+            "failedAttempts": failed_attempts,
+            "lockedUntil": "",
+        })
+        repository.save(VERIFICATION_CODES, clean_phone, record)
+
+    return {
+        "phoneMasked": mask_phone(clean_phone),
+        "expiresInSeconds": VERIFICATION_CODE_TTL_SECONDS,
+        "resendAfterSeconds": VERIFICATION_RESEND_SECONDS,
+        "smsDelivered": False,
+        "devCode": code,
+    }
+
+
+@atomic_auth
+def verify_verification_code(repository: Repository, phone: Any, code: Any,
+                             nickname: Any = None, grade: Any = None,
+                             *, now: datetime | None = None,
+                             with_demo_data: bool = False) -> dict[str, Any]:
+    """校验验证码；通过后自动登录已有账号，或注册新账号。
+
+    `with_demo_data` 只在**本次真的建了新号**时起作用（见
+    `provision_starter_profile`）；对已有账号的登录没有影响。
+    """
+    clean_phone = normalize_phone(phone)
+    if not isinstance(code, str) or not re.fullmatch(r"\d{6}", code.strip()):
+        raise AuthError("VALIDATION_ERROR", "验证码必须是 6 位数字", 400)
+    clean_code = code.strip()
+    current = now or _now()
+
+    with _VERIFICATION_LOCK:
+        record = repository.get(VERIFICATION_CODES, clean_phone)
+        if record is None:
+            raise AuthError("CODE_NOT_FOUND", "请先获取验证码", 400)
+
+        locked_until = _parse_optional_time(record.get("lockedUntil"))
+        if locked_until is not None and locked_until > current:
+            raise AuthError(
+                "PHONE_LOCKED",
+                "该手机号因验证码错误次数过多已被临时锁定",
+                429,
+                {"retryAfterSeconds": _seconds_until(current, locked_until)},
+            )
+
+        code_hash = record.get("codeHash")
+        salt = record.get("salt")
+        code_expires_at = _parse_optional_time(record.get("codeExpiresAt"))
+        if not isinstance(code_hash, str) or not code_hash or not isinstance(salt, str):
+            raise AuthError("CODE_NOT_FOUND", "验证码不存在或已被使用", 400)
+        if code_expires_at is None or code_expires_at <= current:
+            _empty_verification_code(record)
+            repository.save(VERIFICATION_CODES, clean_phone, record)
+            raise AuthError("CODE_EXPIRED", "验证码已过期，请重新获取", 400)
+
+        expected_hash = _verification_hash(clean_code, salt)
+        if not secrets.compare_digest(expected_hash, code_hash):
+            try:
+                failed_attempts = int(record.get("failedAttempts", 0)) + 1
+            except (TypeError, ValueError):
+                failed_attempts = 1
+            record["failedAttempts"] = failed_attempts
+            if failed_attempts >= VERIFICATION_MAX_ATTEMPTS:
+                locked_until = current + timedelta(seconds=VERIFICATION_LOCK_SECONDS)
+                record["lockedUntil"] = _iso(locked_until)
+                repository.save(VERIFICATION_CODES, clean_phone, record)
+                raise AuthError(
+                    "PHONE_LOCKED",
+                    "验证码错误次数过多，该手机号已锁定 15 分钟",
+                    429,
+                    {"retryAfterSeconds": _seconds_until(current, locked_until)},
+                )
+            repository.save(VERIFICATION_CODES, clean_phone, record)
+            raise AuthError(
+                "INVALID_CODE",
+                "验证码错误",
+                400,
+                {"remainingAttempts": VERIFICATION_MAX_ATTEMPTS - failed_attempts},
+            )
+
+        existing = find_user_by_phone(repository, clean_phone)
+        clean_nickname = None
+        clean_grade = None
+        if existing is None:
+            clean_nickname = normalize_nickname(
+                nickname if nickname else "知学用户-" + secrets.token_hex(2).upper())
+            clean_grade = normalize_grade(grade)
+
+        _empty_verification_code(record)
+        record.update({
+            "failedAttempts": 0,
+            "lockedUntil": "",
+            "lastVerifiedAt": _iso(current),
+        })
+        repository.save(VERIFICATION_CODES, clean_phone, record)
+
+        if existing is not None:
+            result = login_by_phone(repository, clean_phone, verify_secret=False)
+            return {**result, "created": False}
+
+        result = register_user(repository, clean_nickname, clean_grade, clean_phone, verified_phone=True)
+        seeded = provision_starter_profile(
+            repository, result["user"]["userId"], result["user"]["nickname"],
+            with_demo_data=with_demo_data)
+        return {**result, "created": True, "demoDataSeeded": seeded, "needsPasswordSetup": True}
+
+
+@atomic_auth
+def register_user(repository: Repository, nickname: Any, grade: Any = None,
+                  phone: Any = None, password: Any = None, *, verified_phone: bool = False) -> dict[str, Any]:
+    """创建账号：昵称 + 年级 + 手机号 + 可选密码 → userId + token。
+
+    同一手机号可以创建多个独立账号；手机号登录时通过选择凭据确认具体账号。
+
+    昵称**有意允许重复**（`_new_user_id()` 保证 userId 唯一即可）。
+    但调用方若要避免"用户以为在登录、实际在新建账号"，应先走
+    `login_by_phone()` / `login_by_nickname()`，只在确实查无此账号时才注册。
+    """
+    clean_nickname = normalize_nickname(nickname if nickname is not None and nickname != '' else '知学用户-' + secrets.token_hex(2).upper())
+    clean_grade = normalize_grade(grade)
+    clean_phone = normalize_phone(phone, required=True)
+    clean_password = normalize_password(password, required=not verified_phone)
+    if find_users_by_phone(repository, clean_phone):
+        raise AuthError('PHONE_ALREADY_REGISTERED', '该手机号已注册，请直接登录或找回密码', 409)
+
+    user_id = _new_user_id()
+    while repository.get(USERS, user_id) is not None:
+        user_id = _new_user_id()
+
+    timestamp = _iso(_now())
+    user = {
+        "userId": user_id,
+        "nickname": clean_nickname,
+        "grade": clean_grade,
+        "phone": clean_phone,
+        "avatar": "",
+        "authProvider": "local",
+        "authSubject": "",
+        "status": "active",
+        "createdAt": timestamp,
+        "lastLoginAt": timestamp,
+        "passwordHash": generate_password_hash(clean_password) if clean_password else "",
+    }
+    repository.save(USERS, user_id, user)
+    session = create_session(repository, user_id)
+
+    return {"user": _public_user(user), "token": session["token"],
+            "expiresAt": session["expiresAt"]}
+
+
+@atomic_auth
+def login_user(repository: Repository, user_id: Any, token: Any) -> dict[str, Any]:
+    """用已保存的 (userId, token) 恢复登录态。
+
+    这是「免密登录」的合理形式：token 就是凭据，等价于长期会话票据。
+    """
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise AuthError("VALIDATION_ERROR", "userId 不能为空", 400)
+    if not isinstance(token, str) or not token.strip():
+        raise AuthError("VALIDATION_ERROR", "token 不能为空", 400)
+
+    user = repository.get(USERS, user_id.strip())
+    if user is None or user.get("status") != "active":
+        raise AuthError("UNAUTHORIZED", "账号不存在或已注销，请重新注册", 401)
+
+    session = repository.get(SESSIONS, token.strip())
+    if session is None or session.get("userId") != user_id.strip():
+        raise AuthError("UNAUTHORIZED", "登录已失效，请重新登录", 401)
+
+    refreshed = resolve_session(repository, token.strip())
+    if refreshed is None:
+        raise AuthError("UNAUTHORIZED", "登录已过期，请重新登录", 401)
+
+    user["lastLoginAt"] = _iso(_now())
+    repository.save(USERS, user_id.strip(), user)
+    return {"user": _public_user(user), "token": token.strip(),
+            "expiresAt": session.get("expiresAt", "")}
+
+
+@atomic_auth
+def login_with_huawei(repository: Repository, open_id: str, union_id: str) -> dict[str, Any]:
+    """Open an app session using an OpenID already verified with Account Kit."""
+    timestamp = _iso(_now())
+    for user in repository.list(USERS):
+        if (isinstance(user, dict) and user.get("status") == "active"
+                and user.get("authProvider") == _HUAWEI_PROVIDER
+                and user.get("authSubject") == open_id):
+            user_id = user["userId"]
+            if user.get("huaweiAccountVerified") is not True:
+                revoke_all_sessions(repository, user_id)
+                provision_starter_profile(repository, user_id, user.get("nickname") or "华为用户")
+                user["huaweiAccountVerified"] = True
+            user["lastLoginAt"] = timestamp
+            repository.save(USERS, user_id, user)
+            session = create_session(repository, user_id)
+            return {"user": _public_user(user), "token": session["token"],
+                    "expiresAt": session["expiresAt"], "created": False,
+                    "needsPasswordSetup": needs_password_setup(user)}
+
+    nickname = "华为用户-" + secrets.token_hex(2).upper()
+    user_id = _new_user_id()
+    while repository.get(USERS, user_id) is not None:
+        user_id = _new_user_id()
+
+    user = {
+        "userId": user_id,
+        "nickname": nickname,
+        "grade": "",
+        "phone": "",
+        "avatar": "",
+        "authProvider": _HUAWEI_PROVIDER,
+        "authSubject": open_id,
+        "authUnionId": union_id,
+        "huaweiAccountVerified": True,
+        "status": "active",
+        "createdAt": timestamp,
+        "lastLoginAt": timestamp,
+    }
+    repository.save(USERS, user_id, user)
+    seeded = provision_starter_profile(repository, user_id, nickname)
+    session = create_session(repository, user_id)
+    return {"user": _public_user(user), "token": session["token"],
+            "expiresAt": session["expiresAt"], "created": True,
+            "demoDataSeeded": seeded, "needsPasswordSetup": False}
+
+
+def get_user(repository: Repository, user_id: str) -> dict[str, Any] | None:
+    user = repository.get(USERS, user_id)
+    if user is None or user.get("status") != "active":
+        return None
+    return _public_user(user)
+
+
+@atomic_auth
+def deactivate_user(repository: Repository, user_id: str) -> bool:
+    """注销账号：标记停用 + 清空全部会话。
+
+    合规要求（《个人信息保护法》账号注销权）。演示工程采取**软删除**：
+    保留 users 行的 status 标记以便审计，但立即断开所有登录入口。
+    真实生产环境还应级联清理该用户的画像 / 计划 / 对话等衍生数据。
+    """
+    user = repository.get(USERS, user_id)
+    if user is None:
+        return False
+    for shared in repository.list('shared_study_tasks'):
+        if user_id not in shared.get('members', []):
+            continue
+        for plan in repository.list('plans'):
+            if plan.get('userId') not in shared['members']:
+                continue
+            before = len(plan.get('tasks', [])) + len(plan.get('unscheduledTasks', []))
+            for field in ('tasks', 'unscheduledTasks'):
+                plan[field] = [t for t in plan.get(field, []) if t['taskId'] != shared['taskId']]
+            if before != len(plan['tasks']) + len(plan['unscheduledTasks']):
+                plan['version'] = plan.get('version', 0) + 1
+                plan.pop('budgetSummary', None)
+                repository.save('plans', plan['planId'], plan)
+        repository.delete('shared_study_tasks', shared['taskId'])
+    for task in repository.query('study_tasks', {'userId': user_id}):
+        repository.delete('study_tasks', task['taskId'])
+    from app.services.chat_documents import clear as clear_documents
+    clear_documents(repository, user_id)
+    user["status"] = "deactivated"
+    user["deactivatedAt"] = _iso(_now())
+    repository.save(USERS, user_id, user)
+    revoke_all_sessions(repository, user_id)
+    if hasattr(repository, "purge_user_data"):
+        repository.purge_user_data(user_id)
+    return True
+
+
+@atomic_auth
+def provision_starter_profile(repository: Repository, user_id: str, nickname: str,
+                              with_demo_data: bool = False) -> bool:
+    """给新账号预置画像；**是否连演示数据一起写入由调用方决定**。
+
+    为什么需要预置：`/api/v1/profile/{userId}` 在画像不存在时返回 404（契约如此），
+    而新账号没有任何学习证据。若不预置，登录后首页会立刻报「画像不存在」。
+    这里给一份空壳，让「学习 → 判分 → 掌握度提升」的完整叙事
+    对真实账号同样成立——**这正是登录功能的价值所在**。
+
+    `with_demo_data` 的默认值是 `False`，这是刻意的
+    ------------------------------------------------
+    原实现对**每个**新账号都写死「二叉树后序遍历 + 30 分钟计划」，用户实测反馈：
+    「创建一个新账号最好不直接给出已经写死的数据……否则会给用户一种虚假的感觉，
+    用户登录应该做到的事自己上传然后进行一系列的智能体操作。」
+
+    所以现在：
+
+    * `with_demo_data=False`（默认）→ 只建**空画像**（`mastery=[]`、`freeTimeSlots=[]`），
+      **不建任何计划**。画像与计划都由用户自己的练习/工作流产生
+      （`POST /api/v1/workflows` 在"没有计划"时会先跑 planner 步骤，见
+      `app/api/workflows.py::_next_step`，所以从零开始的账号依然走得通完整闭环）。
+    * `with_demo_data=True` → 保持原行为（写死二叉树知识点 + 起始计划），
+      给"我就想快速看看完整闭环"的用户用。
+
+    为什么空画像也要建：不建的话前端首页会立刻 404；建了空壳则
+    `mastery=[]` 是**如实**的（"还不知道你会什么"），不是编出来的数字。
+
+    关于 `goal`：`LearnerProfile` 的领域约束要求 `goal` 非空
+    （`app/domain/profile.py::__post_init__` 会抛 `ValueError`），
+    所以这里仍然填 `{昵称}的学习目标`。它与 mastery / plan 的区别是：它只是一个
+    **用用户自己的昵称拼出来的标题**，没有对"用户会什么、该学什么"做任何断言，
+    因此不会造成上面那种"虚假感"；`freeTimeSlots` / `mastery` 才是会对下游
+    （画像页、对话上下文、计划）产生断言的数据，所以从零开始时不写死。
+
+    返回：**本次是否真的写入了演示数据**。调用方据此在响应里回 `demoDataSeeded`，
+    让前端能如实告诉用户这次到底载没载演示数据（已存在的画像不会被覆盖，返回 False）。
+
+    注意：`demo-user` 的演示基线（mastery=42 / Plan V1 [30,30]）由
+    `app/api/demo.py` 单独维护，本函数与它互不干扰。
+    """
+    if repository.get("profiles", user_id) is not None:
+        return False
+
+    from app.domain.plan import LearningPlan
+    from app.domain.profile import KnowledgeMastery, LearnerProfile
+
+    if not with_demo_data:
+        profile = LearnerProfile(user_id, f"{nickname}的学习目标", None, [], 1, [])
+        repository.save("profiles", user_id, profile.to_dict())
+        return False
+
+    timestamp = _now()
+    profile = LearnerProfile(
+        user_id,
+        f"{nickname}的学习目标",
+        None,
+        ["20:00-22:00"],
+        1,
+        [KnowledgeMastery("binary-tree-postorder", 0, 0.2, timestamp, "二叉树后序遍历")],
+    )
+    repository.save("profiles", user_id, profile.to_dict())
+
+    plan = LearningPlan(
+        f"plan-{user_id}",
+        1,
+        [{"taskId": "task-postorder", "knowledgePointId": "binary-tree-postorder",
+          "knowledgePointName": "二叉树后序遍历", "durationMinutes": 30,
+          "status": "pending", "priority": "high"}],
+        1,
+        "新账号起始计划：从二叉树后序遍历开始",
+        user_id,
+    )
+    repository.save("plans", plan.plan_id, plan.to_dict())
+    return True
+
+
+@atomic_auth
+def register_and_provision(repository: Repository, nickname: Any, grade: Any = None,
+                           phone: Any = None, password: Any = None,
+                           with_demo_data: bool = False) -> dict:
+    result = register_user(repository, nickname, grade, phone, password)
+    seeded = provision_starter_profile(repository, result["user"]["userId"], result["user"]["nickname"],
+                                       with_demo_data=with_demo_data)
+    return {**result, "demoDataSeeded": seeded, "needsPasswordSetup": False}
+
+
+_BEARER_PATTERN = re.compile(r"^Bearer\s+(?P<token>.+)$", re.IGNORECASE)
+
+
+def parse_bearer(header_value: str | None) -> str:
+    """从 `Authorization: Bearer <token>` 中取出 token；格式不符返回空串。"""
+    if not header_value:
+        return ""
+    matched = _BEARER_PATTERN.match(header_value.strip())
+    return matched.group("token").strip() if matched else ""

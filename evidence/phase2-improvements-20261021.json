@@ -1,0 +1,78 @@
+{
+  "recordDate": "2026-10-21",
+  "baseCommit": "7d58fb707e418b83566201e12e6d721a384fb6be",
+  "hasUncommittedChanges": true,
+  "scope": [
+    "active focus and unsaved draft recovery",
+    "atomic normal exercise submission",
+    "specialist plan total-minute budget",
+    "incremental discovery-driven plan refresh"
+  ],
+  "backend": {
+    "passed": 467,
+    "warnings": 1,
+    "durationSeconds": 23.45,
+    "newRegressionCases": 25,
+    "externalModelsIsolated": true
+  },
+  "frontend": {
+    "buildPassed": true,
+    "buildSeconds": 24.644,
+    "arktsWarningEntries": 129,
+    "actualSourceModuleChecks": "passed after TypeScript transpilation with simulated Preferences and HTTP",
+    "log": ".local-work/phase2-20261021/frontend-build-final.log"
+  },
+  "contracts": {
+    "mirrorsByteIdentical": true,
+    "pathCount": 41
+  },
+  "hap": {
+    "path": "app\\entry\\build\\default\\outputs\\default\\entry-default-signed.hap",
+    "sha256": "1fbb601dcd001e6739a7befb8cb9f6866f966f08a46c68a87f430459db6639ec",
+    "profileType": "debug",
+    "verifyAppPassed": true,
+    "retainedCopy": ".local-work/phase2-20261021/zhixue-mate-phase2-debug.hap"
+  },
+  "deviceTargets": [],
+  "deviceInstall": "not_run",
+  "physicalDeviceRecoveryValidation": "not_run",
+  "sourceFileSha256": {
+    "server/zhixue-agent-server/app/repositories/staged_repository.py": "f397fc22ba706bcfd2345ae2007652d52c4d77613e79045364d9da5599639a34",
+    "server/zhixue-agent-server/app/api/exercises.py": "f1b2b39e15360bff15f891137134b2981f6ebba8fc1eae5f20c80ee6ebaf1ea4",
+    "server/zhixue-agent-server/app/api/plans.py": "d6d287ea8f0d1c1a85a02cf88339c2c892fe3e564fc8bc50384608f791ec5209",
+    "server/zhixue-agent-server/app/api/focus.py": "1c27a2fccfca9a2d726020ed8b4e391fa296b58b5c30eaa11b06ba776d0b1671",
+    "server/zhixue-agent-server/app/agents/planner.py": "384d648cb42728fbefe36653ae9d61c8be03a9a7f8aff7a9ea8479a7e094bc8e",
+    "server/zhixue-agent-server/app/tools/time_budget.py": "5076039c9ce72d28a0821a2bb185031a3d429c05ce04f1af53735d53cbb442bc",
+    "server/zhixue-agent-server/app/tools/plan_tools.py": "ce3d49d91e7f0dfd1b7243a2540c682ada10f725875ddabd6f80f5dba998bfb0",
+    "server/zhixue-agent-server/app/tools/profile_merge.py": "b7bf7a2d546784e88a14f5992566622c5356fe165e90fde08eae0e4096f54031",
+    "app/entry/src/main/ets/utils/FocusClock.ets": "d8f488e3dbc6eedda1cb7abf29ded747c837ac640560577288d9fa73adcb413a",
+    "app/entry/src/main/ets/cache/LearningDataStore.ets": "ef6544fc77699831282734f4abf451a0d2bb5d73414e925eba8fcdb65dd6e138",
+    "app/entry/src/main/ets/data/AppState.ets": "ba441dfe7635b92c3b2351351972fa2c96d4d21745b4727b7dae9f80a553d891",
+    "app/entry/src/main/ets/models/AgentModels.ets": "518400533788a041ac9fa0d089be9cc81956da084fc9a1cdee6fb0c4357697ba",
+    "app/entry/src/main/ets/pages/FocusTimer.ets": "03c3156ce2314ab7b06b5c8c652e1a7268f641361cadb7751bf8d70aaeb0f5d9",
+    "app/entry/src/main/ets/pages/FocusSetup.ets": "27774f5e0d51c8900fd5499eff40a384328a24eb1a822cf22ac7e3793864734c",
+    "app/entry/src/main/ets/pages/FocusResult.ets": "85b317898b171bb7e84093c866d34365cace9b544680a2249ad76eae9f851134",
+    "app/entry/src/main/ets/pages/ChatMain.ets": "a3a52556dcd15ea7d880d91746b1d455d85129094d0428e1101238c5d480c4d1",
+    "app/entry/src/main/ets/components/FocusRecoveryCard.ets": "ef76cbf4ba21b8b58f8378531ef43b3a28f16a55ae936dfbea49eb2a38e80423",
+    "app/entry/src/main/ets/pages/StudyPlan.ets": "f584ddae6c665ecf4f45c56167f5cb0ea0b49037936e7763ed81e7c53f62c8cc",
+    "app/entry/src/main/ets/viewmodels/PlanViewModel.ets": "dd8c45953d65938ba70b2348ee3f8e4c7a5514b1823c20e42609e589fb6fe55a",
+    "app/entry/src/main/ets/components/PlanDiffCard.ets": "fce6fe27b5a8e8bfaffb886887b7cd05f6595fa759f8fdb9900e6985fc038a6c",
+    "app/entry/src/main/ets/api/ApiModels.ets": "ba0f6488d0eada27e7fd5eec353b6d2b307f14f94fdb6ea4c9412b70a7fbb68b",
+    "app/entry/src/main/ets/api/ApiResponseValidator.ets": "c23cea9846cdbf592cd111f822ad988be8bd10429e6d86cd0e644f381e07322c",
+    "app/entry/src/main/ets/api/AgentApiClient.ets": "f099c8c214be3c9be2fd1504b7f19cd74c881b224a227168f916f01b48abd350",
+    "contracts/openapi.json": "40dfd642997e0de106a17133a946ea1eeefe3abcd14aa09c2d4329b3361dc8b3",
+    "app/contracts/openapi.json": "40dfd642997e0de106a17133a946ea1eeefe3abcd14aa09c2d4329b3361dc8b3",
+    "tools/check_focus_persistence.js": "0086fa98d915ab223269d04aaa1e9e19f120d6660db3ed8b162aa143ac4e7612",
+    "server/zhixue-agent-server/tests/test_submit_atomicity.py": "a07d2b69d8a7bd0f1d22b203362fe8e1b8178faa4055ce8138178db98554db39",
+    "server/zhixue-agent-server/tests/test_time_budget.py": "b296e1e6614602ed22a07ed034dc85d4716619be622f22fc66dbad36ace7eb3a",
+    "server/zhixue-agent-server/tests/test_incremental_plan_inputs.py": "33377f08002138015f37cf5f49ee5e6313a4bfd295c111423149c54d3de111fc"
+  },
+  "limitations": [
+    "budget covers specialist tasks only, not calendar slots or course DDLs",
+    "whole tasks are deferred, not automatically split or shortened",
+    "running recovery time accrues unless paused",
+    "no always-on event consumer or closed-app reminder guarantee",
+    "goal secretary/chat integration and grounded exercises remain incomplete",
+    "business decision isolation still relies on a single-process lock"
+  ]
+}

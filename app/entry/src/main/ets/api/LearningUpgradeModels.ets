@@ -1,0 +1,66 @@
+export interface PartnerMessage {
+  messageId: string;
+  senderId: string;
+  text: string;
+  image: string;
+  createdAt: string;
+  clientId: string;
+  replyTo?: string;
+  recalled?: boolean;
+  sharedTaskId?: string;
+  forwarded?: boolean;
+}
+export interface PartnerMessages {
+  messages: PartnerMessage[];
+  cursor: string;
+  hasMore: boolean;
+  recalledMessageIds?: string[];
+}
+export interface PartnerMessageRequest { clientId: string; text: string; image: string; replyTo?: string; forwarded?: boolean; }
+export interface PartnerMessageResult { message: PartnerMessage; }
+export interface ScannedQuestionRequest { stem: string; courseName: string; knowledgePointName: string; explanation: string; }
+export interface SavedScannedQuestion { item: ScannedWrongBookEntry; }
+export interface ScannedWrongBookEntry { exerciseId: string; }
+export interface ReviewRequest { courseName: string; retry?: boolean; }
+export interface ReviewAction { actionId: string; title: string; why: string; durationMinutes: number; steps: string[]; doneWhen: string; priority: string; targetPage: string; knowledgePointId: string; }
+export interface LearningReview {
+  conclusion: string;
+  evidenceSummary: string[];
+  examMode: string;
+  sourceFacts: string[];
+  fallbackReason: string;
+  reviewId: string;
+  courseName: string;
+  summary: string;
+  actions: ReviewAction[];
+  source: string;
+  createdAt: string;
+}
+export interface ReviewTask { practiceVerified?: boolean; actionType?: string; knowledgePointId: string; taskId: string; title: string; courseName: string; status: string; }
+export interface ReviewTasks { tasks: ReviewTask[]; }
+export interface ReviewTaskRequest { taskId: string; }
+
+export interface CourseSetting { courseName: string; goal: string; examDate: string; daysUntilExam: number | null; reviewDue: boolean; }
+export interface CourseSettings { courses: CourseSetting[]; }
+export interface CourseSettingRequest { courseName: string; goal: string; examDate: string; }
+
+export interface PartnerConversation {
+  partnerUserId: string;
+  partnerName: string;
+  avatar: string;
+  pairedAt: string;
+  pairedDays: number;
+  sharedCourses: string[];
+  sharedKnowledgePoints: string[];
+  sharedStudyMinutes: number | null;
+  lastMessage: string;
+  lastMessageId: string;
+  lastMessageAt: string;
+  unreadCount: number;
+}
+export interface PartnerInbox { conversations: PartnerConversation[]; totalUnread: number; nextOffset: number; hasMore: boolean; }
+export interface PartnerSummary { conversation: PartnerConversation; }
+export interface PartnerReadRequest { lastReadMessageId: string; }
+export interface PartnerReadResult { status: string; lastReadMessageId: string; }
+export interface EndPartnerRequest { pairedAt: string; }
+export interface EndPartnerResult { status: string; }

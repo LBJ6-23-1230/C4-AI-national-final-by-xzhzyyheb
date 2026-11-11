@@ -1,0 +1,25 @@
+{
+  "courses": [
+    {
+      "courseName": "数据结构",
+      "examDate": "2026-11-09",
+      "priority": "高",
+      "studyHours": 1,
+      "status": "二叉树遍历待练习"
+    },
+    {
+      "courseName": "计算机网络",
+      "examDate": "2026-11-11",
+      "priority": "中",
+      "studyHours": 2,
+      "status": "可靠传输待复习"
+    },
+    {
+      "courseName": "操作系统",
+      "examDate": "2026-11-13",
+      "priority": "中",
+      "studyHours": 0,
+      "status": "进程调度待复习"
+    }
+  ]
+}

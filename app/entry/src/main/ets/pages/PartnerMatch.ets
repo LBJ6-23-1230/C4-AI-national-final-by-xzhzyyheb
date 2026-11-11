@@ -1,0 +1,968 @@
+import { AppBottomBar } from '../components/AppBottomBar';
+import { UiTheme } from '../utils/UiTheme';
+import { PageHeader } from '../components/PageHeader';
+import router from '@ohos.router';
+import { UserAvatar } from '../components/UserAvatar';
+import { appState } from '../data/AppState';
+import { PartnerMatch as PartnerMatchType, MatchFactor, UserProfile, LearningPlanTask } from '../models/AgentModels';
+import { LocalAgentService } from '../services/LocalAgentService';
+import { ChatNavigation } from '../services/ChatNavigation';
+import { AIFloatButton } from '../components/AIFloatButton';
+import { AgentApiClient } from '../api/AgentApiClient';
+import {
+  PartnerCandidateProfile,
+  PartnerContact,
+  PartnerInvitation,
+  PartnerInvitationListResponse,
+  PartnerInvitationResponse,
+  PartnerMatchFactors,
+  PartnerMatchResponse,
+  PartnerRankedCandidate
+} from '../api/ApiModels';
+import { ApiFailure, ApiResult } from '../api/ApiResult';
+
+let generatedPartner: PartnerMatchType | null = null;
+
+interface CandidateMatchEntry {
+  candidate: UserProfile;
+  match: PartnerMatchType;
+}
+let otherCandidateMatches: CandidateMatchEntry[] = [];
+
+@Entry
+@Component
+struct PartnerMatch {
+  @State partnerTab: number = 0;
+  @State targetCourse: string = '';
+  @State targetCourses: string[] = [];
+  @State extraCourse: string = '';
+  @State invitationCourse: string = '';
+  @State candidateSheet: boolean = false;
+  @State invitationCandidate: PartnerRankedCandidate | null = null;
+  @State candidateCourse: string = '';
+  @State targetGoal: string = '';
+  @State freeSlotsText: string = '';
+  @State preferencesMessage: string = '';
+  @State preferencesSaving: boolean = false;
+  private preferencesVersion: number = 0;
+  private pageVersion: number = 0;
+  private matchRequestVersion: number = 0;
+  private preferencesRequestVersion: number = 0;
+  private invitationsRequestVersion: number = 0;
+  private outboxRequestVersion: number = 0;
+  private contactsRequestVersion: number = 0;
+  private ownsRequest(owner: string, page: number): boolean {
+    return this.pageActive && owner === appState.currentUser.userId && page === this.pageVersion;
+  }
+  private courseOptions(): string[] {
+    const options: string[] = ['数据结构', '计算机网络', '操作系统', '高等数学', '线性代数', '概率论与数理统计'];
+    this.targetCourses.forEach((course: string) => { if (options.indexOf(course) < 0) options.push(course); });
+    return options;
+  }
+  private toggleCourse(course: string): void {
+    this.targetCourses = this.targetCourses.indexOf(course) >= 0 ? this.targetCourses.filter((c: string): boolean => c !== course) : [...this.targetCourses, course];
+  }
+  private async loadPreferences(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.preferencesRequestVersion;
+    const result = await AgentApiClient.getProfile(owner);
+    if (!this.ownsRequest(owner, page) || request !== this.preferencesRequestVersion || !result.ok) return;
+    this.preferencesVersion = result.data.profileVersion;
+    this.targetCourse = result.data.profile?.targetCourse ?? '';
+    this.targetCourses = result.data.profile?.targetCourses ?? (this.targetCourse.length > 0 ? [this.targetCourse] : []);
+    this.targetGoal = result.data.profile?.goal ?? '';
+    this.freeSlotsText = (result.data.profile?.freeTimeSlots ?? []).join('、');
+  }
+  private async savePreferences(): Promise<void> {
+    if (this.preferencesSaving) return;
+    this.preferencesSaving = true;
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.preferencesRequestVersion;
+    const course: string = this.targetCourses[0] ?? '';
+    const goal: string = this.targetGoal;
+    const result = await AgentApiClient.saveLearningPreferences(owner, {
+      expectedProfileVersion: this.preferencesVersion,
+      targetCourse: course, targetCourses: [...this.targetCourses], goal: goal,
+      freeTimeSlots: this.freeSlotsText.split(/[、,，;；\n]/).map((v: string): string => v.trim()).filter((v: string): boolean => v.length > 0)
+    });
+    if (!this.ownsRequest(owner, page) || request !== this.preferencesRequestVersion) return;
+    this.preferencesSaving = false;
+    this.preferencesMessage = result.ok ? '学习偏好已同步，正在重新匹配。' : (result as ApiFailure).error.message;
+    if (result.ok) {
+      this.preferencesVersion = result.data.profileVersion;
+      this.targetCourse = course;
+      appState.currentUser.learningGoal.course = course;
+      appState.currentUser.learningGoal.goal = goal;
+      this.partnerTab = 0;
+      void this.loadOnlineMatch();
+    } else if ((result as ApiFailure).error.code === 'CONFLICT') {
+      const refreshed = await AgentApiClient.getProfile(owner);
+      if (!this.ownsRequest(owner, page) || request !== this.preferencesRequestVersion) return;
+      if (refreshed.ok) {
+        this.preferencesVersion = refreshed.data.profileVersion;
+        this.preferencesMessage = '画像已更新，已保留你的填写内容，请核对后再次保存。';
+      }
+    }
+  }
+  @Builder
+  PreferencesForm() {
+    Column({ space: 8 }) {
+      Text('我的匹配偏好').fontSize(17).fontWeight(FontWeight.Bold)
+      Text('学习课程（可多选）').fontSize(13).fontColor(UiTheme.secondary)
+      Column() {
+        ForEach(this.courseOptions(), (course: string) => {
+            Row({ space: 10 }) {
+              Checkbox().select(this.targetCourses.indexOf(course) >= 0).hitTestBehavior(HitTestMode.None)
+              Text(course).fontSize(14).fontColor(UiTheme.ink).layoutWeight(1)
+            }.width('100%').constraintSize({ minHeight: 40 }).border({ width: { bottom: 1 }, color: UiTheme.line })
+              .onClick(() => this.toggleCourse(course))
+        }, (course: string) => course)
+      }.width('100%')
+      Row({ space: 8 }) {
+        TextInput({ text: this.extraCourse, placeholder: '其他完整课程名，例如概率论与数理统计' }).layoutWeight(1).onChange((v: string) => this.extraCourse = v)
+        Button('添加').fontSize(12).onClick(() => {
+          const course: string = this.extraCourse.trim();
+          if (course.length > 0 && this.targetCourses.indexOf(course) < 0) this.targetCourses = [...this.targetCourses, course];
+          this.extraCourse = '';
+        })
+      }
+      Text('请核对勾选的课程；课程可以部分重合，学习目标单独填写。').fontSize(12).fontColor(UiTheme.secondary)
+      TextInput({ text: this.targetGoal, placeholder: '目标，例如准备期末考试' }).onChange((v: string) => this.targetGoal = v)
+      TextInput({ text: this.freeSlotsText, placeholder: '空闲时间：19:00-21:00，多段用逗号分隔' }).onChange((v: string) => this.freeSlotsText = v)
+      Text('未填写时间不计稳定性分；知识互补仅依据已保存的测评证据。').fontSize(12).fontColor(UiTheme.secondary)
+      Button(this.preferencesSaving ? '保存中…' : '保存偏好并重新匹配').enabled(!this.preferencesSaving).onClick(() => { void this.savePreferences(); })
+      if (this.preferencesMessage.length > 0) Text(this.preferencesMessage).fontSize(12).fontColor(UiTheme.secondary)
+    }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+  }
+  @State invitationSent: boolean = false;
+  @State partnerLoading: boolean = false;
+  @State partnerError: string = '';
+  @State onlineBest: PartnerRankedCandidate | null = null;
+  @State onlineOthers: PartnerRankedCandidate[] = [];
+  @State incomingInvitations: PartnerInvitation[] = [];
+  @State pendingInviteTargets: string[] = [];
+  @State onlineInviteError: string = '';
+  @State contacts: PartnerContact[] = [];
+  @State contactNames: string[] = [];
+  @State showMatchFactors: boolean = false;
+  @State inviteBusy: string = '';
+  @State inviteError: string = '';
+  @State endingPartnerId: string = '';
+  @State contactNotice: string = '';
+  private collaborativeTaskId: string = '';
+  private pageActive: boolean = true;
+
+  aboutToAppear(): void {
+    if (AgentApiClient.getConfig().useFixture) {
+      this.loadLocalFixtureMatch();
+    } else {
+      this.loadOnlineMatch();
+      void this.loadPreferences();
+      this.loadInvitations();
+      void this.loadOutbox();
+      this.loadContacts();
+    }
+  }
+
+  private async loadOnlineMatch(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.matchRequestVersion;
+    this.partnerLoading = true;
+    this.partnerError = '';
+    this.onlineInviteError = '';
+    this.onlineBest = null;
+    this.onlineOthers = [];
+    try {
+      const result = await AgentApiClient.matchPartner({
+        userId: owner,
+        user: appState.currentUser as PartnerCandidateProfile
+      });
+      if (!this.ownsRequest(owner, page) || request !== this.matchRequestVersion) return;
+      if (result.ok) {
+        const payload: PartnerMatchResponse = result.data;
+        this.onlineBest = payload.matchedCandidate;
+        if ((payload.matchedCandidate?.sharedCourses ?? []).indexOf(this.invitationCourse) < 0) this.invitationCourse = payload.matchedCandidate?.sharedCourses?.[0] ?? '';
+        const others: PartnerRankedCandidate[] = [];
+        for (let index: number = 0; index < payload.candidates.length; index++) {
+          const item: PartnerRankedCandidate = payload.candidates[index];
+          if (this.onlineBest === null || item.candidate.userId !== this.onlineBest!.candidate.userId) {
+            others.push(item);
+          }
+        }
+        this.onlineOthers = others;
+      } else {
+        this.partnerError = PartnerMatch.describeFailure<PartnerMatchResponse>(result);
+      }
+    } catch (error) {
+      if (this.ownsRequest(owner, page) && request === this.matchRequestVersion) {
+        this.partnerError = '匹配请求失败，请检查后端服务是否已启动。';
+      }
+    } finally {
+      if (this.ownsRequest(owner, page) && request === this.matchRequestVersion) this.partnerLoading = false;
+    }
+  }
+
+  private loadLocalFixtureMatch(): void {
+    generatedPartner = LocalAgentService.matchBestPartner(appState.currentUser, appState.candidates);
+    if (generatedPartner !== null && appState.latestPartner?.userId === generatedPartner.userId) {
+      const previousTask: LearningPlanTask = LocalAgentService.createCollaborativeTask(generatedPartner, appState.currentUser);
+      if (!appState.hasActiveCollaborativeTask(previousTask.id) &&
+          appState.hasCompletedCollaborativeTask(previousTask.id)) {
+        const remainingCandidates: UserProfile[] = appState.candidates.filter((candidate: UserProfile) =>
+          candidate.userId !== generatedPartner!.userId
+        );
+        generatedPartner = LocalAgentService.matchBestPartner(appState.currentUser, remainingCandidates);
+      }
+    }
+    otherCandidateMatches = [];
+    for (let index: number = 0; index < appState.candidates.length; index++) {
+      const candidate: UserProfile = appState.candidates[index];
+      if (generatedPartner === null || candidate.userId !== generatedPartner!.userId) {
+        otherCandidateMatches.push({
+          candidate: candidate,
+          match: LocalAgentService.matchPartner(appState.currentUser, candidate)
+        });
+      }
+    }
+    if (generatedPartner !== null) {
+      const task: LearningPlanTask = LocalAgentService.createCollaborativeTask(generatedPartner, appState.currentUser);
+      this.collaborativeTaskId = appState.nextCollaborativeTaskId(task.id);
+      this.invitationSent = appState.latestPartner?.userId === generatedPartner.userId &&
+        appState.hasActiveCollaborativeTask(task.id);
+    }
+  }
+
+  private goBack(): void {
+    appState.leaveChatTask();
+    router.back();
+  }
+
+  private async confirmOnlinePartner(item: PartnerRankedCandidate, course: string): Promise<void> {
+    if (this.inviteBusy.length > 0) return;
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const targetId: string = item.candidate.userId;
+    if (this.pendingInviteTargets.includes(targetId) || this.isContact(targetId)) return;
+
+    this.onlineInviteError = '';
+    this.inviteBusy = targetId;
+    const result: ApiResult<PartnerInvitationResponse> =
+      await AgentApiClient.createPartnerInvitation({
+        toUserId: targetId,
+        courseName: course,
+        message: course ? `一起学习${course}吧` : '一起学习吧'
+      });
+    if (!this.ownsRequest(owner, page)) return;
+    this.inviteBusy = '';
+
+    if (!result.ok) {
+      this.onlineInviteError = `邀请没有发出去：${PartnerMatch.describeFailure<PartnerInvitationResponse>(result)}`;
+      void this.loadContacts();
+      return;
+    }
+    this.candidateSheet = false;
+    this.outboxRequestVersion++;
+    if (!this.pendingInviteTargets.includes(targetId)) this.pendingInviteTargets = [...this.pendingInviteTargets, targetId];
+    void this.loadOutbox();
+  }
+
+  private async loadOutbox(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.outboxRequestVersion;
+    const result = await AgentApiClient.listPartnerInvitations('outbox');
+    if (result.ok && this.ownsRequest(owner, page) && request === this.outboxRequestVersion) {
+      this.pendingInviteTargets = result.data.invitations
+        .filter((item: PartnerInvitation) => item.status === 'pending').map((item: PartnerInvitation) => item.toUserId);
+    }
+  }
+
+  private isContact(userId: string): boolean {
+    return this.contacts.some((contact: PartnerContact) => contact.partnerUserId === userId);
+  }
+
+  private async loadInvitations(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.invitationsRequestVersion;
+    const result = await AgentApiClient.listPartnerInvitations('inbox');
+    if (!this.ownsRequest(owner, page) || request !== this.invitationsRequestVersion) {
+      return;
+    }
+    if (result.ok) {
+      this.incomingInvitations = result.data.invitations;
+      return;
+    }
+    this.inviteError = `暂时读不到邀请收件箱：${PartnerMatch.describeFailure<PartnerInvitationListResponse>(result)}`;
+  }
+
+  private async loadContacts(): Promise<void> {
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    const request: number = ++this.contactsRequestVersion;
+    const result = await AgentApiClient.listPartnerContacts();
+    if (!this.ownsRequest(owner, page) || request !== this.contactsRequestVersion) return;
+    if (result.ok) {
+      this.contacts = result.data.contacts;
+      this.contactNames = result.data.contacts.map((item: PartnerContact) => item.partnerName);
+    }
+  }
+
+  private confirmEndPartner(contact: PartnerContact): void {
+    if (this.endingPartnerId) return;
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    AlertDialog.show({
+      title: '解除学习搭子',
+      message: `解除后，你和${contact.partnerName}将从彼此的搭子名单和会话列表中移除。再次结伴需要重新邀请。`,
+      primaryButton: { value: '取消', action: () => {} },
+      secondaryButton: { value: '确认解除', fontColor: UiTheme.danger, action: () => {
+        if (this.ownsRequest(owner, page)) void this.endPartner(contact, owner, page);
+      } }
+    });
+  }
+
+  private async endPartner(contact: PartnerContact, owner: string, page: number): Promise<void> {
+    if (this.endingPartnerId) return;
+    this.endingPartnerId = contact.partnerUserId;
+    this.contactNotice = '';
+    this.inviteError = '';
+    const result = await AgentApiClient.endPartnerRelationship(contact.partnerUserId, { pairedAt: contact.pairedAt });
+    if (!this.ownsRequest(owner, page)) return;
+    this.endingPartnerId = '';
+    if (result.ok) {
+      this.contacts = this.contacts.filter((item: PartnerContact) => item.partnerUserId !== contact.partnerUserId);
+      this.contactNames = this.contacts.map((item: PartnerContact) => item.partnerName);
+      this.pendingInviteTargets = this.pendingInviteTargets.filter((userId: string) => userId !== contact.partnerUserId);
+      this.incomingInvitations = this.incomingInvitations.filter((item: PartnerInvitation) => item.fromUserId !== contact.partnerUserId);
+      this.contactNotice = `已解除与${contact.partnerName}的搭子关系。`;
+    } else {
+      this.inviteError = `解除失败：${(result as ApiFailure).error.message}`;
+    }
+    void this.loadContacts();
+    void this.loadOutbox();
+    void this.loadInvitations();
+  }
+
+  private async respondInvitation(item: PartnerInvitation, action: string): Promise<void> {
+    if (this.inviteBusy.length > 0) {
+      return;
+    }
+    this.inviteBusy = item.invitationId;
+    const owner: string = appState.currentUser.userId;
+    const page: number = this.pageVersion;
+    this.inviteError = '';
+    let result: ApiResult<PartnerInvitationResponse>;
+    if (action === 'accept') {
+      result = await AgentApiClient.acceptPartnerInvitation(item.invitationId);
+    } else if (action === 'decline') {
+      result = await AgentApiClient.declinePartnerInvitation(item.invitationId);
+    } else {
+      result = await AgentApiClient.dismissPartnerInvitation(item.invitationId);
+    }
+    if (!this.ownsRequest(owner, page)) return;
+    this.inviteBusy = '';
+    if (!result.ok) {
+      this.inviteError = `处理失败：${PartnerMatch.describeFailure<PartnerInvitationResponse>(result)}`;
+      return;
+    }
+    await this.loadInvitations();
+    if (action === 'accept') {
+      await this.loadContacts();
+      if (!this.ownsRequest(owner, page)) return;
+      router.pushUrl({ url: 'pages/PartnerChat', params: { partnerId: item.fromUserId, partnerName: item.fromName } });
+    }
+  }
+
+  onPageShow(): void {
+    const returning: boolean = !this.pageActive;
+    this.pageActive = true;
+    if (returning && !AgentApiClient.getConfig().useFixture) {
+      void this.loadOnlineMatch();
+      void this.loadPreferences();
+      void this.loadInvitations();
+      void this.loadOutbox();
+      void this.loadContacts();
+    }
+  }
+
+  onPageHide(): void {
+    this.pageActive = false;
+    this.pageVersion++;
+    this.partnerLoading = false;
+    this.preferencesSaving = false;
+    this.inviteBusy = '';
+    this.endingPartnerId = '';
+    this.pendingInviteTargets = [];
+    this.contacts = [];
+    this.onlineBest = null;
+    this.onlineOthers = [];
+    this.incomingInvitations = [];
+    this.contactNames = [];
+  }
+
+  aboutToDisappear(): void {
+    this.onPageHide();
+  }
+
+  private confirmPartner(): void {
+    if (generatedPartner === null) {
+      return;
+    }
+    this.confirmPartnerWith(generatedPartner);
+  }
+
+  private confirmPartnerWith(partner: PartnerMatchType, serverNotice: string = ''): void {
+    this.inviteError = '演示推荐仅用于预览。请连接服务，邀请真实搭子并在协同任务页发起安排。';
+
+  }
+
+  @Builder
+  InvitationBanner() {
+    Column({ space: 12 }) {
+      ForEach(this.incomingInvitations, (item: PartnerInvitation) => {
+        Column({ space: 10 }) {
+          Row({ space: 8 }) {
+
+            Text(`${item.fromName} 想和你组成学习搭子`).fontSize(15)
+              .fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).layoutWeight(1)
+            Text('×').fontSize(24).fontColor(UiTheme.secondary).width(44).height(44).textAlign(TextAlign.Center).accessibilityText('忽略本次邀请')
+              .onClick(() => { void this.respondInvitation(item, 'dismiss'); })
+          }.width('100%')
+
+          if (item.message.length > 0) {
+            if (item.courseName) Text(`共同课程：${item.courseName}`).fontSize(12).fontColor(UiTheme.accent)
+            Text(item.message).fontSize(13).fontColor('#5F7485').lineHeight(19).width('100%')
+          }
+          if (item.targetKind === 'demo') {
+            Text('（这是一位演示同学，没有真实账号）')
+              .fontSize(11).fontColor('#B45309').width('100%')
+          }
+
+          Row({ space: 10 }) {
+            Button(this.inviteBusy === item.invitationId ? '处理中…' : '接受')
+              .layoutWeight(1).height(40).fontSize(14).fontWeight(FontWeight.Bold)
+              .fontColor(UiTheme.surface).backgroundColor(UiTheme.accent).borderRadius(8)
+              .enabled(this.inviteBusy.length === 0)
+              .onClick(() => { void this.respondInvitation(item, 'accept'); })
+            Button('不接受')
+              .layoutWeight(1).height(40).fontSize(14).fontColor(UiTheme.accent)
+              .backgroundColor(UiTheme.tint).borderRadius(8)
+              .enabled(this.inviteBusy.length === 0)
+              .onClick(() => { void this.respondInvitation(item, 'decline'); })
+          }.width('100%')
+        }
+        .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+        .border({ width: 1, color: '#BFDBFE' })
+      }, (item: PartnerInvitation) => item.invitationId)
+    }.width('100%')
+  }
+
+  @Builder
+  MatchScoreBoard() {
+    Column({ space: 4 }) {
+      Text('匹配因子分析').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%').margin({ bottom: 6 })
+
+      if (generatedPartner !== null && generatedPartner.matchFactors.length > 0) {
+        ForEach(generatedPartner.matchFactors, (factor: MatchFactor, index: number) => {
+          Row() {
+
+
+            Column({ space: 2 }) {
+              Text(factor.label).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+              Text(factor.detail).fontSize(12).fontColor(UiTheme.secondary)
+            }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+
+            Text(factor.score).fontSize(18).fontWeight(FontWeight.Bold)
+              .fontColor(factor.match ? UiTheme.accent : '#C4CDD5')
+          }
+          .width('100%').padding({ top: 12, bottom: 12 })
+          .border({ width: { bottom: index < generatedPartner!.matchFactors.length - 1 ? 0.5 : 0 }, color: '#E0E7EF' })
+        }, (factor: MatchFactor) => factor.label)
+
+        Divider().color('#E0E7EF').margin({ top: 4, bottom: 4 })
+
+        Row() {
+          Text('综合匹配度').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+Text(`${generatedPartner.score}%`).fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+        }.width('100%').padding({ top: 8, bottom: 4 })
+      } else {
+        Text('暂无满足条件的候选搭子。请先补充课程、目标和空闲时间，再重新进入本页。')
+          .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%').padding({ top: 8, bottom: 8 })
+      }
+    }
+    .width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
+
+  }
+
+
+  private static describeFailure<T>(result: ApiResult<T>): string {
+    const failure = result as ApiFailure;
+    if (failure.error.code === 'NETWORK_ERROR') {
+      return '连接不上后端服务。请确认后端已启动，并在「接口环境」里填对了地址。';
+    }
+    return failure.error.message;
+  }
+
+  private factorRows(item: PartnerRankedCandidate): MatchFactor[] {
+    const f: PartnerMatchFactors = item.factors;
+    return [
+      {
+        label: '目标一致', score: `${f.goal} / 30`, match: f.goal >= 30,
+        detail: (item.sharedCourses ?? []).length === 0 ? '暂无共同课程' : `${item.courseMatch === 'partial' ? '部分课程重合' : '课程重合'}：${(item.sharedCourses ?? []).join('、')}；${item.goalMatch === 'same' ? '共同课程学习目标一致' : item.goalMatch === 'unconfirmed' ? '学习目标尚未确认' : '具体学习目标不同'}`
+      },
+      {
+        label: '时间重叠', score: `${f.timeOverlap} / 30`, match: f.timeOverlap >= 30,
+        detail: `空闲时间重叠 ${f.overlapMinutes} 分钟（≥120 得满分）`
+      },
+      {
+        label: '知识互补', score: `${f.knowledgeComplement} / 20`, match: f.knowledgeComplement >= 20,
+        detail: '你弱我强 / 我弱你强的知识点对数（≥2 对得满分）'
+      },
+      {
+        label: '基础匹配', score: `${f.basicMatch} / 10`, match: f.basicMatch >= 10,
+        detail: '年级与专业是否一致'
+      },
+      {
+        label: '稳定性', score: `${f.stability} / 10`, match: f.stability >= 10,
+        detail: '候选人的空闲时间段是否稳定'
+      }
+    ];
+  }
+
+  private candidateName(item: PartnerRankedCandidate): string {
+    return item.candidate.basicInfo?.name ?? item.candidate.userId;
+  }
+
+  private candidateSubtitle(item: PartnerRankedCandidate): string {
+    const basic = item.candidate.basicInfo;
+    const goal = item.candidate.learningGoal;
+    const parts: string[] = [];
+    if (basic?.grade) { parts.push(basic.grade); }
+    if (basic?.major) { parts.push(basic.major); }
+    if ((goal?.courses ?? []).length > 0) parts.push((goal?.courses ?? []).join('、'));
+    else if (goal?.course) parts.push(goal.course);
+    return parts.join(' · ');
+  }
+
+  @Builder
+  OnlineBestCard(item: PartnerRankedCandidate) {
+    Column({ space: 10 }) {
+      Row({ space: 12 }) {
+        UserAvatar({ source: item.candidate.avatar ?? '', nickname: this.candidateName(item), diameter: 48 })
+        Column({ space: 4 }) {
+          Text(` ${this.candidateName(item)}`)
+            .fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+          Text('最佳学习搭子').fontSize(13).fontColor(UiTheme.accent).fontWeight(FontWeight.Medium)
+          Text(this.candidateSubtitle(item)).fontSize(12).fontColor(UiTheme.secondary)
+        }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+        Column() {
+          Text(`${item.score}`).fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+          Text('匹配分 / 100').fontSize(11).fontColor(UiTheme.secondary)
+        }.alignItems(HorizontalAlign.Center)
+      }.width('100%')
+
+      if (item.candidate.time?.freeTime !== undefined && item.candidate.time?.freeTime?.length > 0) {
+        Text(`空闲时间：${item.candidate.time?.freeTime?.join('、')}`)
+          .fontSize(13).fontColor(UiTheme.secondary)
+      }
+              Column({ space: 8 }) {
+                Text('对方接受邀请后可聊天；协同任务还需双方确认具体安排。')
+                  .fontSize(12).fontColor(UiTheme.secondary).lineHeight(18).width('100%')
+                Text('本次一起学习的课程').fontSize(13).fontColor(UiTheme.secondary)
+                ForEach(item.sharedCourses ?? [], (course: string) => {
+                  Button(`${this.invitationCourse === course ? ' ' : ''}${course}`).fontSize(12).height(32)
+                    .onClick(() => this.invitationCourse = course)
+                }, (course: string) => course)
+                Button(this.inviteBusy === item.candidate.userId
+                  ? '正在发送邀请…' : (this.isContact(item.candidate.userId) || this.pendingInviteTargets.includes(item.candidate.userId) ? '查看搭子消息' : '邀请一起学习'))
+                  .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.surface)
+                  .backgroundColor(UiTheme.accent).borderRadius(8)
+                  .enabled(this.inviteBusy.length === 0)
+                  .onClick(() => {
+                    if (this.isContact(item.candidate.userId) || this.pendingInviteTargets.includes(item.candidate.userId)) {
+                      router.pushUrl({ url: 'pages/PartnerInbox' });
+                    } else {
+                      void this.confirmOnlinePartner(item, this.invitationCourse);
+                    }
+                  })
+                if (this.isContact(item.candidate.userId)) {
+                  Text('已成为学习搭子').fontSize(13).fontColor(UiTheme.secondary).width('100%')
+                } else if (this.pendingInviteTargets.includes(item.candidate.userId)) {
+                  Text('已发送申请，等待搭子同意').fontSize(13).fontColor(UiTheme.secondary).width('100%')
+                } else if (this.onlineInviteError) {
+                  Text(this.onlineInviteError).fontSize(13).fontColor(UiTheme.danger).width('100%')
+                }
+              }
+              .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+    }
+    .width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
+
+  }
+
+  @Builder
+  OnlineFactorBoard(item: PartnerRankedCandidate) {
+    Column({ space: 10 }) {
+      Text('匹配因子分析').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+        .width('100%')
+
+      ForEach(this.factorRows(item), (factor: MatchFactor) => {
+        Row() {
+          Column({ space: 2 }) {
+            Text(factor.label).fontSize(14).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+            Text(factor.detail).fontSize(11).fontColor(UiTheme.secondary).lineHeight(17)
+          }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+
+          Text(factor.score)
+            .fontSize(14).fontWeight(FontWeight.Bold)
+            .fontColor(factor.match ? '#0F766E' : '#B45309')
+        }
+        .width('100%').padding(12)
+        .backgroundColor(UiTheme.surface).border({ width: { bottom: 1 }, color: UiTheme.line }).borderRadius(8)
+      }, (factor: MatchFactor) => factor.label)
+
+      Text('五项相加即为总分（满分 100）。')
+        .fontSize(11).fontColor(UiTheme.muted).width('100%')
+    }
+    .width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
+
+  }
+
+  @Builder
+  CandidateInvite() {
+    if (this.invitationCandidate !== null) {
+      Column({ space: 12 }) {
+        Text(`邀请${this.candidateName(this.invitationCandidate)}成为学习搭子`).fontSize(17).fontWeight(FontWeight.Medium)
+        if ((this.invitationCandidate.sharedCourses ?? []).length > 0) {
+          Select((this.invitationCandidate.sharedCourses ?? []).map((course: string): SelectOption => ({ value: course })))
+            .value(this.candidateCourse).width('100%').onSelect((_index: number, value: string) => this.candidateCourse = value)
+        } else {
+          Text('可以先结伴，接受邀请后再商量学习内容。').fontSize(13).fontColor(UiTheme.secondary)
+        }
+        if (this.onlineInviteError) {
+          Text(this.onlineInviteError).fontSize(13).fontColor(UiTheme.danger)
+        }
+        Button(this.inviteBusy ? '发送中…' : '发送邀请').width('100%').height(44).enabled(!this.inviteBusy)
+          .onClick(() => {
+            if (this.invitationCandidate !== null) void this.confirmOnlinePartner(this.invitationCandidate, this.candidateCourse);
+          })
+      }.width('100%').padding(20)
+    }
+  }
+
+  @Builder
+  OnlineOtherRow(item: PartnerRankedCandidate) {
+    Row({ space: 10 }) {
+      UserAvatar({ source: item.candidate.avatar ?? '', nickname: this.candidateName(item), diameter: 38 })
+      Column({ space: 2 }) {
+        Text(this.candidateName(item)).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+        Text(this.candidateSubtitle(item)).fontSize(12).fontColor(UiTheme.secondary)
+        Text(`时间重叠 ${item.factors.overlapMinutes} 分钟 · 知识互补 ${item.factors.knowledgeComplement} 分`)
+          .fontSize(11).fontColor(UiTheme.muted)
+      }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+      Column() {
+        Text(`${item.score}`).fontSize(20).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+        Text('匹配分').fontSize(10).fontColor(UiTheme.secondary)
+      }.alignItems(HorizontalAlign.Center)
+      Button(this.isContact(item.candidate.userId) ? '聊天' : this.pendingInviteTargets.includes(item.candidate.userId) ? '待接受' : '邀请',
+        { type: ButtonType.Normal }).height(44).fontSize(13).fontColor(UiTheme.accent).backgroundColor(UiTheme.subtle)
+        .enabled(!this.inviteBusy && !this.pendingInviteTargets.includes(item.candidate.userId))
+        .onClick(() => {
+          if (this.isContact(item.candidate.userId)) {
+            router.pushUrl({ url: 'pages/PartnerChat', params: { partnerId: item.candidate.userId, partnerName: this.candidateName(item) } });
+          } else {
+            this.onlineInviteError = '';
+            this.invitationCandidate = item;
+            this.candidateCourse = (item.sharedCourses ?? [])[0] ?? '';
+            this.candidateSheet = true;
+          }
+        })
+    }
+    .width('100%').padding(14).backgroundColor(UiTheme.surface).borderRadius(8)
+
+  }
+
+  @Builder
+  ContactsPanel() {
+    Column({ space: 16 }) {
+            if (this.incomingInvitations.length > 0) {
+              this.InvitationBanner()
+            }
+            if (this.inviteError.length > 0) {
+              Text(this.inviteError).fontSize(12).fontColor('#B91C1C').lineHeight(18)
+                .width('100%').padding(12).backgroundColor('#FEF2F2')
+                .border({ width: 1, color: '#FECACA' }).borderRadius(8)
+            }
+            if (this.contactNotice) {
+              Text(this.contactNotice).fontSize(13).fontColor(UiTheme.ink).width('100%').padding(12)
+                .backgroundColor(UiTheme.subtle).borderRadius(UiTheme.radius)
+            }
+            ForEach(this.contacts, (contact: PartnerContact) => {
+              Column({ space: 8 }) {
+                Text(contact.partnerName).fontSize(17).fontWeight(FontWeight.Bold)
+                Text('结伴于 ' + new Date(contact.pairedAt).toLocaleDateString() + ' · 已结伴 ' + Math.max(0, Math.floor((Date.now() - new Date(contact.pairedAt).getTime()) / 86400000)) + '天').fontSize(13).fontColor(UiTheme.secondary)
+                Row({ space: 10 }) {
+                  Button('与搭子聊天 →', { type: ButtonType.Normal }).layoutWeight(1).height(UiTheme.touch)
+                    .fontSize(14).fontColor(UiTheme.accent).backgroundColor(UiTheme.tint).borderRadius(UiTheme.radius)
+                    .enabled(this.endingPartnerId !== contact.partnerUserId)
+                    .onClick(() => router.pushUrl({ url: 'pages/PartnerChat', params: { partnerId: contact.partnerUserId, partnerName: contact.partnerName } }))
+                  Button(this.endingPartnerId === contact.partnerUserId ? '解除中…' : '解除搭子', { type: ButtonType.Normal })
+                    .height(UiTheme.touch).fontSize(14).fontColor(UiTheme.danger).backgroundColor(UiTheme.surface)
+                    .border({ width: 1, color: UiTheme.line }).borderRadius(UiTheme.radius)
+                    .enabled(this.endingPartnerId.length === 0).onClick(() => this.confirmEndPartner(contact))
+                }.width('100%')
+              }.width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+            }, (contact: PartnerContact) => `${contact.partnerUserId}:${contact.pairedAt}`)
+            if (this.contactNames.length > 0) {
+              Text(`已建立学习搭子：${this.contactNames.join('、')}`)
+                .fontSize(12).fontColor('#0F766E').width('100%').padding(12)
+                .backgroundColor('#ECFDF5').borderRadius(8)
+            }
+
+
+      if (this.contacts.length === 0 && this.incomingInvitations.length === 0) {
+        Text('还没有结伴的学习伙伴').fontSize(16).fontColor(UiTheme.ink).width('100%')
+        Button('看看推荐搭子', { type: ButtonType.Normal }).height(44).fontColor(UiTheme.accent).backgroundColor(UiTheme.surface)
+          .onClick(() => this.partnerTab = 0)
+      }
+      Row({ space: 10 }) {
+        Button('查看协同任务', { type: ButtonType.Normal }).layoutWeight(1).height(44).fontSize(14)
+          .fontColor(UiTheme.ink).backgroundColor(UiTheme.surface).border({ width: 1, color: UiTheme.line }).borderRadius(8)
+          .onClick(() => router.pushUrl({ url: 'pages/CollaborativeTasks' }))
+        Button('搭子消息', { type: ButtonType.Normal }).layoutWeight(1).height(44).fontSize(14)
+          .fontColor(UiTheme.ink).backgroundColor(UiTheme.surface).border({ width: 1, color: UiTheme.line }).borderRadius(8)
+          .onClick(() => router.pushUrl({ url: 'pages/PartnerInbox' }))
+      }.width('100%')
+      if (appState.weeklyPlan !== null) {
+        ForEach(appState.weeklyPlan.tasks.filter((task: LearningPlanTask) => task.source === 'partner_match'), (task: LearningPlanTask) => {
+          Column({ space: 6 }) {
+            Text(task.title).fontSize(16).fontWeight(FontWeight.Medium).fontColor(UiTheme.ink).width('100%')
+            Text(`${task.course} · ${task.plannedMinutes}分钟`).fontSize(13).fontColor(UiTheme.secondary).width('100%')
+            ForEach(task.steps, (step: string) => { Text(step).fontSize(13).fontColor(UiTheme.secondary).width('100%') })
+          }.width('100%').padding({ top: 12, bottom: 12 }).border({ width: { bottom: 1 }, color: UiTheme.line })
+            .onClick(() => router.pushUrl({ url: 'pages/CollaborativeTasks' }))
+        }, (task: LearningPlanTask) => task.id)
+      }
+    }.width('100%').alignItems(HorizontalAlign.Start)
+  }
+
+  build() {
+    Stack() {
+    Column() {
+      PageHeader({ title: '学习搭子', assistant: true, onBack: () => { this.goBack(); } })
+      Row() {
+        ForEach(['推荐', '我的搭子', '匹配偏好'], (label: string, index: number) => {
+          Text(label).fontSize(14).fontColor(this.partnerTab === index ? UiTheme.accent : UiTheme.secondary)
+            .fontWeight(this.partnerTab === index ? FontWeight.Medium : FontWeight.Regular)
+            .layoutWeight(1).height(44).textAlign(TextAlign.Center).padding({ top: 12, bottom: 12 })
+            .border({ width: { bottom: this.partnerTab === index ? 2 : 1 }, color: this.partnerTab === index ? UiTheme.accent : UiTheme.line })
+            .onClick(() => this.partnerTab = index)
+        }, (label: string) => label)
+      }.width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding({ left: 20, right: 20 })
+
+      Scroll() {
+        Column({ space: 18 }) {
+          if (this.partnerTab === 2) { this.PreferencesForm() }
+          if (this.partnerTab === 1) { this.ContactsPanel() }
+          if (this.partnerTab === 0) {
+          Text('推荐学习搭子')
+            .fontSize(18).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
+
+          Text('基于课程、目标、知识结构、空闲时间智能匹配最佳学习伙伴')
+            .fontSize(14).fontColor(UiTheme.secondary).lineHeight(21).width('100%')
+
+          if (!AgentApiClient.getConfig().useFixture) {
+            if (this.partnerLoading) {
+              Column({ space: 10 }) {
+                LoadingProgress().width(40).height(40).color(UiTheme.accent)
+                Text('正在计算匹配度…').fontSize(14).fontColor(UiTheme.secondary)
+              }
+              .width('100%').padding(28).backgroundColor(UiTheme.surface).borderRadius(8)
+            } else if (this.partnerError.length > 0) {
+              Column({ space: 10 }) {
+                Text('匹配未能完成').fontSize(17).fontWeight(FontWeight.Bold)
+                  .fontColor('#B91C1C').width('100%')
+                Text(this.partnerError).fontSize(13).fontColor('#7F1D1D')
+                  .lineHeight(20).width('100%')
+                Text('请检查网络或稍后重试。')
+                  .fontSize(12).fontColor('#991B1B').lineHeight(19).width('100%')
+                Button('重试')
+                  .width('100%').height(44).fontSize(14).fontWeight(FontWeight.Bold)
+                  .fontColor(UiTheme.surface).backgroundColor(UiTheme.danger).borderRadius(8)
+                  .onClick(() => { this.loadOnlineMatch(); })
+                Button('前往环境设置')
+                  .width('100%').height(42).fontSize(14).fontColor('#991B1B')
+                  .backgroundColor('#FEF2F2').border({ width: 1, color: '#FCA5A5' })
+                  .borderRadius(8)
+                  .onClick(() => router.pushUrl({ url: 'pages/ApiEnvironment' }))
+              }
+              .width('100%').padding(18).backgroundColor('#FEF2F2').borderRadius(8)
+              .border({ width: 1, color: '#FECACA' })
+            } else if (this.onlineBest !== null) {
+              this.OnlineBestCard(this.onlineBest)
+
+
+
+              Text(this.showMatchFactors ? '收起匹配依据 ⌃' : '查看匹配依据 ›').fontSize(13).fontColor(UiTheme.accent).height(44).padding({ top: 12 }).onClick(() => this.showMatchFactors = !this.showMatchFactors)
+              if (this.showMatchFactors) { this.OnlineFactorBoard(this.onlineBest) }
+
+              if (this.onlineOthers.length > 0) {
+                Column({ space: 8 }) {
+                  Text('其他候选人').fontSize(16).fontWeight(FontWeight.Bold)
+                    .fontColor(UiTheme.ink).width('100%').margin({ bottom: 4 })
+                  ForEach(this.onlineOthers, (item: PartnerRankedCandidate) => {
+                    this.OnlineOtherRow(item)
+                  }, (item: PartnerRankedCandidate) => item.candidate.userId)
+                }.width('100%')
+              }
+
+            } else {
+              Column({ space: 8 }) {
+                Text('暂无可匹配的候选人').fontSize(17).fontWeight(FontWeight.Bold)
+                  .fontColor(UiTheme.ink).width('100%')
+                Text('可以补充课程、学习目标和空闲时间后重新匹配。')
+                  .fontSize(13).fontColor(UiTheme.secondary).lineHeight(20).width('100%')
+              }
+              .width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
+            }
+          } else {
+            Text(appState.getChatTaskContext()).fontSize(12).fontColor(UiTheme.accent)
+            .width('100%').padding(10).backgroundColor(UiTheme.tint).borderRadius(8)
+
+          Row({ space: 6 }) {
+
+            Text(`Agent基于${appState.isDataImported ? '导入数据' : '演示数据'}进行匹配分析`)
+              .fontSize(11).fontColor(UiTheme.secondary)
+Text(`${appState.candidates.length}位候选`).fontSize(11).fontColor(UiTheme.accent)
+              .backgroundColor(UiTheme.tint).borderRadius(8).padding({ left: 8, right: 8, top: 2, bottom: 2 })
+          }.width('100%').padding(8).backgroundColor(UiTheme.tint).borderRadius(8)
+
+          if (generatedPartner !== null) {
+            Column({ space: 10 }) {
+              Row() {
+                Column({ space: 4 }) {
+                  Text(` ${generatedPartner.matchName}`).fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+                  Text('最佳学习搭子').fontSize(13).fontColor(UiTheme.accent).fontWeight(FontWeight.Medium)
+                }
+Column() {
+                  Text(`${generatedPartner.score}%`).fontSize(22).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+                  Text('匹配度').fontSize(11).fontColor(UiTheme.secondary)
+                }.alignItems(HorizontalAlign.Center)
+              }.width('100%')
+
+              if (generatedPartner.studyTime !== null) {
+                Text(`建议学习时间：${generatedPartner.studyTime} · 时长 ${generatedPartner.duration} 分钟`)
+                  .fontSize(13).fontColor(UiTheme.secondary)
+              }
+              Text(`"${generatedPartner.reasons.join('、')}"`)
+                .fontSize(14).fontColor(UiTheme.ink).lineHeight(21)
+            }
+            .width('100%').padding(18).backgroundColor(UiTheme.surface).borderRadius(8)
+
+          }
+
+          this.MatchScoreBoard()
+
+          if (otherCandidateMatches.length > 0) {
+            Column({ space: 4 }) {
+              Text('其他候选人').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+                .width('100%').margin({ bottom: 4 })
+
+              ForEach(otherCandidateMatches, (entry: CandidateMatchEntry) => {
+                Row() {
+                  Column({ space: 2 }) {
+                    Text(entry.candidate.basicInfo.name).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+                    Text(`${entry.candidate.basicInfo.grade} · ${entry.candidate.basicInfo.major}`)
+                      .fontSize(12).fontColor(UiTheme.secondary)
+                  }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+
+                  Column() {
+                    Text(`${entry.match.score}%`).fontSize(20).fontWeight(FontWeight.Bold).fontColor(UiTheme.accent)
+                    Text('匹配度').fontSize(10).fontColor(UiTheme.secondary)
+                  }.alignItems(HorizontalAlign.Center)
+                }
+                .width('100%').padding(14).backgroundColor(UiTheme.surface).borderRadius(8)
+
+              }, (entry: CandidateMatchEntry) => entry.candidate.userId)
+            }.width('100%')
+          }
+
+          if (generatedPartner !== null) {
+            Column({ space: 12 }) {
+              Text('合作学习看板')
+                .fontSize(17).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
+
+              Row({ space: 12 }) {
+                Column({ space: 6 }) {
+                  Text('你擅长').fontSize(11).fontColor('#6B7280')
+                  Text(appState.currentUser.knowledge.strength.slice(0, 3).join('、') || '暂无')
+                    .fontSize(13).fontWeight(FontWeight.Medium).fontColor(UiTheme.accent).maxLines(2)
+                }.width('45%').padding(10).backgroundColor(UiTheme.tint).borderRadius(8)
+
+                Column({ space: 6 }) {
+                  Text('对方擅长').fontSize(11).fontColor('#6B7280')
+                  Text(generatedPartner.matchName).fontSize(13).fontWeight(FontWeight.Medium).fontColor(UiTheme.accent)
+                }.width('45%').padding(10).backgroundColor(UiTheme.tint).borderRadius(8)
+              }.width('100%')
+
+              Row({ space: 8 }) {
+                Column({ space: 4 }) {
+                  Text('①').fontSize(18).fontColor(UiTheme.accent)
+                  Text('互讲概念').fontSize(10).fontColor('#6B7280')
+                }.width('30%').padding(8).backgroundColor(UiTheme.tint).borderRadius(8)
+                Text('→').fontSize(16).fontColor('#9CA3AF')
+                Column({ space: 4 }) {
+                  Text('②').fontSize(18).fontColor(UiTheme.accent)
+                  Text('互测练习').fontSize(10).fontColor('#6B7280')
+                }.width('30%').padding(8).backgroundColor(UiTheme.tint).borderRadius(8)
+                Text('→').fontSize(16).fontColor('#9CA3AF')
+                Column({ space: 4 }) {
+                  Text('③').fontSize(18).fontColor(UiTheme.accent)
+                  Text('错题复盘').fontSize(10).fontColor('#6B7280')
+                }.width('30%').padding(8).backgroundColor(UiTheme.tint).borderRadius(8)
+              }.width('100%').justifyContent(FlexAlign.Center)
+
+              Text('协同时间：' + (generatedPartner.studyTime || '20:00-21:00') + ' · 共' + (generatedPartner.duration || 60) + '分钟')
+                .fontSize(12).fontColor('#6B7280')
+            }
+            .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+
+          }
+
+          Column({ space: 8 }) {
+            Text('确认后将回到对话，由知学Mate继续安排共同学习。')
+              .fontSize(12).fontColor(UiTheme.secondary).lineHeight(18).width('100%')
+            Button(this.invitationSent ? '查看搭子消息' : '邀请一起学习')
+              .width('100%').height(46).fontSize(15).fontWeight(FontWeight.Bold).fontColor(UiTheme.surface)
+              .backgroundColor(UiTheme.accent).borderRadius(8).enabled(generatedPartner !== null)
+              .onClick(() => {
+                if (this.invitationSent) {
+                  router.pushUrl({ url: 'pages/CollaborativeTasks' });
+                } else {
+                  this.confirmPartner();
+                }
+              })
+            if (!appState.isDataImported) {
+              Text('资料不足时，可在对话里补充课程和空闲时间。')
+                .fontSize(12).fontColor(UiTheme.secondary).width('100%').textAlign(TextAlign.Center)
+            }
+          }
+          .width('100%').padding(16).backgroundColor(UiTheme.surface).borderRadius(8)
+
+          }
+          }
+        }
+        .width('100%').constraintSize({ maxWidth: UiTheme.contentWidth }).padding({ left: 20, right: 20, top: 16, bottom: 40 })
+      }
+      .layoutWeight(1).align(Alignment.Top)
+      AppBottomBar({ selected: 2 })
+    }
+    .width('100%').height('100%').backgroundColor(UiTheme.surface)
+    AIFloatButton()
+    }.width('100%').height('100%')
+      .bindSheet($$this.candidateSheet, this.CandidateInvite(), { height: SheetSize.FIT_CONTENT, showClose: true })
+  }
+}

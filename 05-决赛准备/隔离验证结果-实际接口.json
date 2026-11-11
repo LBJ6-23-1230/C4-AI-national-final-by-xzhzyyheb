@@ -1,0 +1,30 @@
+{
+  "multi_point_API": {
+    "status": 200,
+    "before": {
+      "point-a": 10,
+      "point-b": 90
+    },
+    "after": {
+      "point-a": 39,
+      "point-b": 39
+    }
+  },
+  "second_course_import": {
+    "profile_added_OS": true,
+    "plan_equal_before_after": true,
+    "plan_points": [
+      "二叉树遍历基础",
+      "二叉搜索树",
+      "图算法",
+      "排序算法",
+      "哈希表"
+    ]
+  },
+  "huawei_unverified_identifier": {
+    "first_status": 201,
+    "second_status": 200,
+    "same_account": true,
+    "second_gets_session": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaRevision": "20261030_03",
+  "file": "zhixue-feedback-sync-signed.hap",
+  "bytes": 4488453,
+  "sha256": "438e6c822be6f6b77c579e7969fe67da53ab73d076998207f663fe7e3375baee",
+  "build": "debug, signed with existing local configuration",
+  "databaseBackup": ".local-work/zhixue-before-feedback-20261030-182211.dump",
+  "validation": {
+    "backend": "863 passed, 29 skipped (dedicated PostgreSQL tests run separately)",
+    "postgresql": "48 passed",
+    "client": 9,
+    "controllers": 47,
+    "arktsBuild": "passed"
+  },
+  "baseCommit": "d888543",
+  "includesWorkingTreeChanges": true
+}

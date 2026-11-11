@@ -1,0 +1,78 @@
+import { UiTheme } from '../utils/UiTheme';
+import { PlanDiff, PlanTaskChange } from '../api/ApiModels';
+import { ApiDisplayFormatter } from '../utils/ApiDisplayFormatter';
+
+@Component
+export struct PlanDiffCard {
+  @Prop value: PlanDiff;
+  @State expanded: boolean = false;
+
+  private changeLabel(change: PlanTaskChange): string {
+    if (change.change === undefined || change.change.trim().length === 0) {
+      return '时长已调整';
+    }
+    const raw: string = change.change.trim();
+    if (raw === 'deferred') return '暂未安排，任务保留';
+    if (raw === 'scheduled') return '已加入本次计划';
+    if (raw === 'removed') return '移出本次安排';
+    if (raw.endsWith('分钟')) {
+      return raw;
+    }
+    return `${raw} 分钟`;
+  }
+
+  private durationLabel(change: PlanTaskChange): string {
+    if (change.durationMinutes === undefined) {
+      return '';
+    }
+    return change.change === 'deferred' || change.change === 'scheduled' ? `预计需 ${change.durationMinutes} 分钟` : `调整后 ${change.durationMinutes} 分钟`;
+  }
+
+  build() {
+    Column({ space: 12 }) {
+      Row() {
+        Column({ space: 3 }) {
+          Text('学习计划已更新').fontSize(16).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink)
+          Text(`计划版本 ${this.value.oldVersion} → ${this.value.newVersion}`)
+            .fontSize(13).fontColor(UiTheme.accent).fontWeight(FontWeight.Medium)
+        }.alignItems(HorizontalAlign.Start)
+        Blank()
+        Text(`${this.value.changedTasks.length} 项调整`).fontSize(11).fontColor(UiTheme.accent)
+          .padding({ left: 8, right: 8, top: 4, bottom: 4 }).backgroundColor(UiTheme.tint).borderRadius(9)
+      }.width('100%')
+
+      Button(this.expanded ? '收起调整详情 ↑' : '展开调整详情 ↓').height(30).fontSize(12)
+        .onClick(() => this.expanded = !this.expanded)
+      if (this.expanded) {
+      Text(this.value.adjustmentReason.length > 0 ? this.value.adjustmentReason : 'Agent 已根据本次评估更新学习计划。')
+        .fontSize(13).fontColor(UiTheme.secondary).lineHeight(19).width('100%')
+
+      if (this.value.changedTasks.length > 0) {
+        ForEach(this.value.changedTasks, (change: PlanTaskChange) => {
+          Column({ space: 6 }) {
+            Text(change.knowledgePointName ?? ApiDisplayFormatter.knowledgePoint(change.knowledgePointId ?? change.taskId))
+              .fontSize(14).fontWeight(FontWeight.Bold).fontColor(UiTheme.ink).width('100%')
+            Row() {
+              Text(this.changeLabel(change)).fontSize(13)
+                .fontColor(change.change?.startsWith('-') ? '#B45309' : '#0F766E')
+              Blank()
+              if (change.durationMinutes !== undefined) {
+                Text(this.durationLabel(change)).fontSize(12).fontColor(UiTheme.secondary)
+              }
+            }.width('100%')
+          }.width('100%').padding(12).backgroundColor(UiTheme.subtle).borderRadius(10)
+        }, (change: PlanTaskChange) => change.taskId)
+      } else {
+        Text('本次评估未产生具体任务调整。').fontSize(13).fontColor(UiTheme.secondary)
+          .width('100%').padding(12).backgroundColor(UiTheme.subtle).borderRadius(10)
+      }
+
+      if (this.value.triggerEvidence.length > 0) {
+        Text(`触发证据：${this.value.triggerEvidence.join('、')}`)
+          .fontSize(12).fontColor(UiTheme.secondary).lineHeight(18).width('100%')
+      }
+      }
+    }.width('100%').padding(14).backgroundColor(UiTheme.surface)
+      .border({ width: 1, color: '#BFDBFE' }).borderRadius(8)
+  }
+}

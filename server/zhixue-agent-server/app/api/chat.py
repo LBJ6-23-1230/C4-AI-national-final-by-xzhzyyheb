@@ -1,0 +1,505 @@
+# -*- coding: utf-8 -*-
+"""自然语言交互接口（聊天层）。
+
+联调收敛后，`/api/agent/*` 与 `/api/v1/**` 由**同一个进程**提供：
+
+* `/api/agent/chat`   —— LLM 意图识别 + 6 路子 Agent（本文件的 `agent_chat`）
+* `/api/agent/health` —— 连通性与 LLM 就绪状态（前端 ApiEnvironment 页使用）
+* `/api/v1/**`        —— 真 Agent 循环 / 确定性判分 / 决策引擎（见 `app/api/` 其余模块）
+
+这样前端只需要**一个 baseUrl**，不再出现"chat 打 B1、结构化流打 B2"的双后端不同源问题。
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import time
+from datetime import datetime
+
+from flask import Blueprint, jsonify, request
+
+from app.agent import chat_llm
+from app.api.identity import DEMO_USER_ID, resolve_user_id
+from app.repositories.json_repository import JsonRepository
+from app.tools.profile_merge import PROFILE_LOCK
+
+chat_api = Blueprint("chat", __name__)
+
+CONTRACT_VERSION = "api-contract-v0.3"
+
+_MAX_IMAGE_CHARS = 5_000_000
+
+_repository: JsonRepository | None = None
+
+
+def _history_with_sessions(history: list[dict]) -> list[dict]:
+    """为旧版逐轮历史补稳定的会话 id。
+
+    新记录直接使用客户端随每轮传来的 ``session_id``。旧记录没有该字段，只能
+    依据时间连续性迁移：相邻两轮间隔不超过 30 分钟视为同一场对话。这个补齐只
+    影响接口输出，不改写原文件，旧数据仍可被旧版本读取。
+    """
+    result: list[dict] = []
+    legacy_session_id = ""
+    previous_time: datetime | None = None
+    for index, item in enumerate(history):
+        row = dict(item)
+        existing = str(row.get("session_id") or "").strip()
+        timestamp = str(row.get("timestamp") or "")
+        parsed: datetime | None = None
+        try:
+            parsed = datetime.fromisoformat(timestamp.replace(" ", "T"))
+        except ValueError:
+            parsed = None
+
+        if existing:
+            row["session_id"] = existing
+            legacy_session_id = ""
+        else:
+            gap_seconds = ((parsed - previous_time).total_seconds()
+                           if parsed is not None and previous_time is not None else None)
+            if not legacy_session_id or gap_seconds is None or gap_seconds > 30 * 60:
+                stamp_key = "".join(char for char in timestamp if char.isdigit()) or str(index)
+                legacy_session_id = f"legacy-{stamp_key}"
+            row["session_id"] = legacy_session_id
+        result.append(row)
+        previous_time = parsed
+    return result
+
+
+def _apply_profile_updates(user_id: str | None, updates: dict) -> list[str]:
+    if _repository is None:
+        return []
+    with PROFILE_LOCK, _repository.transaction():
+        return _apply_profile_updates_locked(user_id, updates)
+
+
+def _apply_profile_updates_locked(user_id: str | None, updates: dict) -> list[str]:
+    """把"更新档案"意图解析出的 `updates.user` 落到 `profiles` 集合。
+
+    返回**实际写入成功的字段名**（中文名，直接用于回复文案），
+    这样"已更新"就有据可依 —— 见 `chat_llm._handle_update_profile` 的说明。
+
+    ## 为什么只处理这几个字段
+
+    后端 `profiles` 的 schema 是 `{userId, goal, examDate, freeTimeSlots,
+    profileVersion, mastery}`。prompt 里的 `updates.user.basicInfo`
+    （姓名/年级/专业）与 `updates.user.knowledge`（薄弱点/强项）
+    **在后端没有对应存储**，属于前端本地 AppState 的字段 —— 硬写进来
+    只会写到一个没人读的地方，那正是本次要消灭的"假成功"。
+    所以这里只写 `goal` / `examDate` / `freeTimeSlots`，其余交给前端。
+    """
+    if _repository is None:
+        return []
+    owner = (user_id or "").strip() or "demo-user"
+    profile = _repository.get("profiles", owner)
+    if profile is None:
+        return []
+    user_block = updates.get("user")
+    if not isinstance(user_block, dict):
+        return []
+
+    changed: list[str] = []
+
+    learning_goal = user_block.get("learningGoal")
+    if isinstance(learning_goal, dict):
+        course = learning_goal.get("course")
+        if isinstance(course, str) and course.strip() and course.strip() != profile.get("targetCourse"):
+            profile["targetCourse"] = course.strip()[:80]
+            changed.append("主攻课程")
+        goal = learning_goal.get("goal")
+        if isinstance(goal, str) and goal.strip() and goal.strip() != profile.get("goal"):
+            profile["goal"] = goal.strip()[:200]
+            changed.append("学习目标")
+    elif isinstance(learning_goal, str) and learning_goal.strip():
+        if learning_goal.strip() != profile.get("goal"):
+            profile["goal"] = learning_goal.strip()[:200]
+            changed.append("学习目标")
+
+    time_block = user_block.get("time")
+    if isinstance(time_block, dict):
+        free_time = time_block.get("freeTime")
+        if isinstance(free_time, list):
+            slots = [s.strip() for s in free_time
+                     if isinstance(s, str) and s.strip()]
+            if slots and slots != profile.get("freeTimeSlots"):
+                profile["freeTimeSlots"] = slots[:20]
+                changed.append("空闲时间")
+
+    exam_date = user_block.get("examDate")
+    if isinstance(exam_date, str) and exam_date.strip():
+        if exam_date.strip() != profile.get("examDate"):
+            profile["examDate"] = exam_date.strip()[:40]
+            changed.append("考试日期")
+
+    if not changed:
+        return []
+
+    try:
+        profile["profileVersion"] = int(profile.get("profileVersion", 1)) + 1
+    except (TypeError, ValueError):
+        profile["profileVersion"] = 2
+    _repository.save("profiles", owner, profile)
+    return changed
+
+
+def configure_chat_repository(repository: JsonRepository) -> None:
+    """注入仓储，并把画像落盘钩子注册给对话层。
+
+    钩子的存在意义：`app/agent/chat_llm.py` 是**纯对话层**，不应依赖持久化边界；
+    而"更新档案"要真的落盘又必须有仓储。用钩子把两者解耦。
+    """
+    global _repository
+    _repository = repository
+    chat_llm.set_history_repository(repository if getattr(repository, "durable_jobs", False) else None)
+    chat_llm.set_profile_update_hook(_apply_profile_updates)
+
+
+def _chat_identity() -> str:
+    """聊天层的身份解析（对话历史 / 错题落盘都要用）。
+
+    走项目统一的 `resolve_user_id()`：**已登录身份 > 显式 `userId` > 演示身份**。
+    聊天端点同时接受请求体与 query 上的 `userId`（历史端点只有 query），
+    因此两处都取一次，谁先有值用谁。
+    """
+    supplied = None
+    body = request.get_json(silent=True)
+    if isinstance(body, dict) and isinstance(body.get("userId"), str):
+        supplied = body["userId"]
+    if not supplied:
+        supplied = request.args.get("userId")
+    return resolve_user_id(supplied)
+
+
+def _user_context_for(user_id: str) -> dict:
+    """按**当前身份**组装喂给模型的「用户信息」块。
+
+    ⚠️ 此前 `chat_llm._user_data()` 永远读 `chat/mock_users.json`（u001 / 小明 /
+    薄弱点写死 `['二叉树遍历','递归理解']`），**与当前登录是谁无关** —— 于是模型
+    照着"小明"的画像回话：称呼用户"小明"、张口就是"二叉树遍历"。
+    实测反馈里的「怎么一直在小明」「默认不要直接说我掌握了二叉树遍历」就是这条。
+
+    现在：真实账号用**自己的昵称 + 自己的画像**（薄弱点由掌握度排序推出）；
+    游客/查无此人/无仓储时才回落演示数据（返回空 dict 即回落）。
+    """
+    if _repository is None or user_id == DEMO_USER_ID:
+        return {}
+    user = _repository.get("users", user_id)
+    profile = _repository.get("profiles", user_id)
+    if not isinstance(user, dict) and not isinstance(profile, dict):
+        return {}
+
+    nickname = user.get("nickname") if isinstance(user, dict) else ""
+    grade = user.get("grade") if isinstance(user, dict) else ""
+
+    weak: list[str] = []
+    strong: list[str] = []
+    scored: list[dict] = []
+    mastery = profile.get("mastery") if isinstance(profile, dict) else None
+    if isinstance(mastery, list):
+        from app.agent.knowledge import valid_knowledge_term
+        scored = [item for item in mastery
+                  if isinstance(item, dict) and isinstance(item.get("masteryScore"), (int, float))
+                  and valid_knowledge_term(str(item.get("knowledgePointName") or item.get("knowledgePointId") or ""))]
+        scored.sort(key=lambda item: item["masteryScore"])
+        for item in scored:
+            name = str(item.get("knowledgePointName") or item.get("knowledgePointId") or "").strip()
+            if not name:
+                continue
+            if item["masteryScore"] < 60:
+                weak.append(name)
+            elif item["masteryScore"] >= 80:
+                strong.append(name)
+
+    context: dict = {
+        "userId": user_id,
+        "basicInfo": {"name": nickname or "同学", "grade": grade, "major": ""},
+        "knowledge": {"weakness": weak[:5], "strength": strong[:5]},
+        "mastery": [
+            {"knowledgePointName": str(item.get("knowledgePointName") or ""),
+             "knowledgePointId": str(item.get("knowledgePointId") or ""),
+             "masteryScore": item["masteryScore"]}
+            for item in scored
+        ],
+    }
+    if isinstance(profile, dict):
+        if profile.get("goal"):
+            context["learningGoal"] = {"course": profile.get("targetCourse", ""), "goal": profile["goal"]}
+        if profile.get("freeTimeSlots"):
+            context["time"] = {"freeTime": profile["freeTimeSlots"]}
+    return context
+
+
+def _payload() -> dict:
+    """宽松地取出请求体 JSON。
+
+    `request.get_json(silent=True)` 在 `Content-Type` 带参数时会返回 None——
+    例如 PowerShell 的 `Invoke-RestMethod -ContentType 'application/json'` 实际发出的是
+    `application/json; charset=utf-8`。若只依赖 get_json，这类客户端的中文消息会被当成空消息，
+    意图识别静默退化成 get_suggestion，**表现为"聊天接口答非所问"**。
+
+    这里补一层显式解析：**先取原始字节，再按 UTF-8 解码**。
+    注意不能用 `get_data(as_text=True)`——它会按猜测的字符集解码，在带 `charset=utf-8` 的
+    Content-Type 下可能按 latin-1 解成乱码，导致中文意图全部丢失。
+    """
+    data = request.get_json(silent=True)
+    if isinstance(data, dict):
+        return data
+
+    raw_bytes = request.get_data() or b""
+    if not raw_bytes.strip():
+        return {}
+    for encoding in ("utf-8", "utf-8-sig"):
+        try:
+            parsed = json.loads(raw_bytes.decode(encoding))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+def _contract_version_mismatch():
+    supplied = request.headers.get("X-API-Contract-Version", "")
+    if supplied and supplied != CONTRACT_VERSION:
+        return jsonify({
+            "errorCode": "CONTRACT_VERSION_MISMATCH",
+            "message": f"请使用 X-API-Contract-Version: {CONTRACT_VERSION}",
+            "details": None,
+        }), 409
+    return None
+
+
+@chat_api.get("/api/agent/health")
+def agent_health():
+    """前端 API 环境页的连通性探针。
+
+    注意：`/api/agent/health` 不做契约版本校验，否则前端在版本不匹配时会误判为"后端不可用"。
+    """
+    from app.services import llm_health
+    return jsonify({
+        "status": "ok",
+        "llm_ready": chat_llm.llm_ready(),
+        "provider": "qwen",
+        "model": chat_llm.llm_model(),
+        "baseUrl": chat_llm.llm_base_url(),
+        "contractVersion": CONTRACT_VERSION,
+        **llm_health.status(),
+    })
+
+
+@chat_api.post("/api/agent/health")
+def verify_agent_health():
+    from flask import g
+    from app.services import llm_health
+    if not g.current_user:
+        return jsonify({"errorCode": "UNAUTHORIZED", "message": "请登录后主动验证模型连接", "details": None}), 401
+    result, code = llm_health.verify()
+    return jsonify(result), code
+
+
+@chat_api.post("/api/agent/chat")
+def agent_chat():
+    if request.accept_mimetypes.best == "text/event-stream":
+        from app.services.chat_progress import stream_response
+        return stream_response(_agent_chat)
+    return _agent_chat()
+
+
+def _agent_chat():
+    """统一对话接口。
+
+    request::
+
+        {"message": "今天我应该先学什么？", "image": "<base64，可选>", "history": [...],
+         "user_data": {"isDataImported": true, "courses": [...], "homeworkDDLs": [...]}}
+
+    response::
+
+        {"reply": "...", "intent": "get_suggestion", "card": {...} | null}
+    """
+    mismatch = _contract_version_mismatch()
+    if mismatch is not None:
+        return mismatch
+
+    data = _payload()
+    message = str(data.get("message") or data.get("user_message") or "").strip()
+    image = data.get("image")
+    if image is not None and (not isinstance(image, str) or len(image) > _MAX_IMAGE_CHARS):
+        return jsonify({
+            "errorCode": "BAD_REQUEST",
+            "message": "image 必须是字符串且不超过 5MB",
+            "details": None,
+        }), 400
+
+    from app.services.image_inputs import inspect_image
+    receipt = inspect_image(image)
+    if receipt["status"] == "invalid":
+        return jsonify({"errorCode": "INVALID_IMAGE", "message": receipt["message"], "details": receipt}), 400
+    if not message and not image and data.get('document') is None:
+        return jsonify({
+            "reply": "请告诉我你需要什么帮助？",
+            "intent": "unknown",
+            "card": None,
+            "llmUsed": False,
+        })
+
+    frontend_data = data.get("user_data")
+    if not isinstance(frontend_data, dict):
+        frontend_data = None
+
+    _identity: str = _chat_identity()
+    session_id = str(data.get("sessionId") or "").strip()[:128] or None
+    if data.get("coordinateLearning") is True and (not isinstance(data.get("sessionId"), str)
+            or not session_id or len(data["sessionId"].strip()) > 128):
+        return jsonify({"errorCode": "BAD_REQUEST", "message": "目标协作需要1至128字符的稳定聊天sessionId", "details": None}), 400
+    chat_started = time.monotonic()
+    from app.services.chat_documents import resolve as resolve_document
+    try:
+        message, document = resolve_document(_repository, _identity, session_id, message,
+            data.get('document'), bool(image))
+    except ValueError as error:
+        return jsonify(errorCode='BAD_REQUEST', message=str(error), details=None), 400
+    document_args = {'document_context': document} if document else {}
+    result = chat_llm.chat(
+        message=message,
+        image_base64=image if isinstance(image, str) and image else None,
+        frontend_data=frontend_data,
+        user_id=_identity,
+        user_context=_user_context_for(_identity),
+        session_id=session_id,
+        **document_args,
+    )
+
+    payload: dict = {
+        "reply": result["reply"],
+        "intent": result["intent"],
+        "card": result["card"],
+        "llmUsed": bool(result.get("llmUsed", False)),
+    }
+    if image or (result["intent"] == "analyze_wrong" and data.get("coordinateLearning") is True
+                 and not result.get("wrongAnalysis", {}).get("questionText")):
+        payload["attachmentReceipt"] = receipt
+    profile_updates = result.get("profileUpdates")
+    if isinstance(profile_updates, dict) and profile_updates:
+        payload["profileUpdates"] = profile_updates
+    wrong_analysis = result.get("wrongAnalysis")
+    if isinstance(wrong_analysis, dict) and wrong_analysis:
+        payload["wrongAnalysis"] = wrong_analysis
+        if image:
+            receipt["status"] = wrong_analysis.get("recognitionStatus", "failed")
+            receipt["message"] = {"recognized": "图片已接收，识别完成待核对",
+                                  "partial": "图片已接收，部分题目尚未识别完整，请核对题数",
+                                  "unreadable": "图片已接收，但题目不清晰，请补拍"}.get(
+                                      receipt["status"], "图片已接收，但本次识别未完成")
+        questions = wrong_analysis.get("questions") or [wrong_analysis]
+        if _repository and session_id:
+            import uuid
+            for question in questions:
+                if not question.get("questionText") or not question.get("knowledgePoint"):
+                    continue
+                diagnosis_id = "diagnosis-" + uuid.uuid4().hex
+                _repository.save("chat_diagnoses", diagnosis_id, {"diagnosisId": diagnosis_id, "userId": _identity,
+                    "chatSessionId": session_id, "knowledgePoint": question["knowledgePoint"],
+                    "questionText": question["questionText"], "attachmentId": receipt.get("attachmentId", "")})
+                question["diagnosisId"] = diagnosis_id
+            if questions and questions[0].get("diagnosisId"):
+                payload["wrongAnalysis"]["diagnosisId"] = questions[0]["diagnosisId"]
+    if image and receipt["status"] == "received":
+        receipt.update(status="failed", message="图片已接收，但识图服务未完成，请重试或粘贴题干")
+    if session_id:
+        payload["sessionId"] = session_id
+    reply_elapsed_ms = round((time.monotonic() - chat_started) * 1000, 2)
+    coordination_started = time.monotonic()
+    if data.get("coordinateLearning") is True and _repository and session_id and not document:
+        from app.services.learning_context import ensure_chat_context, chat_workflow_id
+        from app.services.learning_context import current_chat_workflow
+        existing = current_chat_workflow(_repository, _identity, session_id)
+        from app.services.learning_context import is_learning_request
+        learning_request = is_learning_request(message)
+        if not image and result["intent"] != "analyze_wrong" and learning_request:
+            from app.services.chat_progress import emit
+            emit("coordination", "回复已生成，正在同步学习计划", payload.get("reply", "")
+                 if result["intent"] in ("get_suggestion", "analyze_weakness", "query_tasks") else "")
+            payload["learningContext"] = ensure_chat_context(_repository, _identity, session_id, message)
+    logging.getLogger("zhixue.llm").info(json.dumps({
+        "request_type": "chat_pipeline", "intent": result["intent"],
+        "reply_elapsed_ms": reply_elapsed_ms,
+        "coordination_elapsed_ms": round((time.monotonic() - coordination_started) * 1000, 2),
+        "elapsed_ms": round((time.monotonic() - chat_started) * 1000, 2),
+    }))
+    return jsonify(payload)
+
+
+@chat_api.get("/api/agent/history")
+def chat_history():
+    """读取**当前身份**的对话历史。
+
+    历史原先是一份全局数组，任何人不带凭据就能读到所有人的聊天记录、
+    并且 `DELETE` 会清空所有人 —— 聊天记录属个人信息，这是真实越权（审计已报）。
+    现按 `userId` 分桶（见 `chat_llm` 的"对话历史"小节），身份用项目统一的
+    `resolve_user_id()` 解析：**已登录身份 > 显式 `?userId=` > 演示身份**。
+    """
+    return jsonify({"history": _history_with_sessions(chat_llm.get_history(_chat_identity())),
+                    "userId": _chat_identity()})
+
+
+@chat_api.get("/api/agent/images/<file_id>")
+def chat_original_image(file_id):
+    owner = _chat_identity()
+    original = _repository.get("file_objects", file_id) if _repository else None
+    if (not original or original.get("userId") != owner
+            or original.get("purpose") != "chat_image" or original.get("status") != "uploaded"):
+        return jsonify({"errorCode": "NOT_FOUND", "message": "图片不存在或已删除"}), 404
+    from app.services.file_storage import storage
+    import base64
+    encoded = base64.b64encode(storage().read(original)).decode("ascii")
+    response = jsonify({"image": f"data:{chat_llm._image_mime_type(encoded)};base64,{encoded}"})
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
+@chat_api.delete("/api/agent/history")
+def chat_history_clear():
+    """只清空**当前身份**的历史，不再波及其他用户。"""
+    identity = _chat_identity()
+    chat_llm.clear_history(identity)
+    from app.services.chat_documents import clear
+    clear(_repository, identity)
+    return jsonify({"status": "cleared", "userId": identity})
+
+
+@chat_api.get("/api/agent/user-data")
+def user_data_snapshot():
+    identity: str = _chat_identity()
+    data = chat_llm._user_data(  # noqa: SLF001 - 自用只读快照
+        None, _user_context_for(identity), identity)
+    return jsonify({
+        "users": data.get("users", {}),
+        "courses": data.get("courses", {}),
+        "candidates": [],
+        "wrong_questions": _wrong_questions_for(identity),
+    })
+
+
+def _wrong_questions_for(user_id: str) -> list:
+    """当前身份可见的错题（最多最近 10 条）。
+
+    ⚠️ 原实现是 `_load_json(...)[-10:]` —— **完全不按身份过滤**，直接取文件最后
+    10 条。后果已实测复现：一个**刚注册、零错题**的新账号调这个接口，拿到的是
+    `u001` 的 10 条错题。项目的身份隔离闸门（`check_identity_isolation.py`
+    22 项、`check_logged_in_flows.py` 越权检查）恰好都没覆盖这个端点。
+
+    演示身份额外认 `u001`：历史种子数据的 userId 就是它（随包那份已清理为
+    `demo-user`，这里保留兼容，避免旧运行库看不到演示错题）。
+    """
+    rows = chat_llm._load_json("mock_wrong_questions.json", [])  # noqa: SLF001
+    if not isinstance(rows, list):
+        return []
+    accepted = {user_id}
+    if user_id == DEMO_USER_ID:
+        accepted.add("u001")
+    own = [row for row in rows
+           if isinstance(row, dict) and str(row.get("userId") or "") in accepted]
+    return own[-10:]

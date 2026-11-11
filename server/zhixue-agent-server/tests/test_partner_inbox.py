@@ -1,0 +1,160 @@
+from uuid import UUID
+
+import pytest
+from app import create_app
+from app.api import learning_upgrade, partner_invite
+
+
+@pytest.fixture
+def inbox_setup(tmp_path):
+    app = create_app(tmp_path / 'inbox.json')
+    client = app.test_client()
+    repository = app.extensions['repository']
+    people = []
+    for index in range(3):
+        response = client.post('/api/v1/auth/register', json={'password': 'test-pw-123456', 
+            'nickname': f'消息同学{index}', 'phone': f'1380055000{index}', 'seedDemoData': False})
+        assert response.status_code == 201
+        record = response.get_json()
+        people.append((record['user']['userId'], {'Authorization': 'Bearer ' + record['token']}))
+    for left, right in [(0, 1), (1, 0), (0, 2), (2, 0)]:
+        owner, other = people[left][0], people[right][0]
+        repository.save('contacts', owner + ':' + other, dict(userId=owner, partnerUserId=other,
+            pairedAt='2026-10-27T00:00:00Z', courseName='数据结构'))
+    return client, repository, people
+
+
+def send(client, sender, target, key, text):
+    result = client.post(f'/api/v1/partners/{target[0]}/messages', headers=sender[1],
+                         json=dict(clientId=key, text=text, image=''))
+    assert result.status_code == 201
+    return result.get_json()['message']
+
+
+def test_inbox_counts_only_incoming_and_read_watermarks_are_monotonic(inbox_setup, monkeypatch):
+    client, repository, people = inbox_setup
+    me, first, second = people
+    monkeypatch.setattr(learning_upgrade, 'now', lambda: '2026-11-07T12:00:00.123456+00:00')
+    ids = iter(UUID(int=n) for n in range(5, 0, -1))
+    monkeypatch.setattr(learning_upgrade, 'uuid4', lambda: next(ids))
+    earlier = send(client, first, me, '1', '一起复习栈')
+    later = send(client, first, me, '2', '明天有空吗')
+    send(client, second, me, '3', '一起学习网络')
+    send(client, me, first, '4', '收到')
+    response = client.get('/api/v1/partner-conversations', headers=me[1])
+    assert response.status_code == 200
+    inbox = response.get_json()
+    assert inbox['totalUnread'] == 3
+    assert len(inbox['conversations']) == 2
+    item = next(x for x in inbox['conversations'] if x['partnerUserId'] == first[0])
+    assert item['lastMessage'] == '收到' and item['unreadCount'] == 2
+    assert item['sharedCourses'] == ['数据结构'] and item['sharedStudyMinutes'] is None
+    assert 'image' not in item
+    read_url = f'/api/v1/partners/{first[0]}/read'
+    assert client.post(read_url, headers=me[1], json={'lastReadMessageId': later['messageId']}).status_code == 200
+    result = client.post(read_url, headers=me[1], json={'lastReadMessageId': earlier['messageId']})
+    assert result.get_json()['lastReadMessageId'] == later['messageId']
+    assert client.get('/api/v1/partner-conversations', headers=me[1]).get_json()['totalUnread'] == 1
+    newest = send(client, first, me, '5', '新消息')
+    assert client.get('/api/v1/partner-conversations', headers=me[1]).get_json()['totalUnread'] == 2
+    result = client.get(f'/api/v1/partners/{first[0]}/messages', headers=me[1],
+                        query_string={'after': later['messageId']}).get_json()
+    assert [message['text'] for message in result['messages']] == ['收到', '新消息']
+    assert result['cursor'] == newest['messageId']
+    assert '_sequence' not in newest
+
+
+def test_legacy_cursor_can_read_new_messages_even_after_clock_moves_back(inbox_setup, monkeypatch):
+    client, repository, people = inbox_setup
+    me, first, _ = people
+    legacy = '2026-11-07T12:00:01+00:00-legacy'
+    repository.save('partner_messages', legacy, dict(messageId=legacy,
+        roomId=learning_upgrade.room_id(me[0], first[0]), senderId=first[0],
+        text='旧消息', image='', createdAt='2026-11-07T12:00:01+00:00', clientId='legacy'))
+    base = f'/api/v1/partners/{first[0]}'
+    assert client.post(base + '/read', headers=me[1], json={'lastReadMessageId': legacy}).status_code == 200
+    monkeypatch.setattr(learning_upgrade, 'now', lambda: '2026-11-07T12:00:00+00:00')
+    newest = send(client, first, me, 'after-legacy', '新消息')
+    result = client.get(base + '/messages', headers=me[1], query_string={'after': legacy}).get_json()
+    assert result['messages'] == [newest]
+    assert client.get('/api/v1/partner-conversations', headers=me[1]).get_json()['totalUnread'] == 1
+
+
+def test_read_is_private_and_cannot_consume_another_room(inbox_setup):
+    client, repository, people = inbox_setup
+    me, first, second = people
+    message = send(client, first, me, '1', '私密消息')
+    assert client.get('/api/v1/partner-conversations').status_code == 401
+    assert client.get(f'/api/v1/partners/{first[0]}/summary', headers=second[1]).status_code == 404
+    assert client.post(f'/api/v1/partners/{second[0]}/read', headers=me[1],
+                       json={'lastReadMessageId': message['messageId']}).status_code == 404
+    assert client.get('/api/v1/partner-conversations?offset=-1', headers=me[1]).status_code == 400
+    assert client.get('/api/v1/partner-conversations?offset=30', headers=me[1]).get_json()['conversations'] == []
+    repository.delete('contacts', first[0] + ':' + me[0])
+    inbox = client.get('/api/v1/partner-conversations', headers=me[1]).get_json()
+    assert all(x['partnerUserId'] != first[0] for x in inbox['conversations'])
+
+
+def test_either_partner_can_end_relationship_and_old_requests_cannot_restore_it(inbox_setup, monkeypatch):
+    monkeypatch.setattr(partner_invite, '_now', lambda: '2026-11-07T12:00:00.123456+00:00')
+    client, repository, people = inbox_setup
+    sender, recipient, unrelated = people
+    invitations = '/api/v1/agent/partner-invitations'
+    contacts = '/api/v1/agent/partner-contacts'
+    repository.delete('contacts', sender[0] + ':' + recipient[0])
+    repository.delete('contacts', recipient[0] + ':' + sender[0])
+
+    def invite():
+        response = client.post(invitations, headers=sender[1], json={'toUserId': recipient[0]})
+        assert response.status_code == 201
+        return response.get_json()['invitation']
+
+    def accept(invitation):
+        return client.post(f"{invitations}/{invitation['invitationId']}/accept", headers=recipient[1])
+
+    first = invite()
+    assert invite()['invitationId'] == first['invitationId']
+    cross = client.post(invitations, headers=recipient[1], json={'toUserId': sender[0]}).get_json()['invitation']
+    assert accept(first).status_code == 200
+    send(client, sender, recipient, 'before-end', '学习记录')
+    end_url = f'/api/v1/partners/{sender[0]}/end'
+    paired_at = accept(first).get_json()['invitation']['respondedAt']
+    payload = {'pairedAt': paired_at}
+    assert client.post(end_url, json=payload).status_code == 401
+    assert client.post(f'/api/v1/partners/{recipient[0]}/end', headers=unrelated[1], json=payload).status_code == 404
+    assert client.post(end_url, headers=recipient[1], json=payload).get_json() == {'status': 'ended'}
+    assert client.post(end_url, headers=recipient[1], json=payload).status_code == 200
+    assert accept(first).status_code == 200
+    assert client.post(f"{invitations}/{cross['invitationId']}/accept", headers=sender[1]).status_code == 409
+    for owner, partner in [(sender, recipient), (recipient, sender)]:
+        assert all(row['partnerUserId'] != partner[0]
+                   for row in client.get(contacts, headers=owner[1]).get_json()['contacts'])
+        assert all(row['partnerUserId'] != partner[0] for row in
+                   client.get('/api/v1/partner-conversations', headers=owner[1]).get_json()['conversations'])
+        messages = f'/api/v1/partners/{partner[0]}/messages'
+        assert client.get(messages, headers=owner[1]).status_code == 404
+        assert client.post(messages, headers=owner[1], json={'clientId': 'after-end', 'text': '消息'}).status_code == 404
+    assert client.get(f'/api/v1/partners/{unrelated[0]}/summary', headers=sender[1]).status_code == 200
+
+    second = invite()
+    assert second['invitationId'] != first['invitationId']
+    assert accept(second).status_code == 200
+    assert client.post(end_url, headers=recipient[1], json=payload).status_code == 409
+    summary = client.get(f'/api/v1/partners/{sender[0]}/summary', headers=recipient[1])
+    assert summary.status_code == 200
+    assert client.post(f'/api/v1/partners/{recipient[0]}/end', headers=sender[1],
+                       json={'pairedAt': summary.get_json()['conversation']['pairedAt']}).status_code == 200
+
+
+def test_manual_course_is_canonical_and_does_not_fabricate_mastery(inbox_setup):
+    client, repository, people = inbox_setup
+    owner, headers = people[0]
+    before = repository.get('profiles', owner) or {}
+    for name in [' 数据库 ', '数据库原理']:
+        result = client.post('/api/v1/learning-course-settings', headers=headers,
+                             json={'courseName': name, 'goal': '期末复习', 'examDate': ''})
+        assert result.status_code == 200
+    courses = result.get_json()['courses']
+    assert [x['courseName'] for x in courses].count('数据库原理') == 1
+    assert (repository.get('profiles', owner) or {}).get('mastery', []) == before.get('mastery', [])
+    assert client.post('/api/v1/learning-course-settings', headers=headers, json={'courseName': ';;;'}).status_code == 400

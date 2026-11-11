@@ -1,0 +1,39 @@
+{
+  "courses": [
+    {
+      "courseName": "数据结构",
+      "examDate": "2026-11-10",
+      "priority": "高",
+      "studyHours": 0,
+      "status": "待建立复习记录"
+    },
+    {
+      "courseName": "操作系统",
+      "examDate": "2026-11-12",
+      "priority": "高",
+      "studyHours": 0,
+      "status": "待建立复习记录"
+    },
+    {
+      "courseName": "计算机网络",
+      "examDate": "2026-11-16",
+      "priority": "中",
+      "studyHours": 0,
+      "status": "待建立复习记录"
+    },
+    {
+      "courseName": "高等数学",
+      "examDate": "2026-11-19",
+      "priority": "中",
+      "studyHours": 0,
+      "status": "待建立复习记录"
+    },
+    {
+      "courseName": "大学英语",
+      "examDate": "2026-11-23",
+      "priority": "低",
+      "studyHours": 0,
+      "status": "待建立复习记录"
+    }
+  ]
+}

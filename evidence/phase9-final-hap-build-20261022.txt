@@ -1,0 +1,507 @@
+> hvigor Finished :entry:clean... after 160 ms
+> hvigor Finished :entry:default@PreBuild... after 192 ms
+> hvigor Finished :entry:default@CreateModuleInfo... after 1 ms
+> hvigor Finished :entry:default@GenerateMetadata... after 5 ms
+> hvigor Finished :entry:default@ConfigureCmake... after 1 ms
+> hvigor Finished :entry:default@MergeProfile... after 5 ms
+> hvigor Finished :entry:default@CreateBuildProfile... after 3 ms
+> hvigor Finished :entry:default@PreCheckSyscap... after 1 ms
+> hvigor Finished :entry:default@GeneratePkgContextInfo... after 9 ms
+> hvigor Finished :entry:default@GeneratePkgSdkInfo... after 4 ms
+> hvigor Finished :entry:default@ProcessIntegratedHsp... after 1 ms
+> hvigor Finished :entry:default@BuildNativeWithCmake... after 1 ms
+> hvigor Finished :entry:default@MakePackInfo... after 6 ms
+> hvigor Finished :entry:default@SyscapTransform... after 18 ms
+> hvigor Finished :entry:default@ProcessProfile... after 128 ms
+> hvigor Finished :entry:default@ProcessRouterMap... after 6 ms
+> hvigor Finished :entry:default@ProcessShareConfig... after 7 ms
+> hvigor Finished :entry:default@ProcessStartupConfig... after 4 ms
+> hvigor Finished :entry:default@BuildNativeWithNinja... after 2 ms
+> hvigor Finished :entry:default@ProcessResource... after 4 ms
+> hvigor Finished :entry:default@GenerateLoaderJson... after 14 ms
+> hvigor Finished :entry:default@ProcessLibs... after 8 ms
+> hvigor Finished :entry:default@CompileResource... after 456 ms
+> hvigor Finished :entry:default@DoNativeStrip... after 5 ms
+> hvigor Finished :entry:default@BuildJS... after 5 ms
+> hvigor Finished :entry:default@CacheNativeLibs... after 12 ms
+> hvigor WARN: WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/api/TokenCipher.ets:255:44
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/api/TokenCipher.ets:256:12
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/api/TokenCipher.ets:272:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/api/TokenCipher.ets:273:12
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/api/TokenCipher.ets:321:11
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/services/DistributedStateService.ets:334:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/services/DistributedStateService.ets:342:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/services/DistributedStateService.ets:406:11
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/entryability/EntryAbility.ets:164:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/services/VoiceInputService.ets:160:12
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/components/FocusRecoveryCard.ets:20:56
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:381:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:381:14
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:385:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:385:14
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:388:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:388:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:452:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:631:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:631:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:637:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:637:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:639:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:639:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:669:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:672:35
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:846:16
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:876:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:876:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:881:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ChatMain.ets:881:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Login.ets:85:51
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Login.ets:144:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Login.ets:144:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:221:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:221:14
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:273:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:273:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:297:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:297:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:320:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:320:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:358:77
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:474:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:510:39
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:523:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:669:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Account.ets:669:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/components/AIFloatButton.ets:216:63
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/CourseImport.ets:23:27
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/CourseImport.ets:76:18
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/CourseImport.ets:205:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/CourseImport.ets:205:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/CourseImport.ets:770:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/services/ChatNavigation.ets:10:12
+ 'clear' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/services/ChatNavigation.ets:11:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/services/ChatNavigation.ets:11:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:96:53
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:213:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:213:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:228:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:228:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:367:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:367:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:371:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:371:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:471:27
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:483:31
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:530:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:596:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:596:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:599:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:599:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:679:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:679:14
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:781:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:781:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:809:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:809:12
+ 'replaceUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:814:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:814:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:818:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:818:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:943:41
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/Index.ets:1016:41
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:122:61
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:128:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:128:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:133:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:133:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:137:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:137:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:141:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:141:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:150:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:150:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudySuggestion.ets:218:31
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/components/FollowUpCard.ets:49:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/components/FollowUpCard.ets:49:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/WrongQuestion.ets:272:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/WrongQuestion.ets:272:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/WrongQuestion.ets:275:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/WrongQuestion.ets:275:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/WrongQuestion.ets:454:35
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyTags.ets:161:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyTags.ets:342:37
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyTags.ets:479:43
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyTags.ets:485:30
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyTags.ets:586:26
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ExercisePractice.ets:162:53
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ExercisePractice.ets:548:31
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ExercisePractice.ets:631:77
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ExercisePractice.ets:644:31
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ExercisePractice.ets:684:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ExercisePractice.ets:688:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ExercisePractice.ets:720:79
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ApiEnvironment.ets:105:77
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/AgentTrace.ets:32:51
+ 'getParams' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/AgentTrace.ets:182:79
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/AgentTrace.ets:223:97
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/PartnerMatch.ets:165:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/PartnerMatch.ets:678:41
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/PartnerMatch.ets:714:30
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/PartnerMatch.ets:853:26
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:70:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:70:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:76:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:76:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:103:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:103:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:148:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:148:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:153:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/StudyPlan.ets:163:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ReviewSummary.ets:42:77
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ReviewSummary.ets:121:35
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/ReviewSummary.ets:127:22
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:188:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:188:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:199:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:199:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:202:7
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:202:14
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:287:33
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:302:29
+ 'show' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusSetup.ets:382:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusTimer.ets:199:14
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusTimer.ets:207:5
+ Function may throw exceptions. Special handling is required.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusTimer.ets:207:12
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusTimer.ets:278:12
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusResult.ets:28:14
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/FocusResult.ets:240:37
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/LearningHistory.ets:37:81
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/LearningHistory.ets:62:167
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/KnowledgeBase.ets:793:31
+ 'back' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/KnowledgeBase.ets:938:41
+ 'pushUrl' has been deprecated.
+
+WARN: ArkTS:WARN File: D:/project/zhixue_final/app/entry/src/main/ets/pages/WrongBook.ets:181:85
+ 'back' has been deprecated.
+
+
+> hvigor Finished :entry:default@CompileArkTS... after 15 s 518 ms
+> hvigor Finished :entry:default@GeneratePkgModuleJson... after 5 ms
+> hvigor Finished :entry:default@ProcessCompiledResources... after 1 ms
+> hvigor Finished :entry:default@PackageHap... after 604 ms
+> hvigor Finished :entry:default@PackingCheck... after 12 ms
+> hvigor Finished :entry:default@SignHap... after 3 s 357 ms
+> hvigor Finished :entry:default@CollectDebugSymbol... after 2 ms
+> hvigor Finished :entry:assembleHap... after 1 ms
+> hvigor BUILD SUCCESSFUL in 27 s 190 ms

@@ -1,0 +1,357 @@
+﻿{
+    "generatedAt":  "2026-11-05T19:08:28.9445604+08:00",
+    "imageDirectory":  "E:\\C4-AI-national-final-by-xzhzyyheb-main\\C4-AI-national-final-by-xzhzyyheb-main\\演示测试数据\\决赛联调-20261105\\错题",
+    "sourceImageCount":  7,
+    "requestedNames":  [
+                           "Pura 90",
+                           "MatePad Pro 13",
+                           "MateBook Pro"
+                       ],
+    "completed":  true,
+    "errors":  [
+
+               ],
+    "devices":  [
+                    {
+                        "name":  "Mate X7",
+                        "target":  "127.0.0.1:5555",
+                        "deviceType":  "phone",
+                        "model":  "emulator",
+                        "albumDirectory":  "/mnt/data/100/media_fuse/Photo/其它",
+                        "imageCount":  7,
+                        "images":  [
+                                       {
+                                           "name":  "wrong_01_probability_bayes.png",
+                                           "bytes":  86146,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_01_probability_bayes.png"
+                                       },
+                                       {
+                                           "name":  "wrong_02_database_sql.png",
+                                           "bytes":  89614,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_02_database_sql.png"
+                                       },
+                                       {
+                                           "name":  "wrong_03_compiler_follow.png",
+                                           "bytes":  56722,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_03_compiler_follow.png"
+                                       },
+                                       {
+                                           "name":  "wrong_04_software_uml.png",
+                                           "bytes":  71845,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_04_software_uml.png"
+                                       },
+                                       {
+                                           "name":  "wrong_05_english_clause.png",
+                                           "bytes":  58536,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_05_english_clause.png"
+                                       },
+                                       {
+                                           "name":  "wrong_06_marxism_dialectics.png",
+                                           "bytes":  75494,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_06_marxism_dialectics.png"
+                                       },
+                                       {
+                                           "name":  "wrong_07_multi_three_questions.png",
+                                           "bytes":  134077,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_07_multi_three_questions.png"
+                                       }
+                                   ],
+                        "galleryCount":  7,
+                        "gallery":  [
+                                        {
+                                            "name":  "wrong_01_probability_bayes.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/1/IMG_1793873554_000/wrong_01_probability_bayes.png\""
+                                        },
+                                        {
+                                            "name":  "wrong_02_database_sql.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/2/IMG_1793873554_001/wrong_02_database_sql.png\""
+                                        },
+                                        {
+                                            "name":  "wrong_03_compiler_follow.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/3/IMG_1793873555_002/wrong_03_compiler_follow.png\""
+                                        },
+                                        {
+                                            "name":  "wrong_04_software_uml.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/4/IMG_1793873555_003/wrong_04_software_uml.png\""
+                                        },
+                                        {
+                                            "name":  "wrong_05_english_clause.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/5/IMG_1793873556_004/wrong_05_english_clause.png\""
+                                        },
+                                        {
+                                            "name":  "wrong_06_marxism_dialectics.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/6/IMG_1793873557_005/wrong_06_marxism_dialectics.png\""
+                                        },
+                                        {
+                                            "name":  "wrong_07_multi_three_questions.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/7/IMG_1793873558_006/wrong_07_multi_three_questions.png\""
+                                        }
+                                    ],
+                        "appInstalled":  true,
+                        "startedByScript":  true,
+                        "error":  null,
+                        "checkedAt":  "2026-11-05T18:10:19.3918416+08:00"
+                    },
+                    {
+                        "name":  "Pura 90",
+                        "target":  "127.0.0.1:5555",
+                        "deviceType":  "phone",
+                        "model":  "emulator",
+                        "albumDirectory":  "/mnt/data/100/media_fuse/Photo/其它",
+                        "imageCount":  7,
+                        "images":  [
+                                       {
+                                           "name":  "wrong_01_probability_bayes.png",
+                                           "bytes":  86146,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_01_probability_bayes.png"
+                                       },
+                                       {
+                                           "name":  "wrong_02_database_sql.png",
+                                           "bytes":  89614,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_02_database_sql.png"
+                                       },
+                                       {
+                                           "name":  "wrong_03_compiler_follow.png",
+                                           "bytes":  56722,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_03_compiler_follow.png"
+                                       },
+                                       {
+                                           "name":  "wrong_04_software_uml.png",
+                                           "bytes":  71845,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_04_software_uml.png"
+                                       },
+                                       {
+                                           "name":  "wrong_05_english_clause.png",
+                                           "bytes":  58536,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_05_english_clause.png"
+                                       },
+                                       {
+                                           "name":  "wrong_06_marxism_dialectics.png",
+                                           "bytes":  75494,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_06_marxism_dialectics.png"
+                                       },
+                                       {
+                                           "name":  "wrong_07_multi_three_questions.png",
+                                           "bytes":  134077,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_07_multi_three_questions.png"
+                                       }
+                                   ],
+                        "galleryCount":  7,
+                        "gallery":  [
+                                        {
+                                            "name":  "wrong_01_probability_bayes.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/16/IMG_1793876872_015/wrong_01_probability_bayes.png\"",
+                                            "recvBytes":  86146
+                                        },
+                                        {
+                                            "name":  "wrong_02_database_sql.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/17/IMG_1793876873_016/wrong_02_database_sql.png\"",
+                                            "recvBytes":  89614
+                                        },
+                                        {
+                                            "name":  "wrong_03_compiler_follow.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/18/IMG_1793876874_017/wrong_03_compiler_follow.png\"",
+                                            "recvBytes":  56722
+                                        },
+                                        {
+                                            "name":  "wrong_04_software_uml.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/19/IMG_1793876874_018/wrong_04_software_uml.png\"",
+                                            "recvBytes":  71845
+                                        },
+                                        {
+                                            "name":  "wrong_05_english_clause.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/20/IMG_1793876875_019/wrong_05_english_clause.png\"",
+                                            "recvBytes":  58536
+                                        },
+                                        {
+                                            "name":  "wrong_06_marxism_dialectics.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/21/IMG_1793876875_020/wrong_06_marxism_dialectics.png\"",
+                                            "recvBytes":  75494
+                                        },
+                                        {
+                                            "name":  "wrong_07_multi_three_questions.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/22/IMG_1793876876_021/wrong_07_multi_three_questions.png\"",
+                                            "recvBytes":  134077
+                                        }
+                                    ],
+                        "appInstalled":  true,
+                        "startedByScript":  true,
+                        "error":  null,
+                        "checkedAt":  "2026-11-05T19:04:37.2822443+08:00"
+                    },
+                    {
+                        "name":  "MatePad Pro 13",
+                        "target":  "127.0.0.1:5555",
+                        "deviceType":  "phone",
+                        "model":  "emulator",
+                        "albumDirectory":  "/mnt/data/100/media_fuse/Photo/其它",
+                        "imageCount":  7,
+                        "images":  [
+                                       {
+                                           "name":  "wrong_01_probability_bayes.png",
+                                           "bytes":  86146,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_01_probability_bayes.png"
+                                       },
+                                       {
+                                           "name":  "wrong_02_database_sql.png",
+                                           "bytes":  89614,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_02_database_sql.png"
+                                       },
+                                       {
+                                           "name":  "wrong_03_compiler_follow.png",
+                                           "bytes":  56722,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_03_compiler_follow.png"
+                                       },
+                                       {
+                                           "name":  "wrong_04_software_uml.png",
+                                           "bytes":  71845,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_04_software_uml.png"
+                                       },
+                                       {
+                                           "name":  "wrong_05_english_clause.png",
+                                           "bytes":  58536,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_05_english_clause.png"
+                                       },
+                                       {
+                                           "name":  "wrong_06_marxism_dialectics.png",
+                                           "bytes":  75494,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_06_marxism_dialectics.png"
+                                       },
+                                       {
+                                           "name":  "wrong_07_multi_three_questions.png",
+                                           "bytes":  134077,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_07_multi_three_questions.png"
+                                       }
+                                   ],
+                        "galleryCount":  7,
+                        "gallery":  [
+                                        {
+                                            "name":  "wrong_01_probability_bayes.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/23/IMG_1793876979_022/wrong_01_probability_bayes.png\"",
+                                            "recvBytes":  86146
+                                        },
+                                        {
+                                            "name":  "wrong_02_database_sql.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/24/IMG_1793876980_023/wrong_02_database_sql.png\"",
+                                            "recvBytes":  89614
+                                        },
+                                        {
+                                            "name":  "wrong_03_compiler_follow.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/25/IMG_1793876980_024/wrong_03_compiler_follow.png\"",
+                                            "recvBytes":  56722
+                                        },
+                                        {
+                                            "name":  "wrong_04_software_uml.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/26/IMG_1793876981_025/wrong_04_software_uml.png\"",
+                                            "recvBytes":  71845
+                                        },
+                                        {
+                                            "name":  "wrong_05_english_clause.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/27/IMG_1793876982_026/wrong_05_english_clause.png\"",
+                                            "recvBytes":  58536
+                                        },
+                                        {
+                                            "name":  "wrong_06_marxism_dialectics.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/28/IMG_1793876983_027/wrong_06_marxism_dialectics.png\"",
+                                            "recvBytes":  75494
+                                        },
+                                        {
+                                            "name":  "wrong_07_multi_three_questions.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/29/IMG_1793876983_028/wrong_07_multi_three_questions.png\"",
+                                            "recvBytes":  134077
+                                        }
+                                    ],
+                        "appInstalled":  true,
+                        "startedByScript":  false,
+                        "error":  null,
+                        "checkedAt":  "2026-11-05T19:07:58.7140340+08:00"
+                    },
+                    {
+                        "name":  "MateBook Pro",
+                        "target":  "127.0.0.1:5555",
+                        "deviceType":  "phone",
+                        "model":  "emulator",
+                        "albumDirectory":  "/mnt/data/100/media_fuse/Photo/其它",
+                        "imageCount":  7,
+                        "images":  [
+                                       {
+                                           "name":  "wrong_01_probability_bayes.png",
+                                           "bytes":  86146,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_01_probability_bayes.png"
+                                       },
+                                       {
+                                           "name":  "wrong_02_database_sql.png",
+                                           "bytes":  89614,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_02_database_sql.png"
+                                       },
+                                       {
+                                           "name":  "wrong_03_compiler_follow.png",
+                                           "bytes":  56722,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_03_compiler_follow.png"
+                                       },
+                                       {
+                                           "name":  "wrong_04_software_uml.png",
+                                           "bytes":  71845,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_04_software_uml.png"
+                                       },
+                                       {
+                                           "name":  "wrong_05_english_clause.png",
+                                           "bytes":  58536,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_05_english_clause.png"
+                                       },
+                                       {
+                                           "name":  "wrong_06_marxism_dialectics.png",
+                                           "bytes":  75494,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_06_marxism_dialectics.png"
+                                       },
+                                       {
+                                           "name":  "wrong_07_multi_three_questions.png",
+                                           "bytes":  134077,
+                                           "remote":  "/mnt/data/100/media_fuse/Photo/其它/wrong_07_multi_three_questions.png"
+                                       }
+                                   ],
+                        "galleryCount":  7,
+                        "gallery":  [
+                                        {
+                                            "name":  "wrong_01_probability_bayes.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/30/IMG_1793876994_029/wrong_01_probability_bayes.png\"",
+                                            "recvBytes":  86146
+                                        },
+                                        {
+                                            "name":  "wrong_02_database_sql.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/31/IMG_1793876995_030/wrong_02_database_sql.png\"",
+                                            "recvBytes":  89614
+                                        },
+                                        {
+                                            "name":  "wrong_03_compiler_follow.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/32/IMG_1793876995_031/wrong_03_compiler_follow.png\"",
+                                            "recvBytes":  56722
+                                        },
+                                        {
+                                            "name":  "wrong_04_software_uml.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/33/IMG_1793876996_032/wrong_04_software_uml.png\"",
+                                            "recvBytes":  71845
+                                        },
+                                        {
+                                            "name":  "wrong_05_english_clause.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/34/IMG_1793876997_033/wrong_05_english_clause.png\"",
+                                            "recvBytes":  58536
+                                        },
+                                        {
+                                            "name":  "wrong_06_marxism_dialectics.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/35/IMG_1793876997_034/wrong_06_marxism_dialectics.png\"",
+                                            "recvBytes":  75494
+                                        },
+                                        {
+                                            "name":  "wrong_07_multi_three_questions.png",
+                                            "query":  "find 1 result\r\nuri\r\n\"file://media/Photo/36/IMG_1793876998_035/wrong_07_multi_three_questions.png\"",
+                                            "recvBytes":  134077
+                                        }
+                                    ],
+                        "appInstalled":  true,
+                        "startedByScript":  false,
+                        "error":  null,
+                        "checkedAt":  "2026-11-05T19:08:13.8053751+08:00"
+                    }
+                ]
+}

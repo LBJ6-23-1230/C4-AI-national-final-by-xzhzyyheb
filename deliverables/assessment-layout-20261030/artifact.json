@@ -1,0 +1,12 @@
+{
+  "baseCommit": "618b288",
+  "includesWorkingTreeChanges": true,
+  "file": "zhixue-assessment-layout-signed.hap",
+  "bytes": 4548428,
+  "sha256": "e07ad77272d694ed2451dc171566ed1e5e95ee1627d82b8538f45f8c3c0a58d2",
+  "validation": {
+    "pageControllers": 57,
+    "arktsBuild": "passed",
+    "emulator": "installed and visually checked"
+  }
+}

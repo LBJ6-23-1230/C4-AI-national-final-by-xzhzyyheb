@@ -1,0 +1,107 @@
+==============================================================================
+① 真正的不变量：AgentApiClient 会发的调用，校验器必须都有分支
+==============================================================================
+  AgentApiClient 字面量/模板/路径变量调用: 74 个
+  校验器分支: 精确 39 条 / 前缀 23 条
+
+✅ 无缺口：AgentApiClient 发出的每个调用都有校验分支
+  客户端调用的契约声明缺口: 0 个
+
+==============================================================================
+② 契约有、但前端尚未接入的接口（属'声明了但没人用'，不是缺陷）
+==============================================================================
+     DELETE /api/agent/history
+     DELETE /api/v1/reminder-devices
+     GET    /api/agent/health
+     GET    /api/agent/history
+     GET    /api/agent/images/{fileId}
+     GET    /api/agent/user-data
+     GET    /api/v1/documents/{documentId}/download
+     GET    /api/v1/experiments/snapshot
+     GET    /api/v1/knowledge-bases/{kbId}/documents
+     GET    /api/v1/reminder-devices
+     POST   /api/agent/chat
+     POST   /api/agent/health
+
+  这些接口若将来被 AgentApiClient 接入，**必须同时补校验分支**，
+  否则会复现 P0-1。本脚本在那之前就能发现（① 会立刻变红）。
+
+==============================================================================
+③ 联调闸门覆盖率（审计 R1 的核心问题）
+==============================================================================
+  闸门里出现过的 /api 路径字面量: 28 个
+  ⚠️ 契约有、闸门从未提及的操作 (66 条)：
+     DELETE /api/v1/documents/{documentId}
+     DELETE /api/v1/knowledge-bases/{kbId}
+     DELETE /api/v1/reminder-devices
+     GET    /api/agent/health
+     GET    /api/agent/images/{fileId}
+     GET    /api/agent/user-data
+     GET    /api/v1/agent/partner-contacts
+     GET    /api/v1/agent/partner-invitations
+     GET    /api/v1/documents/{documentId}
+     GET    /api/v1/documents/{documentId}/download
+     GET    /api/v1/exercise-submissions/{submissionId}
+     GET    /api/v1/exercises/{exerciseId}/sources
+     GET    /api/v1/exercises/{setId}
+     GET    /api/v1/experiments/snapshot
+     GET    /api/v1/focus-sessions
+     GET    /api/v1/knowledge-bases/{kbId}
+     GET    /api/v1/knowledge-bases/{kbId}/documents
+     GET    /api/v1/learning-course-settings
+     GET    /api/v1/learning-review-tasks
+     GET    /api/v1/partner-conversations
+     GET    /api/v1/partners/{partner}/messages
+     GET    /api/v1/partners/{partner}/summary
+     GET    /api/v1/plans/{id}/diff
+     GET    /api/v1/profile/{userId}
+     GET    /api/v1/reminder-devices
+     GET    /api/v1/reminder-preferences
+     GET    /api/v1/reminders
+     GET    /api/v1/today
+     GET    /api/v1/workflows/chat/{chatSessionId}
+     GET    /api/v1/workflows/chat/{chatSessionId}/goals
+     GET    /api/v1/wrong-book
+     POST   /api/agent/chat
+     POST   /api/agent/health
+     POST   /api/v1/agent/partner-invitations
+     POST   /api/v1/agent/partner-invitations/{invitationId}/accept
+     POST   /api/v1/agent/partner-invitations/{invitationId}/decline
+     POST   /api/v1/agent/partner-invitations/{invitationId}/dismiss
+     POST   /api/v1/agent/partner-match
+     POST   /api/v1/auth/change-password
+     POST   /api/v1/auth/select-account
+     POST   /api/v1/auth/send-code
+     POST   /api/v1/auth/verify-code
+     POST   /api/v1/exercises/{setId}/submit
+     POST   /api/v1/focus-sessions
+     POST   /api/v1/import/schedule-image
+     POST   /api/v1/knowledge-bases/{kbId}/documents
+     POST   /api/v1/learning-course-settings
+     POST   /api/v1/learning-review-tasks/complete
+     POST   /api/v1/learning-reviews
+     POST   /api/v1/learning-reviews/{review_id}/accept
+     POST   /api/v1/partners/{partner}/messages
+     POST   /api/v1/partners/{partner}/read
+     POST   /api/v1/plans/current/assignments
+     POST   /api/v1/plans/current/availability
+     POST   /api/v1/plans/current/tasks/schedule
+     POST   /api/v1/profile/{user_id}/knowledge-points
+     POST   /api/v1/reminder-devices
+     POST   /api/v1/reminders/{eventId}/actions
+     POST   /api/v1/workflows/chat/{chatSessionId}/goals
+     POST   /api/v1/wrong-book/classify
+     POST   /api/v1/wrong-book/scanned
+     POST   /api/v1/wrong-book/{exerciseId}
+     POST   /api/v1/wrong-book/{exerciseId}/attempt
+     PUT    /api/v1/documents/{documentId}/knowledge-points
+     PUT    /api/v1/profile/{userId}/preferences
+     PUT    /api/v1/reminder-preferences
+
+  ⚠️ 本检查只看'路径是否被提及'，**不代表闸门里的字段规则与 .ets 等价**。
+     审计已确认两者至少有 6 处字段级偏离 —— 根治需要两者共享同一份规则。
+
+==============================================================================
+结论：PASS（校验分支和接口声明均无缺口）
+      ③ 另有 66 项属于'闸门未提及'的提示，**不影响退出码**（要让它也失败请加 --strict 之外的判断，或直接看 ③ 小节）。
+      退出码：0

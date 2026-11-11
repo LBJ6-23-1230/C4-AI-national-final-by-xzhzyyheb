@@ -1,0 +1,16 @@
+[
+  {
+    "account": "A",
+    "courses": 3,
+    "ddls": 4,
+    "csvJsonConsistent": true,
+    "deadlinesAfterDemo": true
+  },
+  {
+    "account": "B",
+    "courses": 3,
+    "ddls": 3,
+    "csvJsonConsistent": true,
+    "deadlinesAfterDemo": true
+  }
+]

@@ -1,0 +1,3033 @@
+[
+  {
+    "method": "POST",
+    "path": "/api/agent/chat",
+    "operation": "POST /api/agent/chat",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/experiments/snapshot",
+    "operation": "GET /api/v1/experiments/snapshot",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/proactive",
+    "operation": "POST /api/v1/agent/proactive",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/partner-match",
+    "operation": "POST /api/v1/agent/partner-match",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workflows",
+    "operation": "POST /api/v1/workflows",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workflows/missing",
+    "operation": "GET /api/v1/workflows/{id}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workflows/missing/run",
+    "operation": "POST /api/v1/workflows/{id}/run",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/profile/missing",
+    "operation": "GET /api/v1/profile/{userId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/plans/current",
+    "operation": "GET /api/v1/plans/current",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exercises/missing/submit",
+    "operation": "POST /api/v1/exercises/{setId}/submit",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exercises/missing",
+    "operation": "GET /api/v1/exercises/{setId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/plans/missing/diff",
+    "operation": "GET /api/v1/plans/{id}/diff",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/traces/missing",
+    "operation": "GET /api/v1/traces/{traceId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/demo/reset",
+    "operation": "POST /api/v1/demo/reset",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/import/schedule-image",
+    "operation": "POST /api/v1/import/schedule-image",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "operation": "POST /api/v1/auth/register",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "operation": "POST /api/v1/auth/login",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "operation": "POST /api/v1/auth/logout",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "operation": "GET /api/v1/auth/me",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/auth/me",
+    "operation": "PUT /api/v1/auth/me",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/auth/account",
+    "operation": "DELETE /api/v1/auth/account",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login-or-register",
+    "operation": "POST /api/v1/auth/login-or-register",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/knowledge-bases",
+    "operation": "GET /api/v1/knowledge-bases",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/knowledge-bases",
+    "operation": "POST /api/v1/knowledge-bases",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/knowledge-bases/missing",
+    "operation": "GET /api/v1/knowledge-bases/{kbId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/knowledge-bases/missing",
+    "operation": "DELETE /api/v1/knowledge-bases/{kbId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/knowledge-bases/missing/documents",
+    "operation": "GET /api/v1/knowledge-bases/{kbId}/documents",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/knowledge-bases/missing/documents",
+    "operation": "POST /api/v1/knowledge-bases/{kbId}/documents",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/missing",
+    "operation": "GET /api/v1/documents/{documentId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/documents/missing",
+    "operation": "DELETE /api/v1/documents/{documentId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/knowledge-bases/missing/search",
+    "operation": "POST /api/v1/knowledge-bases/{kbId}/search",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login-with-huawei",
+    "operation": "POST /api/v1/auth/login-with-huawei",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/send-code",
+    "operation": "POST /api/v1/auth/send-code",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/verify-code",
+    "operation": "POST /api/v1/auth/verify-code",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent/health",
+    "operation": "GET /api/agent/health",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent/health",
+    "operation": "POST /api/agent/health",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent/history",
+    "operation": "GET /api/agent/history",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/agent/history",
+    "operation": "DELETE /api/agent/history",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent/user-data",
+    "operation": "GET /api/agent/user-data",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/change-password",
+    "operation": "POST /api/v1/auth/change-password",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/profile/missing/knowledge-points",
+    "operation": "POST /api/v1/profile/{user_id}/knowledge-points",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/wrong-book",
+    "operation": "GET /api/v1/wrong-book",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/wrong-book/missing",
+    "operation": "POST /api/v1/wrong-book/{exerciseId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/wrong-book/missing/attempt",
+    "operation": "POST /api/v1/wrong-book/{exerciseId}/attempt",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/focus-sessions",
+    "operation": "GET /api/v1/focus-sessions",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/focus-sessions",
+    "operation": "POST /api/v1/focus-sessions",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/plans/current/availability",
+    "operation": "POST /api/v1/plans/current/availability",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exercises/missing/sources",
+    "operation": "GET /api/v1/exercises/{exerciseId}/sources",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workflows/chat/missing",
+    "operation": "GET /api/v1/workflows/chat/{chatSessionId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/partner-invitations",
+    "operation": "POST /api/v1/agent/partner-invitations",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/agent/partner-invitations",
+    "operation": "GET /api/v1/agent/partner-invitations",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/partner-invitations/missing/accept",
+    "operation": "POST /api/v1/agent/partner-invitations/{invitationId}/accept",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/partner-invitations/missing/decline",
+    "operation": "POST /api/v1/agent/partner-invitations/{invitationId}/decline",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/partner-invitations/missing/dismiss",
+    "operation": "POST /api/v1/agent/partner-invitations/{invitationId}/dismiss",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/agent/partner-contacts",
+    "operation": "GET /api/v1/agent/partner-contacts",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/profile/missing/preferences",
+    "operation": "PUT /api/v1/profile/{userId}/preferences",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/documents/missing/knowledge-points",
+    "operation": "PUT /api/v1/documents/{documentId}/knowledge-points",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exercise-submissions/missing",
+    "operation": "GET /api/v1/exercise-submissions/{submissionId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/workflows/chat/missing/goals",
+    "operation": "GET /api/v1/workflows/chat/{chatSessionId}/goals",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/workflows/chat/missing/goals",
+    "operation": "POST /api/v1/workflows/chat/{chatSessionId}/goals",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/missing/download",
+    "operation": "GET /api/v1/documents/{documentId}/download",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/agent/images/missing",
+    "operation": "GET /api/agent/images/{fileId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/plans/current/assignments",
+    "operation": "POST /api/v1/plans/current/assignments",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/select-account",
+    "operation": "POST /api/v1/auth/select-account",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/missing/messages",
+    "operation": "GET /api/v1/partners/{partner}/messages",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/missing/messages",
+    "operation": "POST /api/v1/partners/{partner}/messages",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/wrong-book/scanned",
+    "operation": "POST /api/v1/wrong-book/{exerciseId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/learning-reviews",
+    "operation": "POST /api/v1/learning-reviews",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/learning-reviews/missing/accept",
+    "operation": "POST /api/v1/learning-reviews/{review_id}/accept",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-review-tasks",
+    "operation": "GET /api/v1/learning-review-tasks",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/learning-review-tasks/complete",
+    "operation": "POST /api/v1/learning-review-tasks/complete",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-course-settings",
+    "operation": "GET /api/v1/learning-course-settings",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/learning-course-settings",
+    "operation": "POST /api/v1/learning-course-settings",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partner-conversations",
+    "operation": "GET /api/v1/partner-conversations",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/missing/summary",
+    "operation": "GET /api/v1/partners/{partner}/summary",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/missing/read",
+    "operation": "POST /api/v1/partners/{partner}/read",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/plans/current/tasks/schedule",
+    "operation": "POST /api/v1/plans/current/tasks/schedule",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/wrong-book/classify",
+    "operation": "POST /api/v1/wrong-book/{exerciseId}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/today",
+    "operation": "GET /api/v1/today",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reminders",
+    "operation": "GET /api/v1/reminders",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reminders/missing/actions",
+    "operation": "POST /api/v1/reminders/{eventId}/actions",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reminder-preferences",
+    "operation": "GET /api/v1/reminder-preferences",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/reminder-preferences",
+    "operation": "PUT /api/v1/reminder-preferences",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reminder-devices",
+    "operation": "GET /api/v1/reminder-devices",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reminder-devices",
+    "operation": "POST /api/v1/reminder-devices",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/reminder-devices",
+    "operation": "DELETE /api/v1/reminder-devices",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-data",
+    "operation": "GET /api/v1/learning-data",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/learning-data",
+    "operation": "POST /api/v1/learning-data",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-effect",
+    "operation": "GET /api/v1/learning-effect",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reminders/missing/actions/missing",
+    "operation": "GET /api/v1/reminders/{eventId}/actions/{operationKey}",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-records",
+    "operation": "GET /api/v1/learning-records",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "UNAUTHORIZED",
+      "message": "invalid or expired session"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "operation": "POST /api/v1/auth/register",
+    "status": 201,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "demoDataSeeded": true,
+      "expiresAt": "2026-11-30T05:53:47+00:00",
+      "needsPasswordSetup": false,
+      "token": "<isolated-test-token>",
+      "user": {
+        "authProvider": "local",
+        "avatar": "",
+        "createdAt": "2026-10-31T05:53:47+00:00",
+        "grade": "",
+        "hasPhone": true,
+        "lastLoginAt": "2026-10-31T05:53:47+00:00",
+        "needsPasswordSetup": false,
+        "nickname": "知学用户-657D",
+        "phoneMasked": "139****5501",
+        "userId": "u-62143cb0fa46"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "operation": "POST /api/v1/auth/register",
+    "status": 201,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "demoDataSeeded": false,
+      "expiresAt": "2026-11-30T05:53:47+00:00",
+      "needsPasswordSetup": false,
+      "token": "<isolated-test-token>",
+      "user": {
+        "authProvider": "local",
+        "avatar": "",
+        "createdAt": "2026-10-31T05:53:47+00:00",
+        "grade": "",
+        "hasPhone": true,
+        "lastLoginAt": "2026-10-31T05:53:47+00:00",
+        "needsPasswordSetup": false,
+        "nickname": "知学用户-64F9",
+        "phoneMasked": "139****5502",
+        "userId": "u-551e8479bcc7"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "operation": "POST /api/v1/auth/register",
+    "status": 409,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "PHONE_ALREADY_REGISTERED",
+      "message": "该手机号已注册，请直接登录或找回密码"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "operation": "POST /api/v1/auth/login",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": {},
+      "errorCode": "AUTH_INVALID",
+      "message": "手机号或密码不正确"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "operation": "POST /api/v1/auth/login",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "expiresAt": "2026-11-30T05:53:48+00:00",
+      "needsPasswordSetup": false,
+      "token": "<isolated-test-token>",
+      "user": {
+        "authProvider": "local",
+        "avatar": "",
+        "createdAt": "2026-10-31T05:53:47+00:00",
+        "grade": "",
+        "hasPhone": true,
+        "lastLoginAt": "2026-10-31T05:53:48+00:00",
+        "needsPasswordSetup": false,
+        "nickname": "知学用户-657D",
+        "phoneMasked": "139****5501",
+        "userId": "u-62143cb0fa46"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/select-account",
+    "operation": "POST /api/v1/auth/select-account",
+    "status": 409,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": {},
+      "errorCode": "ACCOUNT_SWITCH_DISABLED",
+      "message": "账号选择已停用，请使用手机号和密码登录；历史重复账号需先迁移"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login-or-register",
+    "operation": "POST /api/v1/auth/login-or-register",
+    "status": 401,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": {},
+      "errorCode": "AUTH_INVALID",
+      "message": "手机号或密码不正确"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "operation": "GET /api/v1/auth/me",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "user": {
+        "authProvider": "local",
+        "avatar": "",
+        "createdAt": "2026-10-31T05:53:47+00:00",
+        "grade": "",
+        "hasPhone": true,
+        "lastLoginAt": "2026-10-31T05:53:48+00:00",
+        "needsPasswordSetup": false,
+        "nickname": "知学用户-657D",
+        "phoneMasked": "139****5501",
+        "userId": "u-62143cb0fa46"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/send-code",
+    "operation": "POST /api/v1/auth/send-code",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "devCode": "<isolated-test-token>",
+      "expiresInSeconds": 300,
+      "phoneMasked": "139****5503",
+      "resendAfterSeconds": 60,
+      "smsDelivered": false
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/verify-code",
+    "operation": "POST /api/v1/auth/verify-code",
+    "status": 201,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "created": true,
+      "demoDataSeeded": false,
+      "expiresAt": "2026-11-30T05:53:48+00:00",
+      "needsPasswordSetup": true,
+      "token": "<isolated-test-token>",
+      "user": {
+        "authProvider": "local",
+        "avatar": "",
+        "createdAt": "2026-10-31T05:53:48+00:00",
+        "grade": "",
+        "hasPhone": true,
+        "lastLoginAt": "2026-10-31T05:53:48+00:00",
+        "needsPasswordSetup": true,
+        "nickname": "知学用户-79A3",
+        "phoneMasked": "139****5503",
+        "userId": "u-49db4d834395"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-records",
+    "operation": "GET /api/v1/learning-records",
+    "status": 403,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "PASSWORD_SETUP_REQUIRED",
+      "message": "请先设置登录密码"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/change-password",
+    "operation": "POST /api/v1/auth/change-password",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "hasPassword": true,
+      "status": "ok",
+      "wasFirstTime": true
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/profile/u-62143cb0fa46",
+    "operation": "GET /api/v1/profile/{userId}",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "evidence": [],
+      "history": [],
+      "mastery": [
+        {
+          "assessmentRoundCount": 0,
+          "assessmentStatus": "unassessed",
+          "confidence": 0.2,
+          "correctCount": 0,
+          "effectiveQuestionCount": 0,
+          "knowledgePointId": "binary-tree-postorder",
+          "knowledgePointName": "二叉树后序遍历",
+          "lastAssessedAt": "",
+          "lastUpdated": "2026-10-31T05:53:47.739686+00:00",
+          "masteryScore": 0,
+          "performanceChange": null,
+          "recentAccuracy": null,
+          "retentionStatus": "not_tested",
+          "ruleVersion": "practice-evidence-v1",
+          "sourceCourse": "数据结构",
+          "topicGroup": "二叉树",
+          "topicGroupConfidence": 0.95,
+          "topicGroupId": "topic-9c3a2e260b83edfca9c2",
+          "topicGroupName": "树的遍历"
+        }
+      ],
+      "profile": {
+        "examDate": null,
+        "freeTimeSlots": [
+          "20:00-22:00"
+        ],
+        "goal": "知学用户-657D的学习目标",
+        "mastery": [
+          {
+            "assessmentRoundCount": 0,
+            "assessmentStatus": "unassessed",
+            "confidence": 0.2,
+            "correctCount": 0,
+            "effectiveQuestionCount": 0,
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "lastAssessedAt": "",
+            "lastUpdated": "2026-10-31T05:53:47.739686+00:00",
+            "masteryScore": 0,
+            "performanceChange": null,
+            "recentAccuracy": null,
+            "retentionStatus": "not_tested",
+            "ruleVersion": "practice-evidence-v1",
+            "sourceCourse": "数据结构",
+            "topicGroup": "二叉树",
+            "topicGroupConfidence": 0.95,
+            "topicGroupId": "topic-9c3a2e260b83edfca9c2",
+            "topicGroupName": "树的遍历"
+          }
+        ],
+        "profileVersion": 1,
+        "targetCourses": [],
+        "topicGroups": [
+          {
+            "evidenceQuestionCount": 0,
+            "masteryScore": null,
+            "memberCount": 1,
+            "memberPointIds": [
+              "binary-tree-postorder"
+            ],
+            "memberPoints": [
+              {
+                "evidenceQuestionCount": 0,
+                "knowledgePointId": "binary-tree-postorder",
+                "masteryScore": null,
+                "name": "二叉树后序遍历"
+              }
+            ],
+            "recentAccuracy": null,
+            "sourceCourse": "数据结构",
+            "topicGroupId": "topic-9c3a2e260b83edfca9c2",
+            "topicGroupName": "树的遍历",
+            "weighted": 0
+          }
+        ],
+        "userId": "u-62143cb0fa46"
+      },
+      "profileVersion": 1
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-effect",
+    "operation": "GET /api/v1/learning-effect",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "answeredCount": 0,
+      "completedFocusSessions": 0,
+      "conclusion": "今天还没有学习记录",
+      "correctCount": 0,
+      "days": 1,
+      "focusMinutes": 0,
+      "points": [
+        {
+          "assessmentRoundCount": 0,
+          "assessmentStatus": "unassessed",
+          "confidence": 0.2,
+          "correctCount": 0,
+          "effectiveQuestionCount": 0,
+          "knowledgePointId": "binary-tree-postorder",
+          "knowledgePointName": "二叉树后序遍历",
+          "lastAssessedAt": "",
+          "lastUpdated": "2026-10-31T05:53:47.739686+00:00",
+          "masteryScore": 0,
+          "performanceChange": null,
+          "recentAccuracy": null,
+          "retentionStatus": "not_tested",
+          "ruleVersion": "practice-evidence-v1",
+          "sourceCourse": "数据结构",
+          "topicGroup": "二叉树",
+          "topicGroupConfidence": 0.95,
+          "topicGroupId": "topic-9c3a2e260b83edfca9c2",
+          "topicGroupName": "树的遍历"
+        }
+      ],
+      "practiceAccuracy": null,
+      "ruleVersion": "practice-evidence-v1",
+      "timeAttribution": "专注时长按记录结束日期统计，跨日记录暂不拆分。",
+      "timezone": "Asia/Shanghai",
+      "userId": "u-62143cb0fa46"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-data",
+    "operation": "GET /api/v1/learning-data",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "courses": [],
+      "deletedCourses": [],
+      "deletedDDLs": [],
+      "homeworkDDLs": [],
+      "revision": 0,
+      "userId": "u-62143cb0fa46"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-course-settings",
+    "operation": "GET /api/v1/learning-course-settings",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "courses": [
+        {
+          "courseName": "数据结构",
+          "daysUntilExam": null,
+          "examDate": "",
+          "goal": "",
+          "reviewDue": false
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-review-tasks",
+    "operation": "GET /api/v1/learning-review-tasks",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "tasks": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/wrong-book",
+    "operation": "GET /api/v1/wrong-book",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "courses": [],
+      "total": 0,
+      "userId": "u-62143cb0fa46"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/focus-sessions",
+    "operation": "GET /api/v1/focus-sessions",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "sessions": [],
+      "taskStatuses": {},
+      "userId": "u-62143cb0fa46"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reminder-preferences",
+    "operation": "GET /api/v1/reminder-preferences",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "preferences": {
+        "categories": [
+          "task",
+          "exam",
+          "gap",
+          "conflict"
+        ],
+        "dailyLimit": 2,
+        "enabled": false,
+        "minimumGapMinutes": 240,
+        "quietEnd": 8,
+        "quietStart": 22,
+        "summaryHour": 9,
+        "timezone": "Asia/Shanghai",
+        "urgentException": false
+      },
+      "pushConfigured": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reminder-devices",
+    "operation": "GET /api/v1/reminder-devices",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "devices": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reminders",
+    "operation": "GET /api/v1/reminders",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "cursor": "rem-d8d681739079c970fa7d12d021b8",
+      "events": [
+        {
+          "courseName": "",
+          "dataTime": "2026-10-31T05:53:48.399802+00:00",
+          "deadline": "",
+          "due": "9999",
+          "durationMinutes": 30,
+          "eventId": "rem-d8d681739079c970fa7d12d021b8",
+          "evidenceIds": [],
+          "kind": "task",
+          "knowledgePointId": "binary-tree-postorder",
+          "level": "normal",
+          "objectId": "task-postorder",
+          "planId": "plan-u-62143cb0fa46",
+          "reason": "当前计划中的待完成任务",
+          "sourceId": "task-postorder",
+          "sourceType": "plan",
+          "sourceVersion": 1,
+          "status": "pending",
+          "targetPage": "pages/StudyPlan",
+          "targetParams": {},
+          "title": "二叉树后序遍历",
+          "userId": "u-62143cb0fa46",
+          "version": 1
+        }
+      ],
+      "hasMore": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-records",
+    "operation": "GET /api/v1/learning-records",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "nextCursor": null,
+      "records": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/plans/current",
+    "operation": "GET /api/v1/plans/current",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "factors": [
+        {
+          "contribution": 0.3,
+          "name": "mastery",
+          "value": 1.0,
+          "weight": 0.3
+        },
+        {
+          "contribution": 0.125,
+          "name": "urgency",
+          "value": 0.8333,
+          "weight": 0.15
+        },
+        {
+          "contribution": 0.12,
+          "name": "importance",
+          "value": 0.6,
+          "weight": 0.2
+        },
+        {
+          "contribution": 0.01,
+          "name": "prerequisiteImpact",
+          "value": 0.1,
+          "weight": 0.1
+        },
+        {
+          "contribution": 0.0,
+          "name": "errorIntensity",
+          "value": 0.0,
+          "weight": 0.25
+        }
+      ],
+      "generatedFromProfileVersion": 1,
+      "planId": "plan-u-62143cb0fa46",
+      "reason": "掌握度 因子值为 1.00，应优先安排针对性练习",
+      "tasks": [
+        {
+          "durationMinutes": 30,
+          "knowledgePointId": "binary-tree-postorder",
+          "knowledgePointName": "二叉树后序遍历",
+          "priority": "high",
+          "status": "pending",
+          "taskId": "task-postorder"
+        }
+      ],
+      "userId": "u-62143cb0fa46",
+      "version": 1
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/plans/current/availability",
+    "operation": "POST /api/v1/plans/current/availability",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "changed": true,
+      "eventId": "availability-c8c40cd0ada7405de01c422734c958703b56c5e7ded7243201aa2eafede41c0c",
+      "plan": {
+        "budgetSummary": {
+          "allocationMode": "exact_budget",
+          "allocationReason": "",
+          "availableMinutes": 30,
+          "baseTotalMinutes": 30,
+          "conflictMinutes": 0,
+          "scheduledMinutes": 30,
+          "unallocatedMinutes": 0,
+          "unscheduledMinutes": 0
+        },
+        "constraints": {
+          "availableMinutes": 30
+        },
+        "generatedFromProfileVersion": 1,
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "本次专项计划可用30分钟，已安排30分钟；暂未安排的任务保留待后续选择",
+        "tasks": [
+          {
+            "durationMinutes": 30,
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "priority": "high",
+            "status": "pending",
+            "taskId": "task-postorder"
+          }
+        ],
+        "unscheduledTasks": [],
+        "userId": "u-62143cb0fa46",
+        "version": 2
+      },
+      "planDiff": {
+        "adjustmentReason": "本次专项计划可用30分钟，已安排30分钟；暂未安排的任务保留待后续选择",
+        "changedTasks": [],
+        "evidenceIds": [],
+        "newVersion": 2,
+        "oldVersion": 1,
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "本次专项计划可用30分钟，已安排30分钟；暂未安排的任务保留待后续选择",
+        "timestamp": "2026-10-31T05:53:48.421555+00:00",
+        "triggerEvidence": []
+      },
+      "traceId": "trace-availability-c8c40cd0ada7405de01c422734c958703b56c5e7ded7243201aa2eafede41c0c"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/plans/current/availability",
+    "operation": "POST /api/v1/plans/current/availability",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "changed": true,
+      "eventId": "availability-b85ec56b91978a33122809b4bd0361e8f27233557b6846255fbcea10efa93f99",
+      "plan": {
+        "budgetSummary": {
+          "allocationMode": "surplus_fallback",
+          "allocationReason": "使用规则：按截止日期、优先级和掌握度安排额外巩固",
+          "availableMinutes": 60,
+          "baseTotalMinutes": 30,
+          "conflictMinutes": 0,
+          "scheduledMinutes": 60,
+          "unallocatedMinutes": 0,
+          "unscheduledMinutes": 0
+        },
+        "constraints": {
+          "availableMinutes": 60
+        },
+        "generatedFromProfileVersion": 1,
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "本次专项计划可用60分钟，已安排60分钟；暂未安排的任务保留待后续选择",
+        "tasks": [
+          {
+            "allocationReason": "使用规则：按截止日期、优先级和掌握度安排额外巩固",
+            "baseDurationMinutes": 30,
+            "durationMinutes": 60,
+            "extraMinutes": 30,
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "priority": "high",
+            "status": "pending",
+            "taskId": "task-postorder"
+          }
+        ],
+        "unscheduledTasks": [],
+        "userId": "u-62143cb0fa46",
+        "version": 3
+      },
+      "planDiff": {
+        "adjustmentReason": "本次专项计划可用60分钟，已安排60分钟；暂未安排的任务保留待后续选择",
+        "changedTasks": [
+          {
+            "allocationReason": "使用规则：按截止日期、优先级和掌握度安排额外巩固",
+            "baseDurationMinutes": 30,
+            "durationMinutes": 60,
+            "extraMinutes": 30,
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "priority": "high",
+            "status": "pending",
+            "taskId": "task-postorder"
+          }
+        ],
+        "evidenceIds": [],
+        "newVersion": 3,
+        "oldVersion": 2,
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "本次专项计划可用60分钟，已安排60分钟；暂未安排的任务保留待后续选择",
+        "timestamp": "2026-10-31T05:53:48.447859+00:00",
+        "triggerEvidence": []
+      },
+      "traceId": "trace-availability-b85ec56b91978a33122809b4bd0361e8f27233557b6846255fbcea10efa93f99"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/plans/current/availability",
+    "operation": "POST /api/v1/plans/current/availability",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "changed": true,
+      "eventId": "availability-8e0158e53c60a3577f2852b9e76c34964ec51fc761a7c755d92a926cf88c8ac9",
+      "plan": {
+        "budgetSummary": {
+          "allocationMode": "surplus_fallback",
+          "allocationReason": "使用规则：按截止日期、优先级和掌握度安排额外巩固",
+          "availableMinutes": 90,
+          "baseTotalMinutes": 30,
+          "conflictMinutes": 0,
+          "scheduledMinutes": 90,
+          "unallocatedMinutes": 0,
+          "unscheduledMinutes": 0
+        },
+        "constraints": {
+          "availableMinutes": 90
+        },
+        "generatedFromProfileVersion": 1,
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "本次专项计划可用90分钟，已安排90分钟；暂未安排的任务保留待后续选择",
+        "tasks": [
+          {
+            "allocationReason": "使用规则：按截止日期、优先级和掌握度安排额外巩固",
+            "baseDurationMinutes": 30,
+            "durationMinutes": 90,
+            "extraMinutes": 60,
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "priority": "high",
+            "status": "pending",
+            "taskId": "task-postorder"
+          }
+        ],
+        "unscheduledTasks": [],
+        "userId": "u-62143cb0fa46",
+        "version": 4
+      },
+      "planDiff": {
+        "adjustmentReason": "本次专项计划可用90分钟，已安排90分钟；暂未安排的任务保留待后续选择",
+        "changedTasks": [
+          {
+            "allocationReason": "使用规则：按截止日期、优先级和掌握度安排额外巩固",
+            "baseDurationMinutes": 30,
+            "durationMinutes": 90,
+            "extraMinutes": 60,
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "priority": "high",
+            "status": "pending",
+            "taskId": "task-postorder"
+          }
+        ],
+        "evidenceIds": [],
+        "newVersion": 4,
+        "oldVersion": 3,
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "本次专项计划可用90分钟，已安排90分钟；暂未安排的任务保留待后续选择",
+        "timestamp": "2026-10-31T05:53:48.474908+00:00",
+        "triggerEvidence": []
+      },
+      "traceId": "trace-availability-8e0158e53c60a3577f2852b9e76c34964ec51fc761a7c755d92a926cf88c8ac9"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/today",
+    "operation": "GET /api/v1/today",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "allTasks": [
+        {
+          "courseName": "",
+          "dataTime": "2026-10-31T05:53:48.477908+00:00",
+          "deadline": "",
+          "due": "9999",
+          "durationMinutes": 90,
+          "eventId": "rem-d8d681739079c970fa7d12d021b8",
+          "evidenceIds": [],
+          "kind": "task",
+          "knowledgePointId": "binary-tree-postorder",
+          "level": "normal",
+          "objectId": "task-postorder",
+          "planId": "plan-u-62143cb0fa46",
+          "reason": "当前计划中的待完成任务",
+          "sourceId": "task-postorder",
+          "sourceType": "plan",
+          "sourceVersion": 4,
+          "status": "pending",
+          "targetPage": "pages/StudyPlan",
+          "targetParams": {},
+          "title": "二叉树后序遍历",
+          "userId": "u-62143cb0fa46",
+          "version": 4
+        }
+      ],
+      "dataTime": "2026-10-31T05:53:48.483642+00:00",
+      "guidance": "今天的事项已处理，可查看安排。",
+      "highlight": {
+        "courseName": "",
+        "dataTime": "2026-10-31T05:53:48.477908+00:00",
+        "deadline": "",
+        "due": "9999",
+        "durationMinutes": 90,
+        "eventId": "rem-d8d681739079c970fa7d12d021b8",
+        "evidenceIds": [],
+        "kind": "task",
+        "knowledgePointId": "binary-tree-postorder",
+        "level": "normal",
+        "objectId": "task-postorder",
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "当前计划中的待完成任务",
+        "sourceId": "task-postorder",
+        "sourceType": "plan",
+        "sourceVersion": 4,
+        "status": "pending",
+        "targetPage": "pages/StudyPlan",
+        "targetParams": {},
+        "title": "二叉树后序遍历",
+        "userId": "u-62143cb0fa46",
+        "version": 4
+      },
+      "modelCalls": 0,
+      "pendingCount": 1,
+      "tasks": [],
+      "userId": "u-62143cb0fa46",
+      "version": "bb9a9bf8b437f946b1f6"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reminders/rem-d8d681739079c970fa7d12d021b8/actions",
+    "operation": "POST /api/v1/reminders/{eventId}/actions",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "event": {
+        "courseName": "",
+        "dataTime": "2026-10-31T05:53:48.477908+00:00",
+        "deadline": "",
+        "due": "9999",
+        "durationMinutes": 90,
+        "eventId": "rem-d8d681739079c970fa7d12d021b8",
+        "evidenceIds": [],
+        "kind": "task",
+        "knowledgePointId": "binary-tree-postorder",
+        "level": "normal",
+        "objectId": "task-postorder",
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "当前计划中的待完成任务",
+        "sourceId": "task-postorder",
+        "sourceType": "plan",
+        "sourceVersion": 4,
+        "status": "pending",
+        "targetPage": "pages/StudyPlan",
+        "targetParams": {},
+        "title": "二叉树后序遍历",
+        "userId": "u-62143cb0fa46",
+        "version": 4
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reminders/rem-d8d681739079c970fa7d12d021b8/actions",
+    "operation": "POST /api/v1/reminders/{eventId}/actions",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "event": {
+        "courseName": "",
+        "dataTime": "2026-10-31T05:53:48.477908+00:00",
+        "deadline": "",
+        "due": "9999",
+        "durationMinutes": 90,
+        "eventId": "rem-d8d681739079c970fa7d12d021b8",
+        "evidenceIds": [],
+        "kind": "task",
+        "knowledgePointId": "binary-tree-postorder",
+        "level": "normal",
+        "objectId": "task-postorder",
+        "planId": "plan-u-62143cb0fa46",
+        "reason": "当前计划中的待完成任务",
+        "snoozeKey": "snooze",
+        "snoozedUntil": "2026-10-31T06:38:48.538309+00:00",
+        "sourceId": "task-postorder",
+        "sourceType": "plan",
+        "sourceVersion": 4,
+        "status": "snoozed",
+        "targetPage": "pages/StudyPlan",
+        "targetParams": {},
+        "title": "二叉树后序遍历",
+        "userId": "u-62143cb0fa46",
+        "version": 5
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/learning-reviews",
+    "operation": "POST /api/v1/learning-reviews",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "actions": [
+        {
+          "actionId": "diagnose",
+          "doneWhen": "已提交诊断并看到评估结果",
+          "durationMinutes": 15,
+          "knowledgePointId": "",
+          "priority": "high",
+          "steps": [
+            "选择本课程的一个具体知识点",
+            "完成一轮诊断并提交答案"
+          ],
+          "targetPage": "pages/ExercisePractice",
+          "title": "完成课程诊断",
+          "why": "证据不足，尚无有效测评"
+        },
+        {
+          "actionId": "settings",
+          "doneWhen": "课程设置中已保存考试日期及可用时间",
+          "durationMinutes": 15,
+          "knowledgePointId": "",
+          "priority": "medium",
+          "steps": [
+            "确认考试日期",
+            "填写可用学习时间并保存"
+          ],
+          "targetPage": "pages/LearningSetup",
+          "title": "补充考试日期与时间",
+          "why": "补全规划所需的课程信息"
+        }
+      ],
+      "conclusion": "证据不足，请先完成诊断。",
+      "courseName": "数据结构",
+      "createdAt": "2026-10-31T05:53:48.554811+00:00",
+      "evidenceSummary": [
+        "本课程有0个已测知识点、0条证据"
+      ],
+      "examMode": "exam_date_missing",
+      "fallbackReason": "未配置模型，使用规则建议",
+      "reviewId": "1ebad63219ca3314072400e0100438e7ec83658fc020a42b05827eef54ecb18b",
+      "snapshot": {
+        "courseName": "数据结构",
+        "daysUntilExam": null,
+        "evidence": [],
+        "evidenceCount": 0,
+        "examDate": null,
+        "freeTimeSlots": [
+          "20:00-22:00"
+        ],
+        "goal": "知学用户-657D的学习目标",
+        "history": [],
+        "measuredPoints": [],
+        "profileVersion": 1,
+        "unassessedCount": 1
+      },
+      "source": "rules",
+      "sourceFacts": [],
+      "summary": "证据不足，请先完成诊断。",
+      "userId": "u-62143cb0fa46"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/learning-reviews/1ebad63219ca3314072400e0100438e7ec83658fc020a42b05827eef54ecb18b/accept",
+    "operation": "POST /api/v1/learning-reviews/{review_id}/accept",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "tasks": [
+        {
+          "actionId": "diagnose",
+          "actionType": "practice",
+          "courseName": "数据结构",
+          "createdAt": "2026-10-31T05:53:48.585756+00:00",
+          "doneWhen": "已提交诊断并看到评估结果",
+          "durationMinutes": 15,
+          "knowledgePointId": "",
+          "priority": "high",
+          "reviewId": "1ebad63219ca3314072400e0100438e7ec83658fc020a42b05827eef54ecb18b",
+          "status": "pending",
+          "steps": [
+            "选择本课程的一个具体知识点",
+            "完成一轮诊断并提交答案"
+          ],
+          "targetPage": "pages/ExercisePractice",
+          "taskId": "u-62143cb0fa46:1ebad63219ca3314072400e0100438e7ec83658fc020a42b05827eef54ecb18b:0",
+          "title": "完成课程诊断",
+          "userId": "u-62143cb0fa46",
+          "why": "证据不足，尚无有效测评"
+        },
+        {
+          "actionId": "settings",
+          "actionType": "settings",
+          "courseName": "数据结构",
+          "createdAt": "2026-10-31T05:53:48.589707+00:00",
+          "doneWhen": "课程设置中已保存考试日期及可用时间",
+          "durationMinutes": 15,
+          "knowledgePointId": "",
+          "priority": "medium",
+          "reviewId": "1ebad63219ca3314072400e0100438e7ec83658fc020a42b05827eef54ecb18b",
+          "status": "pending",
+          "steps": [
+            "确认考试日期",
+            "填写可用学习时间并保存"
+          ],
+          "targetPage": "pages/LearningSetup",
+          "taskId": "u-62143cb0fa46:1ebad63219ca3314072400e0100438e7ec83658fc020a42b05827eef54ecb18b:1",
+          "title": "补充考试日期与时间",
+          "userId": "u-62143cb0fa46",
+          "why": "补全规划所需的课程信息"
+        }
+      ]
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/proactive",
+    "operation": "POST /api/v1/agent/proactive",
+    "status": 400,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "BAD_REQUEST",
+      "message": "request body must be an object"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/proactive",
+    "operation": "POST /api/v1/agent/proactive",
+    "status": 400,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "BAD_REQUEST",
+      "message": "request body must be an object"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/proactive",
+    "operation": "POST /api/v1/agent/proactive",
+    "status": 400,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "BAD_REQUEST",
+      "message": "request body must be an object"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/proactive",
+    "operation": "POST /api/v1/agent/proactive",
+    "status": 400,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "BAD_REQUEST",
+      "message": "request body must be an object"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent/chat",
+    "operation": "POST /api/agent/chat",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "card": {
+        "actionLabel": "查看任务清单",
+        "summary": "按截止时间与优先级排好的待办清单",
+        "targetPage": "pages/StudyPlan",
+        "title": "今日任务",
+        "type": "query_tasks"
+      },
+      "intent": "query_tasks",
+      "learningContext": {
+        "action": {
+          "label": "继续本目标练习",
+          "targetPage": "pages/ExercisePractice"
+        },
+        "assessedQuestionCount": 0,
+        "assessmentStatus": "not_assessed",
+        "assessmentTraceId": "",
+        "currentAgent": "exercise",
+        "decisionSource": "rules",
+        "goal": "帮我按薄弱点安排复习并诊断",
+        "goalId": "goal-09953fb9cda8b5f76fd949b9",
+        "handoffs": [
+          {
+            "agentTaskId": "goal-09953fb9cda8b5f76fd949b9:step-1",
+            "artifactRefs": {
+              "exerciseIds": [
+                "exercise-preorder-001",
+                "exercise-inorder-001",
+                "exercise-postorder-001"
+              ],
+              "planId": "",
+              "planVersion": 0,
+              "submissionId": ""
+            },
+            "constraints": {
+              "availableMinutes": 90
+            },
+            "decisionSource": "rules",
+            "dependsOn": [],
+            "evidenceIds": [],
+            "expectedArtifact": "exercise_set",
+            "goalId": "goal-09953fb9cda8b5f76fd949b9",
+            "inputRefs": {
+              "planId": "plan-u-62143cb0fa46",
+              "planVersion": 4,
+              "profileVersion": 1
+            },
+            "inputVersion": 1,
+            "objective": "帮我按薄弱点安排复习并诊断",
+            "outputVersion": 2,
+            "reason": "plan has an available exercise step",
+            "receiver": "exercise",
+            "sender": "secretary",
+            "status": "waiting_for_input",
+            "toolCalls": [
+              "select_exercises"
+            ]
+          }
+        ],
+        "kbId": "",
+        "knowledgePointId": "binary-tree-postorder",
+        "knowledgePointName": "二叉树后序遍历",
+        "nextAction": "提交答案后继续评估",
+        "planId": "plan-u-62143cb0fa46",
+        "planVersion": 4,
+        "profileVersion": 1,
+        "sessionId": "goal-09953fb9cda8b5f76fd949b9",
+        "sourceMode": "general",
+        "stateVersion": 2,
+        "status": "waiting_for_answers",
+        "traceId": "trace-goal-09953fb9cda8b5f76fd949b9",
+        "waitingFor": "answers"
+      },
+      "llmUsed": false,
+      "reply": "我已按当前课程与作业 DDL 整理出任务优先级，你可以打开学习计划查看。",
+      "sessionId": "chat-a"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/agent/chat",
+    "operation": "POST /api/agent/chat",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "card": {
+        "actionLabel": "查看任务清单",
+        "summary": "按截止时间与优先级排好的待办清单",
+        "targetPage": "pages/StudyPlan",
+        "title": "今日任务",
+        "type": "query_tasks"
+      },
+      "intent": "query_tasks",
+      "learningContext": {
+        "action": {
+          "label": "继续本目标练习",
+          "targetPage": "pages/ExercisePractice"
+        },
+        "assessedQuestionCount": 0,
+        "assessmentStatus": "not_assessed",
+        "assessmentTraceId": "",
+        "currentAgent": "exercise",
+        "decisionSource": "rules",
+        "goal": "帮我按薄弱点安排复习并诊断",
+        "goalId": "goal-9491bc5fb2e26c2f221927ef",
+        "handoffs": [
+          {
+            "agentTaskId": "goal-9491bc5fb2e26c2f221927ef:step-1",
+            "artifactRefs": {
+              "exerciseIds": [
+                "exercise-preorder-001",
+                "exercise-inorder-001",
+                "exercise-postorder-001"
+              ],
+              "planId": "",
+              "planVersion": 0,
+              "submissionId": ""
+            },
+            "constraints": {
+              "availableMinutes": 90
+            },
+            "decisionSource": "rules",
+            "dependsOn": [],
+            "evidenceIds": [],
+            "expectedArtifact": "exercise_set",
+            "goalId": "goal-9491bc5fb2e26c2f221927ef",
+            "inputRefs": {
+              "planId": "plan-u-62143cb0fa46",
+              "planVersion": 4,
+              "profileVersion": 1
+            },
+            "inputVersion": 1,
+            "objective": "帮我按薄弱点安排复习并诊断",
+            "outputVersion": 2,
+            "reason": "plan has an available exercise step",
+            "receiver": "exercise",
+            "sender": "secretary",
+            "status": "waiting_for_input",
+            "toolCalls": [
+              "select_exercises"
+            ]
+          }
+        ],
+        "kbId": "",
+        "knowledgePointId": "binary-tree-postorder",
+        "knowledgePointName": "二叉树后序遍历",
+        "nextAction": "提交答案后继续评估",
+        "planId": "plan-u-62143cb0fa46",
+        "planVersion": 4,
+        "profileVersion": 1,
+        "sessionId": "goal-9491bc5fb2e26c2f221927ef",
+        "sourceMode": "general",
+        "stateVersion": 2,
+        "status": "waiting_for_answers",
+        "traceId": "trace-goal-9491bc5fb2e26c2f221927ef",
+        "waitingFor": "answers"
+      },
+      "llmUsed": false,
+      "reply": "我已按当前课程与作业 DDL 整理出任务优先级，你可以打开学习计划查看。",
+      "sessionId": "chat-b"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-records?limit=1",
+    "operation": "GET /api/v1/learning-records",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "nextCursor": "WyIyMDI2LTEwLTMxVDA1OjUzOjQ4Ljc3NjU5NyswMDowMCIsICJnb2FsLTk0OTFiYzVmYjJlMjZjMmYyMjE5MjdlZiJd",
+      "records": [
+        {
+          "action": {
+            "label": "继续本目标练习",
+            "targetPage": "pages/ExercisePractice"
+          },
+          "assessedQuestionCount": 0,
+          "assessmentStatus": "not_assessed",
+          "assessmentTraceId": "",
+          "chatSessionId": "chat-b",
+          "completedAt": null,
+          "courseName": "",
+          "createdAt": "",
+          "currentAgent": "exercise",
+          "decisionSource": "rules",
+          "goal": "帮我按薄弱点安排复习并诊断",
+          "goalId": "goal-9491bc5fb2e26c2f221927ef",
+          "handoffs": [
+            {
+              "agentTaskId": "goal-9491bc5fb2e26c2f221927ef:step-1",
+              "artifactRefs": {
+                "exerciseIds": [
+                  "exercise-preorder-001",
+                  "exercise-inorder-001",
+                  "exercise-postorder-001"
+                ],
+                "planId": "",
+                "planVersion": 0,
+                "submissionId": ""
+              },
+              "constraints": {
+                "availableMinutes": 90
+              },
+              "decisionSource": "rules",
+              "dependsOn": [],
+              "evidenceIds": [],
+              "expectedArtifact": "exercise_set",
+              "goalId": "goal-9491bc5fb2e26c2f221927ef",
+              "inputRefs": {
+                "planId": "plan-u-62143cb0fa46",
+                "planVersion": 4,
+                "profileVersion": 1
+              },
+              "inputVersion": 1,
+              "objective": "帮我按薄弱点安排复习并诊断",
+              "outputVersion": 2,
+              "reason": "plan has an available exercise step",
+              "receiver": "exercise",
+              "sender": "secretary",
+              "status": "waiting_for_input",
+              "toolCalls": [
+                "select_exercises"
+              ]
+            }
+          ],
+          "kbId": "",
+          "knowledgePointId": "binary-tree-postorder",
+          "knowledgePointName": "二叉树后序遍历",
+          "learningContext": {
+            "action": {
+              "label": "继续本目标练习",
+              "targetPage": "pages/ExercisePractice"
+            },
+            "assessedQuestionCount": 0,
+            "assessmentStatus": "not_assessed",
+            "assessmentTraceId": "",
+            "currentAgent": "exercise",
+            "decisionSource": "rules",
+            "goal": "帮我按薄弱点安排复习并诊断",
+            "goalId": "goal-9491bc5fb2e26c2f221927ef",
+            "handoffs": [
+              {
+                "agentTaskId": "goal-9491bc5fb2e26c2f221927ef:step-1",
+                "artifactRefs": {
+                  "exerciseIds": [
+                    "exercise-preorder-001",
+                    "exercise-inorder-001",
+                    "exercise-postorder-001"
+                  ],
+                  "planId": "",
+                  "planVersion": 0,
+                  "submissionId": ""
+                },
+                "constraints": {
+                  "availableMinutes": 90
+                },
+                "decisionSource": "rules",
+                "dependsOn": [],
+                "evidenceIds": [],
+                "expectedArtifact": "exercise_set",
+                "goalId": "goal-9491bc5fb2e26c2f221927ef",
+                "inputRefs": {
+                  "planId": "plan-u-62143cb0fa46",
+                  "planVersion": 4,
+                  "profileVersion": 1
+                },
+                "inputVersion": 1,
+                "objective": "帮我按薄弱点安排复习并诊断",
+                "outputVersion": 2,
+                "reason": "plan has an available exercise step",
+                "receiver": "exercise",
+                "sender": "secretary",
+                "status": "waiting_for_input",
+                "toolCalls": [
+                  "select_exercises"
+                ]
+              }
+            ],
+            "kbId": "",
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "nextAction": "提交答案后继续评估",
+            "planId": "plan-u-62143cb0fa46",
+            "planVersion": 4,
+            "profileVersion": 1,
+            "sessionId": "goal-9491bc5fb2e26c2f221927ef",
+            "sourceMode": "general",
+            "stateVersion": 2,
+            "status": "waiting_for_answers",
+            "traceId": "trace-goal-9491bc5fb2e26c2f221927ef",
+            "waitingFor": "answers"
+          },
+          "nextAction": "提交答案后继续评估",
+          "planId": "plan-u-62143cb0fa46",
+          "planVersion": 4,
+          "profileVersion": 1,
+          "recordId": "goal-9491bc5fb2e26c2f221927ef",
+          "sessionId": "goal-9491bc5fb2e26c2f221927ef",
+          "sourceMode": "general",
+          "stateVersion": 2,
+          "status": "waiting",
+          "traceId": "trace-goal-9491bc5fb2e26c2f221927ef",
+          "updatedAt": "2026-10-31T05:53:48.776597+00:00",
+          "waitingFor": "answers"
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-records?limit=1&cursor=WyIyMDI2LTEwLTMxVDA1OjUzOjQ4Ljc3NjU5NyswMDowMCIsICJnb2FsLTk0OTFiYzVmYjJlMjZjMmYyMjE5MjdlZiJd",
+    "operation": "GET /api/v1/learning-records",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "nextCursor": null,
+      "records": [
+        {
+          "action": {
+            "label": "继续本目标练习",
+            "targetPage": "pages/ExercisePractice"
+          },
+          "assessedQuestionCount": 0,
+          "assessmentStatus": "not_assessed",
+          "assessmentTraceId": "",
+          "chatSessionId": "chat-a",
+          "completedAt": null,
+          "courseName": "",
+          "createdAt": "",
+          "currentAgent": "exercise",
+          "decisionSource": "rules",
+          "goal": "帮我按薄弱点安排复习并诊断",
+          "goalId": "goal-09953fb9cda8b5f76fd949b9",
+          "handoffs": [
+            {
+              "agentTaskId": "goal-09953fb9cda8b5f76fd949b9:step-1",
+              "artifactRefs": {
+                "exerciseIds": [
+                  "exercise-preorder-001",
+                  "exercise-inorder-001",
+                  "exercise-postorder-001"
+                ],
+                "planId": "",
+                "planVersion": 0,
+                "submissionId": ""
+              },
+              "constraints": {
+                "availableMinutes": 90
+              },
+              "decisionSource": "rules",
+              "dependsOn": [],
+              "evidenceIds": [],
+              "expectedArtifact": "exercise_set",
+              "goalId": "goal-09953fb9cda8b5f76fd949b9",
+              "inputRefs": {
+                "planId": "plan-u-62143cb0fa46",
+                "planVersion": 4,
+                "profileVersion": 1
+              },
+              "inputVersion": 1,
+              "objective": "帮我按薄弱点安排复习并诊断",
+              "outputVersion": 2,
+              "reason": "plan has an available exercise step",
+              "receiver": "exercise",
+              "sender": "secretary",
+              "status": "waiting_for_input",
+              "toolCalls": [
+                "select_exercises"
+              ]
+            }
+          ],
+          "kbId": "",
+          "knowledgePointId": "binary-tree-postorder",
+          "knowledgePointName": "二叉树后序遍历",
+          "learningContext": {
+            "action": {
+              "label": "继续本目标练习",
+              "targetPage": "pages/ExercisePractice"
+            },
+            "assessedQuestionCount": 0,
+            "assessmentStatus": "not_assessed",
+            "assessmentTraceId": "",
+            "currentAgent": "exercise",
+            "decisionSource": "rules",
+            "goal": "帮我按薄弱点安排复习并诊断",
+            "goalId": "goal-09953fb9cda8b5f76fd949b9",
+            "handoffs": [
+              {
+                "agentTaskId": "goal-09953fb9cda8b5f76fd949b9:step-1",
+                "artifactRefs": {
+                  "exerciseIds": [
+                    "exercise-preorder-001",
+                    "exercise-inorder-001",
+                    "exercise-postorder-001"
+                  ],
+                  "planId": "",
+                  "planVersion": 0,
+                  "submissionId": ""
+                },
+                "constraints": {
+                  "availableMinutes": 90
+                },
+                "decisionSource": "rules",
+                "dependsOn": [],
+                "evidenceIds": [],
+                "expectedArtifact": "exercise_set",
+                "goalId": "goal-09953fb9cda8b5f76fd949b9",
+                "inputRefs": {
+                  "planId": "plan-u-62143cb0fa46",
+                  "planVersion": 4,
+                  "profileVersion": 1
+                },
+                "inputVersion": 1,
+                "objective": "帮我按薄弱点安排复习并诊断",
+                "outputVersion": 2,
+                "reason": "plan has an available exercise step",
+                "receiver": "exercise",
+                "sender": "secretary",
+                "status": "waiting_for_input",
+                "toolCalls": [
+                  "select_exercises"
+                ]
+              }
+            ],
+            "kbId": "",
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "nextAction": "提交答案后继续评估",
+            "planId": "plan-u-62143cb0fa46",
+            "planVersion": 4,
+            "profileVersion": 1,
+            "sessionId": "goal-09953fb9cda8b5f76fd949b9",
+            "sourceMode": "general",
+            "stateVersion": 2,
+            "status": "waiting_for_answers",
+            "traceId": "trace-goal-09953fb9cda8b5f76fd949b9",
+            "waitingFor": "answers"
+          },
+          "nextAction": "提交答案后继续评估",
+          "planId": "plan-u-62143cb0fa46",
+          "planVersion": 4,
+          "profileVersion": 1,
+          "recordId": "goal-09953fb9cda8b5f76fd949b9",
+          "sessionId": "goal-09953fb9cda8b5f76fd949b9",
+          "sourceMode": "general",
+          "stateVersion": 2,
+          "status": "waiting",
+          "traceId": "trace-goal-09953fb9cda8b5f76fd949b9",
+          "updatedAt": "2026-10-31T05:53:48.718968+00:00",
+          "waitingFor": "answers"
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-records?chatSessionId=chat-a",
+    "operation": "GET /api/v1/learning-records",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "nextCursor": null,
+      "records": [
+        {
+          "action": {
+            "label": "继续本目标练习",
+            "targetPage": "pages/ExercisePractice"
+          },
+          "assessedQuestionCount": 0,
+          "assessmentStatus": "not_assessed",
+          "assessmentTraceId": "",
+          "chatSessionId": "chat-a",
+          "completedAt": null,
+          "courseName": "",
+          "createdAt": "",
+          "currentAgent": "exercise",
+          "decisionSource": "rules",
+          "goal": "帮我按薄弱点安排复习并诊断",
+          "goalId": "goal-09953fb9cda8b5f76fd949b9",
+          "handoffs": [
+            {
+              "agentTaskId": "goal-09953fb9cda8b5f76fd949b9:step-1",
+              "artifactRefs": {
+                "exerciseIds": [
+                  "exercise-preorder-001",
+                  "exercise-inorder-001",
+                  "exercise-postorder-001"
+                ],
+                "planId": "",
+                "planVersion": 0,
+                "submissionId": ""
+              },
+              "constraints": {
+                "availableMinutes": 90
+              },
+              "decisionSource": "rules",
+              "dependsOn": [],
+              "evidenceIds": [],
+              "expectedArtifact": "exercise_set",
+              "goalId": "goal-09953fb9cda8b5f76fd949b9",
+              "inputRefs": {
+                "planId": "plan-u-62143cb0fa46",
+                "planVersion": 4,
+                "profileVersion": 1
+              },
+              "inputVersion": 1,
+              "objective": "帮我按薄弱点安排复习并诊断",
+              "outputVersion": 2,
+              "reason": "plan has an available exercise step",
+              "receiver": "exercise",
+              "sender": "secretary",
+              "status": "waiting_for_input",
+              "toolCalls": [
+                "select_exercises"
+              ]
+            }
+          ],
+          "kbId": "",
+          "knowledgePointId": "binary-tree-postorder",
+          "knowledgePointName": "二叉树后序遍历",
+          "learningContext": {
+            "action": {
+              "label": "继续本目标练习",
+              "targetPage": "pages/ExercisePractice"
+            },
+            "assessedQuestionCount": 0,
+            "assessmentStatus": "not_assessed",
+            "assessmentTraceId": "",
+            "currentAgent": "exercise",
+            "decisionSource": "rules",
+            "goal": "帮我按薄弱点安排复习并诊断",
+            "goalId": "goal-09953fb9cda8b5f76fd949b9",
+            "handoffs": [
+              {
+                "agentTaskId": "goal-09953fb9cda8b5f76fd949b9:step-1",
+                "artifactRefs": {
+                  "exerciseIds": [
+                    "exercise-preorder-001",
+                    "exercise-inorder-001",
+                    "exercise-postorder-001"
+                  ],
+                  "planId": "",
+                  "planVersion": 0,
+                  "submissionId": ""
+                },
+                "constraints": {
+                  "availableMinutes": 90
+                },
+                "decisionSource": "rules",
+                "dependsOn": [],
+                "evidenceIds": [],
+                "expectedArtifact": "exercise_set",
+                "goalId": "goal-09953fb9cda8b5f76fd949b9",
+                "inputRefs": {
+                  "planId": "plan-u-62143cb0fa46",
+                  "planVersion": 4,
+                  "profileVersion": 1
+                },
+                "inputVersion": 1,
+                "objective": "帮我按薄弱点安排复习并诊断",
+                "outputVersion": 2,
+                "reason": "plan has an available exercise step",
+                "receiver": "exercise",
+                "sender": "secretary",
+                "status": "waiting_for_input",
+                "toolCalls": [
+                  "select_exercises"
+                ]
+              }
+            ],
+            "kbId": "",
+            "knowledgePointId": "binary-tree-postorder",
+            "knowledgePointName": "二叉树后序遍历",
+            "nextAction": "提交答案后继续评估",
+            "planId": "plan-u-62143cb0fa46",
+            "planVersion": 4,
+            "profileVersion": 1,
+            "sessionId": "goal-09953fb9cda8b5f76fd949b9",
+            "sourceMode": "general",
+            "stateVersion": 2,
+            "status": "waiting_for_answers",
+            "traceId": "trace-goal-09953fb9cda8b5f76fd949b9",
+            "waitingFor": "answers"
+          },
+          "nextAction": "提交答案后继续评估",
+          "planId": "plan-u-62143cb0fa46",
+          "planVersion": 4,
+          "profileVersion": 1,
+          "recordId": "goal-09953fb9cda8b5f76fd949b9",
+          "sessionId": "goal-09953fb9cda8b5f76fd949b9",
+          "sourceMode": "general",
+          "stateVersion": 2,
+          "status": "waiting",
+          "traceId": "trace-goal-09953fb9cda8b5f76fd949b9",
+          "updatedAt": "2026-10-31T05:53:48.718968+00:00",
+          "waitingFor": "answers"
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-records",
+    "operation": "GET /api/v1/learning-records",
+    "status": 200,
+    "ok": true,
+    "errors": [],
+    "frontend": true,
+    "body": {
+      "nextCursor": null,
+      "records": []
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/learning-records?cursor=!bad",
+    "operation": "GET /api/v1/learning-records",
+    "status": 400,
+    "ok": true,
+    "errors": [],
+    "frontend": false,
+    "body": {
+      "details": null,
+      "errorCode": "BAD_REQUEST",
+      "message": "invalid request"
+    }
+  }
+]

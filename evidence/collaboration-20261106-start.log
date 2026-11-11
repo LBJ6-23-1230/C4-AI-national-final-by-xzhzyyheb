@@ -1,0 +1,10 @@
+启动 API…
+API 已就绪（PID 46568，http://127.0.0.1:5000）
+启动 Worker…
+Worker 已启动（PID 42080）
+
+=== 知学 Mate 后端状态 ===
+  API    : 运行中  PID 38044  /ready 200
+  Worker : 运行中  PID 42080, 40800
+  日志   : E:\C4-AI-national-final-by-xzhzyyheb-main\C4-AI-national-final-by-xzhzyyheb-main\logs
+

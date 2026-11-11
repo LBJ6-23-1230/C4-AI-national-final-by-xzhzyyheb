@@ -1,0 +1,62 @@
+{
+  "recordDate": "2026-10-21",
+  "workspace": "D:\\project\\zhixue_final",
+  "baseCommit": "7d58fb707e418b83566201e12e6d721a384fb6be",
+  "hasUncommittedChanges": true,
+  "scope": "Per-point assessment, persisted focus records and assessment-to-planner handoff; not the complete roadmap",
+  "backend": {
+    "result": "passed",
+    "passed": 442,
+    "warnings": 1,
+    "durationSeconds": 70.19,
+    "command": ".venv/Scripts/python.exe -m pytest -q -p no:cacheprovider",
+    "externalModelsIsolated": true
+  },
+  "frontend": {
+    "buildResult": "passed",
+    "buildSeconds": 80.337,
+    "arktsWarningEntries": 123,
+    "log": ".local-work/phase1-20261021/frontend-build-final.log",
+    "sourceModulePersistenceCheck": "passed with mocked Preferences and HTTP after TS transpilation; not device verification"
+  },
+  "contractMirrorsByteIdentical": true,
+  "hap": {
+    "path": "app\\entry\\build\\default\\outputs\\default\\entry-default-signed.hap",
+    "sha256": "4a2f0da8cc820798d9a6bcb703eb6db6a8b4c37edfa748ede20c96c58d546d1d",
+    "profileType": "debug",
+    "verifyApp": "passed"
+  },
+  "deviceTargets": [],
+  "deviceInstall": "not_run",
+  "lockScreenAndColdStartBusinessValidation": "not_run",
+  "sourceFileSha256": {
+    "server/zhixue-agent-server/app/domain/assessment.py": "e127eccfd2e21f405390ce67dfbe81201ece586b0c1aa38bbfd7c956a4f79cd1",
+    "server/zhixue-agent-server/app/tools/assessment_tools.py": "67aafc8f3c9bc171cdd771e86324c67d16d62cac9657400f4d4326232aa3e036",
+    "server/zhixue-agent-server/app/agents/assessment.py": "1219276502a0c5d4766992de6d9b4165c383dc05ba90599bd7aac69c27d1d7f2",
+    "server/zhixue-agent-server/app/services/assessment_replan.py": "94334bbcac77aa2193bec95be6ccf4b192d59137be7275a9cb3d7c90291eae8c",
+    "server/zhixue-agent-server/app/api/focus.py": "1f07a17aed52592e34e2efec3f16d415f1ab3fa11f834a8f1ef13af99f747182",
+    "server/zhixue-agent-server/app/api/exercises.py": "77746411ff4159faa311654762f5eede62ce40f83f0de7c8d01900fde2752090",
+    "server/zhixue-agent-server/app/api/workflows.py": "a31ff0c26c725592414cbba77f273e1517e3dd3fbb3e7de08120129c08620f11",
+    "server/zhixue-agent-server/app/repositories/json_repository.py": "40c083fe3c7cff1b1ce7d0c0a5d99b5b7084e5358425138aed991f16603dbde7",
+    "server/zhixue-agent-server/app/runtime/orchestrator.py": "b2e6cecb5e94ed513838133aba24690613f130e6efbe8de3ba8dd1fc3a933274",
+    "app/entry/src/main/ets/cache/LearningDataStore.ets": "63a1e8362413370f96b681d05809024c8310a73c8ce9837ce4d0e7e9ff862c7e",
+    "app/entry/src/main/ets/data/AppState.ets": "96cb39251a67c7b7f13a29c500dd7f58bff225113e4b0740890bcde1f514c6f6",
+    "app/entry/src/main/ets/pages/ExercisePractice.ets": "a6785031c789eb3ff257f212382954705dac7fd99d5547c26f6049b010c21b9a",
+    "app/entry/src/main/ets/pages/FocusResult.ets": "9699ee98b9aafe7a820946f25a12c4834125b93c60748d481d472b5e35cf12cf",
+    "app/entry/src/main/ets/pages/FocusTimer.ets": "b838570982e69728387291c200633900f8ab5130b61ddcbaa090a8b7e33dddbe",
+    "app/entry/src/main/ets/pages/LearningHistory.ets": "66d9ac381dca90501938550f50e03ad356a9784c39918f8ee3d9b02b4ea5a334",
+    "app/entry/src/main/ets/pages/StudyPlan.ets": "54f49c85b18ba1370301797a307d48c0c51a914e74438b21b369e77067add5c4",
+    "contracts/openapi.json": "3e438f18eaec513244707b8af98afbf1823e1985ea5f9d81dc3779f33165c574",
+    "app/contracts/openapi.json": "3e438f18eaec513244707b8af98afbf1823e1985ea5f9d81dc3779f33165c574",
+    "tools/check_focus_persistence.js": "4f884fb90b84a67985bd8dda07305dffe701887b71dad3e8c69370fb27eb1735"
+  },
+  "remaining": [
+    "active timer and unsaved draft process recovery",
+    "full device acceptance",
+    "ordinary submit crash-atomic completion",
+    "goal-oriented secretary and chat integration",
+    "time-constrained event-driven planning",
+    "retrieval-grounded exercises",
+    "reminders and cross-device validation"
+  ]
+}

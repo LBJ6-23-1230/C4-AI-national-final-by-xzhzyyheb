@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.production.example
+.runtime-deps
+.local-postgres
+.venv*
+__pycache__
+.pytest_cache
+tests
+data/repository*
+data/files
+chat/history.json
+*.log
+deploy/certs
+deploy/runtime-secrets
+*.pem
+*.key

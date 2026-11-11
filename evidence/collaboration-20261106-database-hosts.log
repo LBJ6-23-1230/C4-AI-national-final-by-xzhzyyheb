@@ -1,0 +1,1 @@
+[{"host": "10.77.203.46", "port": 5432, "tcp": false, "login": false, "error": "TimeoutError"}, {"host": "10.83.13.161", "port": 5432, "tcp": true, "login": true}]

@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-26",
+  "backendTests": {
+    "passed": 648,
+    "failed": 0
+  },
+  "httpChecks": {
+    "passed": 97,
+    "failed": 0,
+    "mode": "offline",
+    "isolatedPort": 5016
+  },
+  "frontendRequestRecovery": 20,
+  "frontendWorkflowIsolation": 6,
+  "parserChecks": 45,
+  "loginPreferences": "PASS (actual AuthStore, mocked device preferences)",
+  "contractPaths": 51,
+  "device": "No connected HarmonyOS target; hdc list targets returned Empty",
+  "liveModelVerification": "not performed",
+  "hap": {
+    "path": "deliverables\\user-feedback-20261026\\知学Mate-20261026-signed.hap",
+    "sizeBytes": 3468478,
+    "sha256": "a5f8973f0754c501bb865b10daee0fad0ddd425b87bf94adf76195ef138be847",
+    "signatureVerification": "verify-app success; Digest verify result: true"
+  },
+  "scope": "11 requirements in 用户端反馈待修改方案-20261025.md; pre-existing local signing and runtime seed edits preserved",
+  "packaging": "Historical demo seeds only; existing local user records preserved"
+}

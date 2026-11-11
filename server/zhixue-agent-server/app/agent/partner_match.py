@@ -1,0 +1,101 @@
+"""Deterministic learning-partner matching used by the online PartnerMatch page."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any
+from app.services.course_names import course_names
+
+
+def _time_ranges(value: Any) -> list[tuple[int, int]]:
+	if not isinstance(value, list):
+		return []
+	ranges = []
+	for item in value:
+		try:
+			start, end = str(item).split("-", 1)
+			start_minutes = int(start.split(":")[0]) * 60 + int(start.split(":")[1])
+			end_minutes = int(end.split(":")[0]) * 60 + int(end.split(":")[1])
+			if 0 <= start_minutes < end_minutes <= 1440 and all(0 <= int(v.split(":")[1]) < 60 for v in (start, end)):
+				ranges.append((start_minutes, end_minutes))
+		except (ValueError, IndexError):
+			continue
+	return ranges
+
+
+def _overlap_minutes(left: dict[str, Any], right: dict[str, Any]) -> int:
+	left_ranges = _time_ranges(_dict(left.get("time")).get("freeTime"))
+	right_ranges = _time_ranges(_dict(right.get("time")).get("freeTime"))
+	return max((min(left_end, right_end) - max(left_start, right_start)
+		for left_start, left_end in left_ranges
+		for right_start, right_end in right_ranges
+		if min(left_end, right_end) > max(left_start, right_start)), default=0)
+
+
+def _list(profile: dict[str, Any], section: str, key: str) -> set[str]:
+	value = _dict(profile.get(section)).get(key, [])
+	if not isinstance(value, list):
+		value = [value] if isinstance(value, str) else []
+	return {str(item).strip().lower() for item in value if str(item).strip()}
+
+
+def _dict(value: Any) -> dict[str, Any]:
+	"""把"应该是对象"的字段安全地取成 dict。
+
+	为什么需要：调用方（HTTP 层）只校验了 `user` 本身是对象，
+	**没有校验它的嵌套字段**。于是 `learningGoal` / `knowledge` / `time` /
+	`basicInfo` 收到字符串、数组或数字时，`xxx.get(...)` 抛 AttributeError，
+	冒泡成 HTTP 500。实测这 4 类输入稳定复现：
+
+	    {"user":{"learningGoal":"x"}}   → 500
+	    {"user":{"knowledge":"x"}}      → 500
+	    {"user":{"time":"x"}}           → 500
+	    {"user":{"basicInfo":1}}        → 500
+
+	注意 `value or {}` 这种写法只能挡住 None，挡不住字符串/数字。
+	"""
+	return value if isinstance(value, dict) else {}
+
+
+def score_partner(user: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+	user_goal = _dict(user.get("learningGoal"))
+	candidate_goal = _dict(candidate.get("learningGoal"))
+	left = set(course_names(user_goal.get("courses") or user_goal.get("course")))
+	right = set(course_names(candidate_goal.get("courses") or candidate_goal.get("course")))
+	shared = sorted(left & right)
+	def goal_for(goal, course):
+		return str(_dict(goal.get("courseGoals")).get(course, goal.get("goal")) or "").strip().casefold()
+	same_goal = any(goal_for(user_goal, c) and goal_for(user_goal, c) == goal_for(candidate_goal, c) for c in shared)
+	goal_score = (20 + (10 if same_goal else 0)) if shared else 0
+	overlap = _overlap_minutes(user, candidate)
+	time_score = 30 if overlap >= 120 else 20 if overlap >= 60 else 10 if overlap >= 30 else 0
+	complement = len(_list(user, "knowledge", "weakness") & _list(candidate, "knowledge", "strength"))
+	complement += len(_list(candidate, "knowledge", "weakness") & _list(user, "knowledge", "strength"))
+	complement_score = 20 if complement >= 2 else 10 if complement == 1 else 0
+	user_info = _dict(user.get("basicInfo"))
+	candidate_info = _dict(candidate.get("basicInfo"))
+	basic_score = 10 if (user_info.get("grade") and user_info.get("major") and
+		user_info.get("grade") == candidate_info.get("grade") and user_info.get("major") == candidate_info.get("major")) else 5 if user_info.get("grade") and user_info.get("grade") == candidate_info.get("grade") else 0
+	ranges = _time_ranges(_dict(candidate.get("time")).get("freeTime"))
+	verified = _dict(candidate.get("collaboration"))
+	completed = verified.get("completedTogether", 0)
+	stability_score = min(10, max(0, int(completed))) if isinstance(completed, int) and not isinstance(completed, bool) else 0
+	total = goal_score + time_score + complement_score + basic_score + stability_score
+	if left and not shared:
+		total = 0
+	return {"candidate": candidate, "score": total, "sharedCourses": shared,
+		"courseMatch": "full" if shared and left == right else "partial" if shared else "none",
+		"goalMatch": "same" if same_goal else "unconfirmed" if not user_goal.get("goal") or not candidate_goal.get("goal") else "different",
+		"factors": {
+		"goal": goal_score, "timeOverlap": time_score, "knowledgeComplement": complement_score,
+		"basicMatch": basic_score, "stability": stability_score, "overlapMinutes": overlap,
+	}}
+
+
+def match_partners(user: dict[str, Any], candidates: list[dict[str, Any]]) -> dict[str, Any]:
+	ranked = sorted((score_partner(user, item) for item in candidates if not user.get("userId") or item.get("userId") != user.get("userId")),
+		key=lambda item: item["score"], reverse=True)
+	best = ranked[0] if ranked and ranked[0]["score"] > 0 else None
+	return {"userId": user.get("userId", "demo-user"), "matchedCandidate": best,
+		"candidates": ranked, "generatedAt": datetime.now().isoformat(),
+		"realModeUnavailable": False}

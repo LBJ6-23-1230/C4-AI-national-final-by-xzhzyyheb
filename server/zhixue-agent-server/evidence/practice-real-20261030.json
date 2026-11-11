@@ -1,0 +1,33 @@
+{
+  "rounds": [
+    {
+      "seconds": 7.98,
+      "questions": [
+        "若要在长度为n的线性表中频繁进行随机访问（按位置查找）且极少进行插入和删除操作，应优先选择哪种存储结构？",
+        "在带头结点的单链表中，判断链表为空的条件是什么？",
+        "对于长度为n的顺序表，若在第i个位置（1≤i≤n+1）插入一个新元素，平均需要移动多少个元素？"
+      ],
+      "fingerprints": [
+        "dfc2fbb2efa0c4c2fff1e155e1f8a709232fac64eb33ac878a9d6946b342ae26",
+        "b6924d55e807bad0f0b33c11e902b56b5398500dd97a32847b68f58d3eefe01a",
+        "e6c2bd9d23ec601f67ca3de62c3c0d74f4e6323a2bf8f395f866af9b4cc3186a"
+      ],
+      "message": ""
+    },
+    {
+      "seconds": 5.48,
+      "questions": [
+        "在单链表中，若要在已知节点p之后插入新节点s，正确的指针修改顺序是？",
+        "关于循环单链表与带头结点的非循环单链表，下列说法正确的是？",
+        "在长度为n的顺序表中，若随机删除一个元素，则平均需要移动的元素个数是多少？"
+      ],
+      "fingerprints": [
+        "6bac9c19188edbe0a899ab7f496869d2f7abba7775b2705f22401cd32d6e196c",
+        "5dcc73dc95467c237d2d3ac5b3af284cb514f56a5bbabadd8331cb883cff912a",
+        "d1dca466818b5c7ba1b0900e61a17aac61410a59a80d65dc3bb22a0178074cd1"
+      ],
+      "message": ""
+    }
+  ],
+  "distinct": true
+}

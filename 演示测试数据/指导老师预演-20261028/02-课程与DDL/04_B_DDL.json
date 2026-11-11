@@ -1,0 +1,25 @@
+{
+  "ddls": [
+    {
+      "courseName": "数据结构",
+      "title": "遍历序列与树结构练习",
+      "dueDate": "2026-10-30",
+      "priority": "高",
+      "estimatedMinutes": 40
+    },
+    {
+      "courseName": "计算机网络",
+      "title": "可靠传输机制小结",
+      "dueDate": "2026-11-01",
+      "priority": "中",
+      "estimatedMinutes": 45
+    },
+    {
+      "courseName": "线性代数",
+      "title": "矩阵乘法课后练习",
+      "dueDate": "2026-11-03",
+      "priority": "中",
+      "estimatedMinutes": 35
+    }
+  ]
+}

@@ -1,0 +1,2910 @@
+{
+  "date": "2026-10-21",
+  "checksum_basis": "git-blob-bytes-before-checkout-line-ending-conversion",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 3753,
+      "git_blob_sha1": "2287f7bfd282527da5db8b1815a6cd6cdd76bef5",
+      "sha256": "698bccba0f65d0ac5410dced0b5d7d560df416557cf8cb2783c696b1e529786e"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 2806,
+      "git_blob_sha1": "e0844bfdbba7eeebfd8ac037ac5ee2adfdfddf1b",
+      "sha256": "6f445c3a1ed18a3c30d18de401873080983a7248fe4e12de101586976a42e9c3"
+    },
+    {
+      "path": "01-作品说明文档/01-作品说明文档-暗影骑士王们.docx",
+      "bytes": 3546375,
+      "git_blob_sha1": "d7cdc7e072ad181c9d26cecc4464d1b2ddfbc150",
+      "sha256": "3bf280dc6da1ceebbd6fb6127966c3445d83e0e89de9b44dc6773450f89f02c6"
+    },
+    {
+      "path": "01-作品说明文档/01-作品说明文档-暗影骑士王们.pdf",
+      "bytes": 1115211,
+      "git_blob_sha1": "714ace0d9650ce7a129c3b79817098743398fe74",
+      "sha256": "b3d25ed37c2fc5957413c8c1bf565374e124376f0393b5368c86eee66dd5794c"
+    },
+    {
+      "path": "01-作品说明文档/2026中国高校计算机大赛人工智能创意赛初赛（鸿蒙赛道）作品说明文档模板.docx",
+      "bytes": 3018375,
+      "git_blob_sha1": "d0f217d7b4a9046f96227714edbdb654c73bca16",
+      "sha256": "73ae19f8849750dcd22808efbef45ad5d176858fc4499dd756d2c660376de6d9"
+    },
+    {
+      "path": "01-作品说明文档/README-改稿须知.md",
+      "bytes": 3993,
+      "git_blob_sha1": "255000e9cfd78cf7294225ea362e2e3385aea13a",
+      "sha256": "e4788bd6f629f9345f0554df57578fba287ac2a06f94c5f2b53fdc7b360026f9"
+    },
+    {
+      "path": "02-演示视频/9月29日视频_4分33秒配音文稿.md",
+      "bytes": 4542,
+      "git_blob_sha1": "4dea28b139106a51c8220740c0bab40743e55922",
+      "sha256": "826139281ed7861394ed0d72f44f3a2d3dd170bb293050092b2ba2c0ca903d28"
+    },
+    {
+      "path": "02-演示视频/README-待录制.md",
+      "bytes": 3231,
+      "git_blob_sha1": "d63829bfbbbf3c3b3efc85c61d81a74bc4cce466",
+      "sha256": "9c0c27a98e5fe300d3d38e6546ab87b1a9516786765e16ccb492015c1fc275e9"
+    },
+    {
+      "path": "02-演示视频/测试素材/搭子匹配/DDL_账号A_林晓宇.csv",
+      "bytes": 224,
+      "git_blob_sha1": "f16ac2c0122166161de9d8df1b4acad5f2b85fb6",
+      "sha256": "7b10b1a10bf55c8b54ed697c70637807660009edf0e527fd0674e3ddff4a6a20"
+    },
+    {
+      "path": "02-演示视频/测试素材/搭子匹配/DDL_账号B_周沐晴.csv",
+      "bytes": 218,
+      "git_blob_sha1": "c22780336ce21d5504fdc84d664489c70f30a3d7",
+      "sha256": "ac47a9052d31ed8bb51054e824590ea3dce0add2179cd1f58bd2e8e865ba1638"
+    },
+    {
+      "path": "02-演示视频/测试素材/搭子匹配/DDL总表预览_账号A.png",
+      "bytes": 28333,
+      "git_blob_sha1": "12ad88f873ec527450ffd24ff42cb8e3b5ee24df",
+      "sha256": "c93779fd1074ab3d9a1b3df51d458fb672511dc6b0a96bd1b3fecc9034510da2"
+    },
+    {
+      "path": "02-演示视频/测试素材/搭子匹配/DDL总表预览_账号B.png",
+      "bytes": 27634,
+      "git_blob_sha1": "86ed416b759aef484e3ce6f9737ec3d25f59e026",
+      "sha256": "fdb52f95fad4e5d3ede5533c386318923ff908503073a7d72f7ab63f5da1e4ad"
+    },
+    {
+      "path": "02-演示视频/测试素材/搭子匹配/搭子匹配_录制前准备说明.md",
+      "bytes": 2607,
+      "git_blob_sha1": "d74a2e23227688c3f15f009bcd3fb746046e966c",
+      "sha256": "66333e49455871889e7bb25126cde62b8c6248961f51cb05c3b653d30770119c"
+    },
+    {
+      "path": "02-演示视频/测试素材/搭子匹配/搭子匹配测试数据总表.xlsx",
+      "bytes": 8630,
+      "git_blob_sha1": "3775f59f9ae053aaaf8a0b305ac0013abac15c0f",
+      "sha256": "9f9da3fe6149c8549a2bcb1d6717bb855aa80e6591057a0e5102feba91f7cd08"
+    },
+    {
+      "path": "02-演示视频/测试素材/搭子匹配/课程表_账号A_林晓宇.png",
+      "bytes": 1108925,
+      "git_blob_sha1": "6ec0461ec0de086cefbd3579c26102d5e2be6846",
+      "sha256": "2ee789fcde3fbcb4c6d55a21225d6846d529b1123801904d4b07a4d54f63f6a0"
+    },
+    {
+      "path": "02-演示视频/测试素材/搭子匹配/课程表_账号B_周沐晴.png",
+      "bytes": 1086178,
+      "git_blob_sha1": "b474b1f1e34878c6d651eeb135a9d230332ad3b8",
+      "sha256": "8a926cd5c9e9e306da50523b6e046b41d656e43cca57d6f42d1b6a1d39a2cd73"
+    },
+    {
+      "path": "02-演示视频/演示视频录制指导（含旁白脚本）.docx",
+      "bytes": 45368,
+      "git_blob_sha1": "9ffad7141a224e077209e3a4341182453d97fbd0",
+      "sha256": "0c36739136effb1f6ffbddbcac661e88da4c78c1e1c21a0209af69a3ffb3eb56"
+    },
+    {
+      "path": "02-演示视频/知学Mate_视频录制方案_优化版.md",
+      "bytes": 25183,
+      "git_blob_sha1": "a47d29cf4697ef1310ae7e187d67c7f88593f8fe",
+      "sha256": "fb52765d4a359ff6a92fa42dd15b8efedc1c296e3b6b7bc606bd739ba0c2d5b2"
+    },
+    {
+      "path": "02-演示视频/知学Mate_视频录制方案_最终连贯版.md",
+      "bytes": 17208,
+      "git_blob_sha1": "84d6f3cdfe8a169a5716c738b1748fc7073bf3e0",
+      "sha256": "d4ab31847407634a570b823c43b762e2fcfc9f215c2602e9cae0011fab5a647a"
+    },
+    {
+      "path": "04-制作辅助文档/PPT制作参考与设计架构.docx",
+      "bytes": 47242,
+      "git_blob_sha1": "9e37edf0bffff11029c719acbb844e0ec12fb500",
+      "sha256": "63908761670bd95dc3253b03b0e8c99bc094d1f7f138f575722702d1fa614ddd"
+    },
+    {
+      "path": "04-制作辅助文档/知学Mate-项目参考文本.docx",
+      "bytes": 47242,
+      "git_blob_sha1": "9e37edf0bffff11029c719acbb844e0ec12fb500",
+      "sha256": "63908761670bd95dc3253b03b0e8c99bc094d1f7f138f575722702d1fa614ddd"
+    },
+    {
+      "path": "05-决赛准备/README.md",
+      "bytes": 949,
+      "git_blob_sha1": "5134c52ff158da8a3d4b28fcfa28feebefd0fdf7",
+      "sha256": "dd3b724cc71b2795b64d1de8bf8e826cfd9da8067fa99ada1c31f6b64f61ad22"
+    },
+    {
+      "path": "05-决赛准备/仓库导入说明-20261021.md",
+      "bytes": 2394,
+      "git_blob_sha1": "f1568453e00514e6a6c957d5adf942034eb11714",
+      "sha256": "d44d9cc5f9c457ad23152c97d95532b2543159c7753fb989b3cb2de53c43089b"
+    },
+    {
+      "path": "05-决赛准备/代码审阅范围-20261021.md",
+      "bytes": 22324,
+      "git_blob_sha1": "7718590f83e2c53e7f40032e0bfc982577e41c19",
+      "sha256": "164e7f97847981d87abc38abe86bc69a94cda87d2adb69ea71e818eafc2b00d0"
+    },
+    {
+      "path": "05-决赛准备/决赛评估与改进建议-20261021.md",
+      "bytes": 30538,
+      "git_blob_sha1": "d5f5e39dbe59dc1773fedc11208a1ae560dda998",
+      "sha256": "ea4ffe0496786341b01117719784be6207ac0cb5067d6ae92a280d8ec10bb0b3"
+    },
+    {
+      "path": "05-决赛准备/参赛要求/竞赛规程.pdf",
+      "bytes": 216734,
+      "git_blob_sha1": "65e53f0fa95532f40d5896025242bfd16107e661",
+      "sha256": "e5093c61bed5a10c249e165095127ac1f03fd3ce5b8b993d3a8d6ae878bec1a9"
+    },
+    {
+      "path": "05-决赛准备/答辩材料/知学Mate_27页答辩演示_统一背景版.pptx",
+      "bytes": 29108260,
+      "git_blob_sha1": "e58eeea04b2a3852aac01ff31099be4619368ff8",
+      "sha256": "70528560209a0486184a7748e0a1612b18183a8988258ccbf3d7f2a33f25d996"
+    },
+    {
+      "path": "05-决赛准备/隔离验证结果-实际接口.json",
+      "bytes": 567,
+      "git_blob_sha1": "91e37a1576d0123f1c00c6a10e2690bf2acfbef7",
+      "sha256": "0852ed30e858defb2f9590a533d77354ae3f66065aefbf3a0572ad92358efd13"
+    },
+    {
+      "path": "05-决赛准备/隔离验证结果-身份与算法.json",
+      "bytes": 703,
+      "git_blob_sha1": "d11eb9baa8305ca3d9e791d330092d05e0f3af28",
+      "sha256": "4d177599b1b437f6a79cb33fbc63fc008792e46a86630fca27cbd6e852cf7e78"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1066,
+      "git_blob_sha1": "5dd29d4885235fa522404770b5223415d43f41e4",
+      "sha256": "84c32b7ad12aec7b9c7b1b616edb9076838e74bbda0325ef4b914f43d9eca0c7"
+    },
+    {
+      "path": "README-提交说明.md",
+      "bytes": 9603,
+      "git_blob_sha1": "f1a482537c6079264ad70719294feb2c710f8ef9",
+      "sha256": "8d72f251c8044684035fe53f45d641a79ec360ab5ce33ad6002b03784a181b2d"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2722,
+      "git_blob_sha1": "7d5df91ab099eefcfff04379d813291976c98dd1",
+      "sha256": "f46b4033444dd72cb133f54a2021330b471cfe222e36392d234159231357e59e"
+    },
+    {
+      "path": "app/.gitignore",
+      "bytes": 1104,
+      "git_blob_sha1": "51a307d81054911fa8eceb4a8f380b04b23fd7e1",
+      "sha256": "295d4117faf9a188f5a829c5cfd2d04e42ab20dec857fd0611ad72e755817c39"
+    },
+    {
+      "path": "app/AppScope/app.json5",
+      "bytes": 228,
+      "git_blob_sha1": "d8bfbcd113f357318b21f667b4f81fb9e2280b6c",
+      "sha256": "8297e00a34e426a06c761169500a7c2395b4a9add75f912b62c9f04e66eb42fc"
+    },
+    {
+      "path": "app/AppScope/resources/base/element/string.json",
+      "bytes": 96,
+      "git_blob_sha1": "ecd6af9740dedc878ff2cf6fd20d7e37182fe6ac",
+      "sha256": "b45696d5467909c203949798af55a6bb838b0444dfee9e81c7ed1af495f577f1"
+    },
+    {
+      "path": "app/AppScope/resources/base/media/background.png",
+      "bytes": 91942,
+      "git_blob_sha1": "923f2b3f27e915d6871871deea0420eb45ce102f",
+      "sha256": "497edeafc51af043c73e72ee8c4fbac4663357ef1ba275c0289f31a366b26239"
+    },
+    {
+      "path": "app/AppScope/resources/base/media/foreground.png",
+      "bytes": 15325,
+      "git_blob_sha1": "eb9427585b36d14b12477435b6419d1f07b3e0bb",
+      "sha256": "61a796d5a9fc5853e9cd0f1e3e730896a6bcb94a34a37765c4d1959bf64dfa43"
+    },
+    {
+      "path": "app/AppScope/resources/base/media/layered_image.json",
+      "bytes": 109,
+      "git_blob_sha1": "fb49920440fb4d246c82f9ada275e26123a2136a",
+      "sha256": "3d18dcd7ed9e7d3d2c54c20cb80a44eb4877c661131c68a46e20b6e19d0bb476"
+    },
+    {
+      "path": "app/README.md",
+      "bytes": 6171,
+      "git_blob_sha1": "64f85a069cfe80efa7b004780d55a68692088558",
+      "sha256": "079f9383bb552065cfbdc91e4e55bf5f65b95338a08e0ab694bcd0a7dfd1efe9"
+    },
+    {
+      "path": "app/build-profile.json5",
+      "bytes": 801,
+      "git_blob_sha1": "bf165eb66949c2ae36a98d2db7262ed971b6ab36",
+      "sha256": "5f4ba65f743a0bafc3770e1783254b574e61b315fbbe163a8b9a866a011e71a4"
+    },
+    {
+      "path": "app/code-linter.json5",
+      "bytes": 854,
+      "git_blob_sha1": "073990fa45394e1f8e85d85418ee60a8953f9b99",
+      "sha256": "f557c3bcdb40c64c986bffed9628310cc7a79fb7d2642c1c8b8d265fd92e25ad"
+    },
+    {
+      "path": "app/contracts/README.md",
+      "bytes": 2399,
+      "git_blob_sha1": "f12f1208922c3dbeb7e26247bd558c6d36ff18c3",
+      "sha256": "26abeca9d9f65e0daa165c948a17b113f7938ac58b9ba491918d88f3c05b9221"
+    },
+    {
+      "path": "app/contracts/fixtures/chat-response.json",
+      "bytes": 347,
+      "git_blob_sha1": "93cf90ed9f3a3fdbf9c89ba6c56e7890a2e55f46",
+      "sha256": "63e653b2fe8d756c1704cbe221495c56e40de2c27fd2020a717682192aece8b1"
+    },
+    {
+      "path": "app/contracts/fixtures/demo-reset.json",
+      "bytes": 922,
+      "git_blob_sha1": "ab3ec57bdb72274868bef4bc9eeffc3aaebb4369",
+      "sha256": "a557ff1d129daa784cdd9707ab38753a327cf173815edfd6f01db1699410cc8b"
+    },
+    {
+      "path": "app/contracts/fixtures/exercise-set.json",
+      "bytes": 1193,
+      "git_blob_sha1": "ff2c3cbe49cf159fced64058d53e44b64a0600ad",
+      "sha256": "3edcb8e48440e18289f4e05a23df5a3e79bb5f02efc359a34f21529a5401df2c"
+    },
+    {
+      "path": "app/contracts/fixtures/exercise-submission-result.json",
+      "bytes": 1270,
+      "git_blob_sha1": "7c668c1391ffeae76f20392564414d27fad1eea9",
+      "sha256": "99dddb68e89bea7e9699421937bfcb79b0fd4ef8f13b53a55f2dd3c2b13aec7d"
+    },
+    {
+      "path": "app/contracts/fixtures/plan-diff.json",
+      "bytes": 507,
+      "git_blob_sha1": "bbeba8718da739ccbf569e6a0576427a402b210a",
+      "sha256": "3d41d130d1f46f495f906e05bfc907ba3fe15a681bdc7789f9381b6fa457360f"
+    },
+    {
+      "path": "app/contracts/fixtures/plan-v1.json",
+      "bytes": 376,
+      "git_blob_sha1": "afaee4bd617b325ed6d33cdc0f207d214c58f1da",
+      "sha256": "50aa5d751103371d37c646bd93378e472393bfbfd7dc823c794b408dc6d626d3"
+    },
+    {
+      "path": "app/contracts/fixtures/plan-v2.json",
+      "bytes": 403,
+      "git_blob_sha1": "43cd1018c1943cfb5c1eea335cf9d3c24a079bf6",
+      "sha256": "33b3e62d69f5526d2fbbcc22ae1c6292206184ce97dc538ee82b12b270e157ac"
+    },
+    {
+      "path": "app/contracts/fixtures/profile-v1.json",
+      "bytes": 717,
+      "git_blob_sha1": "f1486a5a7bf7e642afcb23ffca856d2bdf29ca47",
+      "sha256": "a56138ceb6cc372c7ac46f71243342a0e06cb053205968be0f94062a5cf9795c"
+    },
+    {
+      "path": "app/contracts/fixtures/profile-v2.json",
+      "bytes": 1194,
+      "git_blob_sha1": "74cede88f0f56cedff5d20d6dbd9e1a48eb3ab08",
+      "sha256": "35f49f5b2ef8d23c1e4e84318ee24f560c61313aea8e56a50c9ee481edeed11a"
+    },
+    {
+      "path": "app/contracts/fixtures/trace-after.json",
+      "bytes": 1806,
+      "git_blob_sha1": "cd3a18f6f055613b5b0d959a566373785a6617ac",
+      "sha256": "15d6ce49dbc7a2c13c0a51f3192eaf5c23e6fe152de6e83201716ccf71910450"
+    },
+    {
+      "path": "app/contracts/fixtures/trace-before.json",
+      "bytes": 738,
+      "git_blob_sha1": "85ae5aa0da07553d7824646c0574e99e00040f13",
+      "sha256": "8a9d96c50523df90c4bf611988914ac0db6c7c72125a9963791a5733ea49421b"
+    },
+    {
+      "path": "app/contracts/fixtures/workflow-completed.json",
+      "bytes": 113,
+      "git_blob_sha1": "2a78d330fce0fbc59b97a75e287128ba100f9fd2",
+      "sha256": "8a9af796fba19ffff13ffb7b10b87beafa229849f4ec276d785073c2124cdcde"
+    },
+    {
+      "path": "app/contracts/fixtures/workflow-created.json",
+      "bytes": 150,
+      "git_blob_sha1": "90df32f6e6dec3ca1b09c11e969b60f84d53244b",
+      "sha256": "bff77eee4e29b463d6f2adf2d1397e18eb5f86770e188314ead026ea4a7e39bc"
+    },
+    {
+      "path": "app/contracts/fixtures/workflow-running.json",
+      "bytes": 101,
+      "git_blob_sha1": "cf1ce6c70fb2a289837f55c3108c2f3e68687db8",
+      "sha256": "eed005dba984ba859f34c4ce3c50e48d812566d9a56a15c1a15a6f50a9f4edaa"
+    },
+    {
+      "path": "app/contracts/openapi.json",
+      "bytes": 131391,
+      "git_blob_sha1": "ef07bde74a0353acd3281875c8c6f4375993f2ec",
+      "sha256": "18662c01e0fd7508f3dc2aa97e2dc20e930097b14ed15e1c98998ccb9e3787ba"
+    },
+    {
+      "path": "app/docs/07-鸿蒙特性审计报告.md",
+      "bytes": 85680,
+      "git_blob_sha1": "553357e1ab738c21d422c68e3b7141aed98c92fd",
+      "sha256": "0aa3c7720fbaed5e43fd42081a22619dcdfbaa516ad0f1ef0d43595bf078d2c9"
+    },
+    {
+      "path": "app/docs/08-前端静态Bug排查报告.md",
+      "bytes": 69647,
+      "git_blob_sha1": "f7f55868b1f42e8d17aa0487d837e99fc0cec75e",
+      "sha256": "60a1f1f5ec5136e092c3ef6112ad44def3e774c90e62a744069b79b46738cb8d"
+    },
+    {
+      "path": "app/docs/10-全项目审计与Bug修复总结.md",
+      "bytes": 24018,
+      "git_blob_sha1": "9232e3f8545a641af88b8084f364bcc419f80675",
+      "sha256": "f974b22d1d0df6f6ab5246097f9f1ccad6abd818cb4f01b66b26dc019ceda4b1"
+    },
+    {
+      "path": "app/docs/11-用户登录体系方案.md",
+      "bytes": 14546,
+      "git_blob_sha1": "751b29c493d4be337798c0f3414bbb06114027bb",
+      "sha256": "d0d73376a2be5e7ac532e2b96ce2e0781ee6dedd33ad593c68a45a0b8952ff12"
+    },
+    {
+      "path": "app/docs/12-知识库设计方案.md",
+      "bytes": 17729,
+      "git_blob_sha1": "99fbeee383ded674e0235424496c4d277a7b74a0",
+      "sha256": "d432532bfad592be0b3b4cc7f55eba28ca06b9c42a1d9a7dbef15b3b58cf56b7"
+    },
+    {
+      "path": "app/docs/13-全场景与华为账号登录方案.md",
+      "bytes": 10905,
+      "git_blob_sha1": "ea35711b81ef0b400234d6eb9479b2c4edd11494",
+      "sha256": "b7af1b480216b2e8b70399b4e027eca6ee9d19c4d8142f72a358f82350ada3f2"
+    },
+    {
+      "path": "app/docs/17-前端同学任务书.md",
+      "bytes": 29366,
+      "git_blob_sha1": "8b7f9cb4d3c9d908c7aa43462d6f686dc3c00ee4",
+      "sha256": "2cc290da799bf66326f344cfbea127e605ad069cac2191acaf4e948efc7e3adc"
+    },
+    {
+      "path": "app/docs/18-技术改进实施报告.md",
+      "bytes": 21574,
+      "git_blob_sha1": "3e0d84aaa6cd3dff025a36c2735fc547d123a8b8",
+      "sha256": "3ee489904cc2f6d6ce36359040e48b43dc556fcf5c0b60b60b9822287de22138"
+    },
+    {
+      "path": "app/docs/19-未完成事项清单.md",
+      "bytes": 22443,
+      "git_blob_sha1": "30ec3e705260b6a23ed40c7517e63dd7ca81e7a3",
+      "sha256": "77c38c5c6bd8fc9166307081be33f0d360a945317f338d9c33c3e4c307b11e9d"
+    },
+    {
+      "path": "app/docs/20-token加密API核验报告.md",
+      "bytes": 35223,
+      "git_blob_sha1": "bc3c791a70bbe81ec5d610eb7f3b345ac7f476b7",
+      "sha256": "77bbf847e51e694fb1ff346adbe30c6e2ed8793a6fafc0ea0b4c1024c352b8b8"
+    },
+    {
+      "path": "app/docs/28-全项目Bug审计报告.md",
+      "bytes": 28066,
+      "git_blob_sha1": "cb465d3147815370266a81edc1ebbed1fe4bc51d",
+      "sha256": "4e78c6968f40bd6ee52023f01941ee8214d069c376fa18264d3c464d144a6b5d"
+    },
+    {
+      "path": "app/docs/29-真机测试不必要性说明.md",
+      "bytes": 12787,
+      "git_blob_sha1": "dfd738694ba004af6aae537b57ef9a8cfbaaf7a2",
+      "sha256": "9005e810f8655f0e034b535b049b58c77a5a126f161d814334742294b62dd5f0"
+    },
+    {
+      "path": "app/docs/前端回归检查清单_V1.0.md",
+      "bytes": 11486,
+      "git_blob_sha1": "5fb95e872493de3bf00a084859e3bfbc1739b614",
+      "sha256": "d00f383504cb0195c3002517b1bc01d09fb24934fafad7f0d0c588cb2efeb0d6"
+    },
+    {
+      "path": "app/docs/前端测试方案_V1.0.md",
+      "bytes": 8098,
+      "git_blob_sha1": "36237869b45aa30808257d79b579709c2957d05e",
+      "sha256": "de6284332a410e6cd74c95084677b86f9c8394cd9500550f25e611ee6ce85dad"
+    },
+    {
+      "path": "app/docs/小样本体验执行表_V1.0.md",
+      "bytes": 3132,
+      "git_blob_sha1": "b1d1e9949f6c9154e9e81cec98fe78701a8ec668",
+      "sha256": "fc32c834f9e6fe4cefd744115fdddb4e6f7713a862e6463007cbc50421dd85c8"
+    },
+    {
+      "path": "app/entry/.gitignore",
+      "bytes": 55,
+      "git_blob_sha1": "e2713a2779c5a3e0eb879efe6115455592caeea5",
+      "sha256": "c4868dbab8112ec2283b23448ad795702a967bb55229333ab317cbeb8c3ad690"
+    },
+    {
+      "path": "app/entry/build-profile.json5",
+      "bytes": 509,
+      "git_blob_sha1": "98847857571d190890574301260c4036fa1d2950",
+      "sha256": "a689b00f18b0b1339d196c8edc82a7c4a736f347103fb7dc2a2d3793ec0bb35a"
+    },
+    {
+      "path": "app/entry/hvigorfile.ts",
+      "bytes": 111,
+      "git_blob_sha1": "d83dfd33373514bb6ebad3fb384c525b43492deb",
+      "sha256": "0259fea7e6b677e346aaa8f23d5a53622424d4ffca29889456d8e2bfe147ebab"
+    },
+    {
+      "path": "app/entry/obfuscation-rules.txt",
+      "bytes": 1002,
+      "git_blob_sha1": "1e7e54e150fd2e5cd28ead313ec6a97977b917e0",
+      "sha256": "1c127360e10209c7fe0a43e3edf9504c34ad33a75882904254d4acc2b33b6cc5"
+    },
+    {
+      "path": "app/entry/oh-package.json5",
+      "bytes": 168,
+      "git_blob_sha1": "d3f1d0cb876cee1b41a6dd3b5cf299670efa4bb6",
+      "sha256": "1302a0fd31892731699d27b97bb43622e5ad823ee0d15403e2041d6e9a1898a0"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/AgentApiClient.ets",
+      "bytes": 24342,
+      "git_blob_sha1": "607d0fb3572ca716b01c4c9e45906b1e45c77bcd",
+      "sha256": "48e8e2b5c1df96dab25151ad42c902888464f15951c98fd6f8e98c7b8b90d10f"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/ApiDefaults.ets",
+      "bytes": 4529,
+      "git_blob_sha1": "eb027f5d12d63332276a0d4675d3386b656836c4",
+      "sha256": "a4e6ad894c45e31e6a59589aa912c7efa76cd3bca4f6e5337750a57d5b4e936c"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/ApiEnvironmentStore.ets",
+      "bytes": 1777,
+      "git_blob_sha1": "6b567e788a18de4694d6322719f6f252c45843b0",
+      "sha256": "9e118938df4e95122e88301093310f158bbbdb47bd5b77c1ab6e53864bd43fd3"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/ApiModels.ets",
+      "bytes": 15912,
+      "git_blob_sha1": "4ac73f0cc1fe3c576a14c9687d7a0f18841818ac",
+      "sha256": "4d885ced6171962830020b30419e3e3a4472c19116289b3d6be229e6c60d02b8"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/ApiResponseValidator.ets",
+      "bytes": 17570,
+      "git_blob_sha1": "52f8c3da983c4e1b0e1e458259c3f87f7e4b7c69",
+      "sha256": "766992dcdbbbd5f363bf91b57b3e79e1ce8bef6b3912126133c531a511766f3d"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/ApiResult.ets",
+      "bytes": 1021,
+      "git_blob_sha1": "f24c86f2149136790fc10a3a93cce3e3baa65d20",
+      "sha256": "c4f63b92edc48dc69b4df3d3545ef36337c29ab24ee3e00a6fa329c3686ab2fb"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/AuthClient.ets",
+      "bytes": 27614,
+      "git_blob_sha1": "356c85405bcc36f93406ce798c04feebf5b89c21",
+      "sha256": "a2208f00fa6f5d9c322ed26ed7b6eac03a1c51217ec247a80816b880ab50638b"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/AuthModels.ets",
+      "bytes": 9341,
+      "git_blob_sha1": "60fd6ff14e5552ef4d11b21d908fe361c5e65a81",
+      "sha256": "f4b54f384495a17aede44f1a215dc5d0d04eb2f606928d817062a00d5154848c"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/AuthResult.ets",
+      "bytes": 2301,
+      "git_blob_sha1": "51a46bf6980e832e32f0e69387d1047a8709f8e8",
+      "sha256": "d9fe75aa92c58603f584845caaf55648c055e4ff8d357ad88b462c5e4083f766"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/AuthStore.ets",
+      "bytes": 8645,
+      "git_blob_sha1": "b42423a7abfbdc7639a368b5aff9cc550446bfce",
+      "sha256": "e0f70e4c99e9605f9d0302dbcb0b155ff256295dfe0bf5d9eed2227c2377a4df"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/FixtureApiTransport.ets",
+      "bytes": 45248,
+      "git_blob_sha1": "cf18aacb0e907dd1fa11363324b62b2d6f4a23b1",
+      "sha256": "b6c1a1f4af5da13a26c3df3757073d4ec09c127091f61777fe85cfcff3bbe6d8"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/FixtureDemoStateStore.ets",
+      "bytes": 3985,
+      "git_blob_sha1": "991f1270d5994610f49ae0e15759952cd0bbfc65",
+      "sha256": "0c52ad432387e125887d8e51b1ea4a1284c8c67133a50f3e59f435aee41d4363"
+    },
+    {
+      "path": "app/entry/src/main/ets/api/TokenCipher.ets",
+      "bytes": 15173,
+      "git_blob_sha1": "566ba6bc5ea07793c8d8c0527657f6b9d08f79ce",
+      "sha256": "8a4ca5fb68752de579b4ff10d30a3a5c4eb70bb5226bc4f77b072682cf930f0d"
+    },
+    {
+      "path": "app/entry/src/main/ets/cache/ClientCache.ets",
+      "bytes": 5683,
+      "git_blob_sha1": "0f44a5a80645dfb83f97a18492222111b8cf58bd",
+      "sha256": "2dffb2248deb9ad215d4b47d4e1193578f0565fc299c03a9ecfe2b1e90471928"
+    },
+    {
+      "path": "app/entry/src/main/ets/cache/DemoSnapshot.ets",
+      "bytes": 1041,
+      "git_blob_sha1": "85789e9fec0885db346b1e3314b79f4d49207a86",
+      "sha256": "fe3a77bd10d82fbbc8ff550f2f6cbd90a909442cdbb7b45cbb004882de3faf50"
+    },
+    {
+      "path": "app/entry/src/main/ets/cache/LearningDataStore.ets",
+      "bytes": 2701,
+      "git_blob_sha1": "7ccdb70a8eec0019f26d7fddc4281e98f557f379",
+      "sha256": "4939a66a9684ac3891e35c015d9982095283954633091daff20aec894580aee4"
+    },
+    {
+      "path": "app/entry/src/main/ets/cache/WorkflowSessionStore.ets",
+      "bytes": 3767,
+      "git_blob_sha1": "ff6284a32d9a756408fc4aba66aab673cab65d71",
+      "sha256": "3811315aedfc7875b6b73d6dae3596a450b7b7b39429a4d50d7e064ead1d4f4d"
+    },
+    {
+      "path": "app/entry/src/main/ets/components/AIFloatButton.ets",
+      "bytes": 10670,
+      "git_blob_sha1": "cb740d6d96c3b8d602bcd421a94e74ef7082821d",
+      "sha256": "dd2aa4519b2acbf58c205ed756589bb50d60c21f7bbbe05ae5e8c7cec117c905"
+    },
+    {
+      "path": "app/entry/src/main/ets/components/ChatBubble.ets",
+      "bytes": 3674,
+      "git_blob_sha1": "4dcc2f974db20be78411330b8117653e43086ad3",
+      "sha256": "0c560515309bdd1f6a0c8f0163e43753b8402965e04de884bfdfa3e69431ad85"
+    },
+    {
+      "path": "app/entry/src/main/ets/components/FactorBreakdownCard.ets",
+      "bytes": 3549,
+      "git_blob_sha1": "c2126237cfacdb0a5258c51381da2652b8cb2ee7",
+      "sha256": "0d885240498d6f9783a94159988f1e3c06b968f07417aa5aefba7cc1dbc5d5fa"
+    },
+    {
+      "path": "app/entry/src/main/ets/components/FollowUpCard.ets",
+      "bytes": 3925,
+      "git_blob_sha1": "f4555db5698203f9e5f25fc5f2c694812edca62d",
+      "sha256": "9291b6b577f8a20656888fd74a3967b04ed4c081e825b19c0ac5bc7740f9df72"
+    },
+    {
+      "path": "app/entry/src/main/ets/components/PlanDiffCard.ets",
+      "bytes": 2899,
+      "git_blob_sha1": "04ea2bbe68e20f8f130d073c179fa9f73d107d21",
+      "sha256": "2fa0baf40480ea3b636cc6a5422a46c14f6d6009b3b1973be5153de5ad8df4c1"
+    },
+    {
+      "path": "app/entry/src/main/ets/components/RadarChart.ets",
+      "bytes": 5646,
+      "git_blob_sha1": "e39e20153be7318b19e9c1159ec38c9c6d141412",
+      "sha256": "3e0b95e36667ee08afd63383907a57f486f7fc657eca1756c9325a7ccfdff8e4"
+    },
+    {
+      "path": "app/entry/src/main/ets/data/AppState.ets",
+      "bytes": 48906,
+      "git_blob_sha1": "178b14f68a9f6c99015f3b29fe29e0c6cc15f3bd",
+      "sha256": "1a9e55dff0e80ba3b137848163b96692737654cee1b7d277ca8264d16365ffc1"
+    },
+    {
+      "path": "app/entry/src/main/ets/data/MockData.ets",
+      "bytes": 8584,
+      "git_blob_sha1": "93eb936b2f59cdedac7fe55bd605110af5cc627d",
+      "sha256": "a394afc98f9150e4634872f36c131d078d101714eeccf0c324fb1b93e3b89063"
+    },
+    {
+      "path": "app/entry/src/main/ets/entryability/EntryAbility.ets",
+      "bytes": 14816,
+      "git_blob_sha1": "8ba7d3888eabbadc3cb3f21ad22bb38b581e8ce5",
+      "sha256": "403ce97861180b1847ee6d9ea0aa6e56fafe546cc8ade8b1134c30c66ba8e637"
+    },
+    {
+      "path": "app/entry/src/main/ets/entryformability/LearningCardFormAbility.ets",
+      "bytes": 1419,
+      "git_blob_sha1": "0f33e0cf829967839ec86c9f54b64c4ac4c31581",
+      "sha256": "8fa63917733b04a03550658cb6b3b7ed8919a57e1e24cfa40c3f216c902aba69"
+    },
+    {
+      "path": "app/entry/src/main/ets/insightintent/QueryTodayPlanIntent.ets",
+      "bytes": 1087,
+      "git_blob_sha1": "b5b0f0b872ebbd4836c93ca2959a5cab2cb60b3a",
+      "sha256": "b6eb332a4a616c3066f00999cff22b165f38bf8c634873cd9d40c66f65340108"
+    },
+    {
+      "path": "app/entry/src/main/ets/insightintent/StartFocusIntent.ets",
+      "bytes": 2114,
+      "git_blob_sha1": "2edd6355bba5082bd435176ac123865d08bc11e5",
+      "sha256": "931faf8b66a1dc7d09eb724e4c27f6895d752b294a3405e3105196698d553f7a"
+    },
+    {
+      "path": "app/entry/src/main/ets/models/AgentModels.ets",
+      "bytes": 10328,
+      "git_blob_sha1": "04b5a93a9eab26be0b11fcd65d349b4412e61b05",
+      "sha256": "69dd2daa85f0f55e61ae85fc02958143e5859b9ce7e95cc609a6cd569cb4d8c9"
+    },
+    {
+      "path": "app/entry/src/main/ets/models/ChatModels.ets",
+      "bytes": 4502,
+      "git_blob_sha1": "c95dd6a05c71be10294c3c8e26949a344d78fa01",
+      "sha256": "6d4294d536b9270f2498a54d67f99e1a6a5d3dec8da590556fe3aebfeb2b37be"
+    },
+    {
+      "path": "app/entry/src/main/ets/models/LearningFlowData.ets",
+      "bytes": 3875,
+      "git_blob_sha1": "e592445962d14a7a3e6188bc74767385b3d7f4ac",
+      "sha256": "2e8422b0fdfa39d80a90624a7356a9259f55c503827a406b8bbc1654638495f9"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/Account.ets",
+      "bytes": 36247,
+      "git_blob_sha1": "906409eb651b2d8387382073fc9d2c4712733625",
+      "sha256": "8f5457dcb3bb5e9818236ab79a31ea74477eac30f08888fdcfa2739c72e6678f"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/AgentTrace.ets",
+      "bytes": 9800,
+      "git_blob_sha1": "7f67bcd25d653eb6cb958b34f40da7a657b26afc",
+      "sha256": "e72fd0f185d28668c027fab9e592b6b26225fe1d6af9e51819e9a0c6c1d35a21"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/ApiEnvironment.ets",
+      "bytes": 8633,
+      "git_blob_sha1": "902e3defa1194154d1cdb5477e387bda1af7e498",
+      "sha256": "9be42d886594da0f3bfb1aec2711badd1264ab4d678ff51a4928c8c0f21e143d"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/ChatMain.ets",
+      "bytes": 42564,
+      "git_blob_sha1": "5879b5d5d9873da8c80a75c339734b7264c07162",
+      "sha256": "6937843790b8a28bef71f4f8bad3a629eda30a166ddfee2c8a80de741e22060e"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/CourseImport.ets",
+      "bytes": 37803,
+      "git_blob_sha1": "37bd311cfb90dd2664fae5fcc91459ac32f88b93",
+      "sha256": "f9c8c74f22d7d26d73ddb94b80c2d518bee8f50cfb84293a7be9ce102746c9f3"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/ExercisePractice.ets",
+      "bytes": 31468,
+      "git_blob_sha1": "3ab5b2536ee1c15dda27e93ecfc391f43a0cf962",
+      "sha256": "6f6e8f1ff927dc39e2cd7bac18825f66e5a895a329eb0178d5560e183465b0c0"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/FocusResult.ets",
+      "bytes": 11942,
+      "git_blob_sha1": "2cca094782b6b94fb029a677cc16694dbd72b55b",
+      "sha256": "d0141416d9aa53cf23ea1d5963d088698a33a2d72b61757f7e2cc9c10db81220"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/FocusSetup.ets",
+      "bytes": 16489,
+      "git_blob_sha1": "f910e8651ae66648cac19dab76c65b727bb4ce90",
+      "sha256": "36d5d70db22066f4db9ca14c159e7aa8369c7f6d640c783abea41fc7277dbc2b"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/FocusTimer.ets",
+      "bytes": 14708,
+      "git_blob_sha1": "94b2c8fd9cb61a1892bb394fc7a016fe847bbfa6",
+      "sha256": "e4ff0363ba87e214e0afa0f411b8bc004fdcc5d11692c3dd8365838dd910cedb"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/Index.ets",
+      "bytes": 50951,
+      "git_blob_sha1": "6700fb75e4ea78619e93d118abbba5ec2043ccbe",
+      "sha256": "9d72f9168e3f610a83359c9fa05e9963e117e968939725d6c51fe82821c4ec6f"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/KnowledgeBase.ets",
+      "bytes": 49443,
+      "git_blob_sha1": "6d435f826cb8db8a7d9346206ce57a7468ca815b",
+      "sha256": "8abd5e28f36ca0948f46b04317d065f1059de808093c12c96a7683ae383376bf"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/LearningHistory.ets",
+      "bytes": 3570,
+      "git_blob_sha1": "2dee13381e09775666cade67938783f8eb385b9b",
+      "sha256": "835a62458a45e5a2bce88cb26914a70cc2589e1e9b6679d9769b253300a6adc4"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/Login.ets",
+      "bytes": 40220,
+      "git_blob_sha1": "2726c307c9ab21d9b88bc4139c988a6bead7aa8c",
+      "sha256": "ca1f59505521a8c9350b5cf229b285b2133628a64e83257547f7b9c0f8ae77dd"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/PartnerMatch.ets",
+      "bytes": 43656,
+      "git_blob_sha1": "f9e48b74c774c7628a20541aa8233d10f3eee01a",
+      "sha256": "d7c893c3b841c9d18e8ab11a7c0254b549f9d5fe74303c70accbcaf3eae431b4"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/ReviewSummary.ets",
+      "bytes": 7988,
+      "git_blob_sha1": "cc9154f225d11bd910b2366c6a4c837dc56dc62f",
+      "sha256": "2886092cc3ccd643d552d081bffaa08f41389cf3d1d31f98dd9d76a19034b843"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/StudyPlan.ets",
+      "bytes": 11639,
+      "git_blob_sha1": "dcba1a88f375e697bdc9c08fbdf5ceea16cb0a0c",
+      "sha256": "687da1b2d18ecc85b7a74cb20c8382a22185a1a634fb529487f26972a35bc5a1"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/StudySuggestion.ets",
+      "bytes": 6900,
+      "git_blob_sha1": "42acfaef85cd3c41200ff841d017bc1936ad1839",
+      "sha256": "94568657cacc71901128b4bf426a802e99fbb16c9fa254027705ddbb0f40c707"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/StudyTags.ets",
+      "bytes": 29847,
+      "git_blob_sha1": "a20899ca144ee93dfb7a6e878551f59d2fa40f37",
+      "sha256": "25e1623292fe01a8bdd619259194dc348ce915a69bd28fe7669a19622e019130"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/WrongBook.ets",
+      "bytes": 8953,
+      "git_blob_sha1": "41e67d267f3b6324f87795f26990e21c2993d414",
+      "sha256": "aac2cadae3b49cf4fb49da11eac721af950275ea735c4932824adb9615aac056"
+    },
+    {
+      "path": "app/entry/src/main/ets/pages/WrongQuestion.ets",
+      "bytes": 25994,
+      "git_blob_sha1": "cfc52b1f1bc9345d7d2eb62a0bae24b586a86aaf",
+      "sha256": "b5098a45aafaea661d61bd11c93c011e1bac4c935900e1541fb618cb38201d80"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/AgentBridge.ets",
+      "bytes": 36213,
+      "git_blob_sha1": "ff57711da5cba0b3c8de207640d67cd9e0515f65",
+      "sha256": "e726a65ff4153bb815019fca78bd4231876778c8b664dc26d000308b5698a720"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/ChatNavigation.ets",
+      "bytes": 349,
+      "git_blob_sha1": "ae1943d492ee100bc0af7868e63df85b8244711a",
+      "sha256": "0f2ac7d83b52644fd916b4d406a5e6bc447c6f8914bb74e06538d8c26fddcdde"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/DistributedStateService.ets",
+      "bytes": 19401,
+      "git_blob_sha1": "db9452e0d052d84529a34f2f85239136b6dbf663",
+      "sha256": "dac19de7a0306eedafee97bf7fd8ec5fe10fff2485a9ffb666709063b83d7c17"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/FileParserService.ets",
+      "bytes": 33981,
+      "git_blob_sha1": "2a9938450439c400e7e903ee43805886ea0143fc",
+      "sha256": "dd432a338b9903ad819db6dc72eca0e95cc971e73bae7c2ed120191a498dee48"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/HuaweiAccountService.ets",
+      "bytes": 4757,
+      "git_blob_sha1": "cd734dbbda65e5adb4437df2eb7aef60ecb61c4c",
+      "sha256": "0ea2a847cf0cbe7ebd5075d890e5d6bfacf7dbda353fe11369c3aa549c16a77a"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/LearningCardService.ets",
+      "bytes": 8304,
+      "git_blob_sha1": "5368a9ec113079427034d243a6f00eb8a2f5011a",
+      "sha256": "8a0a49a0e8f7eee509b2d96e6b1cf89f396328c2df077b031686fa6d3264a352"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/LocalAgentService.ets",
+      "bytes": 39808,
+      "git_blob_sha1": "a049fa4339d0fa523704af1c473dcf48c81a7872",
+      "sha256": "d67da1978892741eff5af62a1669a681c2cfde90a89cceed4a19ba8be1c92041"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/ProactiveSettingsStore.ets",
+      "bytes": 1352,
+      "git_blob_sha1": "4a106139f8a88987267aa74ea992758d8e8e6a1d",
+      "sha256": "9799261baf7dfdf203403103af6d8b6acfe4d8aa7ada2edf6ded4884cee12d10"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/ProactiveSurfaceService.ets",
+      "bytes": 4698,
+      "git_blob_sha1": "a8be4fab64c8f3c5e3bdd661d013cecb30d587b3",
+      "sha256": "1a5adefc76f943c2278f78f4a8bad539894042a2fe67559b63ba06703b4a8cd5"
+    },
+    {
+      "path": "app/entry/src/main/ets/services/VoiceInputService.ets",
+      "bytes": 8531,
+      "git_blob_sha1": "d18738ea9f05e3fcffe548550c29b5f5488fb1dd",
+      "sha256": "dc5f1b70067f8d1dafa4121f9cf6c701d6746564aad6f8e4b7d480d0aa5471f4"
+    },
+    {
+      "path": "app/entry/src/main/ets/utils/ApiDisplayFormatter.ets",
+      "bytes": 3651,
+      "git_blob_sha1": "01f7ace8fca646eb2cfbeb1e3694a736cb4850e9",
+      "sha256": "2bec92427a827d0ac72301b2cdc1bc7fc7aca93d31a46c37ab9f4237a65cc4d7"
+    },
+    {
+      "path": "app/entry/src/main/ets/utils/DateHelper.ets",
+      "bytes": 5623,
+      "git_blob_sha1": "6ed40a474c47226b3ae8d5fcf59ec92853e6a2fc",
+      "sha256": "9a2043e00358aafd29823f5f0554cf0c0da92e95c5bb566e99434c89b5d9713f"
+    },
+    {
+      "path": "app/entry/src/main/ets/utils/DeviceLayout.ets",
+      "bytes": 5179,
+      "git_blob_sha1": "31ed69891719cd34c72b1c800c59f117e9cbc88b",
+      "sha256": "499bc44a84a46714dac70945128f25ccf098de0465f538101725be8ea0b81b24"
+    },
+    {
+      "path": "app/entry/src/main/ets/utils/ImageEncoder.ets",
+      "bytes": 3884,
+      "git_blob_sha1": "287624bb55eadb2caa9f80302261bc1d65ae697b",
+      "sha256": "9acc9c7415d4a0224af198b9f61f9370a7ba4f03948671cac3a43cf06fd22fc6"
+    },
+    {
+      "path": "app/entry/src/main/ets/viewmodels/ExerciseViewModel.ets",
+      "bytes": 5926,
+      "git_blob_sha1": "f0fbcbe2598d534b6a814a09e83210a2cbf35d74",
+      "sha256": "315aa10105c85a73d0980228e94cc4598627deeaa6b1beda5fab27685e59768e"
+    },
+    {
+      "path": "app/entry/src/main/ets/viewmodels/PlanViewModel.ets",
+      "bytes": 2378,
+      "git_blob_sha1": "35558f45bdd7994cf5c3a110d69b63ea64492422",
+      "sha256": "3ca7f49a4fe27a9487d870d8634ff6f5d0342e4c6042b31ea48251409a7666e1"
+    },
+    {
+      "path": "app/entry/src/main/ets/viewmodels/ProactiveViewModel.ets",
+      "bytes": 3348,
+      "git_blob_sha1": "390cad9a6501535c7f7de2c98a45e80c27de7e9d",
+      "sha256": "9f6f8c8583f7b29994e932348b0c5f6759f18ff5df814a90d3eb0cf22053698c"
+    },
+    {
+      "path": "app/entry/src/main/ets/viewmodels/ProfileViewModel.ets",
+      "bytes": 1987,
+      "git_blob_sha1": "387f4ee77cfec7cfd036bd58c2df31f37683e946",
+      "sha256": "c35ab650f85ae5305d453f1fde7255d9b23df0d78194d6d25fcf6d95efc1c82f"
+    },
+    {
+      "path": "app/entry/src/main/ets/viewmodels/TraceViewModel.ets",
+      "bytes": 1471,
+      "git_blob_sha1": "cc5bb2674dd5e2e07e97d72334109aed9c9958f5",
+      "sha256": "debcacd01d5a72dcbc82d0df0dc50c502c86d0cb0b621b09914720a1f0b5fe6a"
+    },
+    {
+      "path": "app/entry/src/main/ets/viewmodels/WorkflowViewModel.ets",
+      "bytes": 6576,
+      "git_blob_sha1": "cf9021d09a183a3c2467fea3119ad3fa8c41a9a8",
+      "sha256": "c777c4824cd9de7156190f1a121a866d8354c76891c9fb08b948df9967fe72fe"
+    },
+    {
+      "path": "app/entry/src/main/ets/widget/pages/LearningCard.ets",
+      "bytes": 2445,
+      "git_blob_sha1": "46a08ee1ab0ed8236ea18b13153fb792c9790106",
+      "sha256": "d4ed0bb7c77f3412284baa38e030ef76382310f957e8a9ace337a2ddc664e0e8"
+    },
+    {
+      "path": "app/entry/src/main/module.json5",
+      "bytes": 3624,
+      "git_blob_sha1": "637bf760f8f5cc05bdc35e89eca51ee0b4dece8c",
+      "sha256": "87e57c2a61dee5f3a9a639d598a40209696a14fdb1213fbeb05c8b54c73c09be"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/element/color.json",
+      "bytes": 98,
+      "git_blob_sha1": "3c712962da3c2751c2b9ddb53559afcbd2b54a02",
+      "sha256": "4e028f6e8a847f8a98cfee6d37309def0e7e2e7290041d89e22ba3ac38a802b8"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/element/float.json",
+      "bytes": 92,
+      "git_blob_sha1": "33ea22304f9b1485b5f22d811023701b5d4e35b6",
+      "sha256": "8db02f7a08f7b7b73d6eb95b09a6643463d10258b757901e70f255de0a2c83ef"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/element/string.json",
+      "bytes": 993,
+      "git_blob_sha1": "214c6e28b806018d490e0a4b8ebdef6287583f19",
+      "sha256": "6236d8cb15b3430d2f1e3af8face3bf4d3203c56517ea613d637ac62697c55e9"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/media/background.png",
+      "bytes": 91942,
+      "git_blob_sha1": "923f2b3f27e915d6871871deea0420eb45ce102f",
+      "sha256": "497edeafc51af043c73e72ee8c4fbac4663357ef1ba275c0289f31a366b26239"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/media/foreground.png",
+      "bytes": 8805,
+      "git_blob_sha1": "97014d3e10e5ff511409c378cd4255713aecd85f",
+      "sha256": "57e549283f255505a649042f36a1d6793c307a69a94c9fa7e27a38af38ddbe8c"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/media/layered_image.json",
+      "bytes": 109,
+      "git_blob_sha1": "fb49920440fb4d246c82f9ada275e26123a2136a",
+      "sha256": "3d18dcd7ed9e7d3d2c54c20cb80a44eb4877c661131c68a46e20b6e19d0bb476"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/media/sample_wrong.png",
+      "bytes": 32159,
+      "git_blob_sha1": "bdae45e8c2f65a3292aadbc26577e01ae32fa8f6",
+      "sha256": "1a794b0497f62fee9d914d0e678b75f256c9e0ef405497415e111316fd85a59f"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/media/startIcon.png",
+      "bytes": 20093,
+      "git_blob_sha1": "205ad8b5a8a42e8762fbe4899b8e5e31ce822b8b",
+      "sha256": "567c7c0c7a321ca180e010ad880f0f7519f6d351ac2b9665e2ee710e7cfe7778"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/profile/form_config.json",
+      "bytes": 579,
+      "git_blob_sha1": "56d8f0a69bbcaf0fca76e01b26826b01c95d5fb1",
+      "sha256": "458ded9e9f2e0adf1416511e4ef75a61e6e59a94ba4ec1eb1b8b0147bf922d24"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/profile/insight_intent.json",
+      "bytes": 189,
+      "git_blob_sha1": "1835deeec5927db0dfb8dd5ec5ea8396046127ba",
+      "sha256": "507f954f193daf21ed93cf3b45b868bf7f0ea173524c6106884dd25244d56929"
+    },
+    {
+      "path": "app/entry/src/main/resources/base/profile/main_pages.json",
+      "bytes": 514,
+      "git_blob_sha1": "4d9c8265da3ef75fcf4cbf74cd02db0ecf65d8a1",
+      "sha256": "14481d9637bc2b821bd862d880398744ac2f06640342504839a53544eb37c688"
+    },
+    {
+      "path": "app/entry/src/mock/mock-config.json5",
+      "bytes": 3,
+      "git_blob_sha1": "7a73a41bfdf76d6f793007240d80983a52f15f97",
+      "sha256": "8eb95bcbc154530931e15fc418c8b1fe991095671409552099ea1aa596999ede"
+    },
+    {
+      "path": "app/entry/src/ohosTest/ets/test/Ability.test.ets",
+      "bytes": 1734,
+      "git_blob_sha1": "85c78f67579d6e31b5f5aeea463e216b9b141048",
+      "sha256": "8600c6681413e2ee3283671c6a67c2bb1421726559163aca8596ff17d2a389d6"
+    },
+    {
+      "path": "app/entry/src/ohosTest/ets/test/List.test.ets",
+      "bytes": 170,
+      "git_blob_sha1": "b2156317ffad5f47a15584218a2b274ba5a47cd5",
+      "sha256": "2b0340ac7240ec80eb809c645e6be407181081510edc3c0fba8f109fbeff9e8e"
+    },
+    {
+      "path": "app/entry/src/ohosTest/module.json5",
+      "bytes": 176,
+      "git_blob_sha1": "509a3a28a3e6be8d7f98cc563fa8195657d77d1d",
+      "sha256": "2f7f9b8212b0f72cde73aba1c272889d796ec3a79531838a21d136d842bebafc"
+    },
+    {
+      "path": "app/entry/src/test/AgentBridge.test.ets",
+      "bytes": 9321,
+      "git_blob_sha1": "61dde14a4a8c376e63309acd34b5850b9834ed53",
+      "sha256": "66b972db84ca5d84156b740acc7f54bad7956b44195ec5ce873736d8fb33b0b8"
+    },
+    {
+      "path": "app/entry/src/test/ApiDisplayFormatter.test.ets",
+      "bytes": 865,
+      "git_blob_sha1": "0ca625e406fe5d9913462cc3e15d1a74a52471c5",
+      "sha256": "d05f4be0f9c7148af5026f7d062db5bebed0e6a32287ab33d6287c3e815d6a2a"
+    },
+    {
+      "path": "app/entry/src/test/ApiResponseValidator.test.ets",
+      "bytes": 3628,
+      "git_blob_sha1": "04bcff58bd208f91cf0597432fea74a828b9c6f5",
+      "sha256": "d3236d269d81fe6d6e87bb1efb0ad75ab28e40af8a25d76788586dcc73d87910"
+    },
+    {
+      "path": "app/entry/src/test/DeviceLayout.test.ets",
+      "bytes": 2923,
+      "git_blob_sha1": "bfacd445602054219d16779912a37cc5d3d7c987",
+      "sha256": "9fda21db85475bffaacda01074cf1b6a4e71b890ee90cc57163a112196b8efb0"
+    },
+    {
+      "path": "app/entry/src/test/ExerciseFlow.test.ets",
+      "bytes": 4166,
+      "git_blob_sha1": "867c1ff38f146f8b8a44523fd9e0129b1948f5e4",
+      "sha256": "b147bc1e5706e8ac166263967916e9a6694fbef2e5b49ebb2011beaf7be37edf"
+    },
+    {
+      "path": "app/entry/src/test/FocusLogic.test.ets",
+      "bytes": 5517,
+      "git_blob_sha1": "eab32645d54a8b005d52a7b9c09870e762682903",
+      "sha256": "7ad78dd6c56d1db6610fffdb2376d101af20271f5f17b9987134cd98efa95fd6"
+    },
+    {
+      "path": "app/entry/src/test/LearningCard.test.ets",
+      "bytes": 1676,
+      "git_blob_sha1": "4ab38d778642514fc719a0c97938f353d5afec37",
+      "sha256": "eccaf8d34d498c282a70404f0af1b661d1b9819074248cc169f5ee13a319e292"
+    },
+    {
+      "path": "app/entry/src/test/LearningFlowData.test.ets",
+      "bytes": 2084,
+      "git_blob_sha1": "70ba913d638700cef0fa80a07d3f004d71e59830",
+      "sha256": "cc2656f5cee325dc8370cc73c4f4f3fb745a2431dd73f94b02cd33fab91626ed"
+    },
+    {
+      "path": "app/entry/src/test/List.test.ets",
+      "bytes": 1081,
+      "git_blob_sha1": "aa963ce1bf27e667c6e0ca056d196816f3ac5dd3",
+      "sha256": "e798e818b7580bb8a58f97f3775a4bd9124f6e0508ae497c055549f2b7409366"
+    },
+    {
+      "path": "app/entry/src/test/LocalUnit.test.ets",
+      "bytes": 1624,
+      "git_blob_sha1": "165fc1615ee8618b4cb6a622f144a9a707eee99f",
+      "sha256": "ab72e1fa03e7c61ec51a52fe56fd366f66aa1a4415e18c7953daf5be14f488b7"
+    },
+    {
+      "path": "app/entry/src/test/PartnerFlow.test.ets",
+      "bytes": 2088,
+      "git_blob_sha1": "6f76bf6e48a816c45b8757038b06c3e35f01084b",
+      "sha256": "138ef090b7d911636db8ed27b29ba96d6af3b5d2c1b5bd7a3080313f4a96fc5f"
+    },
+    {
+      "path": "app/entry/src/test/ProactiveContext.test.ets",
+      "bytes": 2220,
+      "git_blob_sha1": "06225864ab8ba2db5ee1c63c6d7d1e4a91a2fce0",
+      "sha256": "440e33363e159e507c9291bc00160a72d3ab5e586e76e4a1796a8c97d1214ef5"
+    },
+    {
+      "path": "app/entry/src/test/WorkflowViewModel.test.ets",
+      "bytes": 650,
+      "git_blob_sha1": "d5b6399d015c203b027ff283387b0e47ab189ef0",
+      "sha256": "1ac702163ed8874bd4a2c379b54dc7681ec3c1f4fa47af4b75524aaa61e18b9a"
+    },
+    {
+      "path": "app/entry/src/test/WrongQuestionPlan.test.ets",
+      "bytes": 2624,
+      "git_blob_sha1": "673584b9895da5b7da60596cf21cf14cc8b4f7db",
+      "sha256": "1eac9fe62d778f90e2eec04d8577324d762ab72a43f3f4dc02e6d0c795c9628f"
+    },
+    {
+      "path": "app/hvigor/hvigor-config.json5",
+      "bytes": 1455,
+      "git_blob_sha1": "73cb16b96692d975e8f5122f9bee2d8f776531d5",
+      "sha256": "1908e061ee1fca61baa956050bd558743b7804f91af970d9ddd703af5a30ec89"
+    },
+    {
+      "path": "app/hvigorfile.ts",
+      "bytes": 111,
+      "git_blob_sha1": "6ecde38350da447eddfbd37b797b3bc07cfa9337",
+      "sha256": "327fa56f74da5e1b4c2dbc890e203298795d709bb330bc3ac7911eb534f020b0"
+    },
+    {
+      "path": "app/oh-package-lock.json5",
+      "bytes": 1002,
+      "git_blob_sha1": "d99e57002b3323457269620a7378a103619ccf7e",
+      "sha256": "738d44a280f1bec5bbcac8cf183d8d02c87c856d45768a02dadd2feba404beef"
+    },
+    {
+      "path": "app/oh-package.json5",
+      "bytes": 200,
+      "git_blob_sha1": "01177cc6124488cb0f0a1812fb4b747fa96d718e",
+      "sha256": "a936a55d4f2546bc71f809f38b672cacbaf8b646a16c0027a39a63d44455ba64"
+    },
+    {
+      "path": "app/tools/generate_ui_wireframe_doc.py",
+      "bytes": 16838,
+      "git_blob_sha1": "5ae9ecbd9424a3648c35d6782a40f20d11985b7e",
+      "sha256": "f6e5111314a0466759f2afedd41c2dec8c70d58847c527d1387eeb45e41c31c7"
+    },
+    {
+      "path": "app/tools/run_app_startup_smoke.ps1",
+      "bytes": 1921,
+      "git_blob_sha1": "250554972550cb9c2b9bc0ec7820a1565c62090a",
+      "sha256": "789bdd177dddd60d364eaa390f8a8103cf67418b93638d0411b6378b865bd760"
+    },
+    {
+      "path": "app/tools/run_fixture_ui_flow.ps1",
+      "bytes": 7837,
+      "git_blob_sha1": "0c544fcc7d512b50498d78a3b679c4117979869c",
+      "sha256": "488522c8a56f4c3614053cc8a71e63182cf3b5acb941011fd2bccfd9ce00f0cd"
+    },
+    {
+      "path": "app/tools/run_focus_ui_flow.ps1",
+      "bytes": 5118,
+      "git_blob_sha1": "7cb562e65a4261f7da9abcf1e2ca8162088ceadb",
+      "sha256": "fef93ba8a5ab31903ba9903cd58ed3bcad4875d4403dee6dbf47bd71fae63756"
+    },
+    {
+      "path": "app/tools/run_local_feature_ui_flow.ps1",
+      "bytes": 5572,
+      "git_blob_sha1": "79853f19634fde30b07bb762bc419f02ce6eb6fc",
+      "sha256": "63eb5d69309de15fab409fcd889addc262b3ee8fcd702560f1ff0a42eb7e4e3a"
+    },
+    {
+      "path": "app/tools/run_ohos_regression.ps1",
+      "bytes": 2415,
+      "git_blob_sha1": "5dca3828b07ccaa87cd1d0cd135097810af3f2fb",
+      "sha256": "22ab25daf91b227c2e94c7818fd165934b533ad6b67ac119f038a6459f640fec"
+    },
+    {
+      "path": "app/tools/run_ui_navigation_smoke.ps1",
+      "bytes": 4143,
+      "git_blob_sha1": "b475aceac4db2a77848641e5fd6fb0144502731d",
+      "sha256": "02b2f56f19d2059684b14cf530917a0f67e9a5bad132b0293b6f9431aeae2896"
+    },
+    {
+      "path": "app/tools/validate_contract.ps1",
+      "bytes": 5894,
+      "git_blob_sha1": "4f157a5418c45f63965b409f45fc8b02870e73cd",
+      "sha256": "6f182b80511a5d67846a7fb6559806ebc0a8c1a56a2b36200c843effa1d6e1ae"
+    },
+    {
+      "path": "contracts/README.md",
+      "bytes": 2399,
+      "git_blob_sha1": "f12f1208922c3dbeb7e26247bd558c6d36ff18c3",
+      "sha256": "26abeca9d9f65e0daa165c948a17b113f7938ac58b9ba491918d88f3c05b9221"
+    },
+    {
+      "path": "contracts/fixtures/chat-response.json",
+      "bytes": 327,
+      "git_blob_sha1": "421091f179a8224e4f2a59cb02e066062381a91c",
+      "sha256": "bf47ca470831f19c31482b6652f7d9f17bc3e3ad4c0d5c21541dd888a07adcbe"
+    },
+    {
+      "path": "contracts/fixtures/demo-reset.json",
+      "bytes": 922,
+      "git_blob_sha1": "ab3ec57bdb72274868bef4bc9eeffc3aaebb4369",
+      "sha256": "a557ff1d129daa784cdd9707ab38753a327cf173815edfd6f01db1699410cc8b"
+    },
+    {
+      "path": "contracts/fixtures/exercise-set.json",
+      "bytes": 1193,
+      "git_blob_sha1": "ff2c3cbe49cf159fced64058d53e44b64a0600ad",
+      "sha256": "3edcb8e48440e18289f4e05a23df5a3e79bb5f02efc359a34f21529a5401df2c"
+    },
+    {
+      "path": "contracts/fixtures/exercise-submission-result.json",
+      "bytes": 1270,
+      "git_blob_sha1": "7c668c1391ffeae76f20392564414d27fad1eea9",
+      "sha256": "99dddb68e89bea7e9699421937bfcb79b0fd4ef8f13b53a55f2dd3c2b13aec7d"
+    },
+    {
+      "path": "contracts/fixtures/plan-diff.json",
+      "bytes": 507,
+      "git_blob_sha1": "bbeba8718da739ccbf569e6a0576427a402b210a",
+      "sha256": "3d41d130d1f46f495f906e05bfc907ba3fe15a681bdc7789f9381b6fa457360f"
+    },
+    {
+      "path": "contracts/fixtures/plan-v1.json",
+      "bytes": 376,
+      "git_blob_sha1": "afaee4bd617b325ed6d33cdc0f207d214c58f1da",
+      "sha256": "50aa5d751103371d37c646bd93378e472393bfbfd7dc823c794b408dc6d626d3"
+    },
+    {
+      "path": "contracts/fixtures/plan-v2.json",
+      "bytes": 403,
+      "git_blob_sha1": "43cd1018c1943cfb5c1eea335cf9d3c24a079bf6",
+      "sha256": "33b3e62d69f5526d2fbbcc22ae1c6292206184ce97dc538ee82b12b270e157ac"
+    },
+    {
+      "path": "contracts/fixtures/profile-v1.json",
+      "bytes": 717,
+      "git_blob_sha1": "f1486a5a7bf7e642afcb23ffca856d2bdf29ca47",
+      "sha256": "a56138ceb6cc372c7ac46f71243342a0e06cb053205968be0f94062a5cf9795c"
+    },
+    {
+      "path": "contracts/fixtures/profile-v2.json",
+      "bytes": 1194,
+      "git_blob_sha1": "74cede88f0f56cedff5d20d6dbd9e1a48eb3ab08",
+      "sha256": "35f49f5b2ef8d23c1e4e84318ee24f560c61313aea8e56a50c9ee481edeed11a"
+    },
+    {
+      "path": "contracts/fixtures/trace-after.json",
+      "bytes": 1806,
+      "git_blob_sha1": "cd3a18f6f055613b5b0d959a566373785a6617ac",
+      "sha256": "15d6ce49dbc7a2c13c0a51f3192eaf5c23e6fe152de6e83201716ccf71910450"
+    },
+    {
+      "path": "contracts/fixtures/trace-before.json",
+      "bytes": 738,
+      "git_blob_sha1": "85ae5aa0da07553d7824646c0574e99e00040f13",
+      "sha256": "8a9d96c50523df90c4bf611988914ac0db6c7c72125a9963791a5733ea49421b"
+    },
+    {
+      "path": "contracts/fixtures/workflow-completed.json",
+      "bytes": 113,
+      "git_blob_sha1": "2a78d330fce0fbc59b97a75e287128ba100f9fd2",
+      "sha256": "8a9af796fba19ffff13ffb7b10b87beafa229849f4ec276d785073c2124cdcde"
+    },
+    {
+      "path": "contracts/fixtures/workflow-created.json",
+      "bytes": 150,
+      "git_blob_sha1": "90df32f6e6dec3ca1b09c11e969b60f84d53244b",
+      "sha256": "bff77eee4e29b463d6f2adf2d1397e18eb5f86770e188314ead026ea4a7e39bc"
+    },
+    {
+      "path": "contracts/fixtures/workflow-running.json",
+      "bytes": 101,
+      "git_blob_sha1": "cf1ce6c70fb2a289837f55c3108c2f3e68687db8",
+      "sha256": "eed005dba984ba859f34c4ce3c50e48d812566d9a56a15c1a15a6f50a9f4edaa"
+    },
+    {
+      "path": "contracts/openapi.json",
+      "bytes": 131391,
+      "git_blob_sha1": "ef07bde74a0353acd3281875c8c6f4375993f2ec",
+      "sha256": "18662c01e0fd7508f3dc2aa97e2dc20e930097b14ed15e1c98998ccb9e3787ba"
+    },
+    {
+      "path": "evidence/README.md",
+      "bytes": 690,
+      "git_blob_sha1": "773a36d6ccd266ddbb48bac5d875cab30fefa238",
+      "sha256": "ef1741401a5d45d9cce4310bbe8bd232775b7582cc0ad9734bfcf0fa1236c62c"
+    },
+    {
+      "path": "evidence/integration_2026-09-25_221307.json",
+      "bytes": 21607,
+      "git_blob_sha1": "3eb1fc0bfe067a45bb3ae4eef2e4f7640bc17815",
+      "sha256": "e47a3da829f4b1e3fba0d090a852446271e71f3a6189d537f3f91e6b626b2805"
+    },
+    {
+      "path": "evidence/integration_2026-09-25_233802.json",
+      "bytes": 21607,
+      "git_blob_sha1": "2d8ad9d4f70dab6cfacbeb42cfb19326b9fee64b",
+      "sha256": "b79ca78ce343e473347fb10c1832e4f82fa563f981a3b7941c6823b485148d9f"
+    },
+    {
+      "path": "evidence/integration_2026-09-26_113430.json",
+      "bytes": 21591,
+      "git_blob_sha1": "1a3abd993c52f2114b81a2d8c9a16aeffad559e1",
+      "sha256": "5eb80a92c27817ef872c13f02cfef0319bccff830bd38bdeed012afa4b762314"
+    },
+    {
+      "path": "evidence/integration_2026-09-26_184447.json",
+      "bytes": 21607,
+      "git_blob_sha1": "3ec52f985fa4c643e25bf78bb69b3cc493db5588",
+      "sha256": "a72066b197977f2615ab4487923548031d8f16f4c1d2db296b254fd400e9a483"
+    },
+    {
+      "path": "evidence/integration_2026-09-26_184620.json",
+      "bytes": 21607,
+      "git_blob_sha1": "2ee8bbfed7983738d20a020f2831ea19218af487",
+      "sha256": "7d2784fb7a3667ae2438c0a115b9ad8705277e1c9801fa451f51b9a8e13e9d7b"
+    },
+    {
+      "path": "evidence/integration_2026-09-26_190907.json",
+      "bytes": 21607,
+      "git_blob_sha1": "cb0bed3dca549a3f769e390570ca4cd10d1a2792",
+      "sha256": "3c6c469814b26fd710919c1b7740864b5a74d327e81b1b5ac93f77c19d9a6252"
+    },
+    {
+      "path": "evidence/integration_2026-09-28_135901.json",
+      "bytes": 21636,
+      "git_blob_sha1": "a6547407b00f6fc8687363931405d3fa4d4f2832",
+      "sha256": "08212ade8ef4b515e4cbef70961564c267191ac1162b5159124a8797bb139643"
+    },
+    {
+      "path": "evidence/integration_2026-09-28_142901.json",
+      "bytes": 21636,
+      "git_blob_sha1": "9b050cf8f16981c1f123b603082e766b2769837e",
+      "sha256": "ff47a80e5ec808157fb47744850ff86ce63cc281ce1fbcc00656a18e0ae2d5e1"
+    },
+    {
+      "path": "evidence/run_summary_2026-09-25_221307.json",
+      "bytes": 1100,
+      "git_blob_sha1": "0934d33ec6589868c4ff23e7ec6992405152da58",
+      "sha256": "2086c1a5bfe00a751443ba71477d0f4e4fc3906fa2f109fb9d69897f49ad5399"
+    },
+    {
+      "path": "evidence/run_summary_2026-09-25_233802.json",
+      "bytes": 1256,
+      "git_blob_sha1": "8d72cd3d976532c90f229d9270d6a1bcf5049b65",
+      "sha256": "1138591981a86296ddea9a3588a612a9c9e48844aab663898d70d65fa1bdec49"
+    },
+    {
+      "path": "evidence/run_summary_2026-09-26_113430.json",
+      "bytes": 1256,
+      "git_blob_sha1": "e6b307dfdfaa734725f99e5190a29a738a5dafbc",
+      "sha256": "28dc5f0f5ce9bbcadad8cf976ef43f305b61b2d10391cce8c4ce7ba35fd5145a"
+    },
+    {
+      "path": "evidence/run_summary_2026-09-26_184447.json",
+      "bytes": 1256,
+      "git_blob_sha1": "dd04a7bc3c29fbc5e63abc76451b450c31ef90e3",
+      "sha256": "2fca072b8e80475cf06f3899aba6a240eb856fc08a9baae7240373b204a6d235"
+    },
+    {
+      "path": "evidence/run_summary_2026-09-26_184620.json",
+      "bytes": 1256,
+      "git_blob_sha1": "9abf5ede79f2a2f4a4a0df8c1d9cff335efc4a18",
+      "sha256": "1343ddd142d2a04f20191a54c39f3ad037c7a64e3d565380e78bef1453b4182b"
+    },
+    {
+      "path": "evidence/run_summary_2026-09-26_190907.json",
+      "bytes": 1256,
+      "git_blob_sha1": "02381770dd0afb75a6b9c7fcaa44bc0ee487a37d",
+      "sha256": "ef6893ab4fe27ad5f38ded715b5e2c09f6797e388f17d5c0933682c7b16fea36"
+    },
+    {
+      "path": "evidence/run_summary_2026-09-28_135901.json",
+      "bytes": 1256,
+      "git_blob_sha1": "15d06dfc62ceddc8f6c9e97030cb34cc58b26d1d",
+      "sha256": "62f693ffa71e4195a2a220c6a68554a1ae0b34bfebd881c86ddf3d5ae6a72a6b"
+    },
+    {
+      "path": "evidence/run_summary_2026-09-28_142901.json",
+      "bytes": 1256,
+      "git_blob_sha1": "a90466bad8e2bcd7fbaa3481f8bac491c54dd641",
+      "sha256": "d9705025bf2462b686f321c7706ebb92ed2504cfb6ff82aa8784a869bdaba44a"
+    },
+    {
+      "path": "hap/README.md",
+      "bytes": 365,
+      "git_blob_sha1": "1a56047d93e9a10149817b1a54b202f9f645f90f",
+      "sha256": "6a1ba41182c9fb959e8bac5b66f5b231d008d23206802a406c3793b39c9e9790"
+    },
+    {
+      "path": "hap/知学Mate-signed.hap",
+      "bytes": 2999329,
+      "git_blob_sha1": "e2c33796950c3b49129d0bdb43005f85a0266cd4",
+      "sha256": "330abb0e78be04bb2f97ccaa616c47c3b3dc399b794bf4a3666c3d5016e43236"
+    },
+    {
+      "path": "integration/pytest_report_plugin.py",
+      "bytes": 1423,
+      "git_blob_sha1": "61513148b39d3718ba41c7176c4037a8755d2568",
+      "sha256": "1540bf2e6f8681daf7adb147bff099875c19c9d6b74c6e18ee7d3b575dcaffe2"
+    },
+    {
+      "path": "integration/run_liantiao5.py",
+      "bytes": 15568,
+      "git_blob_sha1": "9f972006547133c2a519ae4fe339be154224d67e",
+      "sha256": "8d4c567078f045774f8298e381c9636d7231494eb2bc838ee06e65ddaf087369"
+    },
+    {
+      "path": "integration/verify_integration.py",
+      "bytes": 59709,
+      "git_blob_sha1": "6e467300c032f78308588191d5b0220502ad0b9d",
+      "sha256": "fb25f06a8d62415578e44396ce58bd8e01a91bfd7adbb0d2d894ba003af8e66f"
+    },
+    {
+      "path": "server/zhixue-agent-server/.env.example",
+      "bytes": 2003,
+      "git_blob_sha1": "ee8c091d025311a0ba30861a0bceee8d82e19758",
+      "sha256": "7a89d5c3f9762a2381306cacdb5f2ee5d0a3201c4765343e79051c7cce072f89"
+    },
+    {
+      "path": "server/zhixue-agent-server/README.md",
+      "bytes": 4166,
+      "git_blob_sha1": "24324b885f12672a6809483d46baa9cfd6478f7f",
+      "sha256": "ed6427e8f72147d216b8f038b79b71a3b9a5da9b344b47952c9462b4038e2828"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/__init__.py",
+      "bytes": 13815,
+      "git_blob_sha1": "ce2ca4ebbe1285017cb24619426a19f5c65220bb",
+      "sha256": "bfca3a9c5204bc23c8f18222f2e47e261493491f47a5648bd989524042ef26ce"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agent/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agent/chat_llm.py",
+      "bytes": 62269,
+      "git_blob_sha1": "6b391f39128ed02bbae21aed6412a2dc079826f0",
+      "sha256": "d6d74e4aea3a33da1e5f3b333740757c9d5e60396a2097d501f82112fc1f13ef"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agent/course_outline.py",
+      "bytes": 3242,
+      "git_blob_sha1": "3f307c68554780311173aef8e4be37b0164c0643",
+      "sha256": "e93ddd31f09aae238f4a69d9d4f296824f03502de0c7c978568f75a2fdb26203"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agent/exercise_gen.py",
+      "bytes": 10742,
+      "git_blob_sha1": "fca74058cc66a05334f0e5e384d8f003efe2d1fe",
+      "sha256": "dcf7f3991ef02bf0848ba2292f83c226df9d896626462364a304707da8f9bd94"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agent/knowledge.py",
+      "bytes": 25589,
+      "git_blob_sha1": "b81c05b42c345d3a599f651ee81193e56f748c44",
+      "sha256": "fe689fac3d4f3422733123fb7af3a3178b779e9289a1900a5cf36acb4f8b41e9"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agent/partner_match.py",
+      "bytes": 4364,
+      "git_blob_sha1": "8285c52f695e854e7975e89dc61bee00b0b1a41a",
+      "sha256": "8dabd3f8dc4ca060385853e6197b5433c919e1e51d26e539738b177f4459e0e9"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agent/proactive.py",
+      "bytes": 13798,
+      "git_blob_sha1": "c6c8c8bef64c991d422d8ec33b6a8a0d70d2b78c",
+      "sha256": "552a7e6e1eabe706afa90998983971bb70b59cd6b4079954e8cc16bc352ff9d2"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agent/semantic.py",
+      "bytes": 7572,
+      "git_blob_sha1": "2bedfbda4cbbb644e0b63a2ab680ae26b87176aa",
+      "sha256": "c3ea65a061bcf611f5de00e2ea7cc4b692f42827a1898f6f2b5982ca80ce9a36"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agents/__init__.py",
+      "bytes": 346,
+      "git_blob_sha1": "438c7fbc5d4bd4bb7f4f877dd316d3cf08163962",
+      "sha256": "ecdb7eb093ce25ed9604009d47bd176c86f060a04d47c417416c9dd4dcf02dee"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agents/assessment.py",
+      "bytes": 1059,
+      "git_blob_sha1": "3f16be298dc04863555b7b7f724264e542e46b3f",
+      "sha256": "83102f06032a65070bdafb98d5de94f9ecfefa973bb34ed5ddbbc2374344fdbf"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agents/diagnosis.py",
+      "bytes": 984,
+      "git_blob_sha1": "a616e16bc7069142b7204c01e60b1e3c59a1e339",
+      "sha256": "cd508df25bc63bae0acb27ae86473cdd627eaff225ce09af96e2cc7235d313a3"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agents/exercise.py",
+      "bytes": 853,
+      "git_blob_sha1": "572a3bb7da16636a7f52426db4695069a4a5a8f6",
+      "sha256": "c39180ee69d7e32f93d420f9a6271ea81d152fef442aa82ce5d8f82fae9bdded"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agents/planner.py",
+      "bytes": 2041,
+      "git_blob_sha1": "55cd7b55ed0d66383a847212f2fc1278526bdea7",
+      "sha256": "db40628937a98f419037d617190e10ed81bb052d5ce9e8667763e3266b177f53"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/agents/secretary.py",
+      "bytes": 409,
+      "git_blob_sha1": "5df171e89a48640442ace613f804a2b104915e1b",
+      "sha256": "162254ca51ed586d8a6ff6d969fdb9eefd508881f4dbb33406368d606dd7db92"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/auth.py",
+      "bytes": 14769,
+      "git_blob_sha1": "112de9a5caf96c1b7222d12b48dee0b5c71a07af",
+      "sha256": "f2997b06eb9c53d6f55030246a9c70094384ea33b2b1feec1456b20ff289caaa"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/chat.py",
+      "bytes": 18670,
+      "git_blob_sha1": "ad24b67430060e6b2508a8641b095973157e49c3",
+      "sha256": "ca01c03e56b18a0847de91781b05ec5e5383cf1689d6f1992ac7ced57b1c5f18"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/demo.py",
+      "bytes": 9923,
+      "git_blob_sha1": "6cbaa95a436a070bfd9da402447f290ab7d589e7",
+      "sha256": "919c1f8ce8e51e812d781b16c8f422c33bc0cdbdcc4e58c7bb8628582e4d09cf"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/exercises.py",
+      "bytes": 26769,
+      "git_blob_sha1": "8437494163b13d30ac07075f700a90b537d8b795",
+      "sha256": "2f8949a31052dce67132eb0fac59980975b7c4b9e59f92cd18730b793f7ee935"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/experiments.py",
+      "bytes": 4620,
+      "git_blob_sha1": "57eaf1203726b264d8fe700fe6f98cb26293aaea",
+      "sha256": "2647507bf525716cd903f13936b05f49b93a32902030b1e1b2c7c5fa7bce3f7c"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/identity.py",
+      "bytes": 2622,
+      "git_blob_sha1": "8a9a46e533e8d24abb0c21a39512069fc4835f19",
+      "sha256": "ac8c33b073844045cab8e28abb181934fda4468cb1ae74cfce819e9ebbab83fd"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/knowledge.py",
+      "bytes": 19987,
+      "git_blob_sha1": "d595747b4f0b5723dca9c5b57236d39abefe18f6",
+      "sha256": "f4e449fc6d4720e979d7d5cd2f814d5dadf06020e833f19822753b0e64117bc2"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/partner_invite.py",
+      "bytes": 11776,
+      "git_blob_sha1": "abb50108ce3bde633806975c6aa5aac4a875d6ce",
+      "sha256": "4665dbb452c4d613ba30e26a98e4e0d7a39062d6b5c791e7d5f0383bcfb1a441"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/partner_match.py",
+      "bytes": 7959,
+      "git_blob_sha1": "83c0db4b4bb5de6a87c74d71a98981dd5b3ef599",
+      "sha256": "8b049ce72a8887e6254526bc4dc46635105b2b401f40a1f6c45c21cfe16e0d7f"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/plans.py",
+      "bytes": 10989,
+      "git_blob_sha1": "da65b5170c4d4e6d06697a4ead43289ea5553421",
+      "sha256": "c7571ccc74eef99431e2e1aacfcfca6fc4da0f606c14aa8eca4ec968d76d9dfd"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/proactive.py",
+      "bytes": 4283,
+      "git_blob_sha1": "05db1f8b1f0b3c85a6ee24ad5e718728e362c975",
+      "sha256": "402e710bbca49faf7ef695779006ed1e98750710b20cf15b797568d4e827c2ab"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/profile.py",
+      "bytes": 3828,
+      "git_blob_sha1": "a131624f40795ff312edacac3bf415210591177b",
+      "sha256": "ed2819d56bac5785e545b245a2a66430349c8010b2735353f6e8dec4394891fb"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/schedule_import.py",
+      "bytes": 4671,
+      "git_blob_sha1": "3f5280ca5791b6d75f3222560391b69323750a9f",
+      "sha256": "15fa09ac61fd207afe6e01850e84918d0aeb5b05da451529f38eaf82fce23a22"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/traces.py",
+      "bytes": 1929,
+      "git_blob_sha1": "c81149b5f0c7fe884cb0410e00f1cc2da9fb1144",
+      "sha256": "fdca556af00813c75642180235e5116f0543738c736ccf7b492f2ce29398b7ff"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/validation.py",
+      "bytes": 6167,
+      "git_blob_sha1": "2c071b88d7fe47c567a50cace59dcc6eb2a33b0d",
+      "sha256": "e27bd5b9958673d1b09e679399637a09b8e301d677a1a346fd9053d7be7f1cc0"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/workflows.py",
+      "bytes": 21310,
+      "git_blob_sha1": "c8bebbf17ba1a6390b19da1c64eb2388b916e360",
+      "sha256": "bcb1b6aeab8432029afcfd7433d80ff05d4f2efc44af3a9a61938ad44cfd85f3"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/api/wrong_book.py",
+      "bytes": 6874,
+      "git_blob_sha1": "be18c3f368ff50f34dd9adecc3d2c54333f03fea",
+      "sha256": "1c0812dab36d1a70195f48a48a02580574926732284195e23411ee6c06f0141e"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/auth/__init__.py",
+      "bytes": 884,
+      "git_blob_sha1": "5c8c4a1d4832853e02fc360b26fdc62f55a6250e",
+      "sha256": "1c1d76b0b7d7c35ee0e89764ba0041852298779554b9cf7b2612417947478671"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/auth/service.py",
+      "bytes": 38998,
+      "git_blob_sha1": "d2d8ae337dc737b5d50d8cb5b4bb8a60d6ef4c30",
+      "sha256": "90440ac94c756e5aaa9f29449d763e112482c4b3f5bcc8c4b7911fbbdc460d84"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/decision/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/decision/mastery_rules.py",
+      "bytes": 572,
+      "git_blob_sha1": "96a0714ab3043ad5fe1402d53274109e4620449f",
+      "sha256": "b2c185e913bbe4243045dd7baf037774525297997b9dd930f2bd0220d7c80766"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/decision/priority.py",
+      "bytes": 3832,
+      "git_blob_sha1": "be7873f0541d9c2493dfa759dec3cbe3c41fc497",
+      "sha256": "3115c6400d430a2cbb834b471f11cc852b0b0b691fa6e8541b8ce5efd1e6b1a2"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/decision/replan_rules.py",
+      "bytes": 180,
+      "git_blob_sha1": "9be6947390a81bdc9209c690dd9a7108bf8600c6",
+      "sha256": "e5542af5f9f117562739fd83f3c7ec0e708d1b931e2ed9154482f18539fc31e8"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/domain/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/domain/assessment.py",
+      "bytes": 2637,
+      "git_blob_sha1": "894527985c7a4baff09c078e2f9f0a66673d32b2",
+      "sha256": "c2b6350a36af8cba4152fd570699a0374f9e2caf53a729fd48043ec4ee1c3534"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/domain/evidence.py",
+      "bytes": 2006,
+      "git_blob_sha1": "a438544341bfe3b40f58c55bdb29102455efd112",
+      "sha256": "6ddb7aa6e360b46de297ea592b42d5b9373ab512edf2916e6c5e16c63f347d31"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/domain/exercise.py",
+      "bytes": 2773,
+      "git_blob_sha1": "e9f0b1f27087a8a57ef0648e0a4a4267503760eb",
+      "sha256": "26f6d5aa6c3d5e6659f1e1c2e1d8ad595391e38a35b4c1ac491347d58fd946a5"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/domain/plan.py",
+      "bytes": 3359,
+      "git_blob_sha1": "0a9909412ccce393bb1031dedb71dee4750673d8",
+      "sha256": "f2ec65069f2395e9bbc896e1120963e9934d4839fd5ac293373295c911b45b65"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/domain/profile.py",
+      "bytes": 3489,
+      "git_blob_sha1": "d9dfcf7a5090d7afe2c5e0521c821374424dfd2d",
+      "sha256": "151409d2476c017c96e95d41c4ff156f5b5fba7692cf0e944a711812a6320842"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/domain/trace.py",
+      "bytes": 1960,
+      "git_blob_sha1": "4ef868f34360d84dcddf9493e2e76dd234ecc53a",
+      "sha256": "5f24fb27d5365bfd53ef61c4a42c5b7afd8709a423187086fee84f813ff99eb2"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/model_adapters/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/model_adapters/fallback_adapter.py",
+      "bytes": 541,
+      "git_blob_sha1": "6d55c1b09113064575426fcf27c1c1a65f15b648",
+      "sha256": "b363efdeba07381ee7fa491faa9493f9bcb92efffe32499855897118609d4d79"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/model_adapters/llm.py",
+      "bytes": 1020,
+      "git_blob_sha1": "78b8dac15aadcf06ecfe61ae6ad0f27a68723725",
+      "sha256": "26b891b77cc075b81221c121a6ba85beee9fda0d9723244e7f71d2f085974710"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/model_adapters/qwen_adapter.py",
+      "bytes": 3679,
+      "git_blob_sha1": "69d5d721bd6d535ff9efd89328aef6287202d180",
+      "sha256": "7a06c527dce8804059246fb2c025ef319e4583a5a4eba32bd0c00cec7bea1856"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/prompts/README.md",
+      "bytes": 84,
+      "git_blob_sha1": "7026aaaec853e90213aedb0e4a8b2e9ea424e365",
+      "sha256": "2efc628c80942c13439afbd06b54abaf855ffeac344d9240c707ebd47f679b24"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/repositories/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/repositories/json_repository.py",
+      "bytes": 5306,
+      "git_blob_sha1": "91fe372672c6680f2ef011944f8175425202146f",
+      "sha256": "a9663cecf48002f7b54848784df4e9cc29b9e6487b6bf70ecc0daa65f525d286"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/repositories/repository.py",
+      "bytes": 1408,
+      "git_blob_sha1": "23b6ab7840f241eb5ec20c7c6cdd16cb75166300",
+      "sha256": "7ec69d70c6db216506b859fd8bed1b5ffa4e07a571a75e0edeca00529ed5f03a"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/repositories/sqlite_repository.py",
+      "bytes": 6358,
+      "git_blob_sha1": "54e123180cdd303e80fab9a519d447abd9aac8aa",
+      "sha256": "b46582861a0a61ab9fd5eb2ca9fb9486ce9bbd9810bd6fdc5c15338940f490c1"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/runtime/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/runtime/loop.py",
+      "bytes": 5814,
+      "git_blob_sha1": "b85d6635227ac5a61185edb185ab4880e182fd17",
+      "sha256": "b909d978213cabf8f0f6612905b54a1723555ed14cad0cdff3087aee0467141b"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/runtime/orchestrator.py",
+      "bytes": 2322,
+      "git_blob_sha1": "4e99f01e7a3e5f502cd5dc17fe1e0da415996a7d",
+      "sha256": "f398b62f7735edd0b424b8b2e2273c0c553ee0d4f66e2b318b45ca03e75c7c07"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/runtime/session.py",
+      "bytes": 1642,
+      "git_blob_sha1": "8723a362439abd891bf99afea5431fc8219e4c84",
+      "sha256": "55bbcb7b9d4372f7183cada12e4e924da7d04b70180cbf94c2175e685ddd59cf"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/runtime/tool_registry.py",
+      "bytes": 3344,
+      "git_blob_sha1": "8db32b0233736700504e9e6e370cd6334c854693",
+      "sha256": "bcbad8311766b924cc0c3117931525e626645dbf39d8afc709306cadf6bcdd26"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/tools/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/tools/assessment_tools.py",
+      "bytes": 6030,
+      "git_blob_sha1": "b4e0ac3076919d1f07a38d60ce2103177f13f260",
+      "sha256": "b1588bfba232ceff2c3eeb567496585fdb6ad9b18413efb094ad95581b8e0244"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/tools/course_tools.py",
+      "bytes": 590,
+      "git_blob_sha1": "dc95ebebb4cd4f2dc6feeb83a81f3d91e6ee5ee3",
+      "sha256": "7f88f17b6e74e47b25217ae40d2b4efa1f6a58a78258ad3b97befe2127fb982a"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/tools/exercise_tools.py",
+      "bytes": 1041,
+      "git_blob_sha1": "5d86ca41108c71d1fc8947549eb4fa61be9ea61d",
+      "sha256": "9833eba9ec9e46f81be51f96f0dd54be75166afa95d5ddc8f7a9bae81cb671d9"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/tools/plan_tools.py",
+      "bytes": 8549,
+      "git_blob_sha1": "9da1de0062415e0dd1846203d9d3371d1134a75b",
+      "sha256": "dd5664b20b8bc674081caf712a6c6e5b863e97e483af79bd5d3bfaca712bb052"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/tools/profile_merge.py",
+      "bytes": 2147,
+      "git_blob_sha1": "57d1b89251d79e51719b614bc9973a5d6adbc323",
+      "sha256": "e14333b6142dbbba90b0dfc276991513bc14987e218fd403d5063010eb0004e8"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/tools/profile_tools.py",
+      "bytes": 656,
+      "git_blob_sha1": "14ed24206fa9f2982c3cc86ad52a28b37ff51e1a",
+      "sha256": "1e7964af91b29a3c1e7ae4f6a94553300dba39d53401331ff306e480563b37e9"
+    },
+    {
+      "path": "server/zhixue-agent-server/app/tools/trace_tools.py",
+      "bytes": 2394,
+      "git_blob_sha1": "ec9db06b95222645b8e0f4c4167adc196b54fca0",
+      "sha256": "64782dfefe9f583523be0392676bec63eea3430431fe9c4189ed70e71080d60d"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/mock_candidates.json",
+      "bytes": 907,
+      "git_blob_sha1": "6a9b5aa492308a22a25b90893f3ddf708fc93616",
+      "sha256": "c30e0ca071e58a0ac475e6a4722ebaf2cc57432c9c91e8aa5d93a2e60634fd0c"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/mock_courses.json",
+      "bytes": 1143,
+      "git_blob_sha1": "b99de37bb634068b56d9d22c8d7c1c5ebdabc370",
+      "sha256": "dd52c462165161a25ca8ae68d43cb11425e781fdcec3b56260fe9115fa03c4ac"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/mock_users.json",
+      "bytes": 479,
+      "git_blob_sha1": "14d5504b42cfe1fac9fbe2d7a155f179b47ec18a",
+      "sha256": "3cf3d79b3b5a20d47202d2b372f30cb945c83c78da335cf9e8579f74461231d1"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/mock_wrong_questions.json",
+      "bytes": 20193,
+      "git_blob_sha1": "f3b1888459203b1b251ffa2062803e353941a761",
+      "sha256": "e15f64f9b9049d95f87672006cc7fe97dd001e0c8aee9e88b2d5b84670d8c8a0"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/prompts/AnalyzeWeaknessPrompt.txt",
+      "bytes": 2270,
+      "git_blob_sha1": "a36fa1fe7491fb5d4e71370bf1c2a9829bb56c06",
+      "sha256": "b594217ab63cc3180a32b440193a0f1453caecce86c81935f60fcea282393f30"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/prompts/AnalyzeWrongPrompt.txt",
+      "bytes": 7339,
+      "git_blob_sha1": "f3854eff3fde6d1ade7679b6307dca1c27667ec0",
+      "sha256": "bd96c00cd37d70beb15ca668feb97de3f59b9a52428bef324be4dc6170d1de9a"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/prompts/GetSuggestionPrompt.txt",
+      "bytes": 1600,
+      "git_blob_sha1": "d1ecc8b9cd4a1603284816561cdaa7a2fc279567",
+      "sha256": "2354a97436c2e2fcd923b9fecabc0f885fd4b0f5d530995c47a5c80860f4d899"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/prompts/MainAgentPrompt.txt",
+      "bytes": 8314,
+      "git_blob_sha1": "0e6ee0022a12a2604f5639ccc2465307185a81c2",
+      "sha256": "03693e7bda15c3a31784688afe2826ab6aacb3d926e9c51db646615234a17849"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/prompts/MatchPartnerPrompt.txt",
+      "bytes": 2302,
+      "git_blob_sha1": "dc6b929462bda64cece8fe917c50d219a988f1d7",
+      "sha256": "8671322b12e4dcb47d18e224ac1296119a24848b77d56fdcb950b9cb7841bb16"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/prompts/QueryTasksPrompt.txt",
+      "bytes": 1395,
+      "git_blob_sha1": "ca30861b0c16a7815c6096d368aeac4d554d9585",
+      "sha256": "d65b6c320d16cf788bea20621ec8229d72c783eef97192a553ea8e8258a2db1a"
+    },
+    {
+      "path": "server/zhixue-agent-server/chat/prompts/UpdateProfilePrompt.txt",
+      "bytes": 5943,
+      "git_blob_sha1": "3b079d24580259250e1d96cb76a7dbeb95e1a461",
+      "sha256": "fa4c6b6fea9a8a7810674dcc92b134ecc83839ec62f86d5b0c732acab1c4675b"
+    },
+    {
+      "path": "server/zhixue-agent-server/config.py",
+      "bytes": 134,
+      "git_blob_sha1": "2df39e3eac34326cec2f49fba81774b0afa9d4b1",
+      "sha256": "8b7f5e14b406234ab84d0dc729cff5d72a87540858e59cbb239ea8be240e9ffe"
+    },
+    {
+      "path": "server/zhixue-agent-server/data/question_bank.json",
+      "bytes": 15761,
+      "git_blob_sha1": "7092f0cfc91db5e2a24f7d37e228761bc33b44de",
+      "sha256": "b09a08b7d99799356c121d7a318f3b47eb14c8aedd542f72d4c3bf9bd4de38c5"
+    },
+    {
+      "path": "server/zhixue-agent-server/requirements.txt",
+      "bytes": 123,
+      "git_blob_sha1": "c76514d9685ab4240afef5a9c5f3fa0d5cd7ea66",
+      "sha256": "7faa40e381705e8de1f1015de322df7c6c70dedea486838e0a3e3dd444085b3d"
+    },
+    {
+      "path": "server/zhixue-agent-server/run.py",
+      "bytes": 4183,
+      "git_blob_sha1": "aebb2956cfdc3f3468d08fe8b27075141c372c35",
+      "sha256": "235b1b65f8d2f279e40d7e93345f40a82cbfc025081fdadda5ca2d181a836de1"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/__init__.py",
+      "bytes": 0,
+      "git_blob_sha1": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/conftest.py",
+      "bytes": 5580,
+      "git_blob_sha1": "34223ee743b9e3fe3cc73b4ceee13b28aef8c8aa",
+      "sha256": "1307afd9daec2ebc69bf24208719b3b5d425b39ecd57b83d492c77dc13791910"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_audit_regressions.py",
+      "bytes": 30290,
+      "git_blob_sha1": "431b2ebe7ec96498c838f929c4f28d009e196498",
+      "sha256": "d834800598288e329e7522aa03c1a15352485afc4408959714e6bc87c3540dc4"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_auth.py",
+      "bytes": 19797,
+      "git_blob_sha1": "273e7a6ba20902e182c663ec6689ca5703501798",
+      "sha256": "9d46871554a1f19c596bd16498c4cfe8ea8c34fe0e344574f9f890ddd4a2ff2f"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_auth_login.py",
+      "bytes": 17925,
+      "git_blob_sha1": "0903114c28cb585e61c22e4820a83c2484d203fa",
+      "sha256": "0caac8cc0bd557b652065496ce3da5559b2570bae3f6879c61ddcf29d5972b2d"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_auth_phone_huawei.py",
+      "bytes": 9587,
+      "git_blob_sha1": "ee159891c2e8af591c01e22f46a437291e3923e0",
+      "sha256": "225ab28f4c207d2ff51ea09dd208119b6087147ee672c220b20c8fb6d99de856"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_auth_verification_code.py",
+      "bytes": 8052,
+      "git_blob_sha1": "f1c123430fb8e6275ca899261bfd2862b602470f",
+      "sha256": "f7feaacbffd6cb79ab012981f29f9a7e2163ae58cddf5dfab90b31bbe07e8b39"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_chat_history_redirect.py",
+      "bytes": 9231,
+      "git_blob_sha1": "7a52717fef9b17a092e0593a3e195fedef628718",
+      "sha256": "8c3c8f2973cbd35a3b7e0af11bdf6decb9afe91275f3dcb0a26a967a24964520"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_chat_llm.py",
+      "bytes": 17137,
+      "git_blob_sha1": "765b24e6dfae0a3bd91d5efa54c0e1bc991b78ea",
+      "sha256": "663aa5b451822ee8a48572dbd936b2cf844bfb5d20cbe5eed94b837b59d4b103"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_domain_models.py",
+      "bytes": 33639,
+      "git_blob_sha1": "97875fc10b3abaf1548e3f014fad220c90ffec4b",
+      "sha256": "7de95b3d97b0e31eb97d8173b81abf5776661a1b21c3d8dca3a3d6d5f807c7d8"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_final_repairs.py",
+      "bytes": 9351,
+      "git_blob_sha1": "a132253a2588748cabb8ccb94448d93113fef295",
+      "sha256": "49154c213b131aab28ec13c0c40adf7f4e55bff570973009f47ea3f10ee87c7f"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_identity_isolation.py",
+      "bytes": 9316,
+      "git_blob_sha1": "c0ec5d34f5557d4c29414b9d7779a7c5c89552a2",
+      "sha256": "93a93d94c686a11be053429e88c91653d8931bffb264b57011858299ae85f87e"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_input_guards.py",
+      "bytes": 11432,
+      "git_blob_sha1": "fc1b136bc43eb723ce36297a1a90e217da527477",
+      "sha256": "3ddbfa7958afdbe3819e0b54d5211458cfb225dad2b4d1cd2c792acc27b937c6"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_knowledge.py",
+      "bytes": 19543,
+      "git_blob_sha1": "fe204890bd060035a9c3a462e7ed194c8d680110",
+      "sha256": "bdebedd9540fb49538e02a8e4423a804c1591502d1c432b5d893961009b0bb46"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_partner_match.py",
+      "bytes": 9776,
+      "git_blob_sha1": "8f6f1109078f0c24ab673bd30d17381de9f1ce84",
+      "sha256": "df9562585d37fb4f102a479cb12809f377020ea82fd7506ba5f3052cefa3d0dd"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_proactive.py",
+      "bytes": 12270,
+      "git_blob_sha1": "dbfae513632706e9c304c16a3f8f5ea45ef28865",
+      "sha256": "58bf8cb4279131341bd7e15c0937eb61df5622be5ede9cc9fffed993518858e6"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_replan_scoring.py",
+      "bytes": 5067,
+      "git_blob_sha1": "017fa0d58dd4e3fec71e3e3a9c4f38f4bd4ed777",
+      "sha256": "1457efe7d9336679c7a39c23258385ff33e682039cb7494f1e7a954e0d10d945"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_schedule_import.py",
+      "bytes": 2060,
+      "git_blob_sha1": "fc9ea34193d8dc4a12ce395ce3d10adce6565fcf",
+      "sha256": "f6b552d7adbcfa64e649470353b46c6f7086dc3e6834d3a3a14a7c9a6273e986"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_semantic_search.py",
+      "bytes": 12938,
+      "git_blob_sha1": "d0e8960f828011addeca901c66d33cf875410c9c",
+      "sha256": "e83702fc63fa110aa68d59d96b0565129dc0da6dde204926667f61d99a74da79"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_sqlite_backend.py",
+      "bytes": 13165,
+      "git_blob_sha1": "c0c049a12e6b11a1a4c5aa8a60f65f8bda3b4dd9",
+      "sha256": "ebd476ef53ab9b544e623556625d9878129a16b0d6b573bc817ab0692163c6df"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_technical_improvements.py",
+      "bytes": 15325,
+      "git_blob_sha1": "d69549a0dde2e4d5f6afdee486d9a632febc74ea",
+      "sha256": "585a9ae13ef8c524decb7a5bf673269d986478fe9c9cd6fff9d3543f17bf12ae"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_workflow_resume.py",
+      "bytes": 10919,
+      "git_blob_sha1": "94d97e93c0abed4b1439b92a2dc32607c292b39f",
+      "sha256": "1bcf47e201784cf90aec70b10264b08c7e47c33b952182ae3a16ece410a2873f"
+    },
+    {
+      "path": "server/zhixue-agent-server/tests/test_wrong_book.py",
+      "bytes": 3485,
+      "git_blob_sha1": "292e5bdea926ae6646504dc73b0ae069867098a0",
+      "sha256": "7aaa875b5aebc4af6abb51dcd900d09752751a73942f0b28ea06517d2ad9538b"
+    },
+    {
+      "path": "tools/audit_validator_coverage.py",
+      "bytes": 5585,
+      "git_blob_sha1": "1ee400487f78b4daf887fc55d5deeed569f2d6d4",
+      "sha256": "14206d454dd9c18ce6e5425ca4a39dadfe32a090c01b428f13898728025d5654"
+    },
+    {
+      "path": "tools/build_submission_zip.py",
+      "bytes": 5103,
+      "git_blob_sha1": "92f3e7883a6ee24847be78a44736ae61614afd18",
+      "sha256": "653ad3e36c2b777a682c99352a9dd193c960b4a3fb563657c02b54f0c99ad194"
+    },
+    {
+      "path": "tools/build_v2.py",
+      "bytes": 19403,
+      "git_blob_sha1": "d373b21a350af5a06c09fa5c9961181fb67ad8fa",
+      "sha256": "baa69099ea1ad6f713700352ee0c92011d8feeba571526f7c8e30bc74f8b47fa"
+    },
+    {
+      "path": "tools/check_auth_chain.py",
+      "bytes": 8764,
+      "git_blob_sha1": "634bf577716695a90f059fa0ad44a18534c53922",
+      "sha256": "89ed547ca31d581231665496e6fa50533dfae45a07bf445d2fc7651f78e487c7"
+    },
+    {
+      "path": "tools/check_frontend_validator_coverage.py",
+      "bytes": 9028,
+      "git_blob_sha1": "4ca0021cad4ae8e0d34a1478ad1323e9f4a662cd",
+      "sha256": "1014c17ec76114f14c2a374b408d2ef99d5a739fd344775b710fe8e54a1bc4f9"
+    },
+    {
+      "path": "tools/check_identity_isolation.py",
+      "bytes": 10690,
+      "git_blob_sha1": "18df57cdb8a01bfbac65f669ec4f0a7ecfda0d68",
+      "sha256": "b52d70ef17bb8bda1ee2ce84f4cb0003bc4dd904a05397cce05c1d02826a7682"
+    },
+    {
+      "path": "tools/check_large_screen_layout.py",
+      "bytes": 7907,
+      "git_blob_sha1": "07fdda3b17eaf81e00776ed40388a99a0299ee6b",
+      "sha256": "5f1781726c89a305bd2c0c9c1b23fedc5e4fc957fec8cbc39ad7f4ad99ff0946"
+    },
+    {
+      "path": "tools/check_llm_ready.ps1",
+      "bytes": 2917,
+      "git_blob_sha1": "a8692e65f2d4eaf519b146622ac5a47084cb3434",
+      "sha256": "7ec01952668b4a308dd614e7ef47ddf39128c7153336fcab3700065a56b5293f"
+    },
+    {
+      "path": "tools/check_llm_ready.py",
+      "bytes": 4868,
+      "git_blob_sha1": "91901148d8421f2cde2544c07c5b1418ace728b8",
+      "sha256": "c09cd81b9cde466368ab35dc211002c6fc8442a90274b7c13fef1ba2fad5a372"
+    },
+    {
+      "path": "tools/check_logged_in_flows.py",
+      "bytes": 8483,
+      "git_blob_sha1": "60891589ce82489f2fcf6a933a8f02df07fd0dad",
+      "sha256": "08b9b6258f3876af5068dad22ae65f85505df962822532da48433940d8a98e14"
+    },
+    {
+      "path": "tools/check_parser_rules.js",
+      "bytes": 19594,
+      "git_blob_sha1": "c0c3f0b194acbb8efeffff0ffddfa25074476bcc",
+      "sha256": "4f39a27fbd510ea428c5a4d30b159869e74ee2437c159b318c1a42caba26c82d"
+    },
+    {
+      "path": "tools/check_partner_contract.py",
+      "bytes": 3915,
+      "git_blob_sha1": "280e9a73d0faa8a8a07c7132671cea413b545898",
+      "sha256": "e543e8a239dee8c7c0706d61cc88822d65f30254c0d6c9d96cff1e7885c31b2a"
+    },
+    {
+      "path": "tools/check_result_labels.py",
+      "bytes": 1003,
+      "git_blob_sha1": "f10aa8de686c249c01105242b45b410497b4b783",
+      "sha256": "d06fc1d82549479141ae7be986df7c60ceb16a1c3c7d15a4fd7b0b3672550b66"
+    },
+    {
+      "path": "tools/check_runtime_data.py",
+      "bytes": 5041,
+      "git_blob_sha1": "3cded893aef16bd9b7d72ca4f9f99d6510a1c8b7",
+      "sha256": "4b600f29326cdbe83fafed6d0bb8ede43931fd85ac0c27642abd4cc61aaec5d1"
+    },
+    {
+      "path": "tools/check_validator_query_string.py",
+      "bytes": 5991,
+      "git_blob_sha1": "9dd0acdf90c3a67b179fcceac6c7dd773892c6b6",
+      "sha256": "7dd9d75861e8339629829fd486ea94911ad674887e4b7020a9233a4bb701e453"
+    },
+    {
+      "path": "tools/clean_repository.py",
+      "bytes": 7180,
+      "git_blob_sha1": "c2e2a1b0c795ec19a8cdf41ff6c765dc046ab9a4",
+      "sha256": "b657612e310d72c9f051172eaa01dd1218a58f0cc520d4deecdc9cbfe6ec5f7c"
+    },
+    {
+      "path": "tools/clean_workspace.ps1",
+      "bytes": 2618,
+      "git_blob_sha1": "48774e177619d5da1dff989b1ab76cde82767a22",
+      "sha256": "9a19aeee477e0a8ab607f78be4e140363ca0bcc8a368362a4fce14df802a7dc5"
+    },
+    {
+      "path": "tools/diff_contracts.py",
+      "bytes": 4451,
+      "git_blob_sha1": "883c5b4e9100b3705f8065ecc1068ff89fa3eddf",
+      "sha256": "482643edfc0b500aa974e4c033a6bd23e00854ddfdcd18d67fde2140599af201"
+    },
+    {
+      "path": "tools/gen_submission_docs.py",
+      "bytes": 44127,
+      "git_blob_sha1": "552c324df660aba4cad79d2031f60020399438cb",
+      "sha256": "2832fc06e4c24e02d737880595e6f1edd6ee06a130761b41eb56b0c073967e22"
+    },
+    {
+      "path": "tools/generate_partner_demo_workbook.cjs",
+      "bytes": 5510,
+      "git_blob_sha1": "ef8e52e1a858b81543b757203cb0cb677fdf37c1",
+      "sha256": "212ab1a773627a7d7739df1967c42b35416de0ceec3a585fc87f3ebdd8edb3fe"
+    },
+    {
+      "path": "tools/migrate_repository.py",
+      "bytes": 6571,
+      "git_blob_sha1": "14f2c97d86b64cf2c273cce82590e5de6767d886",
+      "sha256": "55f7112ed3a21123027a7cacd6422a0ed1742b981772b0220cf2cf95036a1288"
+    },
+    {
+      "path": "tools/package_handoff.py",
+      "bytes": 15318,
+      "git_blob_sha1": "7cb11c6de97adfe1345eeedc99dcb372b73ef00e",
+      "sha256": "2e408726512d5d6d0ea7fb6da0e7571b3a8b46dee510dfa38473a2ab0cea8d7a"
+    },
+    {
+      "path": "tools/patch_contract.py",
+      "bytes": 6893,
+      "git_blob_sha1": "5f51ced05339ee5783744fb3810d42368f8b40c4",
+      "sha256": "d087d0c4ce948bdca2be9e6098400add1d27035e3fab2fd0d4444a8205f0e34a"
+    },
+    {
+      "path": "tools/patch_contract_auth.py",
+      "bytes": 4214,
+      "git_blob_sha1": "6f8a71dbe95ecfdf52902c94264bf72240e423f5",
+      "sha256": "92f155fbae778a6b9d83febd928431d27e7dfdf960b136ac122f4ac4d748582a"
+    },
+    {
+      "path": "tools/patch_contract_change_password.py",
+      "bytes": 5453,
+      "git_blob_sha1": "05a032d7820decf91668a45e5648dc8106c84832",
+      "sha256": "79eea478615868cb326c6d286564437306f9d12ca689471e897c9fed32aeb07b"
+    },
+    {
+      "path": "tools/patch_contract_chat_card.py",
+      "bytes": 2598,
+      "git_blob_sha1": "b3893fca88d5c07bf12441a581a863fbd2834eee",
+      "sha256": "eb5da61459b9bf2ade7d9027650e7d89cfcaba1f0f77e821b7b5c8cc1e97fce9"
+    },
+    {
+      "path": "tools/patch_contract_declarations.py",
+      "bytes": 16075,
+      "git_blob_sha1": "2b49633ad9310eb8a073fe11f41fd395b0931756",
+      "sha256": "5f26d60f01f9b68706eab62ee27bf299118377bc369208a685b36284caf51bc7"
+    },
+    {
+      "path": "tools/patch_contract_kb_detail.py",
+      "bytes": 4417,
+      "git_blob_sha1": "562299e8eaee03420b84f08b8098083558e62c58",
+      "sha256": "821c1874aa7bce8c40d7e65f8b6616f502d0e74deb1417f1c068fc7a540ca96d"
+    },
+    {
+      "path": "tools/patch_contract_knowledge.py",
+      "bytes": 13327,
+      "git_blob_sha1": "98c6b72cdbb8acc744fb528619226ff342484734",
+      "sha256": "a055aa3656fa126d89037954d37582e91ba7207b273b84481eade7f9e1672927"
+    },
+    {
+      "path": "tools/patch_contract_password.py",
+      "bytes": 4084,
+      "git_blob_sha1": "23947825ce2463751880ec137058ec0f6fb6ec63",
+      "sha256": "7515b163eff7a8d94c7343f8d94a1a2db47b3f077235a05f8a4ab1c921cf70a6"
+    },
+    {
+      "path": "tools/patch_contract_phone_huawei.py",
+      "bytes": 5764,
+      "git_blob_sha1": "14521f901e6c3d36ac2f6ced0aae9adc2a46d7ac",
+      "sha256": "3647a48474b3175aa43b264fb02100c1703799d04ac106721a283577440c079d"
+    },
+    {
+      "path": "tools/patch_contract_phone_verification.py",
+      "bytes": 8650,
+      "git_blob_sha1": "9ce56cea9e0be8a9a4616d52a54f73d17b9f943f",
+      "sha256": "3afd5e019aa90aaca916a8a4b87adb8b5038b12b43f7588537ae68c4d4ddd87d"
+    },
+    {
+      "path": "tools/patch_contract_semantic.py",
+      "bytes": 4119,
+      "git_blob_sha1": "b839eb5bd5c2752da373b97c2cf695ad3453442b",
+      "sha256": "cf420edf9f3c24a51672bc3d8fcfbfdf23772c95a4d200356193765e365b265a"
+    },
+    {
+      "path": "tools/patch_tests_for_phone.py",
+      "bytes": 2384,
+      "git_blob_sha1": "641bc15d25489ebfea9046e3f58aa7a8d4282550",
+      "sha256": "e22f1a86d8d350357b02cf2eeca92e2d3061b4ff0f491541984ea653c878d64e"
+    },
+    {
+      "path": "tools/patch_wrong_book_contract.py",
+      "bytes": 5104,
+      "git_blob_sha1": "311a33e122c2d12788ea79a313c472ed62b42fd4",
+      "sha256": "576599d66251c6229792eb3c2181850b8c5a5748ffb10c36e0cd52464fb03f9a"
+    },
+    {
+      "path": "tools/sign_hap.ps1",
+      "bytes": 4888,
+      "git_blob_sha1": "9db5f5642effd550bbc5e1c79d2c6efe9edca3ab",
+      "sha256": "f2cc365343d8322b2c7f7d00b32c947b928eebf51d0ea2d595ca0834d5041927"
+    },
+    {
+      "path": "tools/start_emulator.ps1",
+      "bytes": 5286,
+      "git_blob_sha1": "fa93392bff74b08e0eb245bacc1988b86c955f66",
+      "sha256": "f3965f193f9cefecd80933ea915dc55bb60106046d850a8b0da18b7d1e129b4e"
+    },
+    {
+      "path": "tools/sync_contract.py",
+      "bytes": 5222,
+      "git_blob_sha1": "c5866c0f194f72bf4527c92e23c908a63d309aed",
+      "sha256": "dc7e7826399b7c12f394e5f4b75d4d18f8b5aef31a0571340de04ff6c74348dd"
+    },
+    {
+      "path": "tools/verify_contract_declarations.py",
+      "bytes": 5092,
+      "git_blob_sha1": "16b0f01e7d0d99ac75dbb7bc103304846234de4a",
+      "sha256": "06642d0e76be0ee1eb27777a221fa038ab2cfd3a2a29ea938b046d748a33ca36"
+    },
+    {
+      "path": "tools/verify_packages.py",
+      "bytes": 5841,
+      "git_blob_sha1": "3a0f6a95724ed43807d4a53adc50b1966b7271ca",
+      "sha256": "bd3e3e26b253fac5d6ccecfee8fda335672494d73a8a32b16f9021550cdfe9bc"
+    },
+    {
+      "path": "tools/读取密钥别名.bat",
+      "bytes": 1544,
+      "git_blob_sha1": "371f658c6dbff9a4b549832fb7bd57d94e3a28bb",
+      "sha256": "1f3701303c525248ebb741ada0b3b3065478da34865c04a05334d3a36b7da46a"
+    },
+    {
+      "path": "仓库结构说明.md",
+      "bytes": 781,
+      "git_blob_sha1": "f2381802b8bf595e7a4ab769d1944b00e4aedf83",
+      "sha256": "c08e9cac90f724ebf406327ee01b8b5b8dfde6d4fba91fd70d77ae59027502df"
+    },
+    {
+      "path": "出题机制与DDL上传说明.md",
+      "bytes": 8996,
+      "git_blob_sha1": "768066742ac18a1b636ca8def18a61f375d7f7e6",
+      "sha256": "a0b3dd1a356f1615542874c4e69d0308814ff53d46a0519d2f133e4fd3d3ee21"
+    },
+    {
+      "path": "前端反馈复查清单.md",
+      "bytes": 9052,
+      "git_blob_sha1": "a6fd8bdb2a09c2c66691569cdd6a4534e780ddec",
+      "sha256": "23390812d1b3f808c1c5617390d7bc23a34f642ec1a7520d04672141cd5375db"
+    },
+    {
+      "path": "前端提交指南.md",
+      "bytes": 5348,
+      "git_blob_sha1": "e08c164d296b7fbb28f283205e9eb81ddbd1255a",
+      "sha256": "3009e9d99901f40a5a0ccc3a1a4b55ffbd88d451b6cf8c77d2730bc3f7387160"
+    },
+    {
+      "path": "前端测试问题核查.md",
+      "bytes": 10735,
+      "git_blob_sha1": "38df5b57b5d2f7b303d24777e73363e91cb19d29",
+      "sha256": "5a023a3d90bff4bcea4471a5e4966c7a082ae12860e224a0b33aec6578aad4ab"
+    },
+    {
+      "path": "后端启动与部署指南.md",
+      "bytes": 13421,
+      "git_blob_sha1": "4d8fd114e8caf7ddf4fe1aff8b8bc04fd0aec767",
+      "sha256": "9ed2d05a1c629a8d91a7def935391e3311cff301baef7af6ab2f1ed517952bec"
+    },
+    {
+      "path": "学习搭子匹配说明.md",
+      "bytes": 7514,
+      "git_blob_sha1": "dd3bece6f4100685fc52cc10715474688c4ae127",
+      "sha256": "e4f5453182277e2a2b0dc12497b25a19b6be2c8126f57bbf04d456789b97bafe"
+    },
+    {
+      "path": "实证材料/experiments_snapshot_2026-09-21_live.json",
+      "bytes": 8980,
+      "git_blob_sha1": "25d313a164aaec7a56cb74d01db250d5af87d079",
+      "sha256": "fe647e889dc6492b3d44e1783f7ca9f08bf9ea4902b986de74a7cd0f8fedc66a"
+    },
+    {
+      "path": "实证材料/integration_2026-09-20_233236.json",
+      "bytes": 20735,
+      "git_blob_sha1": "f72540002051306a9cae7bfc39ffad972b3f7e62",
+      "sha256": "2763dd6c89401f7ccee1ebfa43d795d530e29ef7caf0bd84679ad02b5d8f464f"
+    },
+    {
+      "path": "实证材料/integration_2026-09-21_141528.json",
+      "bytes": 20739,
+      "git_blob_sha1": "7015d284a48b076d40898b19d1af2029ab663570",
+      "sha256": "42f47d116cc8bd242d2955dc5de80b1e7515b20b20bdb5d79728c2a46db72526"
+    },
+    {
+      "path": "实证材料/integration_2026-09-21_141722.json",
+      "bytes": 20739,
+      "git_blob_sha1": "13e60f6b5186b8b52857c0c88f34f0cfddcbb413",
+      "sha256": "38794c790f660fdbe800bc091faeaaf3ddb754a7313b048d7e754a47c565e54a"
+    },
+    {
+      "path": "实证材料/integration_2026-09-21_141934.json",
+      "bytes": 20739,
+      "git_blob_sha1": "9a634a6534a1706b9653036c3ccea4cb479cdddc",
+      "sha256": "335485365a243cbd151da54a31a5fb4a8ecb6ce4dcf5c68de2520c57a3b150f7"
+    },
+    {
+      "path": "实证材料/integration_2026-09-21_142118.json",
+      "bytes": 20739,
+      "git_blob_sha1": "85346771576bd7a8866c17ec3c17cc66445f6c2f",
+      "sha256": "8d4a92d5d4041b7d373d39abfcbc7653dd567db28b814fc39039956c0f589e87"
+    },
+    {
+      "path": "实证材料/integration_2026-09-21_192921.json",
+      "bytes": 20735,
+      "git_blob_sha1": "23ac6e83982b5ae96bb7ca805c78a7f8dfa45dc2",
+      "sha256": "2a1ba5dd5a3a9385c187d00cc08b1b9085246ad4c2afe21c2edbada0f9debc5f"
+    },
+    {
+      "path": "实证材料/integration_2026-09-21_193130.json",
+      "bytes": 20735,
+      "git_blob_sha1": "577471a30955ffb528c831d57555ac5f3d47e00a",
+      "sha256": "1b506dcb54a10b78046103744a7c50bac8ceb1c546cd01dae7ee12e50324d11c"
+    },
+    {
+      "path": "实证材料/integration_2026-09-21_223806.json",
+      "bytes": 20735,
+      "git_blob_sha1": "75313e5277a49b080a0893bec55fcf3c270d735f",
+      "sha256": "9674d73856436bd4d78091f62ce23895a39ec0030b16072279e9dbbc307594eb"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_101105.json",
+      "bytes": 20747,
+      "git_blob_sha1": "ae90ea331c83f52288e9ab79f44a7493fa827dae",
+      "sha256": "6e122ed60a08a83eae54fddc0095f0787cf6618c75cb51a98dd1b0700b6193c0"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_134229.json",
+      "bytes": 20755,
+      "git_blob_sha1": "0c8b11e820b93eb6a13179355d1e9c68659cfc7c",
+      "sha256": "e3b4bfb04f6aff1951c84a188aefd88655c1b8ea7dd597725501c75da410fe25"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_144808.json",
+      "bytes": 20755,
+      "git_blob_sha1": "892e838306de72d5f6696a973a94c6ed4a37ffd7",
+      "sha256": "312fc32f3667b81afd4a9f849551a97db4eb1253bc386621042c41de0427e33a"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_150337.json",
+      "bytes": 20738,
+      "git_blob_sha1": "4f8b54fdaa1013c8de0d13418b7c0a36c829354f",
+      "sha256": "5fb77e4970bc42f9b812498fc6f8bd6d08165f6b6cf39bfaaf37f6ea52c67945"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_151601.json",
+      "bytes": 20755,
+      "git_blob_sha1": "5089916aafaed632b5cdfee03ee526e19eb3b9b8",
+      "sha256": "f64f1ceb96b0897af5c6e26a814623e0ce8bc848a792b029deab25b9c2136d61"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_152015.json",
+      "bytes": 20755,
+      "git_blob_sha1": "40395deb9da8e45e7f0852990fd036ec2a22259b",
+      "sha256": "067b60df58066caf435757dcf548097a1aaca8f9e61496ea999c4b021fce0167"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_152248.json",
+      "bytes": 20739,
+      "git_blob_sha1": "c76358e6503456aa4bf7147732de89f0f747c5b4",
+      "sha256": "ab8fd3637b7824d94838aa5995d88eaffd83495b0eca0f5a4e2b559abb510989"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_152442.json",
+      "bytes": 20751,
+      "git_blob_sha1": "93fba8b05f4fd7f3e9a0eaa7b11b5b83a4ef90cc",
+      "sha256": "c3eb32feaad2d95275a29cf4b600084ecb3dedeceda0b640ae52b7f6b5a65d0a"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_153427.json",
+      "bytes": 20743,
+      "git_blob_sha1": "6f67a3b12f408225a6c6c47d8042f4d3f5fed418",
+      "sha256": "851f985c54b471de4a08a328bef09fa784364c4dda5f7fcbc513fa610102edb3"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_153632.json",
+      "bytes": 20755,
+      "git_blob_sha1": "751cab1705158638274259b4c1ba483b01af7ee4",
+      "sha256": "98d4b15af691fbb0c7c6446bb1efa7feae3973d410085f2105659445a12cf8e7"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_154552.json",
+      "bytes": 20739,
+      "git_blob_sha1": "1190e8436416143ba7acfa6b7f7a83ff6165a81f",
+      "sha256": "339cb27b908a49198e5f466b07a99d283061ea8cf78b221b6dbe93a9c4bb9d3a"
+    },
+    {
+      "path": "实证材料/integration_2026-09-22_224720.json",
+      "bytes": 20755,
+      "git_blob_sha1": "05f94f8f30ddca69e5c5e1a3d327057e7da66484",
+      "sha256": "f50ca12deec7223ac77ab65b12043330797193a465c288c30c0cf8ceb21c9bb4"
+    },
+    {
+      "path": "实证材料/integration_2026-09-23_234057.json",
+      "bytes": 20739,
+      "git_blob_sha1": "018eeb61b949dd28ebba156822e3a12bcea50d40",
+      "sha256": "3fdf19e41f2c1ae3a1c32549714046c266931d3222c762bc217dacc77990e470"
+    },
+    {
+      "path": "实证材料/integration_2026-09-24_140631.json",
+      "bytes": 20810,
+      "git_blob_sha1": "cfefdf635b862c259522b4fbac9c5014206e75a6",
+      "sha256": "d0be21cc0f209cc065d1624ede911e81aa9f12beff24c43f33f412c5f47e5572"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-20_233236.json",
+      "bytes": 1235,
+      "git_blob_sha1": "fd8a32179c898c8b88bd619a11b8cf515b02fb37",
+      "sha256": "ba60a1b2333dc6dd34d3d97ea91ab9deace05ae1cd20e17bd288cc3b3ab9d8e9"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-21_141528.json",
+      "bytes": 1291,
+      "git_blob_sha1": "69cbece3200767d3e2ee20ff3a9b960d3f55cf2b",
+      "sha256": "88f439e98e484247ad5567c57a99ee9f3023fa3092edc44c27e12d1a56cac253"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-21_141722.json",
+      "bytes": 1175,
+      "git_blob_sha1": "ca6771ee6008e50142b3cc75e0d4d13cdb7b26bd",
+      "sha256": "0188c36459bb193641a1f0cc9bd15081eb484f93add86aa2b0c4a5bb7a6570c9"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-21_141934.json",
+      "bytes": 1175,
+      "git_blob_sha1": "8c53117892cd5a49c0958fe6c37c0e325d940566",
+      "sha256": "23ba1ec53b2566ced8f77bdcf73aa3968079f35533835ebd7775e48177f6abad"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-21_142118.json",
+      "bytes": 1175,
+      "git_blob_sha1": "cabaf8d1204422b5a22278ec392ae06c7141ae69",
+      "sha256": "b24f6f0bca1b37ab62ed7d4fd52c84e85d8b66cd3576537f3d3fc61957843ec4"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-21_192921.json",
+      "bytes": 1235,
+      "git_blob_sha1": "efe286ea408ad832038fb220b4e434f27876be39",
+      "sha256": "63f98aa0a43e4debe4be08bc91de7a0eb395f0cb26cf91952a86b7716addbee6"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-21_193130.json",
+      "bytes": 1235,
+      "git_blob_sha1": "c8e5aa099fb721b4f6232ff3a97c91b96115df2c",
+      "sha256": "f98cff6afc9890ca438c04ccf2c8d9e099013131d91d0b7c5314946b7a2f4e74"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-21_223806.json",
+      "bytes": 1235,
+      "git_blob_sha1": "940e240f5333bb991eaabfc45f5c0142beceee4f",
+      "sha256": "cebebd8ef06ed4a329fb34d143dcba712fe01bee060559a58068e43a80192cad"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_101105.json",
+      "bytes": 1217,
+      "git_blob_sha1": "6ce8b925d1bd65900c69986da86ffc01c04c51e9",
+      "sha256": "c097b452bb7d48657fcecad8aa8d739c4e644570f60d010218baa1965a3dc037"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_134229.json",
+      "bytes": 1217,
+      "git_blob_sha1": "522f5e0351f7731de40b5c0b1e06e68f9fbfb041",
+      "sha256": "9f18f00bda5e79af4f97a087d4f0aeee4b3b005e9ca4658634fe11126a45d7f9"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_144808.json",
+      "bytes": 1217,
+      "git_blob_sha1": "b695c1d5154a144839cd425ce299d11bfd84a87d",
+      "sha256": "8b47a19867e5738295d24f8d5f0390ced009ffe9b1f7061e6dfa39c0c3045296"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_150337.json",
+      "bytes": 1217,
+      "git_blob_sha1": "442627c38511f93ffb94f1ae1e8867a7e8e92c3f",
+      "sha256": "458186c94a0319a50f88c2e8a8e115951f6eae514ceb2c39107e7ba95775f0b2"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_151601.json",
+      "bytes": 1217,
+      "git_blob_sha1": "8cd8b8acd7b7f2e461d37f49f3d652c2ddfd358f",
+      "sha256": "d7b74d8a6fba200df18c4719ff28ace9566bf728d07e1490636e3ae4d25cfb7a"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_152015.json",
+      "bytes": 1217,
+      "git_blob_sha1": "ce378e280d130fd33119cc4982a96935eba7f47a",
+      "sha256": "d1547d067f5fe823d97bf560faf501c0731f367b3e95f831d95664de79ca23d8"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_152248.json",
+      "bytes": 1217,
+      "git_blob_sha1": "87a4d96ca8cb9c448e2628a9b98fc26a07138fb8",
+      "sha256": "033add03493baad67e8d49e8771df1eaf7796e2837256616b22923c397fe851f"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_152442.json",
+      "bytes": 1217,
+      "git_blob_sha1": "a7617cae56147e97d413d24573dd8b87184fad5b",
+      "sha256": "fe5e13cf8d6e23b85f8f4ff38a993cb32fcd343f0e72581f1de02e7f1e9d265f"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_153427.json",
+      "bytes": 1218,
+      "git_blob_sha1": "b2fe27e349399e354b8a8a8a5305e63d4fc7924a",
+      "sha256": "1fdfe56a272a31eac24a9e005bb63177b96b256d4dbfd5f0fdee9187327b8423"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_153632.json",
+      "bytes": 1218,
+      "git_blob_sha1": "25da269fc23c79f2e7bbf0d92d2e51f1d79db650",
+      "sha256": "e3360c2613b6fd21c40028d1f763bf5abb543e537d4d9cf4aeb997a5771a9e30"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_154552.json",
+      "bytes": 1218,
+      "git_blob_sha1": "d8c5e302160328be0004c3bc140a0aba61f48e13",
+      "sha256": "154a98c3bcc7e03db923ccd5c29c9cfd59fa60493d78056cfa3150ffb9198446"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-22_224720.json",
+      "bytes": 1218,
+      "git_blob_sha1": "c01ecc118f48225b21ec0bcccbeacd38eeae7a29",
+      "sha256": "479b5ad35fc699f11f1277902b815679de73d51c2c2f9cc6f6cc666f105d915a"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-23_234057.json",
+      "bytes": 1218,
+      "git_blob_sha1": "a4b9b3db739a46b120a7ac0217ab15fa7b3e8993",
+      "sha256": "1e95c70e7d05748b652b80a2adab960d4ab856bc92239233e8838455af4506d7"
+    },
+    {
+      "path": "实证材料/run_summary_2026-09-24_140631.json",
+      "bytes": 1218,
+      "git_blob_sha1": "ae6d62c1380675178b3a99f7a9ffd6fae3285dc1",
+      "sha256": "eb0180faeac2d2f82ffd3f97649c1727a74b64a05fa80206aae5516c227cfa29"
+    },
+    {
+      "path": "实证材料/竞赛规程-全文提取.txt",
+      "bytes": 13801,
+      "git_blob_sha1": "ac6e1e01a5f7ab4f739a7e9d269c6589e3dd0410",
+      "sha256": "4727ba0aa23fc0e8833227cd860dddcb0d687dc4d9067d6313831f09ce24e957"
+    },
+    {
+      "path": "提交清单与待办.md",
+      "bytes": 7161,
+      "git_blob_sha1": "71326dacd4710e135bd3ff6f2a3faa01d185f770",
+      "sha256": "13eede95333a38d0a0f0139acbf9d9089b4275a59da503755d7767949852811a"
+    },
+    {
+      "path": "数据库与账户体系说明.md",
+      "bytes": 11507,
+      "git_blob_sha1": "40b5662d90957c82159cfd7df71f1d88c43a0a80",
+      "sha256": "272ebbcf1fd1748344fe6f7cbbdf7d83186d8bc9485ce108ad40db2ba6c410f9"
+    },
+    {
+      "path": "本机签名配置说明.md",
+      "bytes": 1290,
+      "git_blob_sha1": "8776df8aec6238a98e124a26a694fc74df48c116",
+      "sha256": "f1f3b6853a9f1ccb13d9ac0660880682352c3a18275ec8ff1365ed38f7c5cf4d"
+    },
+    {
+      "path": "演示测试数据/01-课程与作业完整示例.json",
+      "bytes": 1054,
+      "git_blob_sha1": "630fc2ad75bcaaf3c0a901164443c7651c22c4c1",
+      "sha256": "7a07395d8040ee8b28bcda4671a7a5132b2c04c9eec101a03ff789f7ac242dfe"
+    },
+    {
+      "path": "演示测试数据/02-课程表.csv",
+      "bytes": 211,
+      "git_blob_sha1": "f2362b54c60cc7041f86aa55798f707842c4b4e5",
+      "sha256": "77a173ea6a1677ebf1c3fc999e7c249e6fd7474f63de9a230cf820696c7dc8cc"
+    },
+    {
+      "path": "演示测试数据/03-作业DDL.csv",
+      "bytes": 308,
+      "git_blob_sha1": "c1af46d5b7c68688dd52830c696ecf86661633bf",
+      "sha256": "03023def8a2dd093b3e718dbc1a2949a76f6e925539d496748c643c2aa549c10"
+    },
+    {
+      "path": "演示测试数据/04-含引号与逗号的字段.csv",
+      "bytes": 232,
+      "git_blob_sha1": "40c473f062369e080e242d63ab6e734a80f01466",
+      "sha256": "b9613380b2a6ca8aed64f93fbad5d18e303cb0b6c2a7eefd5b47ee3403b00d6d"
+    },
+    {
+      "path": "演示测试数据/05-粘贴用-课程.txt",
+      "bytes": 424,
+      "git_blob_sha1": "22c74297bf29171f01bf2738d96273eb5f3097d3",
+      "sha256": "7e4584c8a18231f66f8c6ec395447b7cc813928004912450e73e2349c9c55b51"
+    },
+    {
+      "path": "演示测试数据/06-粘贴用-作业DDL.txt",
+      "bytes": 631,
+      "git_blob_sha1": "a512f035aa098f5773e31b56c301fdfc3e63aa5f",
+      "sha256": "e8006e654783e7b65b6bb1b2b531041392bd9c31123f6e6e36d32304dc29cfc9"
+    },
+    {
+      "path": "演示测试数据/README-格式说明.md",
+      "bytes": 12694,
+      "git_blob_sha1": "bcdd4f652d6eda9d13427e02549b06ce97ee4445",
+      "sha256": "17e6759d752572cf1aaeba85b6f12738540c631c6066bc07f8bb97f867e835be"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/作业DDL1.csv",
+      "bytes": 309,
+      "git_blob_sha1": "81a8226cde611f1e8039ca0645821e71c4039666",
+      "sha256": "6f0b097a542ea285ad2bee6d17d36ae45bbfa96a5999d560803d0e22784d5c26"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/作业DDL2.csv",
+      "bytes": 311,
+      "git_blob_sha1": "bbb7afd59b8e0c97132f3355e35feb0508b7c628",
+      "sha256": "472e8aca0ee3da029bf6b3582019508004acdc1e91a69fdb2cc8d853f72fec96"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/作业DDL3.csv",
+      "bytes": 230,
+      "git_blob_sha1": "8285adf7e404fb6b260833a5d64438a1014cf1b3",
+      "sha256": "16d0f4b299bddbe8aa1fe6447f17ddb6c5beb2f4864d144ffdecf1aceda2e92f"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/作业DDL4.csv",
+      "bytes": 319,
+      "git_blob_sha1": "f860eaa9b394451ccea02fb3c2c0aecfaa96a9c9",
+      "sha256": "05e07630a30df882a05556d787f2230777db16ad32c5ef553a90406326c73081"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/课程表1.csv",
+      "bytes": 261,
+      "git_blob_sha1": "8b1ca99cec7b8e266d84388c9597133e23a63d1a",
+      "sha256": "6fe6a7b177139294d990e583af085bfc8af3a0e8a62150d2793c73c14c3f9504"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/课程表2.csv",
+      "bytes": 189,
+      "git_blob_sha1": "6fed60e5e36a0bb331b8017b93df37187d4a9bc8",
+      "sha256": "01446e916cb6269a5f0653374a077d79574065683147039384306d555b06e9af"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/课程表3.csv",
+      "bytes": 77,
+      "git_blob_sha1": "76eccb85b0b69975d4d5480a557a52c30acb6e76",
+      "sha256": "8938082ef0eec1c8f871496398321df86e04db2e63507b84b997f3cf5f806404"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/课程表4.csv",
+      "bytes": 124,
+      "git_blob_sha1": "656e53f000a91913ea6bc5147ba5fe30cd40a9c5",
+      "sha256": "fbfd52e93150f5616d898f79a2f27ac8ccfca8a7b9817f2ce6a6242f5f140457"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/课程表图片1.png",
+      "bytes": 38381,
+      "git_blob_sha1": "9f54ef72436ef40d24a1a7d0207413fa5ec96610",
+      "sha256": "f5f01e6e2e9bb0527b8fe2b3b34d7dbecd427210f24930946e185360eae9dd15"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/课程表图片2.png",
+      "bytes": 52875,
+      "git_blob_sha1": "e5598fae5ebd0e58efd6e94162eb98ede5787471",
+      "sha256": "743cdf928640a276c9792be819847930797b8f6b08c598b354f82307dbf9365b"
+    },
+    {
+      "path": "演示测试数据/补充测试样例/测试用/课程表图片3.png",
+      "bytes": 22382,
+      "git_blob_sha1": "b8bcdd9edef0b29dc351472572b57bb1ae37e12f",
+      "sha256": "cfbc014f818fb08eb2c2b646392be56e716970ec4588b93dd5bb6f87a2b128c7"
+    },
+    {
+      "path": "签名材料交接说明.md",
+      "bytes": 14029,
+      "git_blob_sha1": "860b3c22384e10a16b00c817360414b815a94428",
+      "sha256": "7633d3569b8bf43174c724b1bf168eea34bc4ab04c871a868623f4798727f22d"
+    },
+    {
+      "path": "项目文档/01-联调分析报告.md",
+      "bytes": 19057,
+      "git_blob_sha1": "8f626cf8215ebff4b30b69ec37466a1e0db25030",
+      "sha256": "05d1ba977a678134e85b1bf67bc7104de233bf57038025faaf8436bcc54fa4b2"
+    },
+    {
+      "path": "项目文档/02-下一步工作清单.md",
+      "bytes": 12202,
+      "git_blob_sha1": "377b50d51310b5abf58e5746534fa4bf0f54af78",
+      "sha256": "b217878808fc7012ad05eb751a604336d10558529cba2288d6e1104ee2c6c9ce"
+    },
+    {
+      "path": "项目文档/03-后端同学下一步工作书.md",
+      "bytes": 16571,
+      "git_blob_sha1": "886da8ab53a01c5e03821ae84d4959a0b01fedef",
+      "sha256": "e278f84f4eb27b6157ad94ef5af9339646ae4821860d117a65963340faff8a30"
+    },
+    {
+      "path": "项目文档/04-前端同学下一步工作书.md",
+      "bytes": 18027,
+      "git_blob_sha1": "21cc9d877b39d43746e303666d8d8d1802009c54",
+      "sha256": "2a2bd66a04b2bacc2014b8f869b8225610e2dbf369c769570a038d289a41ed03"
+    },
+    {
+      "path": "项目文档/05-大模型接入检查报告.md",
+      "bytes": 11618,
+      "git_blob_sha1": "3f271e7158697ce175058bdf40efd65fa146d975",
+      "sha256": "b28d7336340622a6faeeb74283c47cbe50a33eb3795b04cbae73aa0e3c31a022"
+    },
+    {
+      "path": "项目文档/06-后端配置LLM任务单.md",
+      "bytes": 11957,
+      "git_blob_sha1": "cadb0dceed6941195ac54cdbd391fadd621e5cd6",
+      "sha256": "cbdc773297df74f8d791b569a16c9b799073db7504115a8b4a4c43d12b5d71dc"
+    },
+    {
+      "path": "项目文档/07-鸿蒙特性审计报告.md",
+      "bytes": 85680,
+      "git_blob_sha1": "553357e1ab738c21d422c68e3b7141aed98c92fd",
+      "sha256": "0aa3c7720fbaed5e43fd42081a22619dcdfbaa516ad0f1ef0d43595bf078d2c9"
+    },
+    {
+      "path": "项目文档/08-前端静态Bug排查报告.md",
+      "bytes": 69647,
+      "git_blob_sha1": "f7f55868b1f42e8d17aa0487d837e99fc0cec75e",
+      "sha256": "60a1f1f5ec5136e092c3ef6112ad44def3e774c90e62a744069b79b46738cb8d"
+    },
+    {
+      "path": "项目文档/09-后端Bug排查报告.md",
+      "bytes": 64902,
+      "git_blob_sha1": "9622177492f41ded273978c86d403de362f7fe06",
+      "sha256": "26f9c91aea5f01ba22fcebded9df8fa911e2e838474d5c234814204e631760d4"
+    },
+    {
+      "path": "项目文档/10-全项目审计与Bug修复总结.md",
+      "bytes": 24018,
+      "git_blob_sha1": "9232e3f8545a641af88b8084f364bcc419f80675",
+      "sha256": "f974b22d1d0df6f6ab5246097f9f1ccad6abd818cb4f01b66b26dc019ceda4b1"
+    },
+    {
+      "path": "项目文档/11-用户登录体系方案.md",
+      "bytes": 14546,
+      "git_blob_sha1": "751b29c493d4be337798c0f3414bbb06114027bb",
+      "sha256": "d0d73376a2be5e7ac532e2b96ce2e0781ee6dedd33ad593c68a45a0b8952ff12"
+    },
+    {
+      "path": "项目文档/12-知识库设计方案.md",
+      "bytes": 17729,
+      "git_blob_sha1": "99fbeee383ded674e0235424496c4d277a7b74a0",
+      "sha256": "d432532bfad592be0b3b4cc7f55eba28ca06b9c42a1d9a7dbef15b3b58cf56b7"
+    },
+    {
+      "path": "项目文档/13-全场景与华为账号登录方案.md",
+      "bytes": 10905,
+      "git_blob_sha1": "ea35711b81ef0b400234d6eb9479b2c4edd11494",
+      "sha256": "b7af1b480216b2e8b70399b4e027eca6ee9d19c4d8142f72a358f82350ada3f2"
+    },
+    {
+      "path": "项目文档/16-后端同学任务书.md",
+      "bytes": 17556,
+      "git_blob_sha1": "e1d30c608248929c6a8378568229211e6db02402",
+      "sha256": "93310acd6dde9922556990d68d096a5ed82536ebf4951474d96271040903a2d2"
+    },
+    {
+      "path": "项目文档/17-前端同学任务书.md",
+      "bytes": 29366,
+      "git_blob_sha1": "8b7f9cb4d3c9d908c7aa43462d6f686dc3c00ee4",
+      "sha256": "2cc290da799bf66326f344cfbea127e605ad069cac2191acaf4e948efc7e3adc"
+    },
+    {
+      "path": "项目文档/18-技术改进实施报告.md",
+      "bytes": 21574,
+      "git_blob_sha1": "3e0d84aaa6cd3dff025a36c2735fc547d123a8b8",
+      "sha256": "3ee489904cc2f6d6ce36359040e48b43dc556fcf5c0b60b60b9822287de22138"
+    },
+    {
+      "path": "项目文档/19-未完成事项清单.md",
+      "bytes": 22443,
+      "git_blob_sha1": "30ec3e705260b6a23ed40c7517e63dd7ca81e7a3",
+      "sha256": "77c38c5c6bd8fc9166307081be33f0d360a945317f338d9c33c3e4c307b11e9d"
+    },
+    {
+      "path": "项目文档/20-token加密API核验报告.md",
+      "bytes": 35223,
+      "git_blob_sha1": "bc3c791a70bbe81ec5d610eb7f3b345ac7f476b7",
+      "sha256": "77bbf847e51e694fb1ff346adbe30c6e2ed8793a6fafc0ea0b4c1024c352b8b8"
+    },
+    {
+      "path": "项目文档/21-后端同学完成报告_2026-09-21.md",
+      "bytes": 2228,
+      "git_blob_sha1": "bd46984100d7f08acff141086eb393530931a0de",
+      "sha256": "dde84da4fbfca1bf105b6898a49c7a7dd6c072692139041926b26a57c538dbae"
+    },
+    {
+      "path": "项目文档/22-无真机获取HAP行动方案.md",
+      "bytes": 8677,
+      "git_blob_sha1": "396f55c453cac5b7fc271235772371886fa0bdaa",
+      "sha256": "631601c9c51c703c45be6d768919dd0a425c408101d297928ceeb3f3b3abd8e7"
+    },
+    {
+      "path": "项目文档/23-发布证书与发布Profile操作手册.md",
+      "bytes": 9359,
+      "git_blob_sha1": "13ad6a979d4a0a1b68f7495d0ff332c65f8b4bc3",
+      "sha256": "151d362b9033ce721d19787a6bfb2502916e3d8444f9c19d6131e61aed1cb2b3"
+    },
+    {
+      "path": "项目文档/24-签名材料核验报告.md",
+      "bytes": 8488,
+      "git_blob_sha1": "e69d0bbbf8086b08ccc801856d2dba935e0b3380",
+      "sha256": "ce291284c29028281a80a9940b4dcacd3e1d66a78f9620752dd3feb89207dd84"
+    },
+    {
+      "path": "项目文档/25-LLM意图识别误报降级修复报告.md",
+      "bytes": 6938,
+      "git_blob_sha1": "4f71b1abb742d1fa4356c69cab0e48c887ef9842",
+      "sha256": "bc3171adee9c08babf25e3b46901f7632cdde67258e7fbc69ea36f0af014996d"
+    },
+    {
+      "path": "项目文档/26-模拟器验证报告.md",
+      "bytes": 5764,
+      "git_blob_sha1": "b1c3432ab7c6d0f8a352a11f819a828e8131785e",
+      "sha256": "6b978f96d9e15052c5e0a7c6dc98957379977ca9b263a2c497a6711632de77cf"
+    },
+    {
+      "path": "项目文档/27-全场景分布式实现报告.md",
+      "bytes": 7201,
+      "git_blob_sha1": "cbaaf86cadcf0dcb73737add0ecef11b8daf1fed",
+      "sha256": "212ee3ae7dfc13d56ba2af3d24013f254d73f539c82bb21a74de002f59337a78"
+    },
+    {
+      "path": "项目文档/28-全项目Bug审计报告.md",
+      "bytes": 28066,
+      "git_blob_sha1": "cb465d3147815370266a81edc1ebbed1fe4bc51d",
+      "sha256": "4e78c6968f40bd6ee52023f01941ee8214d069c376fa18264d3c464d144a6b5d"
+    },
+    {
+      "path": "项目文档/29-真机测试不必要性说明.md",
+      "bytes": 12787,
+      "git_blob_sha1": "dfd738694ba004af6aae537b57ef9a8cfbaaf7a2",
+      "sha256": "9005e810f8655f0e034b535b049b58c77a5a126f161d814334742294b62dd5f0"
+    },
+    {
+      "path": "项目文档/复赛README-历史说明.md",
+      "bytes": 26706,
+      "git_blob_sha1": "e314f49601f9f3d4ce1b051d3618a0e79b4ed9dd",
+      "sha256": "94cef5959001b291a341d83c4de0767bd54e1e32c88d5a25540bb105b5533a76"
+    },
+    {
+      "path": "项目文档/最终修改与调试报告_2026-09-28.md",
+      "bytes": 2767,
+      "git_blob_sha1": "5e30a356948be3cf7917e0ab312a23e9188c4cb1",
+      "sha256": "a51a49ee0ae55829a462816d16dc99bc9cce0736f3f52e25c082c7c07873df94"
+    },
+    {
+      "path": "项目文档/签名HAP说明.md",
+      "bytes": 6025,
+      "git_blob_sha1": "c010490b1174d7ddf8809231ed798b518d698d62",
+      "sha256": "df42b70132a7f89afc1d5e512c0d552aabd9fe4764743192224c8d7d5c3ee076"
+    }
+  ]
+}

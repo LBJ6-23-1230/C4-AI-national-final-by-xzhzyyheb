@@ -1,0 +1,170 @@
+import { UiTheme } from '../utils/UiTheme';
+export class RadarData {
+  dimensions: string[] = [];
+  current: number[] = [];
+  target: number[] = [];
+  weakIndices: number[] = [];
+  strengthIndices: number[] = [];
+
+  constructor(dims: string[], cur: number[], tgt: number[], weak: number[], strong: number[]) {
+    this.dimensions = dims;
+    this.current = cur;
+    this.target = tgt;
+    this.weakIndices = weak;
+    this.strengthIndices = strong;
+  }
+}
+
+@Component
+export struct RadarChart {
+  @Prop @Watch('drawChart') dimensions: string[] = [];
+  @Prop @Watch('drawChart') current: number[] = [];
+  @Prop @Watch('drawChart') target: number[] = [];
+  @Prop @Watch('drawChart') weakIndices: number[] = [];
+  @Prop @Watch('drawChart') strengthIndices: number[] = [];
+  @State canvasWidth: number = 420;
+  @State canvasHeight: number = 420;
+  private settings: RenderingContextSettings = new RenderingContextSettings(true);
+  private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
+
+  build() {
+    Canvas(this.ctx)
+      .width('100%').constraintSize({ maxWidth: 480 })
+      .height(this.canvasHeight)
+      .onReady(() => this.drawChart())
+      .onAreaChange((_old: Area, area: Area) => {
+        const width: number = Number(area.width);
+        if (width > 0 && width !== this.canvasWidth) {
+          this.canvasWidth = width; this.canvasHeight = Math.min(380, width);
+          this.drawChart();
+        }
+      })
+  }
+
+  private drawChart(): void {
+    const ctx: CanvasRenderingContext2D = this.ctx;
+    const cx: number = this.canvasWidth / 2;
+    const cy: number = this.canvasHeight / 2;
+    const radius: number = Math.min(cx, cy) * 0.55;
+    const dims: string[] = this.dimensions;
+    const n: number = dims.length > 0 ? dims.length : 5;
+    const levels: number = 5;
+
+    ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+    for (let level: number = 1; level <= levels; level++) {
+      const r: number = radius * level / levels;
+      ctx.beginPath();
+      for (let i: number = 0; i < n; i++) {
+        const angle: number = (Math.PI * 2 / n) * i - Math.PI / 2;
+        const x: number = cx + r * Math.cos(angle);
+        const y: number = cy + r * Math.sin(angle);
+        if (i === 0) { ctx.moveTo(x, y); }
+        else { ctx.lineTo(x, y); }
+      }
+      ctx.closePath();
+      ctx.strokeStyle = UiTheme.line;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+
+    for (let i: number = 0; i < n; i++) {
+      const angle: number = (Math.PI * 2 / n) * i - Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+      ctx.strokeStyle = UiTheme.line;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+
+    if (this.target.length === n) {
+      ctx.beginPath();
+      for (let i: number = 0; i < n; i++) {
+        const angle: number = (Math.PI * 2 / n) * i - Math.PI / 2;
+        const val: number = Math.max(0, Math.min(1, (this.target[i] ?? 0) / 100));
+        const r: number = radius * val;
+        if (i === 0) { ctx.moveTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
+        else { ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
+      }
+      ctx.closePath();
+      ctx.strokeStyle = UiTheme.muted;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    if (this.current.length === n) {
+      ctx.beginPath();
+      for (let i: number = 0; i < n; i++) {
+        const angle: number = (Math.PI * 2 / n) * i - Math.PI / 2;
+        const val: number = Math.max(0, Math.min(1, (this.current[i] ?? 0) / 100));
+        const r: number = radius * val;
+        if (i === 0) { ctx.moveTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
+        else { ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle)); }
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.2)';
+      ctx.fill();
+      ctx.strokeStyle = UiTheme.accent;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    ctx.font = '40px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let i: number = 0; i < n; i++) {
+      const angle: number = (Math.PI * 2 / n) * i - Math.PI / 2;
+      const labelR: number = radius + 25;
+      const labelX: number = cx + labelR * Math.cos(angle);
+      const labelY: number = cy + labelR * Math.sin(angle);
+
+      const label: string = dims[i] || '';
+      ctx.fillStyle = UiTheme.secondary;
+      ctx.fillText(label.length > 7 ? label.substring(0, 6) + '…' : label, labelX, labelY, 88);
+
+      const curVal: number = this.current.length === n ? (this.current[i] ?? 0) : 50;
+      const pointVal: number = Math.max(0, Math.min(1, curVal / 100));
+      const pointR: number = radius * pointVal;
+      const pointX: number = cx + pointR * Math.cos(angle);
+      const pointY: number = cy + pointR * Math.sin(angle);
+
+      if (this.isWeak(i)) {
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#EF4444';
+        ctx.fill();
+        ctx.strokeStyle = UiTheme.surface;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (this.isStrength(i)) {
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = UiTheme.accent;
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = UiTheme.accent;
+        ctx.fill();
+      }
+    }
+  }
+
+  private isWeak(index: number): boolean {
+    for (let i: number = 0; i < this.weakIndices.length; i++) {
+      if (this.weakIndices[i] === index) { return true; }
+    }
+    return false;
+  }
+
+  private isStrength(index: number): boolean {
+    for (let i: number = 0; i < this.strengthIndices.length; i++) {
+      if (this.strengthIndices[i] === index) { return true; }
+    }
+    return false;
+  }
+}

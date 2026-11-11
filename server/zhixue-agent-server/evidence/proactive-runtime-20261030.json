@@ -1,0 +1,20 @@
+{
+  "pushConfigured": false,
+  "model": "qwen3.8-flash",
+  "modelConfigured": true,
+  "todayModelCalls": 0,
+  "backendPid": 48884,
+  "port": 5000,
+  "startedAt": "2026-10-30T08:18:11.5877854Z",
+  "reminderWorkerPid": 52384,
+  "llmReady": true,
+  "ready": {
+    "status": "ready"
+  },
+  "categoryPreferences": [
+    "task",
+    "exam",
+    "gap",
+    "conflict"
+  ]
+}

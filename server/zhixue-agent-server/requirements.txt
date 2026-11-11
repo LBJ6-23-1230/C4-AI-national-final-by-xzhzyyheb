@@ -1,0 +1,17 @@
+# Python 3.12 dependency versions verified in requirements-lock-py312.txt.
+-c requirements-lock-py312.txt
+flask>=3.0.0
+flask-cors>=4.0.0
+pytest>=8.0.0
+openai>=1.0.0
+python-dotenv>=1.0.0
+cryptography>=37
+pypdf>=5.0.0
+pymupdf>=1.24.0,<2
+olefile>=0.47
+SQLAlchemy==2.0.55
+psycopg[binary]==3.2.13
+alembic==1.17.2
+boto3==1.40.76
+esdk-obs-python==3.26.6
+gunicorn==23.0.0; sys_platform != 'win32'

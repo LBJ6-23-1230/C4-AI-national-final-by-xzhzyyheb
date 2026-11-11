@@ -1,0 +1,92 @@
+{
+  "recordDate": "2026-10-21",
+  "baseCommit": "7d58fb707e418b83566201e12e6d721a384fb6be",
+  "hasUncommittedChanges": true,
+  "scope": [
+    "one durable learning goal per owner and chat session",
+    "structured rule-based secretary handoffs and recoverable input waits",
+    "atomic goal binding to the shared normal assessment/planning path",
+    "goal/version/identity fences and explicit trace navigation"
+  ],
+  "backend": {
+    "passed": 546,
+    "warnings": 1,
+    "durationSeconds": 29.84,
+    "newRegressionCases": 54,
+    "testedRepositories": [
+      "json",
+      "sqlite"
+    ],
+    "externalModelsIsolated": true,
+    "log": ".local-work/phase4-20261021/backend-pytest.log"
+  },
+  "frontend": {
+    "buildPassed": true,
+    "buildSeconds": 32.615,
+    "arktsWarningEntries": 139,
+    "actualSourceModuleChecks": "focus/plan/exercise/goal DTO/chat request/goal submission/trace ETS modules passed after transpilation; HTTP/Preferences substituted",
+    "log": ".local-work/phase4-20261021/frontend-build-final.log"
+  },
+  "contracts": {
+    "mirrorsByteIdentical": true,
+    "pathCount": 43
+  },
+  "hap": {
+    "path": "app/entry/build/default/outputs/default/entry-default-signed.hap",
+    "sha256": "7c437133ec3728e200c0540d67721ba1e1fb9abd35ebfcdef7bc9ffd105ae7c7",
+    "buildMode": "debug",
+    "verifyAppPassed": true,
+    "verifyLog": ".local-work/phase4-20261021/hap-verify.log",
+    "retainedCopy": ".local-work/phase4-20261021/zhixue-mate-phase4-debug.hap"
+  },
+  "device": {
+    "targets": [
+      "127.0.0.1:5555"
+    ],
+    "model": "emulator",
+    "overwriteInstallPassed": true,
+    "uninstalledOrClearedAppData": false,
+    "startupSmokePassed": true,
+    "loadedPage": "pages/Login",
+    "goalInteractionAfterLogin": "not_run",
+    "installLog": ".local-work/phase4-20261021/device-install.log",
+    "startupLog": ".local-work/phase4-20261021/device-startup-smoke.log",
+    "layout": ".local-work/phase4-20261021/device-layout.json"
+  },
+  "realModelCalls": "not_run",
+  "physicalDeviceValidation": "not_run",
+  "sourceFileSha256": {
+    "server/zhixue-agent-server/app/services/learning_context.py": "5425d88631de8c5c9577f0c343e38385338f04f9924df05dd6f9c590065d4599",
+    "server/zhixue-agent-server/app/api/workflows.py": "8d9e80bc379c06c91919f4c417c1b2184e3ea16f084db860cb1c32f5f2e81635",
+    "server/zhixue-agent-server/app/api/chat.py": "91f489f627c536716edb4ec3b4212839144c78413731d86c41474901cfe0922f",
+    "server/zhixue-agent-server/app/api/exercises.py": "a91765b5921529ac885a66dba884cd401d2beeafddf8bf216e72a95f870af3d4",
+    "server/zhixue-agent-server/app/runtime/orchestrator.py": "038511f3d18b7f167bd6b1b12d1b66a47dc359d61058daba62b9589e0445e833",
+    "server/zhixue-agent-server/app/runtime/loop.py": "98de3a6d1e567ceabf7c4967fb9a4eca82136bccb9f91ebfee5e8b9e79074c8f",
+    "server/zhixue-agent-server/tests/test_learning_context.py": "50b8a79cae6031475f0de4efaa909be2605c9beba82f876219d574133d848a3d",
+    "server/zhixue-agent-server/tests/test_auth.py": "ae51b652ae6a2c08f940a209566ea5b5c4f1749435be02fd019c7a4356ef6fdc",
+    "app/entry/src/main/ets/api/ApiModels.ets": "bcf73c5b632f1e89dfaad217cb82d7367ba3741d928c744be85dacf23feaee8b",
+    "app/entry/src/main/ets/api/ApiResponseValidator.ets": "aa182d7cb5d4c9b5273078e238ce60bdf8e95ec71c1458c43d8a7218cddd4cc2",
+    "app/entry/src/main/ets/api/AgentApiClient.ets": "f4dbe2b56f57ee93816352986f59c0728e9587e23d650a5233d6bc78bac12a70",
+    "app/entry/src/main/ets/services/AgentBridge.ets": "47a070157f24422134fd197690b067e597a7bf4058da318f38578185912385f1",
+    "app/entry/src/main/ets/models/ChatModels.ets": "51fc97924fc0fa3037b277699e38713423e8e6129ee395b980d0b846ac28931f",
+    "app/entry/src/main/ets/pages/ChatMain.ets": "35359efcc15d1c2da75c0dd44f6d23f17ed9ae40e12f7421bb5e6e35700a547c",
+    "app/entry/src/main/ets/pages/ExercisePractice.ets": "556f6f098a9971ccea315512eb1f77358b314f65599900eb8c185a17e2d02215",
+    "app/entry/src/main/ets/pages/AgentTrace.ets": "554151eeba0f8bb159eebf20faf405f53a0a0fc058de7654e10f116724034bc9",
+    "app/entry/src/main/ets/components/AIFloatButton.ets": "eeef0109c37d59c07ed67bab37c9891960471e20082b56086769be8f1c631384",
+    "app/entry/src/main/ets/viewmodels/ExerciseViewModel.ets": "cbe479ff91b168ea2628439c9b3c51ca3f9320900bfad183d926e4b7b0b1f579",
+    "app/entry/src/main/ets/viewmodels/TraceViewModel.ets": "825f7082aa6a3afcf254213e3a8f3d16cabb926ac63d991c7909a23a1ad9daab",
+    "contracts/openapi.json": "2bf9d2da537bf9a31a7a56cdcbd9b9246b1b5476714c6b6f4e19d7b2c69a3fd6",
+    "app/contracts/openapi.json": "2bf9d2da537bf9a31a7a56cdcbd9b9246b1b5476714c6b6f4e19d7b2c69a3fd6",
+    "tools/check_grounded_exercises.js": "d3f2273a6302e2b1fbe6047f3e8bd741d9767471da1248dd5b6aafa4cf409831"
+  },
+  "limitations": [
+    "Rule-based secretary dispatch; not multiple autonomous LLM conversations.",
+    "One chat corresponds to one learning goal and one assessment round; use a new chat for another goal.",
+    "Material-based goal practice is selected automatically only when one relevant owned KB is unambiguous; independent document practice is not yet attached to chat goals.",
+    "No complete multi-point decomposition, arbitrary new-topic extraction, calendar/DDL scheduling, or positive-budget conflict resolution.",
+    "No integrated total model-call, elapsed-time, or automatic retry budget.",
+    "Normal submission and goal binding are atomic; other legacy workflow writes/trace writes are not universally transactional.",
+    "Business concurrency isolation uses a single-process lock.",
+    "Full logged-in goal interaction, real model outputs, physical-device recovery, reminders and device handoff remain unverified."
+  ]
+}

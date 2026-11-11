@@ -1,0 +1,6 @@
+export class BuildEnvironment {
+  static readonly NAME: string = 'development';
+  static readonly API_URL: string = 'http://10.0.2.2:5000';
+  static readonly ALLOW_DEBUG: boolean = true;
+  static readonly ALLOW_DEMO: boolean = true;
+}

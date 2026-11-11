@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-25",
+  "baseCommit": "fbda198",
+  "reviewRound": 2,
+  "backend": {"passed": 606, "failed": 0, "durationSeconds": 49.03, "newRegressionCases": 13},
+  "frontendRequestRecovery": {"passed": 20, "execution": "actual page methods with deferred HTTP; ArkUI builders excluded"},
+  "workflowIsolation": {"passed": 6, "execution": "actual workflow ViewModel and cache with deferred HTTP"},
+  "existingFrontendChecks": {"focusPersistence": "passed", "groundedExercises": "passed"},
+  "contracts": {"byteIdentical": true, "paths": 48, "internalReferencesResolved": true},
+  "validatorRouteAudit": {"status": "passed", "normalizedClientCalls": 46},
+  "hap": {
+    "buildMode": "debug",
+    "build": "success",
+    "signatureVerification": "verify-app success",
+    "localArtifact": ".local-work/review-20261025/知学Mate-review-fixes-20261025-signed.hap",
+    "bytes": 3378875,
+    "sha256": "c1b08a766550409bad100df81bb33526f4f4275adbb55976660d6f465026314d",
+    "deviceInstallationTested": false
+  },
+  "realModelTested": false,
+  "businessDataModified": false
+}

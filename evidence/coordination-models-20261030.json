@@ -1,0 +1,4827 @@
+{
+  "createdAt": "2026-10-30T07:24:31.718506+00:00",
+  "sampleSize": 30,
+  "scope": "Synthetic assessment-to-planner only. Single model with optional same tools vs shipped rule role coordination. Not a claim of multi-model superiority.",
+  "modelAvailableToBoth": "qwen3.8-flash",
+  "limits": {
+    "seconds": 15,
+    "modelCalls": 4,
+    "toolCalls": 3
+  },
+  "baselinePolicy": "direct one-pass JSON; tool definitions visible, invocation disabled by baseline policy",
+  "environment": {
+    "python": "3.12.10",
+    "os": "Windows",
+    "concurrentCases": 4,
+    "processWarm": true,
+    "applicationCache": "disabled",
+    "providerCache": "not measured"
+  },
+  "datasetSha256": "f9727548ea657f0195931587416a4998e163ed494cac00a00728f4928b844c79",
+  "manualReview": "pending; structural metrics are automatic",
+  "scenarios": [
+    {
+      "input": {
+        "scenario": 1,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-1",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-1"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-1",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度(20)且重复错误，需补弱，但剩余时间不足完整执行"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 659,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 6715.03,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-1",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 45,
+              "status": "pending",
+              "allowPartial": true,
+              "deferredReason": "预计需45分钟，当前剩余0分钟，暂未安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 45
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.19,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 2,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-2",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-2"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-2",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 15,
+              "status": "pending",
+              "allowPartial": true,
+              "note": "补弱需求：masteryScore低且重复错误，优先安排剩余时间分段练习"
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 669,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 7235.41,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-2",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 15,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排15分钟，剩余30分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 30
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.14,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 3,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-3",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-3"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-3",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 612,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 6119.96,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-3",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 15,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排30分钟，剩余15分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 15
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.12,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 4,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-4",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-4"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-4",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "deferred",
+              "reason": "硬DDL任务占用全部可用时间，且剩余时间不足以安排补弱任务"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 663,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 7141.52,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": true,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 35
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-4",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending",
+              "deferredReason": "预计需35分钟，当前剩余20分钟，暂未安排"
+            },
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 60
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.12,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 5,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-5",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-5"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-5",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度(20)且重复错误，需优先补弱，但受限于可用时间让位于硬DDL"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 658,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4488.68,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-5",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 45,
+              "status": "pending",
+              "allowPartial": true,
+              "deferredReason": "预计需45分钟，当前剩余0分钟，暂未安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 45
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.42,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 6,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-6",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-6"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-6",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度(20)且重复错误，需优先补弱，但受限于总时长，允许分段执行"
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 662,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4508.22,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 50
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-6",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 40,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 5,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排40分钟，剩余5分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 5
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.32,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 7,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-7",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-7"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-7",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度且重复错误，需优先补弱，但受限于可用时间未排入当前窗口"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 659,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4968.84,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": true,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 25
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-7",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending",
+              "deferredReason": "预计需25分钟，当前剩余20分钟，暂未安排"
+            },
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 50
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.38,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 8,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-8",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-8"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-8",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度(20)且重复错误，需优先补弱，但受限于硬DDL优先级及总时长不足"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 657,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4436.93,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 30
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-8",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 10,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 35,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排10分钟，剩余35分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 35
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.23,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 9,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-9",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-9"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-9",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": true,
+              "note": "补弱需求：masteryScore低且重复错误，优先安排剩余时间分段练习"
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 680,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 5588.51,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-9",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排25分钟，剩余20分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 20
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.24,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 10,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-10",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-10"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-10",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度(20)且重复错误，需补弱，但受限于可用时间(20min)及硬DDL优先级，暂无法完整安排或分段插入当前窗口。"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 693,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4989.07,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": true,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-10",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending",
+              "deferredReason": "预计需40分钟，当前剩余20分钟，暂未安排"
+            },
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 65
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.23,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 11,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-11",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-11"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-11",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 611,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 3464.04,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-11",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 25
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.34,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 12,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-12",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-12"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-12",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 619,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 3350.64,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 55
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-12",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 35,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 10,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排35分钟，剩余10分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 10
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.24,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 13,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-13",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-13"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-13",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度(20)且重复错误，需优先补弱，但受限于可用时间(20min)及硬DDL优先级，暂移入待办或分段执行"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 722,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4977.69,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": true,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 30
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-13",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending",
+              "deferredReason": "预计需30分钟，当前剩余20分钟，暂未安排"
+            },
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 55
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.27,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 14,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-14",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-14"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-14",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度且重复错误，需补弱，但受限于可用时间未排入主计划"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 652,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4541.53,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 35
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-14",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 5,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 40,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排5分钟，剩余40分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 40
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.41,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 15,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-15",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-15"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-15",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": true,
+              "note": "补弱需求：masteryScore低且重复错误，优先安排剩余时间"
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 652,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 3277.91,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-15",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 25
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.11,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 16,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-16",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-16"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-16",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "硬DDL优先占用全部可用时间；剩余知识点因测评低分且重复错误需补弱，但无剩余时间执行。"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 673,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4808.67,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-16",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 45,
+              "status": "pending",
+              "allowPartial": true,
+              "deferredReason": "预计需45分钟，当前剩余0分钟，暂未安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 45
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.15,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 17,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-17",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-17"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-17",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 15,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 622,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4070.34,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-17",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 15,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排15分钟，剩余30分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 30
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.23,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 18,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-18",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-18"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-18",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 621,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4031.96,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-18",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 15,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排30分钟，剩余15分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 15
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.18,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 19,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-19",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-19"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-19",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "测评显示掌握度低且存在重复错误，需补弱，但当前可用时间不足，保留为未完成部分。"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 652,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 3720.14,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": true,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 35
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-19",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending",
+              "deferredReason": "预计需35分钟，当前剩余20分钟，暂未安排"
+            },
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 60
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.24,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 20,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-20",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-20"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-20",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending",
+              "reason": "硬DDL任务占用全部可用时间，且补弱需求未标记allowPartial无法分段插入"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 654,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4682.36,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-20",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 45,
+              "status": "pending",
+              "allowPartial": true,
+              "deferredReason": "预计需45分钟，当前剩余0分钟，暂未安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 45
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.17,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 21,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-21",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-21"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-21",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 629,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 3584.37,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 50
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-21",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 40,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 5,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排40分钟，剩余5分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 5
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.36,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 22,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-22",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-22"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-22",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "低掌握度(20)且重复错误，需补弱，但受限于可用时间未排入当前窗口"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 669,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4920.99,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": true,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 25
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-22",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending",
+              "deferredReason": "预计需25分钟，当前剩余20分钟，暂未安排"
+            },
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 50
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.19,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 23,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-23",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-23"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-23",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 10,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "补弱需求：masteryScore低且重复错误，优先安排剩余时间分段练习"
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 656,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4700.76,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-23",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 10,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 35,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排10分钟，剩余35分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 35
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.32,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 24,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-24",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-24"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-24",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": true,
+              "note": "补弱需求：测评显示掌握度低且存在重复错误，优先安排剩余时间进行针对性练习"
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 662,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4973.11,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-24",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排25分钟，剩余20分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 20
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.17,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 25,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-25",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-25"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-25",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true,
+              "reason": "测评显示掌握度低且存在重复错误，需补弱；因可用时间不足且DDL任务优先级更高，暂不排入当前时段。"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 672,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 5074.32,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": true,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-25",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending",
+              "deferredReason": "预计需40分钟，当前剩余20分钟，暂未安排"
+            },
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 65
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.34,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 26,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-26",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-26"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-26",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 619,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 5326.06,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-26",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 20,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 25
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.18,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 27,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-27",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-27"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-27",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": []
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 617,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 3392.11,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 55
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-27",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 25,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 35,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 10,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排35分钟，剩余10分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 10
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.11,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 28,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-28",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "linear",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-28"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-28",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 30,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 624,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 5485.37,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": true,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 30
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-28",
+          "constraints": {
+            "availableMinutes": 20
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 30,
+              "status": "pending",
+              "deferredReason": "预计需30分钟，当前剩余20分钟，暂未安排"
+            },
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "linear",
+              "knowledgePointName": "数据结构基础巩固",
+              "sourceCourse": "数据结构",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 20,
+            "scheduledMinutes": 20,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 55
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.18,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 20
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 29,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-29",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "network",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-29"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-29",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 30,
+              "status": "pending",
+              "reason": "insufficient_time_after_ddl_priority"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 631,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 3891.21,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 35
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-29",
+          "constraints": {
+            "availableMinutes": 40
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 35,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 5,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "network",
+              "knowledgePointName": "计算机网络基础巩固",
+              "sourceCourse": "计算机网络",
+              "durationMinutes": 40,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排5分钟，剩余40分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 40,
+            "scheduledMinutes": 40,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 40
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.23,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 40
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    },
+    {
+      "input": {
+        "scenario": 30,
+        "plan": {
+          "version": 1,
+          "planId": "fixed-30",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 30,
+              "status": "pending"
+            },
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            }
+          ]
+        },
+        "replanState": {
+          "knowledgePointId": "matrix",
+          "masteryScore": 20,
+          "assessmentScore": 40,
+          "repeatedError": true
+        },
+        "evidenceIds": [
+          "synthetic-assessment-30"
+        ]
+      },
+      "baseline": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-30",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": true
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "remainingDurationMinutes": 10,
+              "reason": "exceeds_available_time"
+            }
+          ]
+        },
+        "error": null,
+        "modelCalls": 1,
+        "tokens": 711,
+        "toolCalls": [],
+        "cacheHit": false,
+        "elapsedMs": 4992.69,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      },
+      "coordinated": {
+        "plan": {
+          "version": 2,
+          "planId": "fixed-30",
+          "constraints": {
+            "availableMinutes": 60
+          },
+          "tasks": [
+            {
+              "taskId": "ddl",
+              "knowledgePointId": "ddl:homework",
+              "knowledgePointName": "操作系统实验",
+              "sourceCourse": "操作系统",
+              "source": "ddl",
+              "dueDate": "2026-10-31",
+              "durationMinutes": 40,
+              "status": "pending"
+            },
+            {
+              "taskId": "practice",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 20,
+              "status": "pending",
+              "allowPartial": false
+            }
+          ],
+          "unscheduledTasks": [
+            {
+              "taskId": "practice:remaining",
+              "knowledgePointId": "matrix",
+              "knowledgePointName": "线性代数基础巩固",
+              "sourceCourse": "线性代数",
+              "durationMinutes": 25,
+              "status": "pending",
+              "allowPartial": false,
+              "parentTaskId": "practice",
+              "deferredReason": "本次安排20分钟，剩余25分钟待后续安排"
+            }
+          ],
+          "reason": "mastery_below_threshold;repeated_error",
+          "budgetSummary": {
+            "availableMinutes": 60,
+            "scheduledMinutes": 60,
+            "unallocatedMinutes": 0,
+            "conflictMinutes": 0,
+            "unscheduledMinutes": 25
+          }
+        },
+        "error": null,
+        "modelCalls": 0,
+        "tokens": 0,
+        "toolCalls": [
+          "replan_learning_path",
+          "fit_plan_to_budget",
+          "build_plan_diff"
+        ],
+        "cacheHit": false,
+        "elapsedMs": 0.09,
+        "metrics": {
+          "valid": true,
+          "budgetViolation": false,
+          "deadlineViolation": false,
+          "attributionErrors": 0,
+          "actionable": true,
+          "scheduledMinutes": 60
+        },
+        "cacheScope": "application",
+        "providerCacheHit": null
+      }
+    }
+  ],
+  "summary": {
+    "baseline": {
+      "samples": 30,
+      "failures": 0,
+      "budgetViolations": 8,
+      "deadlineViolations": 0,
+      "attributionErrors": 0,
+      "actionablePlans": 30,
+      "modelCalls": 30,
+      "tokens": 19580,
+      "p95Ms": 7141.52
+    },
+    "coordinated": {
+      "samples": 30,
+      "failures": 0,
+      "budgetViolations": 0,
+      "deadlineViolations": 0,
+      "attributionErrors": 0,
+      "actionablePlans": 30,
+      "modelCalls": 0,
+      "tokens": 0,
+      "p95Ms": 0.41
+    }
+  }
+}

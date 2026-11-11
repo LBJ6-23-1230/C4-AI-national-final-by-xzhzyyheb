@@ -1,0 +1,779 @@
+{
+  "requestCount": 134,
+  "positiveOperations": [
+    "GET /api/v1/auth/me",
+    "GET /api/v1/focus-sessions",
+    "GET /api/v1/learning-course-settings",
+    "GET /api/v1/learning-data",
+    "GET /api/v1/learning-effect",
+    "GET /api/v1/learning-records",
+    "GET /api/v1/learning-review-tasks",
+    "GET /api/v1/plans/current",
+    "GET /api/v1/profile/{userId}",
+    "GET /api/v1/reminder-devices",
+    "GET /api/v1/reminder-preferences",
+    "GET /api/v1/reminders",
+    "GET /api/v1/today",
+    "GET /api/v1/wrong-book",
+    "POST /api/agent/chat",
+    "POST /api/v1/auth/change-password",
+    "POST /api/v1/auth/login",
+    "POST /api/v1/auth/register",
+    "POST /api/v1/auth/send-code",
+    "POST /api/v1/auth/verify-code",
+    "POST /api/v1/learning-reviews",
+    "POST /api/v1/learning-reviews/{review_id}/accept",
+    "POST /api/v1/plans/current/availability",
+    "POST /api/v1/reminders/{eventId}/actions"
+  ],
+  "negativeOperations": [
+    "DELETE /api/agent/history",
+    "DELETE /api/v1/auth/account",
+    "DELETE /api/v1/documents/{documentId}",
+    "DELETE /api/v1/knowledge-bases/{kbId}",
+    "DELETE /api/v1/reminder-devices",
+    "GET /api/agent/health",
+    "GET /api/agent/history",
+    "GET /api/agent/images/{fileId}",
+    "GET /api/agent/user-data",
+    "GET /api/v1/agent/partner-contacts",
+    "GET /api/v1/agent/partner-invitations",
+    "GET /api/v1/auth/me",
+    "GET /api/v1/documents/{documentId}",
+    "GET /api/v1/documents/{documentId}/download",
+    "GET /api/v1/exercise-submissions/{submissionId}",
+    "GET /api/v1/exercises/{exerciseId}/sources",
+    "GET /api/v1/exercises/{setId}",
+    "GET /api/v1/experiments/snapshot",
+    "GET /api/v1/focus-sessions",
+    "GET /api/v1/knowledge-bases",
+    "GET /api/v1/knowledge-bases/{kbId}",
+    "GET /api/v1/knowledge-bases/{kbId}/documents",
+    "GET /api/v1/learning-course-settings",
+    "GET /api/v1/learning-data",
+    "GET /api/v1/learning-effect",
+    "GET /api/v1/learning-records",
+    "GET /api/v1/learning-review-tasks",
+    "GET /api/v1/partner-conversations",
+    "GET /api/v1/partners/{partner}/messages",
+    "GET /api/v1/partners/{partner}/summary",
+    "GET /api/v1/plans/current",
+    "GET /api/v1/plans/{id}/diff",
+    "GET /api/v1/profile/{userId}",
+    "GET /api/v1/reminder-devices",
+    "GET /api/v1/reminder-preferences",
+    "GET /api/v1/reminders",
+    "GET /api/v1/reminders/{eventId}/actions/{operationKey}",
+    "GET /api/v1/today",
+    "GET /api/v1/traces/{traceId}",
+    "GET /api/v1/workflows/chat/{chatSessionId}",
+    "GET /api/v1/workflows/chat/{chatSessionId}/goals",
+    "GET /api/v1/workflows/{id}",
+    "GET /api/v1/wrong-book",
+    "POST /api/agent/chat",
+    "POST /api/agent/health",
+    "POST /api/v1/agent/partner-invitations",
+    "POST /api/v1/agent/partner-invitations/{invitationId}/accept",
+    "POST /api/v1/agent/partner-invitations/{invitationId}/decline",
+    "POST /api/v1/agent/partner-invitations/{invitationId}/dismiss",
+    "POST /api/v1/agent/partner-match",
+    "POST /api/v1/agent/proactive",
+    "POST /api/v1/auth/change-password",
+    "POST /api/v1/auth/login",
+    "POST /api/v1/auth/login-or-register",
+    "POST /api/v1/auth/login-with-huawei",
+    "POST /api/v1/auth/logout",
+    "POST /api/v1/auth/register",
+    "POST /api/v1/auth/select-account",
+    "POST /api/v1/auth/send-code",
+    "POST /api/v1/auth/verify-code",
+    "POST /api/v1/demo/reset",
+    "POST /api/v1/exercises/{setId}/submit",
+    "POST /api/v1/focus-sessions",
+    "POST /api/v1/import/schedule-image",
+    "POST /api/v1/knowledge-bases",
+    "POST /api/v1/knowledge-bases/{kbId}/documents",
+    "POST /api/v1/knowledge-bases/{kbId}/search",
+    "POST /api/v1/learning-course-settings",
+    "POST /api/v1/learning-data",
+    "POST /api/v1/learning-review-tasks/complete",
+    "POST /api/v1/learning-reviews",
+    "POST /api/v1/learning-reviews/{review_id}/accept",
+    "POST /api/v1/partners/{partner}/messages",
+    "POST /api/v1/partners/{partner}/read",
+    "POST /api/v1/plans/current/assignments",
+    "POST /api/v1/plans/current/availability",
+    "POST /api/v1/plans/current/tasks/schedule",
+    "POST /api/v1/profile/{user_id}/knowledge-points",
+    "POST /api/v1/reminder-devices",
+    "POST /api/v1/reminders/{eventId}/actions",
+    "POST /api/v1/workflows",
+    "POST /api/v1/workflows/chat/{chatSessionId}/goals",
+    "POST /api/v1/workflows/{id}/run",
+    "POST /api/v1/wrong-book/{exerciseId}",
+    "POST /api/v1/wrong-book/{exerciseId}/attempt",
+    "PUT /api/v1/auth/me",
+    "PUT /api/v1/documents/{documentId}/knowledge-points",
+    "PUT /api/v1/profile/{userId}/preferences",
+    "PUT /api/v1/reminder-preferences"
+  ],
+  "negativeOnlyOperations": [
+    "DELETE /api/agent/history",
+    "DELETE /api/v1/auth/account",
+    "DELETE /api/v1/documents/{documentId}",
+    "DELETE /api/v1/knowledge-bases/{kbId}",
+    "DELETE /api/v1/reminder-devices",
+    "GET /api/agent/health",
+    "GET /api/agent/history",
+    "GET /api/agent/images/{fileId}",
+    "GET /api/agent/user-data",
+    "GET /api/v1/agent/partner-contacts",
+    "GET /api/v1/agent/partner-invitations",
+    "GET /api/v1/documents/{documentId}",
+    "GET /api/v1/documents/{documentId}/download",
+    "GET /api/v1/exercise-submissions/{submissionId}",
+    "GET /api/v1/exercises/{exerciseId}/sources",
+    "GET /api/v1/exercises/{setId}",
+    "GET /api/v1/experiments/snapshot",
+    "GET /api/v1/knowledge-bases",
+    "GET /api/v1/knowledge-bases/{kbId}",
+    "GET /api/v1/knowledge-bases/{kbId}/documents",
+    "GET /api/v1/partner-conversations",
+    "GET /api/v1/partners/{partner}/messages",
+    "GET /api/v1/partners/{partner}/summary",
+    "GET /api/v1/plans/{id}/diff",
+    "GET /api/v1/reminders/{eventId}/actions/{operationKey}",
+    "GET /api/v1/traces/{traceId}",
+    "GET /api/v1/workflows/chat/{chatSessionId}",
+    "GET /api/v1/workflows/chat/{chatSessionId}/goals",
+    "GET /api/v1/workflows/{id}",
+    "POST /api/agent/health",
+    "POST /api/v1/agent/partner-invitations",
+    "POST /api/v1/agent/partner-invitations/{invitationId}/accept",
+    "POST /api/v1/agent/partner-invitations/{invitationId}/decline",
+    "POST /api/v1/agent/partner-invitations/{invitationId}/dismiss",
+    "POST /api/v1/agent/partner-match",
+    "POST /api/v1/agent/proactive",
+    "POST /api/v1/auth/login-or-register",
+    "POST /api/v1/auth/login-with-huawei",
+    "POST /api/v1/auth/logout",
+    "POST /api/v1/auth/select-account",
+    "POST /api/v1/demo/reset",
+    "POST /api/v1/exercises/{setId}/submit",
+    "POST /api/v1/focus-sessions",
+    "POST /api/v1/import/schedule-image",
+    "POST /api/v1/knowledge-bases",
+    "POST /api/v1/knowledge-bases/{kbId}/documents",
+    "POST /api/v1/knowledge-bases/{kbId}/search",
+    "POST /api/v1/learning-course-settings",
+    "POST /api/v1/learning-data",
+    "POST /api/v1/learning-review-tasks/complete",
+    "POST /api/v1/partners/{partner}/messages",
+    "POST /api/v1/partners/{partner}/read",
+    "POST /api/v1/plans/current/assignments",
+    "POST /api/v1/plans/current/tasks/schedule",
+    "POST /api/v1/profile/{user_id}/knowledge-points",
+    "POST /api/v1/reminder-devices",
+    "POST /api/v1/workflows",
+    "POST /api/v1/workflows/chat/{chatSessionId}/goals",
+    "POST /api/v1/workflows/{id}/run",
+    "POST /api/v1/wrong-book/{exerciseId}",
+    "POST /api/v1/wrong-book/{exerciseId}/attempt",
+    "PUT /api/v1/auth/me",
+    "PUT /api/v1/documents/{documentId}/knowledge-points",
+    "PUT /api/v1/profile/{userId}/preferences",
+    "PUT /api/v1/reminder-preferences"
+  ],
+  "failureCount": 0,
+  "exemptions": [
+    "No model key is loaded; live model probes are recorded separately.",
+    "This isolated HTTP gate does not exercise HarmonyOS UI or distributed device synchronization."
+  ],
+  "operationExemptions": {
+    "DELETE /api/agent/history": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "DELETE /api/v1/auth/account": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "DELETE /api/v1/documents/{documentId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "DELETE /api/v1/knowledge-bases/{kbId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "DELETE /api/v1/reminder-devices": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/agent/health": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/agent/history": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/agent/images/{fileId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/agent/user-data": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/agent/partner-contacts": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/agent/partner-invitations": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/documents/{documentId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/documents/{documentId}/download": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/exercise-submissions/{submissionId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/exercises/{exerciseId}/sources": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/exercises/{setId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/experiments/snapshot": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/knowledge-bases": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/knowledge-bases/{kbId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/knowledge-bases/{kbId}/documents": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/partner-conversations": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/partners/{partner}/messages": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/partners/{partner}/summary": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/plans/{id}/diff": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/reminders/{eventId}/actions/{operationKey}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/traces/{traceId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/workflows/chat/{chatSessionId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/workflows/chat/{chatSessionId}/goals": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "GET /api/v1/workflows/{id}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/agent/health": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/agent/partner-invitations": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/agent/partner-invitations/{invitationId}/accept": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/agent/partner-invitations/{invitationId}/decline": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/agent/partner-invitations/{invitationId}/dismiss": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/agent/partner-match": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/agent/proactive": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/auth/login-or-register": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/auth/login-with-huawei": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/auth/logout": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/auth/select-account": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/demo/reset": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/exercises/{setId}/submit": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/focus-sessions": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/import/schedule-image": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/knowledge-bases": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/knowledge-bases/{kbId}/documents": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/knowledge-bases/{kbId}/search": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/learning-course-settings": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/learning-data": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/learning-review-tasks/complete": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/partners/{partner}/messages": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/partners/{partner}/read": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/plans/current/assignments": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/plans/current/tasks/schedule": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/profile/{user_id}/knowledge-points": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/reminder-devices": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/workflows": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/workflows/chat/{chatSessionId}/goals": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/workflows/{id}/run": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/wrong-book/{exerciseId}": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "POST /api/v1/wrong-book/{exerciseId}/attempt": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "PUT /api/v1/auth/me": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "PUT /api/v1/documents/{documentId}/knowledge-points": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "PUT /api/v1/profile/{userId}/preferences": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    },
+    "PUT /api/v1/reminder-preferences": {
+      "reason": "This gate focuses on the changed feedback workflows. Other business scenarios have not yet been ported to independent HTTP fixtures; authorization rejection alone is not business acceptance.",
+      "missingScenarios": [
+        "successful business response",
+        "cross-account ownership",
+        "invalid parameters",
+        "repeat request"
+      ]
+    }
+  }
+}

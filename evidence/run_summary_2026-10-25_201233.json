@@ -1,0 +1,61 @@
+{
+  "runAt": "2026-10-25T20:12:33",
+  "root": "D:\\project\\zhixue_final",
+  "contract": {
+    "ok": true,
+    "detail": "契约一致，version=api-contract-v0.3，196709 字节"
+  },
+  "llmMode": {
+    "mode": "offline",
+    "label": "离线降级验证（后端未配置 Key，断言诚实降级行为）",
+    "skipDegradationChecks": false
+  },
+  "backendTests": {
+    "skipped": true
+  },
+  "boot": {
+    "ok": true,
+    "base": "http://127.0.0.1:5357"
+  },
+  "integration": {
+    "ok": true,
+    "report": ".local-work\\review-20261025\\integration-third-pass-final.json",
+    "summary": {
+      "total": 97,
+      "passed": 97,
+      "failed": 0,
+      "passRate": 100.0
+    }
+  },
+  "overall": "PASS",
+  "baselineOk": true,
+  "demoBaseline": {
+    "score": 66.67,
+    "allWrongScore": 0.0,
+    "oldMastery": 42,
+    "newMastery": 58,
+    "profileVersion": [
+      1,
+      2
+    ],
+    "planVersion": [
+      1,
+      2
+    ],
+    "planDurations": [
+      [
+        30,
+        30
+      ],
+      [
+        45,
+        15
+      ]
+    ],
+    "workflowAgents": [
+      "exercise",
+      "finish"
+    ],
+    "workflowTools": []
+  }
+}

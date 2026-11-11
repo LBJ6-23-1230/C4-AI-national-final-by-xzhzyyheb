@@ -1,0 +1,102 @@
+"""Validate all page questions without hiding unreadable or missing items."""
+import re
+
+
+_MATH_COMMANDS = {
+    "lim": "lim", "sin": "sin", "cos": "cos", "tan": "tan", "ln": "ln", "log": "log",
+    "arcsin": "arcsin", "arctan": "arctan", "exp": "exp",
+    "to": "→", "rightarrow": "→", "infty": "∞", "cdot": "·", "times": "×", "div": "÷",
+    "pm": "±", "le": "≤", "leq": "≤", "ge": "≥", "geq": "≥", "ne": "≠", "neq": "≠",
+    "approx": "≈", "equiv": "≡", "cdots": "⋯", "ldots": "…", "dots": "…", "partial": "∂",
+    "sum": "∑", "int": "∫", "pi": "π", "alpha": "α", "beta": "β", "theta": "θ", "lambda": "λ",
+    "left": "", "right": "", "quad": " ", "qquad": " ",
+}
+_FRACTION = re.compile(r"\\(?:dfrac|tfrac|frac)\s*\{([^{}]*)\}\s*\{([^{}]*)\}")
+_ROOT = re.compile(r"\\sqrt(?:\[([^]]+)\])?\s*\{([^{}]*)\}")
+_GROUP = re.compile(r"([_^])\{([^{}]+)\}")
+
+
+def display_math(value):
+    """Convert common model-generated math commands while retaining unfamiliar notation."""
+    text = str(value or "").strip()
+    text = re.sub(r"\\n(?![A-Za-z])", "\n", text)
+    text = re.sub(r"\\(?:\(|\)|\[|\])", "", text)
+    text = re.sub(r"(?<!\\)\$\$([^$]+)\$\$|(?<!\\)\$([^$\n]+)\$", lambda m: m[1] or m[2], text)
+    text = re.sub(r"\\([A-Za-z]+)", lambda m: _MATH_COMMANDS.get(m[1], m[0]), text)
+
+    def operand(value):
+        return value if re.fullmatch(r"[\w.]+", value) else f"({value})"
+
+    while True:
+        rendered = _FRACTION.sub(lambda m: f"{operand(m[1])}/{operand(m[2])}", text)
+        rendered = _ROOT.sub(lambda m: f"{m[1] or ''}√({m[2]})", rendered)
+        rendered = _GROUP.sub(lambda m: f"{m[1]}{operand(m[2])}", rendered)
+        if rendered == text:
+            return rendered
+        text = rendered
+
+
+def normalize(parsed):
+    if not isinstance(parsed, dict) or not parsed:
+        raise ValueError("vision_invalid_structure")
+    legacy = "questions" not in parsed
+    rows = [parsed] if legacy else parsed["questions"]
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise ValueError("vision_invalid_structure")
+    count = parsed.get("questionCount", len(rows))
+    if type(count) is not int or count < len(rows) or count < 0:
+        raise ValueError("vision_invalid_structure")
+    questions = []
+    seen_questions = {}
+    for index, row in enumerate(rows):
+        question = display_math(row.get("questionText"))
+        readable = row.get("readable") is True and bool(question)
+        reply = display_math(row.get("reply"))
+        has_solution = bool(reply)
+        answer_visible = row.get("answerVisible") is True
+        normalized_stem = re.sub(r"\s+", "", re.sub(r"^\s*(?:第\s*\d+\s*题[、:：]?\s*|\d+[、)）:：]\s*|\d+[.．]\s+)", "", question))
+        if normalized_stem and normalized_stem in seen_questions:
+            first_number = seen_questions[normalized_stem]
+            question = ""
+            readable = False
+            has_solution = False
+            reply = f"本题识别内容与第{first_number}题重复，未作为独立题目解析，请补拍此题。"
+        elif normalized_stem:
+            seen_questions[normalized_stem] = str(row.get("questionNumber") or index + 1)
+        if not readable:
+            if "重复" not in reply:
+                reply = "本题关键条件不清晰，请补拍此题或补充题干；未生成答案和个人错因。"
+        elif not reply:
+            reply = "已识别题干，但本题解析未完成，请重试。"
+        if re.search(r"(?:没有|未).{0,8}(?:上传|提供|收到).{0,8}(?:图片|题目)|未提供具体错题", reply):
+            reply = "图片已接收并读取题干，请先核对识别内容。未提供用户答案时，只能讲解题目，不能判断个人错因。"
+        if not answer_visible and re.search(r"你(?:的)?(?:答案|作答|解法|思路)(?:是|存在|有|出现了|出现)?(?:错误|有误)|你错在", reply):
+            reply = "已读取题干，但未看到可核验的用户答案或解题过程，暂不能判断个人错因。请核对题干后再补充作答。"
+        questions.append({
+            "questionNumber": str(row.get("questionNumber") or index + 1),
+            "courseName": str(row.get("courseName") or "").strip()[:30] if readable else "",
+            "questionText": question,
+            "knowledgePoint": str(row.get("knowledgePoint") or "").strip()[:60] if readable else "",
+            "wrongType": str(row.get("wrongType") or "")[:80] if readable and answer_visible else "",
+            "reply": reply,
+            "recognitionStatus": "recognized" if readable and has_solution else ("partial" if readable else "unreadable"),
+        })
+    complete = (bool(questions) and count == len(questions)
+                and (legacy or (parsed.get("complete") is True and "questionCount" in parsed))
+                and all(q["recognitionStatus"] == "recognized" for q in questions))
+    status = "recognized" if complete else (
+        "partial" if any(q["recognitionStatus"] != "unreadable" for q in questions) else "unreadable")
+    if legacy and len(questions) == 1 and status == "recognized":
+        reply = questions[0]["reply"]
+    else:
+        header = f"已识别 {len(questions)} 道题，按页面顺序列出。" if complete else (
+            f"图片已接收，本次返回 {len(questions)} / {count} 道题；部分题目未识别完整，请核对并补拍或重试。")
+        reply = header + "\n\n" + "\n\n".join(
+            f"第{q['questionNumber']}题\n题干：{q['questionText']}\n{q['reply']}" for q in questions)
+    first = questions[0] if questions else {}
+    return reply, {"questionText": first.get("questionText", ""),
+                   "knowledgePoint": first.get("knowledgePoint", ""),
+                   "courseName": first.get("courseName", ""),
+                   "wrongType": first.get("wrongType", ""),
+                   "recognitionStatus": status, "complete": complete,
+                   "questionCount": count, "questions": questions}

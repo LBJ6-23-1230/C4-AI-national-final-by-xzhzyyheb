@@ -1,0 +1,66 @@
+"""Persistence boundary used by domain and runtime layers."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Any
+
+
+class Repository(ABC):
+	def query(self, collection, filters=None, *, limit=None, after=None):
+		"""Compatibility query; SQL backends override this with indexed filtering."""
+		rows = []
+		for item_id in sorted(self.ids(collection)):
+			if after and item_id <= after:
+				continue
+			item = self.get(collection, item_id)
+			if item is not None and all(item.get(k) == v for k, v in (filters or {}).items()):
+				rows.append(item)
+				if limit is not None and len(rows) >= limit:
+					break
+		return rows
+
+	def transaction(self, user_id=None):
+		"""Persistent backends serialize read/decide/write operations here."""
+		raise NotImplementedError
+
+	def compare_and_save(self, collection: str, item_id: str,
+					 expected: dict[str, Any], replacement: dict[str, Any]) -> bool:
+		"""Atomically replace an unchanged record; false if edited or removed.
+
+		Concrete persistent backends must serialize the comparison and write.
+		Staging overlays must not be used for background conditional updates.
+		"""
+		raise NotImplementedError
+
+	@abstractmethod
+	def get(self, collection: str, item_id: str) -> dict[str, Any] | None:
+		...
+
+	@abstractmethod
+	def save(self, collection: str, item_id: str, value: dict[str, Any]) -> None:
+		...
+
+	@abstractmethod
+	def list(self, collection: str) -> list[dict[str, Any]]:
+		...
+
+	@abstractmethod
+	def ids(self, collection: str) -> list[str]:
+		"""列出集合内的 item_id。
+
+		为什么协议里需要它：`list()` 只回 value 不含主键，而"按归属删除"
+		（`demo/reset`）必须知道要删哪个键。曾经只有 `JsonRepository` 实现了它，
+		切到 SQLite 后端时 `demo/reset` 直接 AttributeError → 500。
+		"""
+		...
+
+	@abstractmethod
+	def delete(self, collection: str, item_id: str) -> None:
+		...
+
+	@abstractmethod
+	def apply_batch(self, deletes: list[tuple[str, str]],
+					saves: list[tuple[str, str, dict[str, Any]]]) -> None:
+		"""在一次持久化事务中完成多条删除与保存。"""
+		...

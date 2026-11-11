@@ -1,0 +1,37 @@
+{
+  "A_token_reads_B_profile": 200,
+  "no_token_reads_B_profile": 200,
+  "no_token_reads_B_plan": 200,
+  "A_token_reads_B_plan_diff": 200,
+  "no_token_reads_B_kb": {
+    "status": 200,
+    "count": 1
+  },
+  "A_creates_existing_B_session": {
+    "status": 200,
+    "returns_B_session": true
+  },
+  "no_token_snapshot": {
+    "status": 200,
+    "profileCount": 0,
+    "includes_all": 2
+  },
+  "multi_point_one_baseline": {
+    "old_mastery_input": 10,
+    "known_baselines": {
+      "point-a": 10,
+      "point-b": 90
+    },
+    "result": {
+      "point-a": 39,
+      "point-b": 39
+    }
+  },
+  "replan_exceeds_original_budget": {
+    "old_total": 60,
+    "new_durations": [
+      55,
+      15
+    ]
+  }
+}

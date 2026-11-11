@@ -1,0 +1,159 @@
+........................................................................ [  8%]
+........................................................................ [ 17%]
+........................................................................ [ 25%]
+........................................................................ [ 34%]
+........................................................................ [ 43%]
+........................................................................ [ 51%]
+........................................................................ [ 60%]
+............................................F....ssssssssssssssssssss... [ 69%]
+........................................................................ [ 77%]
+........................................................................ [ 86%]
+.................................FF..................................... [ 95%]
+.........................................                                [100%]
+================================== FAILURES ===================================
+______________ test_two_http_workers_ten_submissions_score_once _______________
+
+tmp_path = WindowsPath('E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/server/zhixue-agent-server/tests/.pytest-tmp/run-local-5596-20261030-115517/test973')
+
+    def test_two_http_workers_ten_submissions_score_once(tmp_path):
+        database = tmp_path / "shared.sqlite"
+        processes, bases = [], []
+        opener = build_opener(ProxyHandler({}))
+        def call(base, method, path, payload=None):
+            data = json.dumps(payload).encode() if payload is not None else None
+            req = Request(base + path, data=data, method=method, headers={"Content-Type": "application/json"})
+            try:
+                with opener.open(req, timeout=10) as result:
+                    return result.status, json.loads(result.read())
+            except HTTPError as error:
+                return error.code, json.loads(error.read())
+        try:
+            for _ in range(2):
+                with socket.socket() as probe:
+                    probe.bind(("127.0.0.1", 0))
+                    port = probe.getsockname()[1]
+                env = dict(os.environ, ZHIXUE_DB=f"sqlite:{database}", DASHSCOPE_API_KEY="", ZHIXUE_QUIET="1",
+                           ZHIXUE_REPOSITORY=str(tmp_path / "unused.json"))
+                script = f"from app import create_app; create_app().run(host='127.0.0.1',port={port},use_reloader=False)"
+                process = subprocess.Popen([sys.executable, "-c", script], cwd=SERVER, env=env,
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                processes.append(process)
+                base = f"http://127.0.0.1:{port}"
+                deadline = time.monotonic() + 15
+                while time.monotonic() < deadline:
+                    assert process.poll() is None, "worker exited before health became available"
+                    try:
+                        if call(base, "GET", "/health")[0] == 200:
+                            break
+                    except OSError:
+                        time.sleep(0.05)
+                else:
+>                   pytest.fail("worker startup timed out")
+E                   Failed: worker startup timed out
+
+tests\test_phase9_transactions.py:57: Failed
+_____________ test_demo_baseline_identical_across_backends[json] ______________
+
+backend = 'json'
+tmp_path = WindowsPath('E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/server/zhixue-agent-server/tests/.pytest-tmp/run-local-5596-20261030-115517/test1318')
+
+    @pytest.mark.parametrize("backend", ["json", "sqlite"])
+    def test_demo_baseline_identical_across_backends(backend, tmp_path):
+        """两个后端下演示主链数字必须一致（66.67 / 42→58 / 版本 1→2）。
+    
+        在**子进程**里起真实服务器，因为要复用真实 HTTP 主链。
+        """
+        import socket
+    
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+    
+        script = textwrap.dedent(f"""
+            import json, os, sys
+            sys.path.insert(0, r"{SERVER_DIR}")
+            os.environ["ZHIXUE_DB"] = {backend!r}
+            os.environ["ZHIXUE_REPOSITORY"] = r"{tmp_path / 'baseline.json'}"
+            os.environ["DASHSCOPE_API_KEY"] = ""
+            os.environ["ZHIXUE_QUIET"] = "1"
+            from app import create_app
+            app = create_app()
+            app.run(host="127.0.0.1", port={port}, debug=False, use_reloader=False)
+        """)
+        process = subprocess.Popen([sys.executable, "-c", script], cwd=str(SERVER_DIR),
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        import time
+        import urllib.error
+        import urllib.request
+    
+        base = f"http://127.0.0.1:{port}"
+        try:
+            for _ in range(60):
+                if process.poll() is not None:
+                    output = process.communicate()[0].decode('utf-8', errors='replace')
+                    pytest.fail(f"{backend} server exited ({process.returncode}): {output}")
+                try:
+                    with urllib.request.urlopen(f"{base}/health", timeout=2):
+                        break
+                except Exception:  # noqa: BLE001
+                    time.sleep(0.3)
+            else:
+>               pytest.fail(f"{backend} 后端未能在 18 秒内启动")
+E               Failed: json 后端未能在 18 秒内启动
+
+tests\test_sqlite_backend.py:242: Failed
+____________ test_demo_baseline_identical_across_backends[sqlite] _____________
+
+backend = 'sqlite'
+tmp_path = WindowsPath('E:/C4-AI-national-final-by-xzhzyyheb-main/C4-AI-national-final-by-xzhzyyheb-main/server/zhixue-agent-server/tests/.pytest-tmp/run-local-5596-20261030-115517/test1320')
+
+    @pytest.mark.parametrize("backend", ["json", "sqlite"])
+    def test_demo_baseline_identical_across_backends(backend, tmp_path):
+        """两个后端下演示主链数字必须一致（66.67 / 42→58 / 版本 1→2）。
+    
+        在**子进程**里起真实服务器，因为要复用真实 HTTP 主链。
+        """
+        import socket
+    
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+    
+        script = textwrap.dedent(f"""
+            import json, os, sys
+            sys.path.insert(0, r"{SERVER_DIR}")
+            os.environ["ZHIXUE_DB"] = {backend!r}
+            os.environ["ZHIXUE_REPOSITORY"] = r"{tmp_path / 'baseline.json'}"
+            os.environ["DASHSCOPE_API_KEY"] = ""
+            os.environ["ZHIXUE_QUIET"] = "1"
+            from app import create_app
+            app = create_app()
+            app.run(host="127.0.0.1", port={port}, debug=False, use_reloader=False)
+        """)
+        process = subprocess.Popen([sys.executable, "-c", script], cwd=str(SERVER_DIR),
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        import time
+        import urllib.error
+        import urllib.request
+    
+        base = f"http://127.0.0.1:{port}"
+        try:
+            for _ in range(60):
+                if process.poll() is not None:
+                    output = process.communicate()[0].decode('utf-8', errors='replace')
+                    pytest.fail(f"{backend} server exited ({process.returncode}): {output}")
+                try:
+                    with urllib.request.urlopen(f"{base}/health", timeout=2):
+                        break
+                except Exception:  # noqa: BLE001
+                    time.sleep(0.3)
+            else:
+>               pytest.fail(f"{backend} 后端未能在 18 秒内启动")
+E               Failed: sqlite 后端未能在 18 秒内启动
+
+tests\test_sqlite_backend.py:242: Failed
+=========================== short test summary info ===========================
+FAILED tests/test_phase9_transactions.py::test_two_http_workers_ten_submissions_score_once
+FAILED tests/test_sqlite_backend.py::test_demo_baseline_identical_across_backends[json]
+FAILED tests/test_sqlite_backend.py::test_demo_baseline_identical_across_backends[sqlite]
+3 failed, 810 passed, 20 skipped in 112.82s (0:01:52)

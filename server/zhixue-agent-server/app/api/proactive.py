@@ -1,0 +1,103 @@
+from flask import Blueprint, jsonify, request
+
+from app.agent.proactive import proactive_decision
+from app.api.identity import resolve_user_id, current_user_id
+from app.repositories.json_repository import JsonRepository
+
+proactive_api = Blueprint("proactive", __name__)
+_repository: JsonRepository | None = None
+
+
+def configure_proactive_repository(repository: JsonRepository) -> None:
+    global _repository
+    _repository = repository
+
+
+def _weakest_knowledge(user_id: str) -> dict | None:
+    """取该身份画像里**最薄弱**的知识点（掌握度最低的一条）。
+
+    返回 `{"masteryScore": float, "knowledgePointId": str, "knowledgePointName": str}`；
+    查不到画像或画像为空时返回 None。
+
+    为什么要连**知识点名字**一起取：决策引擎此前把任务名与知识点名**写死成
+    "二叉树后序遍历"**（见 `app/agent/proactive.py`），于是无论用户真实薄弱点是什么
+    （例如刚诊断出"哈希表"），首页/学习页的卡片文案永远写"二叉树后序遍历" ——
+    实测反馈里的「这里就有哈希了，但是上面的不能一味的写二叉树后序遍历，要具体看题目」。
+    """
+    if _repository is None:
+        return None
+    profile = _repository.get("profiles", user_id)
+    if not isinstance(profile, dict):
+        return None
+    mastery = profile.get("mastery")
+    if not isinstance(mastery, list):
+        return None
+    best: dict | None = None
+    for item in mastery:
+        if not isinstance(item, dict):
+            continue
+        try:
+            score = float(item.get("masteryScore"))
+        except (TypeError, ValueError):
+            continue
+        if best is None or score < best["masteryScore"]:
+            best = {
+                "masteryScore": score,
+                "knowledgePointId": str(item.get("knowledgePointId") or ""),
+                "knowledgePointName": str(item.get("knowledgePointName") or ""),
+            }
+    return best
+
+
+@proactive_api.post("/api/v1/agent/proactive")
+def post_proactive():
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        return jsonify({
+            "errorCode": "BAD_REQUEST",
+            "message": "request body must be an object",
+            "details": None,
+        }), 400
+    owner = resolve_user_id(data.get("userId"))
+    if current_user_id():
+        from app.services.reminders import reconcile
+        overview = reconcile(_repository, owner)
+        event = overview['highlight']
+        return jsonify(userId=owner, shouldNotify=False, channel='silent', title=event['title'] if event else '',
+            body=event['reason'] if event else overview['guidance'], reason=event['reason'] if event else overview['guidance'],
+            action=dict(type='none', label='', targetPage='', preset={}), factors=[], contextTags=[],
+            cardData=dict(taskName=event['title'] if event else '', knowledgePointId=event['knowledgePointId'] if event else '',
+                durationMinutes=event['durationMinutes'] if event else 0, hint=''), eventId=event['eventId'] if event else '')
+    context = data.get("context")
+    if context is not None and not isinstance(context, dict):
+        return jsonify({
+            "errorCode": "BAD_REQUEST",
+            "message": "context must be an object",
+            "details": {"field": "context"},
+        }), 400
+    pending_tasks = context.get("pendingTasks") if isinstance(context, dict) else None
+    if pending_tasks is not None and (
+            not isinstance(pending_tasks, list)
+            or any(not isinstance(item, dict) for item in pending_tasks)):
+        return jsonify({
+            "errorCode": "BAD_REQUEST",
+            "message": "context.pendingTasks must be an array of objects",
+            "details": {"field": "context.pendingTasks"},
+        }), 400
+    context = dict(context) if isinstance(context, dict) else {}
+    if "masteryScore" not in context or "taskName" not in context:
+        weakest = _weakest_knowledge(owner)
+        if weakest is not None:
+            if "masteryScore" not in context:
+                context["masteryScore"] = weakest["masteryScore"]
+            if "taskName" not in context and weakest["knowledgePointName"]:
+                context["taskName"] = weakest["knowledgePointName"]
+            if "knowledgePointId" not in context and weakest["knowledgePointId"]:
+                context["knowledgePointId"] = weakest["knowledgePointId"]
+    payload = dict(data)
+    payload["userId"] = owner
+    payload["context"] = context
+    result = proactive_decision(payload)
+    return jsonify(result)
