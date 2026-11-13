@@ -3,7 +3,9 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import router from '@ohos.router';
 import { AgentApiClient } from '../api/AgentApiClient';
+import { ApiDefaults } from '../api/ApiDefaults';
 import { ApiEnvironmentStore } from '../api/ApiEnvironmentStore';
+import { util } from '@kit.ArkTS';
 import { AuthClient } from '../api/AuthClient';
 import { AuthResult } from '../api/AuthResult';
 import { AuthStore } from '../api/AuthStore';
@@ -37,6 +39,14 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
     this.activeWindowStage = windowStage;
 
+    if (ApiDefaults.ALLOW_USB_HUAWEI_LOGIN) {
+      try {
+        const bytes: Uint8Array = this.context.resourceManager.getRawFileContentSync('zhixue-usb-test-ca.cer');
+        AgentApiClient.configureUsbTestCa(util.TextDecoder.create('utf-8').decodeToString(bytes));
+      } catch (_) {
+        hilog.warn(DOMAIN, 'testTag', '%{public}s', 'USB HTTPS test CA is unavailable.');
+      }
+    }
     if (!ApiEnvironmentStore.restore(this.context)) {
       hilog.warn(DOMAIN, 'testTag', '%{public}s', 'Failed to restore API environment, using defaults.');
     }

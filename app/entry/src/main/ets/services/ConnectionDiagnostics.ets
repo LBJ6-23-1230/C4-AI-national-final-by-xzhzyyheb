@@ -14,10 +14,11 @@ export class ConnectionDiagnostics {
     const request = http.createHttp();
     const started: number = Date.now();
     try {
-      const response = await request.request(config.baseUrl.replace(/\/+$/, '') + '/ready', {
-        method: http.RequestMethod.GET, connectTimeout: 5000, readTimeout: 5000,
-        expectDataType: http.HttpDataType.STRING
-      });
+      const response = await request.request(config.baseUrl.replace(/\/+$/, '') + '/ready',
+        AgentApiClient.prepareBackendRequest(config.baseUrl, {
+          method: http.RequestMethod.GET, connectTimeout: 5000, readTimeout: 5000,
+          expectDataType: http.HttpDataType.STRING
+        }));
       const latency: number = Math.max(0, Date.now() - started);
       if (response.responseCode === 200) {
         return { available: true, message: `后端与数据库已就绪 · ${latency} 毫秒`, latencyMs: latency };

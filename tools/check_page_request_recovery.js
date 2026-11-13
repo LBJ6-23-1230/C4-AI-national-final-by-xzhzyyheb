@@ -1166,10 +1166,13 @@ async function check(name, run) {
     network.load = () => pending.promise;
     network.getConfig = () => ({ useFixture: false, baseUrl: 'primary' });
     network.backCalls = 0;
+    const point = { knowledgePointId: 'point', knowledgePointName: '链表', sourceCourse: '数据结构', topicGroup: '线性表' };
+    network.profile = async () => ({ mastery: [point], errorMessage: '' });
+    await page.loadPickerOptions();
     page.selectedTopic = '线性表';
     page.pointFilter = '需巩固';
     page.pointSearch = '链表';
-    page.chooseKnowledgePoint({ knowledgePointId: 'point', knowledgePointName: '链表', sourceCourse: '数据结构' });
+    page.chooseKnowledgePoint(point);
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(page.isLoading, true);
     page.goBack();

@@ -2,6 +2,7 @@
 import os
 import json
 import re
+import ssl
 from pathlib import Path
 
 EXCLUDE_DIRS = {'.git', '.hvigor', '.idea', '.vscode', 'build', 'oh_modules',
@@ -12,6 +13,7 @@ EXCLUDE_SUFFIXES = ('.pyc', '.pyo', '.bak', '.bak-round0', '.har', '.zip', '.tmp
                     '.process.lock', '.sqlite', '.sqlite3', '.db', '-wal', '-shm', '-journal',
                     '.p12', '.pfx', '.pem', '.key', '.p7b', '.cer', '.jks', '.keystore')
 EXCLUDE_NAMES = {'repository.json', 'history.json', 'local.properties', 'Thumbs.db', '.DS_Store'}
+USB_TEST_CA = Path('app/entry/src/main/resources/rawfile/zhixue-usb-test-ca.cer').parts
 
 
 def should_skip(path):
@@ -20,18 +22,24 @@ def should_skip(path):
             path.name.startswith(('repository.json.', 'repository.sqlite', 'history.json.')) or
             (path.name.startswith('.env') and not path.name.endswith('.example')) or
             any(path.parts[i:i+2] in (('data', 'files'), ('deploy', 'certs')) for i in range(len(path.parts)-1)) or
-            path.name.lower().endswith(EXCLUDE_SUFFIXES) or
+            (path.name.lower().endswith(EXCLUDE_SUFFIXES) and
+             path.parts[-len(USB_TEST_CA):] != USB_TEST_CA) or
             any(p in EXCLUDE_DIRS or p.startswith(('.venv', 'pytest-cache-files-', 'pytest-of-'))
                 for p in path.parts))
 
 
 def iter_source_files(base):
+    project_root = Path(__file__).resolve().parents[1]
+
+    def policy_path(path):
+        return path.relative_to(project_root) if path.is_relative_to(project_root) else path
+
     for current, dirs, files in os.walk(base, onerror=lambda error: (_ for _ in ()).throw(error)):
-        dirs[:] = sorted(d for d in dirs if not should_skip(Path(current) / d)
+        dirs[:] = sorted(d for d in dirs if not should_skip(policy_path(Path(current) / d))
                          and not (Path(current) / d).is_symlink())
         for name in sorted(files):
             path = Path(current) / name
-            if not path.is_symlink() and not should_skip(path):
+            if not path.is_symlink() and not should_skip(policy_path(path)):
                 yield path
 
 
@@ -83,6 +91,10 @@ def sanitized_bytes(path):
 
 
 def assert_safe_content(data, name):
+    if Path(name).parts[-len(USB_TEST_CA):] == USB_TEST_CA:
+        if not re.fullmatch(rb'-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+\r?\n-----END CERTIFICATE-----\r?\n?', data):
+            raise ValueError(f'Expected one public PEM certificate in {name}')
+        ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT).load_verify_locations(cadata=data.decode('ascii'))
     text = data.decode('utf-8', errors='ignore')
     for match in re.finditer(r'sk-[A-Za-z0-9]{16,}', text):
         if set(match.group()[3:].lower()) != {'x'}:

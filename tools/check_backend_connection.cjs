@@ -132,6 +132,23 @@ const authClient = compile(root + 'AuthClient.ets', {
   stored.set('base_url', 'https://api.example.test');
   assert.equal(environmentStore.restore({}), true);
   assert.equal(api.getConfig().baseUrl, 'https://api.example.test');
+  const usbHttps = defaults.USB_HTTPS_BASE_URL;
+  api.configure({...api.getConfig(), baseUrl:usbHttps});
+  const beforeMissingCa = sent.length;
+  assert.equal((await api.checkBackendConnection()).error.code, 'NETWORK_ERROR');
+  assert.equal(sent.length, beforeMissingCa, 'USB HTTPS must fail closed without the test CA');
+  const usbCa = fs.readFileSync('app/entry/src/main/resources/rawfile/zhixue-usb-test-ca.cer', 'utf8');
+  api.configureUsbTestCa(usbCa);
+  assert.equal((await api.checkBackendConnection()).ok, true);
+  assert.equal(sent.at(-1).url, usbHttps + '/ready');
+  assert.equal(sent.at(-1).options.caData, usbCa);
+  assert.equal(sent.at(-1).options.usingProxy, false);
+  assert.equal(sent.at(-1).options.maxRedirects, 0);
+  api.configure({...api.getConfig(), baseUrl:'https://api.example.test'});
+  assert.equal((await api.checkBackendConnection()).ok, true);
+  assert.equal(sent.at(-1).options.caData, undefined);
+  assert.equal(api.prepareBackendRequest('https://127.0.0.1:55002', {}).caData, undefined);
+
   for (const name of ['demo', 'production']) {
     const environment = {...build, NAME:name, ALLOW_DEBUG:name !== 'production'};
     const restricted = compile(root + 'ApiDefaults.ets', {'./BuildEnvironment':{BuildEnvironment:environment}}).ApiDefaults;

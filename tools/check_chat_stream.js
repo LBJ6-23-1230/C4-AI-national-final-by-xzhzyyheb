@@ -74,7 +74,13 @@ const { AgentBridge } = compile('AgentBridge', spec => {
   if (spec.endsWith('/AppState')) return { appState: { currentUser: { userId: 'owner' }, chatSessionId: 'chat', courses: [], homeworkDDLs: [] } };
   if (spec.endsWith('/AuthStore')) return { AuthStore: { getToken: () => 'session-token' } };
   if (spec.endsWith('/ApiDefaults')) return { ApiDefaults: { LLM_BOUND_READ_TIMEOUT_MS: 40000, CHAT_STREAM_READ_TIMEOUT_MS: 150000 } };
-  if (spec.endsWith('/AgentApiClient')) return { AgentApiClient: { getConfig: () => ({ baseUrl: 'http://test', timeoutMs: 8000, useFixture: false }) } };
+  if (spec.endsWith('/AgentApiClient')) return { AgentApiClient: {
+    getConfig: () => ({ baseUrl: 'http://test', timeoutMs: 8000, useFixture: false }),
+    prepareBackendRequest(baseUrl, options) {
+      assert.equal(baseUrl, 'http://test');
+      return options;
+    }
+  } };
   return {};
 });
 (async () => {

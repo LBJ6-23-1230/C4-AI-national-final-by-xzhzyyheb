@@ -190,6 +190,22 @@ export class AgentApiClient {
     timeoutMs: ApiDefaults.DEFAULT_TIMEOUT_MS
   };
 
+  private static usbTestCa: string = '';
+
+  static configureUsbTestCa(certificate: string): void {
+    if (ApiDefaults.ALLOW_USB_HUAWEI_LOGIN) AgentApiClient.usbTestCa = certificate;
+  }
+
+  static prepareBackendRequest(baseUrl: string, options: http.HttpRequestOptions): http.HttpRequestOptions {
+    if (ApiDefaults.ALLOW_USB_HUAWEI_LOGIN && baseUrl === ApiDefaults.USB_HTTPS_BASE_URL) {
+      if (AgentApiClient.usbTestCa.length === 0) throw new Error('USB HTTPS test CA is unavailable.');
+      options.caData = AgentApiClient.usbTestCa;
+      options.usingProxy = false;
+      options.maxRedirects = 0;
+    }
+    return options;
+  }
+
   static getConfig(): ApiClientConfig {
     return { baseUrl: AgentApiClient.config.baseUrl, useFixture: AgentApiClient.config.useFixture, timeoutMs: AgentApiClient.config.timeoutMs };
   }
@@ -562,6 +578,7 @@ export class AgentApiClient {
       AgentApiClient.config.timeoutMs,
       readTimeoutOverrideMs !== undefined ? readTimeoutOverrideMs : 0);
 
+    const baseUrl: string = AgentApiClient.config.baseUrl;
     const httpRequest: http.HttpRequest = http.createHttp();
     try {
       const header: Record<string, string> = {
@@ -591,12 +608,12 @@ export class AgentApiClient {
       };
       if (huaweiLogin) {
         requestOptions.maxRedirects = 0;
-        if (AgentApiClient.config.baseUrl === ApiDefaults.LOCALHOST_BASE_URL) {
+        if (baseUrl === ApiDefaults.LOCALHOST_BASE_URL) {
           requestOptions.usingProxy = false;
         }
       }
       const response: http.HttpResponse =
-        await httpRequest.request(`${AgentApiClient.config.baseUrl}${path}`, requestOptions);
+        await httpRequest.request(`${baseUrl}${path}`, AgentApiClient.prepareBackendRequest(baseUrl, requestOptions));
       if (response.responseCode < 200 || response.responseCode >= 300) {
         return AgentApiClient.parseServerError(response.result as string, response.responseCode);
       }

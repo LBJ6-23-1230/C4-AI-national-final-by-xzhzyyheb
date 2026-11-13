@@ -35,7 +35,8 @@ try {
         Copy-Item -LiteralPath '.env.example' -Destination '.env'
         Write-Host '已生成 .env；请按需配置模型和短信服务。'
     }
-    $busy = @(Get-NetTCPConnection -State Listen -ErrorAction Stop | Where-Object { $_.LocalPort -eq $Port })
+    $network = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties()
+    $busy = @($network.GetActiveTcpListeners() | Where-Object { $_.Port -eq $Port })
     if ($busy.Count -gt 0) { throw "端口 $Port 已占用，请指定 -Port 或确认原进程" }
     & $venvPy run.py --port $Port
     if ($LASTEXITCODE -ne 0) { throw '后端退出异常，请查看上方日志' }

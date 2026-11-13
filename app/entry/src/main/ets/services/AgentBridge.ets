@@ -46,13 +46,13 @@ export class AgentBridge {
       if (token.length > 0) header['Authorization'] = `Bearer ${token}`;
       const userId: string = encodeURIComponent(appState.currentUser.userId);
       const response: http.HttpResponse = await requestInstance.request(
-        `${apiConfig.baseUrl}/api/agent/history?userId=${userId}`, {
+        `${apiConfig.baseUrl}/api/agent/history?userId=${userId}`, AgentApiClient.prepareBackendRequest(apiConfig.baseUrl, {
           method: http.RequestMethod.GET,
           header: header,
           expectDataType: http.HttpDataType.STRING,
           connectTimeout: apiConfig.timeoutMs,
           readTimeout: apiConfig.timeoutMs
-        });
+        }));
       if (response.responseCode < 200 || response.responseCode >= 300) return [];
       const root: Record<string, Object> = JSON.parse(response.result as string) as Record<string, Object>;
       const rawHistory: Object | undefined = root['history'];
@@ -90,11 +90,12 @@ export class AgentBridge {
       const token: string = AuthStore.getToken();
       if (token.length > 0) header['Authorization'] = `Bearer ${token}`;
       const response: http.HttpResponse = await requestInstance.request(
-        `${config.baseUrl}/api/agent/images/${encodeURIComponent(fileId)}?userId=${encodeURIComponent(appState.currentUser.userId)}`, {
+        `${config.baseUrl}/api/agent/images/${encodeURIComponent(fileId)}?userId=${encodeURIComponent(appState.currentUser.userId)}`,
+        AgentApiClient.prepareBackendRequest(config.baseUrl, {
           method: http.RequestMethod.GET, header: header,
           expectDataType: http.HttpDataType.STRING,
           connectTimeout: config.timeoutMs, readTimeout: config.timeoutMs
-        });
+        }));
       if (response.responseCode !== 200) return '';
       const body: Record<string, Object> = JSON.parse(response.result as string) as Record<string, Object>;
       const image: string = AgentBridge.stringField(body, 'image');
@@ -205,14 +206,14 @@ export class AgentBridge {
       const readTimeoutMs: number = Math.max(apiConfig.timeoutMs,
         imageStr.length > 0 ? ApiDefaults.VISION_READ_TIMEOUT_MS :
           onProgress !== undefined ? ApiDefaults.CHAT_STREAM_READ_TIMEOUT_MS : CHAT_MIN_READ_TIMEOUT_MS);
-      const httpRequest: http.HttpRequestOptions = {
+      const httpRequest: http.HttpRequestOptions = AgentApiClient.prepareBackendRequest(apiConfig.baseUrl, {
         method: http.RequestMethod.POST,
         header: header,
         extraData: requestBody,
         expectDataType: http.HttpDataType.STRING,
         connectTimeout: apiConfig.timeoutMs,
         readTimeout: readTimeoutMs
-      };
+      });
       if (onProgress !== undefined) {
         const parser: ChatEventParser = new ChatEventParser(onProgress);
         const decoder: util.TextDecoder = util.TextDecoder.create('utf-8');

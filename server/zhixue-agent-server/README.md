@@ -1,5 +1,7 @@
 # zhixue-agent-server
 
+决赛公网评审入口与在线验收记录见[香港 ECS 评审实例](deploy/香港评审实例.md)。本机 SQLite、PostgreSQL Worker 和 Linux 部署见[当前后端手册](../../评委部署指导/02-后端部署.md)。
+
 「知学 Mate」的 Python Agent 后端。单进程同时提供**两层**能力：
 
 | 层 | 端点 | 职责 |
@@ -56,7 +58,7 @@ python run.py                                       # 默认监听 0.0.0.0:5000
 
 `GET /api/agent/health` 为被动查询：`configured` 只代表已配置 Key，`verified` 代表 5 分钟内主动验证过当前文本模型，未验证时为 null。旧字段 `llm_ready` 保留为 `configured` 的兼容别名。登录后显式 `POST /api/agent/health` 才发起最小模型验证；每进程最多每分钟一次，不代表识图和 Embedding 模型均可用。
 
-多 worker 部署必须用 SQLite。提交的幂等检查、计分、掌握度及派生记录在同一个 `BEGIN IMMEDIATE` 事务中提交，进程异常时回滚；同一键改交其他答案/目标会返回 409。JSON 后端限制单进程，第二个写进程启动失败。切换后端前停止服务、备份原库，使用项目根目录 `tools/migrate_repository.py --verify` 迁移并逐条比对；工具默认拒绝覆盖已有目标，显式 `--overwrite` 会在事务内替换全部目标记录。然后设置 `ZHIXUE_DB=sqlite`；不要直接切换到一个空 SQLite 库。
+本机可使用 SQLite 支持同机并发写入。提交的幂等检查、计分、掌握度及派生记录在同一个 `BEGIN IMMEDIATE` 事务中提交，进程异常时回滚；同一键改交其他答案/目标会返回 409。JSON 后端限制单进程，第二个写进程启动失败。将已有 JSON 库迁到 SQLite 时，先停止服务并备份原库，再用项目根目录的 `tools/migrate_repository.py --verify` 迁移并逐条比对；工具默认保护已有目标。迁移通过后设置 `ZHIXUE_DB=sqlite`。生产部署和独立作业 Worker 使用 PostgreSQL，参见 [云端部署与迁移手册](deploy/README.md)。
 
 Python 3.12 完整锁定安装可用 `pip install -r requirements-lock-py312.txt`。普通 `requirements.txt` 也会读取相同版本约束。运行态保留工具位于项目根 `tools/retention_repository.py`，默认只预览；先备份并停服核对再显式加 `--apply`，不自动清理真实数据。未解决的错题和活动目标引用的数据始终保留。
 
@@ -64,7 +66,7 @@ Python 3.12 完整锁定安装可用 `pip install -r requirements-lock-py312.txt
 ## 持久化
 
 - **默认**：JSON，落在 `data/repository.json` —— 可直接肉眼查看，便于答辩演示与人工核对
-- **多进程部署**：设 `ZHIXUE_DB=sqlite`（或 `ZHIXUE_DB=sqlite:<path>`）
+- **本机 SQLite**：设 `ZHIXUE_DB=sqlite`（或 `ZHIXUE_DB=sqlite:<path>`）
   改用并发安全的 SQLite 后端
 - **PostgreSQL**：设 `ZHIXUE_DB=postgresql` + `DATABASE_URL=postgresql+psycopg://...`；
   空库先 `alembic upgrade head`，启动要求 `alembic_version` 等于
@@ -90,14 +92,13 @@ Python 3.12 完整锁定安装可用 `pip install -r requirements-lock-py312.txt
 | 端点 | 说明 |
 |---|---|
 | `POST /api/v1/auth/register` | 手机号**必填**；重复手机号返回 409 |
-| `POST /api/v1/auth/login` | 手机号/昵称与密码登录，或恢复有效 token 会话 |
+| `POST /api/v1/auth/login` | 手机号与密码登录，或恢复有效 token 会话 |
 | `POST /api/v1/auth/send-code` | 手机验证码签发 |
 | `POST /api/v1/auth/verify-code` | 验证码校验（200 已存在 / 201 新建） |
 | `POST /api/v1/auth/login-with-huawei` | 校验华为授权码，返回应用会话（200 已存在 / 201 新建） |
 | `DELETE /api/v1/auth/account` | 注销账号 |
 
-未配置短信服务商时，开发模式返回 `devCode` 且 `smsDelivered=false`；
-生产模式**拒绝**暴露开发码。
+仅在显式设置 `ZHIXUE_ENV=development`（或 `dev`）且留空 `SMS_PROVIDER` 时，接口返回 `devCode` 和 `smsDelivered=false`。其他环境拒绝回显开发码。当前构建尚未接入真实短信发送适配器，设置 `SMS_PROVIDER` 会得到 `SMS_PROVIDER_UNAVAILABLE`。演示可使用手机号与密码。
 
 华为账号登录需要在后端配置 `HUAWEI_ACCOUNT_CLIENT_ID` 和 `HUAWEI_ACCOUNT_CLIENT_SECRET`，两者应来自与 App `client_id` 相同的 HarmonyOS 应用。App 通过平板信任的 HTTPS 地址提交授权码。服务端向华为核验通过后，以华为返回的 OpenID 查找或创建应用账号。缺少凭据或华为服务暂时不可用时返回 `503`。
 

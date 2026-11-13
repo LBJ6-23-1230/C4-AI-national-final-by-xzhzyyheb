@@ -1,5 +1,7 @@
 # 云端部署与迁移手册（2026-10-27）
 
+已运行的决赛环境见[香港 ECS 评审实例](香港评审实例.md)。本文记录 10 月 27 日形成的通用 Compose、PostgreSQL 与对象存储部署模板，供自建环境使用。
+
 这是按两份部署方案实现的第一版云端工程。开发环境仍支持 JSON/SQLite；云端使用 PostgreSQL、独立 Worker、私有 OBS/S3 和 HTTPS 网关。**云账号、域名、证书、RDS、OBS 权限与发布签名需要提供真实配置；本次没有购买或上线云资源。**
 
 ## 1. 环境和连接预算
@@ -40,7 +42,7 @@ OBS 使用 `FILE_STORAGE=obs` 和华为官方 Python SDK；支持 S3 兼容服�
 docker compose --env-file .env.production --profile tools run --rm migrate
 ```
 
-结构版本为 `20261030_03`。API/Worker 启动只检查连接和版本，不执行 DDL。迁移成功后由数据库管理员执行 `deploy/roles.sql`，再把 `zhixue_api` 和 `zhixue_worker` 分别授予对应的 LOGIN 角色。API/Worker 的环境文件不得使用迁移角色。后续迁移新增表时，需要复核授权；默认不向应用授予 CREATE。
+当前结构版本为 `20261031_01`，通过 `alembic heads` 可查看代码迁移头。API/Worker 启动只检查连接和版本，不执行 DDL。迁移成功后由数据库管理员执行 `deploy/roles.sql`，再把 `zhixue_api` 和 `zhixue_worker` 分别授予对应的 LOGIN 角色。API/Worker 的环境文件不得使用迁移角色。后续迁移新增表时，需要复核授权；默认不向应用授予 CREATE。
 
 已有结构版本不符或数据库不可用时启动失败，禁止自动创建 JSON 空库。不要通过删掉 `alembic_version` 或强制 stamp 绕过检查。
 
@@ -128,4 +130,4 @@ SELECT count(*) FROM file_objects WHERE status='uploaded';
 
 ## 2026-10-30 课程与作业同步升级
 
-新增 `learning_courses`、`learning_assignments`，迁移头为 `20261030_03`。更新 API 前先备份，并通过迁移角色执行 `alembic upgrade head`；应用启动不执行 DDL。旧客户端空作业列表不再代表删除。两台设备安装新版，原设备首次登录以补充方式迁移课程与 DDL，再由另一设备恢复。
+迁移 `20261030_03` 新增 `learning_courses`、`learning_assignments`。后续迁移 `20261031_01` 增加活跃账号的规范化手机号唯一约束，发现历史重复手机号时会停止升级。更新 API 前先备份，并通过迁移角色执行 `alembic upgrade head`；应用启动不执行 DDL。旧客户端空作业列表不再代表删除。两台设备安装新版，原设备首次登录以补充方式迁移课程与 DDL，再由另一设备恢复。

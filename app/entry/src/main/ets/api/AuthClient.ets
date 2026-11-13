@@ -338,7 +338,8 @@ export class AuthClient {
       const failure = readiness as ApiFailure;
       let message: string = '后端未通过就绪检查，请确认知学 Mate 后端已启动。';
       if (failure.error.code === 'NETWORK_ERROR') {
-        message = config.baseUrl === ApiDefaults.LOCALHOST_BASE_URL ?
+        message = (config.baseUrl === ApiDefaults.LOCALHOST_BASE_URL ||
+          config.baseUrl === ApiDefaults.USB_HTTPS_BASE_URL) ?
           '无法连接 USB 联调后端。请检查数据线和电脑上的 USB 转发服务。' :
           '无法连接 HTTPS 后端。请检查网络、后端地址和设备是否信任证书。';
       }

@@ -6,6 +6,7 @@ export class ApiDefaults {
   static readonly DEFAULT_BASE_URL: string = BuildEnvironment.API_URL;
 
   static readonly LOCALHOST_BASE_URL: string = 'http://127.0.0.1:5000';
+  static readonly USB_HTTPS_BASE_URL: string = 'https://127.0.0.1:55001';
   static readonly USB_MISTYPED_HTTPS_URL: string = 'https://127.0.0.1:5000';
   static readonly ALLOW_USB_HUAWEI_LOGIN: boolean = BuildEnvironment.NAME === 'development' && ApiDefaults.ALLOW_DEBUG;
 
